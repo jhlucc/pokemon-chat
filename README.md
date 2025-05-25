@@ -57,16 +57,18 @@ Architecture overview:
 
 ---
 
+
+
 ## 🚀 Quick Start
 
 > **Requirements**: Docker & Docker Compose, Node.js ≥ 18, Python ≥ 3.11
 
-### 1. Place the required data under `resources/`.
+### 1. Place the required data under [resources]( https://pan.baidu.com/s/1o48ankI6l9jaky5MeRqgYw?pwd=rkdy)
 
 ### 2. Clone the repo and configure environment variables
 
 ```bash
-git clone <repo-url>
+git clone https://github.com/jhlucc/pokemon-chat.git
 cd Smart-Assistant
 cp src/.env.template src/.env
 cp Smart-Assistant/config/settings_example.py config/settings.py  # fill in API-KEYs as needed
