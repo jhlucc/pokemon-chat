@@ -45,7 +45,7 @@ Architecture overview:
 
 ## 🎯 Highlights
 
-1. Fine-tuned a Pokémon-domain LLM ("Kemeng") using web-scraped data.
+1. Fine-tuned a Pokémon-domain LLM ("[Kemeng](https://huggingface.co/qwqqwq/qwen2.5-14b-instruct-pokemon-int4)") using web-scraped data.
 2. Built a Pokémon knowledge graph based on Wikipedia and forums.
 3. Automated NER training with RoBERTa + TF-IDF + rule-based matching.
 4. Integrated Whisper for ASR (speech-to-text) capabilities.
