@@ -1,0 +1,24 @@
+device: cuda
+embed_model: local/bge-large-zh-v1.5
+enable_knowledge_base: true
+enable_knowledge_graph: true
+enable_mcp: true
+enable_reranker: false
+enable_web_search: true
+filename: C:\Users\luke\Desktop\Smart-Assistant\resources\save\config\base.yaml
+model_dir: C:/Users/luke/Desktop/Smart-Assistant/resources/models
+model_local_paths: {}
+model_name: Qwen/Qwen2.5-7B-Instruct
+model_provider: siliconflow
+reranker: siliconflow/BAAI/bge-reranker-v2-m3
+save_dir: C:\Users\luke\Desktop\Smart-Assistant\resources\save
+use_rewrite_query: 'off'
+valuable_model_provider:
+- openai
+- deepseek
+- zhipu
+- siliconflow
+- together.ai
+- Bailian
+- ark
+- lingyiwanwu

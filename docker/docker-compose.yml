@@ -1,0 +1,124 @@
+services:
+  neo4j:
+    image: neo4j:5.14.0
+    restart: always
+    ports:
+      - "7474:7474"
+      - "7687:7687"
+    environment:
+#      - NEO4J_AUTH=neo4j/tczaslw278
+      - NEO4J_AUTH=none
+      - NEO4J_PLUGINS=["apoc"]  # ✅ 启用 APOC 插件
+      - NEO4J_dbms_security_procedures_unrestricted=apoc.*
+      - NEO4J_dbms_security_procedures_allowlist=apoc.meta.data,apoc.coll.*,apoc.load.*
+    volumes:
+      - ./volumes/neo4j/data:/data
+      - ./volumes/neo4j/logs:/var/lib/neo4j/logs
+    networks:
+      - vector-net
+
+  etcd:
+    image: quay.io/coreos/etcd:v3.5.5
+    restart: always
+    environment:
+      - ETCD_AUTO_COMPACTION_MODE=revision
+      - ETCD_AUTO_COMPACTION_RETENTION=1000
+      - ETCD_QUOTA_BACKEND_BYTES=4294967296
+      - ETCD_SNAPSHOT_COUNT=50000
+    command: etcd -advertise-client-urls=http://127.0.0.1:2379 -listen-client-urls http://0.0.0.0:2379 --data-dir /etcd
+    volumes:
+      - ./volumes/milvus/etcd:/etcd
+    healthcheck:
+      test: [ "CMD", "etcdctl", "endpoint", "health" ]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+    networks:
+      - vector-net
+
+  minio:
+    image: minio/minio:RELEASE.2023-09-20T22-49-55Z
+    restart: always
+    environment:
+      - MINIO_ACCESS_KEY=minioadmin
+      - MINIO_SECRET_KEY=minioadmin
+    command: minio server /data
+    volumes:
+      - ./volumes/milvus/minio:/data
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:9000/minio/health/live" ]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+    networks:
+      - vector-net
+  mysql:
+    image: registry.cn-hangzhou.aliyuncs.com/bigdata_cloudnative/mysql-test:5.7
+    container_name: mysql-pokemon
+    restart: unless-stopped
+    ports:
+      - "3307:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: 123456
+      MYSQL_DATABASE: langgraph
+      MYSQL_USER: jhlu
+      MYSQL_PASSWORD: 123456
+    volumes:
+      - ./volumes/mysql/data:/var/lib/mysql
+    healthcheck:
+      test: [ "CMD", "mysqladmin", "ping", "-h", "localhost" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - vector-net
+
+  milvus:
+    image: milvusdb/milvus:v2.3.0
+    restart: always
+    command: [ "milvus", "run", "standalone" ]
+    depends_on:
+      - etcd
+      - minio
+    ports:
+      - "19530:19530"
+      - "19091:9091"
+    environment:
+      - ETCD_ENDPOINTS=etcd:2379
+      - MINIO_ADDRESS=minio:9000
+      - MINIO_ACCESS_KEY=minioadmin
+      - MINIO_SECRET_KEY=minioadmin
+      - MILVUS_LOG_LEVEL=error
+    volumes:
+      - ./volumes/milvus/milvus:/var/lib/milvus
+      - ./volumes/milvus/logs:/var/lib/milvus/logs
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:9091/healthz" ]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+    networks:
+      - vector-net
+  whisper:
+    image: onerahmet/openai-whisper-asr-webservice:latest
+    restart: always
+    ports:
+      - "9000:9000"
+    environment:
+      - ASR_MODEL=base
+      - ASR_LANGUAGE=zh
+    volumes:
+      - ./volumes/whisper/cache:/root/.cache
+    networks:
+      - vector-net
+
+volumes:
+  neo4j_data:
+  etcd_data:
+  minio_data:
+  milvus_data:
+  whisper_cache:
+
+networks:
+  vector-net:
+    driver: bridge

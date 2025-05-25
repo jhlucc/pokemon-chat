@@ -1,0 +1,165 @@
+####################################################
+#
+#  不要直接修改这个里面的文件，可能会有被覆盖的风险，
+#  建议 复制一份 在 models.private.yml 中修改，
+#  会自动加载
+#
+#####################################################
+
+
+
+MODEL_NAMES:
+  openai:
+    name: OpenAI
+    url: https://platform.openai.com/docs/models
+    default: gpt-3.5-turbo
+    env:
+      - OPENAI_API_KEY
+    models:
+      - gpt-4
+      - gpt-4o
+      - gpt-4o-mini
+      - gpt-3.5-turbo
+  deepseek:
+    name: DeepSeek
+    url: https://platform.deepseek.com/api-docs/zh-cn/pricing
+    default: deepseek-chat
+    base_url: https://api.deepseek.com/v1
+    env:
+      - DEEPSEEK_API_KEY
+    models:
+      - deepseek-chat
+      - deepseek-reasoner
+  zhipu:
+    name: 智谱AI (Zhipu)
+    url: https://open.bigmodel.cn/dev/api
+    default: glm-4-flash
+    base_url: https://open.bigmodel.cn/api/paas/v4/
+    env:
+      - ZHIPUAI_API_KEY
+    models:
+      - glm-4
+      - glm-4-plus
+      - glm-4-air
+      - glm-4-flash
+      - glm-z1-air
+  siliconflow:
+    name: SiliconFlow
+    url: https://cloud.siliconflow.cn/models
+    default: Qwen/Qwen2.5-7B-Instruct
+    base_url: https://api.siliconflow.cn/v1
+    env:
+      - SILICONFLOW_API_KEY
+    models:
+      - Qwen/Qwen3-235B-A22B
+      - THUDM/GLM-Z1-32B-0414
+      - THUDM/GLM-Z1-9B-0414
+      - deepseek-ai/DeepSeek-V3
+      - deepseek-ai/DeepSeek-R1-Distill-Qwen-14B
+      - Qwen/Qwen2.5-72B-Instruct
+      - Qwen/Qwen2.5-7B-Instruct
+      - Qwen/QwQ-32B
+  together.ai:
+    name: Together.ai
+    url: https://api.together.ai/models
+    base_url: https://api.together.xyz/v1/
+    default: meta-llama/Llama-3.3-70B-Instruct-Turbo-Free
+    env:
+      - TOGETHER_API_KEY
+    models:
+      - meta-llama/Llama-3.3-70B-Instruct-Turbo
+      - meta-llama/Llama-3.3-70B-Instruct-Turbo-Free
+      - deepseek-ai/DeepSeek-R1-Distill-Llama-70B-free
+
+  Bailian:
+    name: 阿里百炼
+    url: https://bailian.console.aliyun.com/?tab=model#/model-market/detail/qwen3
+    base_url: https://dashscope.aliyuncs.com/compatible-mode/v1
+    default: qwen2.5-72b-instruct
+    env:
+      - BAI_LIAN_API_KEY
+    models:
+      - qwen-max-latest
+      - qwen3-235b-a22b
+      - qwen3-30b-a3b
+      - qwen2.5-72b-instruct
+      - qwen3-8b
+      - qwq-plus-latest
+      - qwen3-4b
+
+  ark:
+    name: 豆包（Ark）
+    url: https://console.volcengine.com/ark/region:ark+cn-beijing/model
+    default: doubao-1-5-lite-32k-250115
+    base_url: https://ark.cn-beijing.volces.com/api/v3
+    env:
+      - ARK_API_KEY
+    models:
+      - doubao-1-5-pro-32k-250115
+      - doubao-1-5-lite-32k-250115
+      - deepseek-r1-250120
+
+  lingyiwanwu:
+    name: 零一万物
+    url: https://platform.lingyiwanwu.com/docs#%E6%A8%A1%E5%9E%8B%E4%B8%8E%E8%AE%A1%E8%B4%B9
+    base_url: https://api.lingyiwanwu.com/v1
+    default: yi-lightning
+    env:
+      - LINGYIWANWU_API_KEY
+    models:
+      - yi-lightning
+
+  openrouter:
+    name: OpenRouter
+    url: https://openrouter.ai/models
+    base_url: https://openrouter.ai/api/v1
+    default: openai/gpt-4o
+    env:
+      - OPENROUTER_API_KEY
+    models:
+      - openai/gpt-4o
+      - openai/gpt-4o-mini
+      - google/gemini-2.5-pro-exp-03-25:free
+      - x-ai/grok-3-beta
+      - meta-llama/llama-4-maverick
+      - meta-llama/llama-4-maverick:free
+      - anthropic/claude-3.7-sonnet
+      - anthropic/claude-3.7-sonnet:thinking
+
+
+EMBED_MODEL_INFO:
+  local/bge-large-zh-v1.5:
+    name: bge-large-zh-v1.5
+    dimension: 1024
+    # local_path: /models/BAAI/bge-m3，也可以在这里配置
+
+  openai/zhipu-embedding-2:
+    name: embedding-2
+    dimension: 1024
+
+  openai/zhipu-embedding-3:
+    name: embedding-3
+    dimension: 2048
+
+  siliconflow/BAAI/bge-m3:
+    name: BAAI/bge-m3
+    dimension: 1024
+    url: https://api.siliconflow.cn/v1/embeddings
+    api_key: SILICONFLOW_API_KEY
+
+  ollama/nomic-embed-text:
+    name: nomic-embed-text
+    dimension: 768
+
+  ollama/bge-m3:
+    name: bge-m3
+    dimension: 1024
+
+RERANKER_LIST:
+
+  local/BAAI/bge-reranker-v2-m3:
+    name: BAAI/bge-reranker-v2-m3
+    # local_path: /models/BAAI/bge-m3，也可以在这里配置
+
+  siliconflow/BAAI/bge-reranker-v2-m3:
+    name: BAAI/bge-reranker-v2-m3

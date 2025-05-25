@@ -1,0 +1,48 @@
+# IDE
+.idea/
+.vscode/
+
+# Python cache
+__pycache__/
+*.py[cod]
+*.pkl
+
+# Env
+.env
+.env.*
+src/.env
+
+# Logs
+logs/
+*.log
+
+# Docker volumes & database
+docker/volumes/
+resources/cache/
+resources/models/
+
+# SQLite and DB files
+*.sqlite3
+*.db
+
+# Temporary / backup files
+*.bak
+*.tmp
+server/saves/
+*.db
+*.txt
+configs/settings.py
+
+
+# Jupyter Notebook checkpoint
+.ipynb_checkpoints/
+
+# macOS
+.DS_Store
+
+# Windows
+Thumbs.db
+
+# Python virtual envs
+venv/
+ENV/
