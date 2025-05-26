@@ -61,7 +61,7 @@
 
 > **前置要求**：已安装 Docker / Docker Compose、Node.js ≥ 18、Python ≥ 3.11
 
-1. 把数据放到[resources](https://pan.baidu.com/s/1o48ankI6l9jaky5MeRqgYw?pwd=rkdy)文件下
+1. 把数据放到[resources](https://pan.baidu.com/s/1o48ankI6l9jaky5MeRqgYw?pwd=rkdy)文件夹下
 
 2. **克隆仓库 & 配置环境变量**
 
