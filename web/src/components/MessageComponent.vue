@@ -1,6 +1,6 @@
 <template>
   <div class="message-wrapper" :class="{ 'from-user': isUser, 'from-ai': !isUser }">
-  <img class="avatar" :src="avatar" alt="avatar" />
+  <img class="avatar" :src="`/${avatar}`" alt="avatar" />
   <div class="message-box" :class="message.role">
     <!-- 用户消息 -->
     <template v-if="isUser">

@@ -244,54 +244,115 @@ async def get_agent_list():
         ]
     }
 
+
 @chat.post("/agent/{agent_name}")
 async def chat_agent(
     agent_name: str,
     query: str = Body(...),
     history: List[Dict[str, Any]] = Body([]),
     cfg: Dict[str, Any] = Body({}),
-    meta: Dict[str, Any] = Body({}),
+    meta: Dict[str, Any] = Body({})
 ):
     agent = agent_manager.get_agent(agent_name)
     if not agent:
         raise HTTPException(status_code=404, detail=f"Agent '{agent_name}' not found")
 
-    request_id = cfg.get("request_id", str(uuid.uuid4()))
-    thread_id = cfg.get("thread_id", request_id)
-    meta.update({
-        "query": query,
-        "agent_name": agent_name,
-        "thread_id": thread_id
-    })
+    # 给历史消息补 id，防止前端缺字段
+    for msg in history:
+        msg.setdefault("id", str(uuid.uuid4()))
 
+    # 本次请求 id / 线程 id
+    request_id = cfg.get("request_id", str(uuid.uuid4()))
+    thread_id  = cfg.get("thread_id",  request_id)
+    meta.update({"query": query, "agent_name": agent_name, "thread_id": thread_id})
+
+    # 会话历史管理（仅用来更新助手消息）
     history_mgr = HistoryManager()
     history_mgr.add_user(query)
 
-    def make_agent_chunk(content: str = "", status: str = "", error: str | None = None, history_resp=None):
+    # ----------   关键：统一的 chunk 打包   ----------
+    def make_agent_chunk(
+        *,
+        content: str = "",
+        status: str = "",
+        msg_id: str,
+        error: str | None = None,
+        history_resp=None,
+        refs=None
+    ):
+        """
+        前端必须要拿到 msg.id，所以这里统一塞一个 msg 字段
+        """
         payload = {
             "request_id": request_id,
-            "response": content,
-            "status": status,
-            "meta": meta,
+            "response":  content,
+            "status":    status,
+            "meta":      meta,
+            "msg":       {"id": msg_id, "type": "assistant"}     # ★ 重点
         }
         if error:
             payload["error"] = error
         if history_resp:
+            for m in history_resp:
+                m.setdefault("id", str(uuid.uuid4()))
             payload["history"] = history_resp
+        if refs:
+            payload["refs"] = refs
         return json.dumps(payload, ensure_ascii=False).encode() + b"\n"
 
+    # ----------   streaming   ----------
     async def streamer():
-        yield make_agent_chunk(status="init")
+        # 生成一个本轮 assistant 消息的固定 id
+        cur_msg_id = str(uuid.uuid4())
+
+        # ① init
+        yield make_agent_chunk(status="init", msg_id=cur_msg_id)
+
+        # ② token-by-token
         final_answer = ""
         try:
             async for part in agent.query(query, meta=meta, history=history):
                 final_answer += part
-                yield make_agent_chunk(content=part, status="loading")
-            updated = history_mgr.update_ai(final_answer)
-            yield make_agent_chunk(content=final_answer, status="finished", history_resp=convert_messages_to_dicts(updated))
+                yield make_agent_chunk(
+                    content=part,
+                    status="loading",
+                    msg_id=cur_msg_id
+                )
+
+            # ③ finished
+            updated           = history_mgr.update_ai(final_answer)
+            history_serializ  = convert_messages_to_dicts(updated)
+
+            refs = {
+                "query": query,
+                "history": history_serializ,
+                "meta": meta,
+                "model_name": "",        # 需要的话自行补充
+                "entities": [],
+                "knowledge_base": {
+                    "results": [], "all_results": [], "rw_query": query,
+                    "message": "知识库未启用、或未指定知识库、或知识库不存在"
+                },
+                "graph_base":  {"results": {"nodes": [], "edges": []}},
+                "web_search":  {"results": [], "message": "Web search is disabled"},
+                "mysql_mcp":   {"answer": "", "coords": []}
+            }
+
+            yield make_agent_chunk(
+                content=final_answer,
+                status="finished",
+                msg_id=cur_msg_id,
+                history_resp=history_serializ,
+                refs=refs
+            )
+
         except Exception as e:
             logger.error(f"Agent error: {e}\n{traceback.format_exc()}")
-            yield make_agent_chunk(status="error", error=str(e))
+            yield make_agent_chunk(
+                status="error",
+                msg_id=cur_msg_id,
+                error=str(e)
+            )
 
     return StreamingResponse(streamer(), media_type="application/json")
 
