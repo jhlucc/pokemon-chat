@@ -2,7 +2,7 @@
 <div align="right">
   <details>
     <summary >🌐 Language</summary>
-    <div> 
+    <div>  
       <div align="center">
         <a href="https://openaitx.github.io/view.html?user=jhlucc&project=pokemon-chat&lang=en">English</a>
         | <a href="https://openaitx.github.io/view.html?user=jhlucc&project=pokemon-chat&lang=zh-CN">简体中文</a>
@@ -162,3 +162,4 @@
 ## 📄 License
 
 本项目遵循 **MIT License**，可自由用于商业或个人项目。二次开发请保留原作者与来源信息。
+
