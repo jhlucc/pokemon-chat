@@ -2,7 +2,7 @@
 <div align="right">
   <details>
     <summary >🌐 Language</summary>
-    <div>
+    <div> 
       <div align="center">
         <a href="https://openaitx.github.io/view.html?user=jhlucc&project=pokemon-chat&lang=en">English</a>
         | <a href="https://openaitx.github.io/view.html?user=jhlucc&project=pokemon-chat&lang=zh-CN">简体中文</a>
@@ -27,6 +27,7 @@
       </div>
     </div>
   </details>
+
 </div>
 
 📘 中文 | [English](./README.en.md)
