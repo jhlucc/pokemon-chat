@@ -26,7 +26,7 @@
         | <a href="https://openaitx.github.io/view.html?user=jhlucc&project=pokemon-chat&lang=id">Bahasa Indonesia</a>
       </div>
     </div>
-  </details> 
+   </details> 
 
 </div> 
 
@@ -162,6 +162,7 @@
 ## 📄 License
 
 本项目遵循 **MIT License**，可自由用于商业或个人项目。二次开发请保留原作者与来源信息。
+
 
 
 
