@@ -82,7 +82,7 @@
 1. 基于爬取的数据微调了基于宝可梦的专域大模型——[可萌](https://huggingface.co/qwqqwq/qwen2.5-14b-instruct-pokemon-int4) 。
 2. 基于爬取数据构建了宝可梦知识图谱（维基百科）。
 3. 自动化标注训练NER数据，使用roberta+TF-IDF+规则匹配来命中图谱中的实体与属性。
-4. 使用whisper来实现ASR功能
+4. 使用whisper来实现ASR功能。
 5. 实现MCP服务，如获取宝可梦世界地点、宝可梦在对应真实世界的经纬度坐标显示在前端上。
 6. 抽取RAGflow中的deepdoc来强化知识库的解析和抽取能力。
 7. 使用Langraph框架基于自己的数据实现graphrag+ web searcher + 知识库 智能体。
@@ -162,6 +162,7 @@
 ## 📄 License
 
 本项目遵循 **MIT License**，可自由用于商业或个人项目。二次开发请保留原作者与来源信息。
+
 
 
 
