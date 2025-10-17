@@ -116,7 +116,7 @@
 
    ```bash
    cd docker
-   docker compose up -d            # Neo4j · Milvus · Whisper · MySQL 等
+   docker compose up -d           
    ```
 
 5. **导入图谱与地图数据**
@@ -162,6 +162,7 @@
 ## 📄 License
 
 本项目遵循 **MIT License**，可自由用于商业或个人项目。二次开发请保留原作者与来源信息。
+
 
 
 
