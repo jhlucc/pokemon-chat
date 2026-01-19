@@ -102,7 +102,7 @@
    ```bash
    git clone 
    cd Smart-Assistant
-   cp src/.env.template src/.env   # 按需填写 API-KEY，可留空
+   cp .env.template .env   # 按需填写 API-KEY，可留空
    cp Smart-Assistant/config/settings_example.py  config/settings.py  # 填写 
    ```
 
@@ -162,6 +162,7 @@
 ## 📄 License
 
 本项目遵循 **MIT License**，可自由用于商业或个人项目。二次开发请保留原作者与来源信息。
+
 
 
 
