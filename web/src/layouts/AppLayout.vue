@@ -178,6 +178,7 @@ const mainList = [{
   width: 100%;
   height: 100vh;
   min-width: var(--min-width);
+  background-color: var(--background-color);
 
   .header-mobile {
     display: none;
@@ -193,37 +194,35 @@ const mainList = [{
   }
 }
 
-div.header, #app-router-view {
-  height: 100%;
-  max-width: 100%;
-  user-select: none;
-}
-
-#app-router-view {
-  flex: 1 1 auto;
-  overflow-y: auto;
-}
-
+/* Glassy/Premium Sidebar */
 .header {
   display: flex;
   flex-direction: column;
-  flex: 0 0 70px;
+  flex: 0 0 80px; /* Slightly wider sidebar */
   justify-content: flex-start;
   align-items: center;
-  background-color: var(--gray-100);
+  background-color: var(--sidebar-background-color);
   height: 100%;
-  width: 74px;
-  border-right: 1px solid var(--gray-300);
+  border-right: 1px solid var(--border-color);
+  z-index: 10;
+  transition: all 0.3s ease;
+  box-shadow: 1px 0 4px rgba(0, 0, 0, 0.02);
 
   .logo {
-    width: 40px;
-    height: 40px;
-    margin: 18px 0 18px 0;
+    width: 48px;
+    height: 48px;
+    margin: 24px 0;
+    transition: transform 0.3s ease;
+
+    &:hover {
+      transform: scale(1.05);
+    }
 
     img {
       width: 100%;
       height: 100%;
-      border-radius: 4px;  // 50% for circle
+      border-radius: 12px; /* Soft rounding */
+      box-shadow: var(--shadow-sm);
     }
 
     .logo-text {
@@ -234,115 +233,80 @@ div.header, #app-router-view {
       text-decoration: none;
       font-size: 24px;
       font-weight: bold;
-      color: #333;
+      color: var(--text-color);
     }
   }
 
-  .nav-item {
+  .nav {
     display: flex;
     flex-direction: column;
+    justify-content: flex-start; /* Changed from space-between to avoid huge gaps */
     align-items: center;
-    justify-content: center;
-    width: 52px;
-    padding: 4px;
-    padding-top: 10px;
-    border: 1px solid transparent;
-    border-radius: 8px;
-    background-color: transparent;
-    color: #222;
-    font-size: 20px;
-    transition: background-color 0.2s ease-in-out;
-    margin: 0 10px;
-    text-decoration: none;
-    cursor: pointer;
+    width: 100%;
+    gap: 16px; /* consistent gap */
 
-    &.github {
-      padding: 10px 12px;
-      &:hover {
-        background-color: transparent;
-        border: 1px solid transparent;
-      }
-
-      .github-link {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        color: inherit;
-      }
-
-      .github-stars {
-        display: flex;
-        align-items: center;
-        font-size: 12px;
-        margin-top: 4px;
-
-        .star-icon {
-          color: #f0a742;
-          font-size: 12px;
-          margin-right: 2px;
-        }
-
-        .star-count {
-          font-weight: 600;
-        }
-      }
-    }
-
-    &.api-docs {
-      padding: 10px 12px;
-    }
-
-    &.setting {
-      padding: 16px 12px;
+    /* Nav Item Styling */
+    .nav-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
       width: 56px;
-    }
-
-    &.active {
-      font-weight: bold;
-      color: var(--main-600);
-      background-color: white;
-      border: 1px solid white;
-    }
-
-    &.warning {
-      color: red;
-    }
-
-    &:hover {
-      background-color: rgba(255, 255, 255, 0.8);
-      backdrop-filter: blur(10px);
-    }
-
-    .text {
-      font-size: 12px;
-      margin-top: 4px;
-      text-align: center;
-    }
-  }
-
-  .setting {
-    width: auto;
-    font-size: 20px;
-    color: #333;
-    margin-bottom: 20px;
-    margin-top: 10px;
-
-    &:hover {
+      height: 56px;
+      border-radius: 12px;
+      color: var(--subtext-color);
+      background-color: transparent;
+      transition: all 0.2s ease;
+      text-decoration: none;
       cursor: pointer;
+      position: relative;
+
+      &.active {
+        color: #FFFFFF;
+        background-color: var(--primary-color);
+        box-shadow: var(--shadow-md);
+        
+        .text {
+            color: rgba(255,255,255,0.9);
+        }
+      }
+
+      &:hover:not(.active) {
+        background-color: var(--gray-100);
+        color: var(--primary-color);
+      }
+
+      .icon {
+        font-size: 22px;
+      }
+
+      .text {
+        font-size: 11px;
+        margin-top: 4px;
+        font-weight: 500;
+        transition: color 0.2s ease;
+      }
     }
+  }
+  
+  /* Bottom actions */
+  .api-docs, .setting {
+     margin-top: auto; /* Push to bottom */
+     margin-bottom: 12px;
   }
 }
 
-.header .nav {
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  align-items: center;
-  position: relative;
-  height: 45px;
-  gap: 16px;
+#app-router-view {
+  flex: 1 1 auto;
+  height: 100%;
+  max-width: 100%;
+  overflow-y: auto;
+  background-color: var(--background-color);
+  /* Smooth scroll behavior */
+  scroll-behavior: smooth;
 }
 
+/* Mobile Responsiveness */
 @media (max-width: 520px) {
   .app-layout {
     flex-direction: column-reverse;
@@ -354,8 +318,8 @@ div.header, #app-router-view {
     .debug-panel {
       bottom: 10rem;
     }
-
   }
+
   .app-layout div.header-mobile {
     display: flex;
     flex-direction: row;
@@ -363,127 +327,89 @@ div.header, #app-router-view {
     padding: 0 20px;
     justify-content: space-around;
     align-items: center;
-    flex: 0 0 60px;
-    border-right: none;
-    height: 40px;
+    flex: 0 0 64px;
+    height: 64px;
+    background-color: var(--sidebar-background-color);
+    border-top: 1px solid var(--border-color);
+    z-index: 20;
 
     .nav-item {
       text-decoration: none;
-      width: 40px;
-      color: var(--gray-900);
-      font-size: 1rem;
-      font-weight: bold;
-      transition: color 0.1s ease-in-out, font-size 0.1s ease-in-out;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      width: 48px;
+      color: var(--subtext-color);
+      font-size: 12px;
+      font-weight: 500;
+      transition: color 0.2s ease;
 
       &.active {
-        color: black;
-        font-size: 1.1rem;
+        color: var(--primary-color);
+        font-weight: 600;
       }
     }
   }
-  .app-layout .chat-box::webkit-scrollbar {
-    width: 0;
-  }
 }
 
+/* Top Bar Mode (Optional) */
 .app-layout.use-top-bar {
   flex-direction: column;
 }
 
 .header.top-bar {
   flex-direction: row;
-  flex: 0 0 50px;
+  flex: 0 0 64px;
   width: 100%;
-  height: 50px;
+  height: 64px;
   border-right: none;
-  border-bottom: 1px solid var(--main-light-2);
-  background-color: var(--main-light-3);
-  padding: 0 20px;
-  gap: 24px;
+  border-bottom: 1px solid var(--border-color);
+  padding: 0 24px;
+  background-color: var(--sidebar-background-color);
 
   .logo {
-    width: fit-content;
-    height: 28px;
-    margin-right: 16px;
-    display: flex;
-    align-items: center;
-
-    a {
-      display: flex;
-      align-items: center;
-      text-decoration: none;
-      color: inherit;
-    }
-
-    img {
-      width: 28px;
-      height: 28px;
-      margin-right: 8px;
-    }
-
-    .logo-text {
-      display: block;
-      font-size: 16px;
-      font-weight: 600;
-      letter-spacing: 0.5px;
-      color: var(--main-600);
-      white-space: nowrap;
-    }
-  }
-
-  .nav {
-    flex-direction: row;
-    height: auto;
-    gap: 20px;
-  }
-
-  .nav-item {
-    flex-direction: row;
+    margin: 0 24px 0 0;
     width: auto;
-    padding: 4px 16px;
-    margin: 0;
-
-    .icon {
-      margin-right: 8px;
-      font-size: 15px; // 减小图标大小
+    
+    img {
+        width: 32px;
+        height: 32px;
     }
-
-    .text {
-      margin-top: 0;
-      font-size: 15px;
-    }
-
-    &.github, &.setting {
-      padding: 8px 12px;
-
-      .icon {
-        margin-right: 0;
+    .logo-text {
+        display: block;
+        margin-left: 12px;
         font-size: 18px;
-      }
-
-      &.active {
-        color: var(--main-600);
-      }
+        color: var(--text-color);
     }
-
-    &.github {
-      a {
-        display: flex;
-        align-items: center;
+  }
+  
+  .nav {
+      flex-direction: row;
+      width: auto;
+      gap: 8px;
+      
+      .nav-item {
+          flex-direction: row;
+          width: auto;
+          height: 40px;
+          padding: 0 16px;
+          gap: 8px;
+          
+          .text {
+              margin-top: 0;
+              font-size: 14px;
+          }
+          
+          .icon {
+              font-size: 18px;
+          }
       }
-
-      .github-stars {
-        display: flex;
-        align-items: center;
-        margin-left: 6px;
-
-        .star-icon {
-          color: #f0a742;
-          font-size: 14px;
-          margin-right: 2px;
-        }
-      }
-    }
+  }
+  
+  .fill {
+      display: flex;
+      flex-grow: 1;
   }
 }
 </style>

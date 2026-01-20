@@ -1,62 +1,93 @@
-/* === 基础亮色模式（默认） === */
+/* === Premium Light Mode (Default) === */
 :root {
-  /* 主背景、文字、边框 */
-  --background-color: #ffffff;
-  --text-color: #212121;
-  --subtext-color: #666666;
-  --border-color: #e0e0e0;
-  --input-background-color: #fafafa;
+  /* Main Background, Text, Borders */
+  --background-color: #F8F9FB; /* Softer off-white for premium feel */
+  --text-color: #1A1A1A; /* Softer black */
+  --subtext-color: #5F6368;
+  --border-color: #E5E7EB;
+  --input-background-color: #FFFFFF;
 
-  /* 主色调 */
-  --primary-color: #2C86A8;
-  --primary-light-color: #8CC6E1;
-  --error-color: #ba1a1a;
+  /* Primary Color Palette - Indigo/Violet Theme */
+  --primary-color: #4F46E5; /* Indigo 600 */
+  --primary-light-color: #818CF8; /* Indigo 400 */
+  --primary-hover-color: #4338CA; /* Indigo 700 */
+  --primary-bg-light: #EEF2FF; /* Indigo 50 */
+  
+  --secondary-color: #0EA5E9; /* Sky 500 */
+  
+  --error-color: #EF4444;
+  --success-color: #10B981;
+  --warning-color: #F59E0B;
 
-  /* 灰阶色 */
-  --gray-0: #ffffff;
-  --gray-100: #f5f5f5;
-  --gray-200: #eeeeee;
-  --gray-300: #e0e0e0;
-  --gray-400: #bdbdbd;
-  --gray-500: #9e9e9e;
-  --gray-600: #757575;
-  --gray-700: #616161;
-  --gray-800: #424242;
-  --gray-900: #212121;
+  /* Grayscale - Inter/Tailwind inspired */
+  --gray-0: #FFFFFF;
+  --gray-50: #F9FAFB;
+  --gray-100: #F3F4F6;
+  --gray-200: #E5E7EB;
+  --gray-300: #D1D5DB;
+  --gray-400: #9CA3AF;
+  --gray-500: #6B7280;
+  --gray-600: #4B5563;
+  --gray-700: #374151;
+  --gray-800: #1F2937;
+  --gray-900: #111827;
 
-  /* 特殊：聊天区域 */
-  --chat-background-color: #ffffff;
+  /* Special Areas */
+  --chat-background-color: #FFFFFF;
+  --sidebar-background-color: #FFFFFF;
+  
+  /* Shadows */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  
+  /* Radius */
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
 }
 
-/* === 暗黑模式 === */
+/* === Premium Dark Mode === */
 :root[data-theme='dark'] {
-  /* 主背景、文字、边框 */
-  --background-color: #181818;
-  --input-background-color: #1e1e1e;
-  --border-color: #333;
-  --text-color: #eeeeee;
-  /* 主色调（不变，除非你想换暗色版主色） */
-  --primary-color: #2C86A8;
-  --primary-light-color: #4e99b9;
-  --error-color: #ba1a1a;
+  /* Main Background, Text, Borders */
+  --background-color: #0F172A; /* Slate 900 - Deep rich blue-black */
+  --input-background-color: #1E293B; /* Slate 800 */
+  --border-color: #334155; /* Slate 700 */
+  --text-color: #F1F5F9; /* Slate 100 */
+  --subtext-color: #94A3B8; /* Slate 400 */
 
-  /* 灰阶色（重新定义深色环境下的灰度层次） */
-  --gray-0: #121212;
-  --gray-100: #1d1d1d;
-  --gray-200: #2a2a2a;
-  --gray-300: #424242;
-  --gray-400: #616161;
-  --gray-500: #757575;
-  --gray-600: #9e9e9e;
-  --gray-700: #bdbdbd;
-  --gray-800: #d3d3d3;
-  --gray-900: #eeeeee;
+  /* Primary Color Palette - Adjusted for Dark Mode */
+  --primary-color: #6366F1; /* Indigo 500 */
+  --primary-light-color: #818CF8; /* Indigo 400 */
+  --primary-hover-color: #818CF8;
+  --primary-bg-light: rgba(99, 102, 241, 0.15); /* Low opacity indigo */
 
-  /* 特殊：聊天区域 */
-  --chat-background-color: #181818;
+  --error-color: #F87171;
+  
+  /* Grayscale - Inverted/Adjusted */
+  --gray-0: #0F172A; /* Background match */
+  --gray-50: #111827;
+  --gray-100: #1E293B;
+  --gray-200: #334155;
+  --gray-300: #475569;
+  --gray-400: #64748B;
+  --gray-500: #94A3B8;
+  --gray-600: #CBD5E1;
+  --gray-700: #E2E8F0;
+  --gray-800: #F1F5F9;
+  --gray-900: #F8FAFC;
+
+  /* Special Areas */
+  --chat-background-color: #0F172A;
+  --sidebar-background-color: #1E293B;
+  
+   /* Shadows - Lighter for dark mode visibility or adjusted */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -1px rgba(0, 0, 0, 0.2);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.4), 0 4px 6px -2px rgba(0, 0, 0, 0.2);
 }
 
-/* === 全局重置 === */
+/* === Global Reset & Typography === */
 *,
 *::before,
 *::after {
@@ -69,20 +100,28 @@ body {
   min-height: 100vh;
   background-color: var(--background-color);
   color: var(--text-color);
-  font-family: -apple-system, BlinkMacSystemFont, 'Noto Sans SC', 'Roboto', 'HarmonyOS Sans SC', 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
-  font-size: 15px;
-  line-height: 1.6;
-  transition: all 0.3s ease; /* 主题切换平滑过渡 */
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  font-size: 14px; /* More standard modern font size */
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased; /* Crisp text */
+  -moz-osx-font-smoothing: grayscale;
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
-/* === 通用组件 === */
+/* === Common Components === */
 .input-box {
   background-color: var(--input-background-color);
   color: var(--text-color);
   border: 1px solid var(--border-color);
-  border-radius: 8px;
-  padding: 8px;
-  transition: all 0.3s ease;
+  border-radius: var(--radius-md);
+  padding: 10px 12px;
+  transition: all 0.2s ease;
+  box-shadow: var(--shadow-sm);
+}
+
+.input-box:focus-within {
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 2px var(--primary-bg-light);
 }
 
 .input-box textarea {
@@ -90,38 +129,48 @@ body {
   color: var(--text-color);
   border: none;
   outline: none;
+  width: 100%;
+  resize: none;
 }
 
 button {
   background-color: var(--primary-color);
-  color: var(--gray-0);
+  color: #FFFFFF;
   border: none;
-  border-radius: 6px;
+  border-radius: var(--radius-md);
   padding: 8px 16px;
   cursor: pointer;
-  transition: background-color 0.3s ease;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
 }
 
 button:hover {
-  background-color: var(--primary-light-color);
+  background-color: var(--primary-hover-color);
+  box-shadow: var(--shadow-md);
+  transform: translateY(-1px);
 }
 
-/* === 布局类容器 === */
+button:active {
+  transform: translateY(0);
+}
+
+/* === Layout Containers === */
 header, footer, aside {
   background-color: var(--background-color);
   color: var(--text-color);
   transition: all 0.3s ease;
 }
 
-/* === 特别：聊天区域 ChatBox === */
+/* === Chat Area === */
 .chat-area {
   background-color: var(--chat-background-color);
   transition: background-color 0.3s ease;
 }
 
-/* === 特别：侧边栏 Sidebar（如果有） === */
+/* === Sidebar === */
 .sidebar {
-  background-color: var(--background-color);
+  background-color: var(--sidebar-background-color);
   border-right: 1px solid var(--border-color);
   transition: all 0.3s ease;
 }

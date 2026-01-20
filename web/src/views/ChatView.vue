@@ -137,116 +137,137 @@ onMounted(() => {
   width: 100%;
   height: 100%;
   position: relative;
+  background-color: var(--background-color);
 }
 
 .conversations {
-  width: 230px;
-  max-width: 230px;
-  border-right: 1px solid var(--main-light-3);
-  background-color: var(--bg-sider);
-  transition: all 0.3s ease;
-  white-space: nowrap; /* 防止文本换行 */
-  overflow: hidden; /* 确保内容不溢出 */
+  width: 260px; /* Slightly wider for better readability */
+  max-width: 280px;
+  border-right: 1px solid var(--border-color);
+  background-color: var(--sidebar-background-color);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  white-space: nowrap;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
 
   &.is-open {
-    width: 230px;
+    width: 260px;
+    opacity: 1;
   }
 
   &:not(.is-open) {
     width: 0;
     padding: 0;
+    opacity: 0;
     overflow: hidden;
   }
- .action.new {
-  color: var(--main-500);
-  &:hover { background: var(--main-light-4); }
-}
-  & .actions {
-    height: var(--header-height);
+
+  /* Header Actions */
+  .actions {
+    height: 64px; /* Match header height */
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 16px;
+    padding: 0 16px;
     z-index: 9;
-    border-bottom: 1px solid var(--main-light-3);
+    /* No border bottom for cleaner look, or very subtle */
+    border-bottom: 1px solid transparent; 
 
     .header-title {
-      font-weight: bold;
+      font-weight: 600;
+      font-size: 16px;
+      color: var(--text-color);
       user-select: none;
-      white-space: nowrap;
-      overflow: hidden;
     }
 
     .action {
-      font-size: 1.2rem;
-      width: 2.5rem;
-      height: 2.5rem;
       display: flex;
       justify-content: center;
       align-items: center;
+      width: 32px;
+      height: 32px;
       border-radius: 8px;
-      color: var(--gray-800);
+      color: var(--subtext-color);
       cursor: pointer;
+      transition: all 0.2s ease;
 
       &:hover {
-        background-color: var(--main-light-3);
+        background-color: var(--gray-100);
+        color: var(--text-color);
       }
 
-      .nav-btn-icon {
-        width: 1.2rem;
-        height: 1.2rem;
+      &.new {
+        color: var(--primary-color);
+        background-color: var(--primary-bg-light);
+        
+        &:hover {
+            background-color: var(--primary-light-color);
+            color: #FFF;
+        }
       }
     }
   }
 
   .conversation-list {
+    flex: 1;
     display: flex;
     flex-direction: column;
     overflow-y: auto;
-    max-height: 100%;
+    padding: 12px;
+    gap: 4px; /* Spacing between items */
   }
 
   .conversation-list .conversation {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 16px;
+    padding: 10px 12px;
     cursor: pointer;
     width: 100%;
     user-select: none;
-    transition: background-color 0.2s ease-in-out;
+    border-radius: 8px; /* Rounded items */
+    transition: all 0.2s ease;
+    border: 1px solid transparent;
 
     &__title {
-      color: var(--gray-700);
-      white-space: nowrap; /* 禁止换行 */
-      overflow: hidden;    /* 超出部分隐藏 */
-      text-overflow: ellipsis; /* 显示省略号 */
+      color: var(--subtext-color);
+      font-size: 14px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      display: flex;
+      align-items: center;
+      gap: 8px;
     }
 
     &__delete {
       display: none;
-      color: var(--gray-500);
-      transition: all 0.2s ease-in-out;
+      color: var(--subtext-color);
+      font-size: 12px;
+      padding: 4px;
+      border-radius: 4px;
+      transition: all 0.2s ease;
 
       &:hover {
-        color: #F93A37;
-        background-color: #EEE;
+        color: var(--error-color);
+        background-color: rgba(239, 68, 68, 0.1);
       }
     }
 
     &.active {
-      border-right: 3px solid var(--main-500);
-      padding-right: 13px;
-      background-color: var(--gray-200);
+      background-color: var(--primary-bg-light);
+      border-color: rgba(79, 70, 229, 0.1);
 
       & .conversation__title {
-        color: var(--gray-1000);
+        color: var(--primary-color);
+        font-weight: 500;
       }
     }
 
     &:not(.active):hover {
-      background-color: var(--main-light-3);
-
+      background-color: var(--gray-100);
+      
       & .conversation__delete {
         display: block;
       }
@@ -254,44 +275,42 @@ onMounted(() => {
   }
 }
 
+/* Scrollbar Styling */
 .conversation-list::-webkit-scrollbar {
-  position: absolute;
   width: 4px;
 }
 
 .conversation-list::-webkit-scrollbar-track {
   background: transparent;
-  border-radius: 4px;
 }
 
 .conversation-list::-webkit-scrollbar-thumb {
-  background: var(--gray-400);
+  background: var(--gray-300);
   border-radius: 4px;
 }
 
 .conversation-list::-webkit-scrollbar-thumb:hover {
-  background: rgb(100, 100, 100);
-  border-radius: 4px;
-}
-
-.conversation-list::-webkit-scrollbar-thumb:active {
-  background: rgb(68, 68, 68);
-  border-radius: 4px;
+  background: var(--gray-400);
 }
 
 @media (max-width: 520px) {
   .conversations {
     position: absolute;
     z-index: 101;
-    width: 300px;
+    width: 280px;
     height: 100%;
-    border-radius: 0 16px 16px 0;
-    box-shadow: 0 0 10px 1px rgba(0, 0, 0, 0.05);
+    border-radius: 0;
+    box-shadow: var(--shadow-xl); /* Stronger shadow for floating sidebar */
+    background-color: var(--background-color);
+
+    &.is-open {
+        transform: translateX(0);
+    }
 
     &:not(.is-open) {
-      width: 0;
+      width: 280px; /* Keep width but transform off-screen */
+      transform: translateX(-100%);
       padding: 0;
-      overflow: hidden;
     }
   }
 }

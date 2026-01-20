@@ -130,56 +130,96 @@ const isEmptyAndLoading = computed(() => {
 .message-wrapper {
   display: flex;
   align-items: flex-start;
-  margin-bottom: 1rem;
+  margin-bottom: 1.5rem; /* More breathing room */
 
   &.from-user {
     flex-direction: row-reverse;
-    .message-box { background:#e6f4ff; color:#222; }
+    .message-box { 
+        background: var(--primary-bg-light); 
+        color: var(--text-color);
+        border-radius: 1.25rem 1.25rem 0 1.25rem; /* Modern shape */
+        border: 1px solid rgba(79, 70, 229, 0.1); 
+    }
   }
   &.from-ai   {
     flex-direction: row;
-    .message-box { background:#f8f8f8; color:#000; }
+    .message-box { 
+        background: var(--gray-50); 
+        color: var(--text-color);
+        border-radius: 1.25rem 1.25rem 1.25rem 0;
+        border: 1px solid var(--border-color);
+    }
   }
   .avatar{
-    width:36px;height:36px;border-radius:50%;
-    margin:0 12px;object-fit:cover;
+    width: 36px;
+    height: 36px;
+    border-radius: 10px; /* Rounded square is more premium than circle often */
+    margin: 0 12px;
+    object-fit: cover;
+    box-shadow: var(--shadow-sm);
   }
 }
 
 /* ===== 公共文字 / loading / 提示 ===== */
-.retry-hint{margin-top:8px;padding:8px 16px;color:#666;font-size:14px;text-align:left;}
-.retry-link{color:#1890ff;cursor:pointer;margin-left:4px;&:hover{text-decoration:underline;}}
-.ant-btn-icon-only:has(.anticon-stop){background: #bd0707 !important;&:hover{background:#ff7875!important;}}
+.retry-hint{margin-top:8px;padding:8px 16px;color:var(--subtext-color);font-size:13px;text-align:left;}
+.retry-link{color:var(--primary-color);cursor:pointer;margin-left:4px;font-weight: 500;&:hover{text-decoration:underline;}}
+.ant-btn-icon-only:has(.anticon-stop){background: var(--error-color) !important;&:hover{background: #d32f2f !important;}}
+
 .loading-dots{display:inline-flex;align-items:center;justify-content:center;
-  div{width:8px;height:8px;margin:0 4px;background:#666;border-radius:50%;opacity:.3;animation:pulse .5s infinite both;
+  div{width:6px;height:6px;margin:0 4px;background:var(--subtext-color);border-radius:50%;opacity:.5;animation:pulse .5s infinite both;
     &:nth-child(1){animation-delay:-.32s} &:nth-child(2){animation-delay:-.16s}}
 }
-@keyframes pulse{0%,80%,100%{transform:scale(.8);opacity:.3}40%{transform:scale(1);opacity:1}}
-@keyframes fadeInUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+@keyframes pulse{0%,80%,100%{transform:scale(.8);opacity:.5}40%{transform:scale(1);opacity:1}}
 
 /* ===== message-box 内排版 ===== */
 .message-box{
-  display:inline-block;border-radius:1.5rem;margin:.8rem 0;padding:.625rem 1.25rem;
-  user-select:text;word-break:break-word;font-size:15px;line-height:24px;max-width:100%;position:relative;
-  &.assistant,&.received{color:initial;width:100%;text-align:left;margin:0 0 16px;padding:0;background:transparent}
-  .err-msg{color: #100f0f;border:1px solid #f19999;padding:.5rem 1rem;border-radius:8px;background:#fffbfb;margin-bottom:10px;cursor:pointer}
-  .searching-msg{color:#666;animation:colorPulse 1s infinite ease-in-out}
-  .reasoning-box{margin:10px 0 15px;border:1px solid var(--main-light-3);border-radius:8px;
-    .reasoning-content{font-size:13px;color:#444;white-space:pre-wrap;margin:0}}
+  display:inline-block;
+  padding: 12px 18px;
+  user-select: text;
+  word-break: break-word;
+  font-size: 15px;
+  line-height: 1.6;
+  max-width: 100%;
+  position: relative;
+  box-shadow: var(--shadow-sm);
+  
+  &.assistant,&.received{
+      width:100%;
+      text-align:left;
+      margin:0 0 16px;
+      padding: 0 8px; /* Remove excessive padding for AI response to align with avatar */
+      background: transparent !important; /* AI messages blend with background usually */
+      border: none !important;
+      box-shadow: none !important;
+  }
+  
+  .err-msg{color: var(--error-color); border:1px solid var(--error-color); padding:.5rem 1rem; border-radius:8px; background: rgba(239, 68, 68, 0.05); margin-bottom:10px; cursor:pointer;}
+  .searching-msg{color:var(--subtext-color); font-size: 13px; animation:colorPulse 2s infinite ease-in-out;}
+  
+  .reasoning-box{
+      margin:10px 0 15px;
+      border-left: 3px solid var(--primary-light-color); /* Cleaner look */
+      background-color: var(--gray-50);
+      border-radius: 4px; /* Slight radius */
+      padding: 8px 12px;
+    
+    .reasoning-content{font-size:13px;color:var(--subtext-color);white-space:pre-wrap;margin:0}
+    .reasoning-header { font-size: 13px; font-weight: 600; color: var(--subtext-color); margin-bottom: 4px;}
+  }
+  
   :deep(.tool-calls-container){
-  display:inline-flex !important;     /* 横向摆放多枚胶囊 */
-  flex-wrap: wrap;
-  gap:8px;                             /* 胶囊之间间距 */
-  width:auto !important;
-  margin-top:10px;                     /* 原来的外边距保留 */
-  background:transparent !important;
-  border:none !important;
+      display:inline-flex !important;
+      flex-wrap: wrap;
+      gap:8px;
+      width:auto !important;
+      margin-top:10px;
+      background:transparent !important;
+      border:none !important;
+  }
 }
-}
-@keyframes colorPulse{0%{color:#666}50%{color:#ccc}100%{color:#666}}
+@keyframes colorPulse{0%{color:var(--gray-400)}50%{color:var(--primary-color)}100%{color:var(--gray-400)}}
 
 /* ============ 关键修改：deepseek 胶囊自适应宽度 ============ */
-/* 1. container 变 inline-block */
 :deep(.tool-call-container){
   display:inline-block!important;
   width:auto!important;
@@ -188,27 +228,23 @@ const isEmptyAndLoading = computed(() => {
   padding:0!important;
 }
 
-/* 2. 胶囊本体 inline-flex */
 :deep(.tool-call-display){
   display:inline-flex!important;
    flex: 0 0 auto !important;
   align-items:center;
   gap:6px;
-  padding:4px 8px;
+  padding:4px 10px;
   width:auto!important;
   max-width:max-content!important;
-  background:var(--gray-50);
-  border:1px solid var(--gray-200);
-  border-radius:8px;
+  background:var(--background-color);
+  border:1px solid var(--border-color);
+  border-radius:20px; /* Pill shape */
+  box-shadow: var(--shadow-sm);
 
-  /* 标题区域去掉 block 背景 & 边框 */
   .tool-header{background:transparent;border:none;padding:0;margin:0;gap:6px;}
-
-  /* 小图标配色 */
-  .anticon{color:#999;cursor:pointer;&:hover{color:#555}}
+  .anticon{color:var(--subtext-color);cursor:pointer;&:hover{color:var(--primary-color)}}
 }
 
-/* D. 最里层 .tool-content 保险起见也设成 inline-flex */
 :deep(.tool-call-display>.tool-content){
   display:inline-flex!important;
   width:auto!important;
@@ -223,26 +259,47 @@ const isEmptyAndLoading = computed(() => {
 <!-- =============== style (全局)：markdown / 字体 等 =============== -->
 <style lang="less">
 .message-md .md-editor-preview-wrapper{
-  color:var(--gray-900);
+  color: var(--text-color);
   max-width:100%;
   padding:0;
-  font-family:-apple-system,BlinkMacSystemFont,'Noto Sans SC','PingFang SC','Microsoft YaHei','Hiragino Sans GB','Courier New',monospace;
-  #preview-only-preview{font-size:15px;}
-  h1,h2{font-size:1.2rem;} h3,h4{font-size:1.1rem;} h5,h6{font-size:1rem;}
-  a{color:var(--main-700);}
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  
+  #preview-only-preview{font-size:15px; line-height: 1.7;}
+  h1,h2{font-size:1.4rem; font-weight: 600; margin-top: 1.5em; margin-bottom: 0.8em; color: var(--text-color);}
+  h3,h4{font-size:1.2rem; font-weight: 600; margin-top: 1.2em; margin-bottom: 0.6em;}
+  h5,h6{font-size:1rem; font-weight: 600;}
+  
+  p { margin-bottom: 1em; }
+  
+  a{color:var(--primary-color); text-decoration: none; &:hover{text-decoration: underline;}}
+  
   code{
     font-size:13px;
     font-family:'Menlo','Monaco','Consolas','Courier New',monospace;
-    line-height:1.5;letter-spacing:.025em;tab-size:4;-moz-tab-size:4;
-    background:var(--gray-100);
+    padding: 2px 6px;
+    border-radius: 4px;
+    background: var(--gray-100);
+    color: var(--primary-color);
+  }
+  
+  pre code {
+      background: transparent;
+      padding: 0;
+      color: inherit;
+  }
+  
+  blockquote {
+      border-left: 4px solid var(--primary-light-color);
+      background: var(--gray-50);
+      padding: 12px 16px;
+      margin: 1em 0;
+      border-radius: 4px;
+      color: var(--subtext-color);
   }
 }
 
-/* deepseek-chat 模型名单独行 → 改成 inline */
-.model-name{display:inline;font-weight:600;margin-right:.5em;}
+.model-name{display:inline;font-weight:600;margin-right:.5em; color: var(--subtext-color);}
 
-/* 聊天字体缩放 */
-.chat-box.font-smaller #preview-only-preview{font-size:14px;h1,h2{font-size:1.1rem;}h3,h4{font-size:1rem;}}
-.chat-box.font-larger  #preview-only-preview{font-size:16px;h1,h2{font-size:1.3rem;}h3,h4{font-size:1.2rem;}
-  h5,h6{font-size:1.1rem;}code{font-size:14px;}}
+.chat-box.font-smaller #preview-only-preview{font-size:14px;}
+.chat-box.font-larger  #preview-only-preview{font-size:16px;}
 </style>

@@ -2,78 +2,104 @@
 
 /* layout */
 :root {
-  --header-height: 60px;
+  --header-height: 64px;
+  /* Slightly taller for better spacing */
 }
 
-/* 页面主体布局容器 */
+/* Page Main Container */
 .layout-container {
   width: 100%;
-  padding: 0px 30px;
-  background-color: var(--layout-bg-color);
+  padding: 24px 40px;
+  /* More generous padding */
+  background-color: var(--background-color);
+  min-height: calc(100vh - var(--header-height));
 
   h2 {
-    margin: 20px 0 10px 0;
+    margin: 24px 0 16px 0;
+    font-weight: 600;
+    color: var(--text-color);
   }
 }
 
-/* 通用图标尺寸定义 */
+/* Icon Standardization */
 .iconfont {
   max-width: 100%;
   max-height: 100%;
+  display: inline-block;
+  vertical-align: middle;
 
-  &.icon-10 { width: 10px; height: 10px; }
-  &.icon-16 { width: 16px; height: 16px; }
-  &.icon-20 { width: 20px; height: 20px; }
-  &.icon-24 { width: 24px; height: 24px; }
+  &.icon-10 {
+    width: 10px;
+    height: 10px;
+  }
+
+  &.icon-16 {
+    width: 16px;
+    height: 16px;
+  }
+
+  &.icon-20 {
+    width: 20px;
+    height: 20px;
+  }
+
+  &.icon-24 {
+    width: 24px;
+    height: 24px;
+  }
 }
 
-/* ==================== 暗色模式支持 ==================== */
-/* 统一通过 [data-theme="dark"] 控制，不要用 body.dark-theme */
+/* ==================== Component Specific Overrides ==================== */
 
-:root {
-  --layout-bg-color: var(--main-light-7); /* 浅色时背景色 */
-  --header-bg-color: rgba(255, 255, 255, 0.8);
-  --input-bg-color: #FFFFFF;
-  --input-border-color: var(--gray-300);
-  --button-bg-color: var(--main-500);
-  --button-hover-bg-color: var(--main-600);
-  --text-color: var(--gray-900);
-}
-
-:root[data-theme='dark'] {
-  --layout-bg-color: var(--gray-900); /* 暗色时背景色 */
-  --header-bg-color: var(--gray-800);
-  --input-bg-color: var(--gray-800);
-  --input-border-color: var(--gray-600);
-  --button-bg-color: var(--main-400);
-  --button-hover-bg-color: var(--main-300);
-  --text-color: var(--gray-100);
-}
-
-/* 具体区域应用变量 */
-
+/* Chat Header */
 .chat-header {
-  background-color: var(--header-bg-color);
+  background-color: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   color: var(--text-color);
-  border-bottom: 1px solid var(--input-border-color);
+  border-bottom: 1px solid var(--border-color);
+  height: var(--header-height);
+  display: flex;
+  align-items: center;
+  padding: 0 24px;
 }
 
+[data-theme='dark'] .chat-header {
+  background-color: rgba(30, 41, 59, 0.8);
+  /* Slate 800 with opacity */
+}
+
+/* User Input Logic mapped to new variables */
 .user-input {
-  background-color: var(--input-bg-color);
+  background-color: var(--input-background-color);
   color: var(--text-color);
-  border: 1px solid var(--input-border-color);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-xl);
+  /* Rounder for chat inputs */
+  box-shadow: var(--shadow-sm);
+  transition: all 0.2s ease;
 }
 
-.input-box {
-  background-color: var(--input-bg-color);
-  border: 1px solid var(--input-border-color);
+.user-input:focus-within {
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 2px var(--primary-bg-light);
 }
 
+/* Ant Design Button Overrides for consistency */
 button.ant-btn-icon-only {
-  background-color: var(--button-bg-color);
-  color: var(--gray-0);
+  background-color: var(--primary-color);
+  color: #FFFFFF;
+  border-radius: var(--radius-md);
+  border: none;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
 }
 
 button.ant-btn-icon-only:hover {
-  background-color: var(--button-hover-bg-color);
+  background-color: var(--primary-hover-color);
+  box-shadow: var(--shadow-md);
+}
+
+[data-theme='dark'] button.ant-btn-icon-only {
+  /* Ensure contrast in dark mode */
+  color: #FFFFFF;
 }
