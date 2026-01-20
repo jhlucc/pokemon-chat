@@ -20,7 +20,7 @@ if not logger.handlers:
     )
     console_handler.setFormatter(formatter)
     logger.addHandler(console_handler)
-from configs.settings import *
+from src.core.settings import *
 
 
 class MissingAPIKeyError(Exception):

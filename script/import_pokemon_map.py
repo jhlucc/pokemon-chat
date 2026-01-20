@@ -1,6 +1,6 @@
 import csv
 import mysql.connector
-from configs import  settings
+from src.core import settings
 # 数据库配置
 db_config = {
     'host': 'localhost',

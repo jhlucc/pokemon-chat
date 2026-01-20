@@ -10,7 +10,7 @@ from huggingface_hub import hf_hub_download
 from langchain_community.document_loaders import PyPDFLoader
 from rapidocr_onnxruntime import RapidOCR
 from tqdm import tqdm
-from configs.settings import *
+from src.core.settings import *
 
 # from argparse import ArgumentParser
 

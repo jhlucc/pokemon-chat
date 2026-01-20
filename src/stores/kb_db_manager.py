@@ -5,7 +5,7 @@ from sqlalchemy.orm import sessionmaker, joinedload
 from contextlib import contextmanager
 from sqlalchemy.orm.attributes import instance_state
 
-from configs.settings import *
+from src.core.settings import *
 from src.models.kb_models import Base, KnowledgeDatabase, KnowledgeFile, KnowledgeNode
 from src.utils.logger import LogManager
 logger=LogManager()

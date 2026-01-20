@@ -6,7 +6,7 @@ import traceback
 from typing import Any, Dict, List, Callable
 
 from pymilvus import connections, Collection
-from configs.settings import CONFIG as config
+from src.core.settings import CONFIG as config
 from src.models.embedding import get_embedding_model
 
 try:

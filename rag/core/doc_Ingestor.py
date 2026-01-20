@@ -4,7 +4,7 @@ from langchain_core.documents import Document
 from rag.core.indexing import parse_file, chunk_file
 from src.models.embedding import get_embedding_model
 from rag.core.Milvus import MilvusStorage
-from configs.settings import *
+from src.core.settings import *
 
 
 # 知识导入到向量数据库

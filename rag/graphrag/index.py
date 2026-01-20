@@ -25,7 +25,7 @@ from langchain_graphrag.indexing.report_generation import (
 from langchain_openai import ChatOpenAI
 from langchain_openai import OpenAIEmbeddings
 from tenacity import retry, stop_after_attempt, wait_exponential
-from configs import *
+from src.core.settings import *
 
 warnings.filterwarnings("ignore")
 

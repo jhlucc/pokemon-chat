@@ -3,7 +3,7 @@ warnings.filterwarnings("ignore")
 import sys
 from pathlib import Path
 from typing import Dict, List, Any, Iterator
-from configs.settings import *
+from src.core.settings import *
 import torch
 from langchain_core.messages import HumanMessage
 from langchain_core.tools import tool
@@ -12,7 +12,7 @@ from langgraph.prebuilt import create_react_agent
 from py2neo import Graph
 from pydantic import BaseModel, Field
 from transformers import BertTokenizer
-from configs.settings import *
+from src.core.settings import *
 from src.ner.ner_model import *
 # ---------- 项目路径处理 ----------
 project_root = Path(__file__).parent.parent.parent.resolve()

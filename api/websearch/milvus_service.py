@@ -8,7 +8,7 @@ from pymilvus import (
     connections, FieldSchema, CollectionSchema,
     DataType, Collection, utility
 )
-from configs.settings import *
+from src.core.settings import *
 from src.models.reranker_model import *
 
 

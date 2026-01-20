@@ -5,7 +5,7 @@ import re
 # 自动机 用于字符串匹配
 import ahocorasick
 from tqdm import tqdm
-from configs.settings import *
+from src.core.settings import *
 
 
 # 制作训练集

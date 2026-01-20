@@ -65,19 +65,26 @@ class KnowledgeBase:
         if not config.enable_knowledge_base:
             self.embed_model = None
             return
+        
         from src.models.embedding import get_embedding_model
-
-        # conf ="local/bge-large-zh-v1.5" or embedding_config or config
-        conf = embedding_config or {
-            "enable_knowledge_base": True,
-            "embed_model": "local/bge-large-zh-v1.5"
-        }
-        # self.conf = "local/bge-large-zh-v1.5"
-        self.conf = conf["embed_model"]  # 记录模型名称字符串
-        self.embed_model = get_embedding_model(conf)
+        from src.core.settings import settings
+        
+        # 使用新的 settings 获取 embedding 配置
+        provider = settings.embedding.provider
+        model = settings.embedding.model
+        
+        # 如果传入了自定义配置，优先使用
+        if embedding_config and isinstance(embedding_config, dict):
+            embed_model_str = embedding_config.get("embed_model", "")
+            if "/" in embed_model_str:
+                provider = embed_model_str.split("/")[0]
+        
+        self.conf = f"{provider}/{model}"
+        self.embed_model = get_embedding_model(provider=provider, model=model)
+        
         if config.enable_reranker:
-            from src.models.reranker_model import  RerankerWrapper
-            self.reranker = RerankerWrapper("siliconflow/bge-reranker-v2-m3", model_name="BAAI/bge-reranker-v2-m3")
+            from src.models.reranker_model import get_reranker
+            self.reranker = get_reranker()
         else:
             self.reranker = None
 

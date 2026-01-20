@@ -16,7 +16,7 @@ from langchain_graphrag.query.global_search.key_points_generator import (
 from langchain_graphrag.types.graphs.community import CommunityLevel
 from langchain_graphrag.utils import TiktokenCounter
 from langchain_openai import ChatOpenAI
-from configs import *
+from src.core.settings import *
 
 warnings.filterwarnings("ignore")
 

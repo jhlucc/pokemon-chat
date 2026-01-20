@@ -4,7 +4,7 @@ import time
 from pathlib import Path
 import traceback
 
-from configs.settings import *
+from src.core.settings import *
 from src.utils.logger import LogManager
 from src.stores.kb_db_manager import kb_db_manager
 logger= LogManager()

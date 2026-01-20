@@ -5,7 +5,7 @@ import concurrent.futures          # ← 新增
 from abc import ABC, abstractmethod
 from typing import Dict, List, Optional, Any
 
-from configs.settings import *
+from src.core.settings import *
 
 # -------------------- 全局超时时长（秒） --------------------
 SEARCH_TIMEOUT = 10        # 你可以按需改成 5、15 等

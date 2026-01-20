@@ -11,7 +11,7 @@ from torch import nn
 from torch.utils.data import Dataset, DataLoader
 from tqdm import tqdm
 from transformers import BertModel, BertTokenizer
-from configs.settings import *
+from src.core.settings import *
 
 # 模型训练
 cache_model = CACHE_BERTA_MODEL

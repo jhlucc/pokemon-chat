@@ -1,7 +1,7 @@
 import os
 import json
 import yaml
-from configs.settings import SAVE_YAML_PATH
+from src.core.settings import SAVE_YAML_PATH
 from pathlib import Path
 from dotenv import load_dotenv
 load_dotenv()

@@ -10,7 +10,7 @@ from langchain_core.runnables import RunnableLambda
 from langchain_openai import ChatOpenAI
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph import StateGraph, MessagesState, START, END
-from configs.settings import *
+from src.core.settings import *
 from src.agents.base import BaseAgent
 # 设置项目路径
 project_root = Path(__file__).parent.parent.parent.resolve()

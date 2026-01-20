@@ -5,7 +5,7 @@ from langchain_openai import ChatOpenAI
 
 from api.websearch.milvus_service import MilvusService
 from api.websearch.utils import *
-from configs.settings import *
+from src.core.settings import *
 
 
 class WebSearcher:

@@ -6,7 +6,7 @@ from typing import List, Dict, Union, Generator, Any
 import json
 from openai import OpenAI
 from src.utils import logger
-from configs.settings import MODEL_API_KEY, MODEL_API_BASE, MODEL_NAME
+from src.core.settings import MODEL_API_KEY, MODEL_API_BASE, MODEL_NAME
 from openai.types.chat import ChatCompletionMessage
 _log = logger.LogManager()
 

@@ -4,7 +4,7 @@
 import os
 import time
 import logging
-from configs.settings import LOG_DIR
+from src.core.settings import LOG_DIR
 
 
 class LogManager:
