@@ -1,10 +1,9 @@
 """
-Reranker models - Remote API preferred, local models optional
+Reranker models - Remote API only
 
 Supported providers:
 - siliconflow: SiliconFlow API (recommended)
 - local: HuggingFace model (requires torch, transformers)
-- Flag: FlagEmbedding reranker (requires torch, FlagEmbedding)
 """
 import warnings
 
@@ -55,7 +54,6 @@ class SiliconFlowReranker:
 
 # Optional: Local reranker (requires torch)
 HuggingfaceReranker = None
-LocalFlagReranker = None
 
 try:
     import torch
@@ -92,21 +90,6 @@ try:
 except ImportError:
     pass  # torch not available, local reranker disabled
 
-try:
-    from FlagEmbedding import FlagReranker
-    
-    class LocalFlagReranker:
-        """Local Flag reranker (requires FlagEmbedding and torch)"""
-        
-        def __init__(self, model_name_or_path, device="cpu", **kwargs):
-            self._reranker = FlagReranker(model_name_or_path, use_fp16=True, device=device, **kwargs)
-        
-        def compute_score(self, pairs: List[Tuple[str, str]], normalize=True):
-            return self._reranker.compute_score(pairs, normalize=normalize)
-
-except ImportError:
-    pass  # FlagEmbedding not available
-
 
 class RerankerWrapper:
     """Unified reranker interface"""
@@ -129,16 +112,8 @@ class RerankerWrapper:
             if not local_path or not os.path.isdir(local_path):
                 raise ValueError(f"local_path = {local_path} 不存在!")
             self.reranker = HuggingfaceReranker(local_path, device)
-        elif provider == "flag":
-            if LocalFlagReranker is None:
-                raise ImportError(
-                    "本地 Flag reranker 需要安装 FlagEmbedding 和 torch。\n"
-                    "请运行: pip install torch FlagEmbedding\n"
-                    "或者使用远程 API: siliconflow/xxx"
-                )
-            self.reranker = LocalFlagReranker(model_name)
         else:
-            raise ValueError(f"Invalid reranker provider: {provider}")
+            raise ValueError(f"Invalid reranker provider: {provider}. Supported: siliconflow, local")
 
     def run(self, query: str, docs: List[str], normalize=True):
         """Compute rerank scores"""
