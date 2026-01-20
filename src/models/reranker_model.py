@@ -1,66 +1,37 @@
+"""
+Reranker models - Remote API preferred, local models optional
+
+Supported providers:
+- siliconflow: SiliconFlow API (recommended)
+- local: HuggingFace model (requires torch, transformers)
+- Flag: FlagEmbedding reranker (requires torch, FlagEmbedding)
+"""
 import warnings
 
 warnings.filterwarnings("ignore", category=FutureWarning)
 
 import os
-import json
 import requests
 import numpy as np
 import logging
-import torch
 from typing import List, Tuple, Union
-from transformers import AutoTokenizer, AutoModelForSequenceClassification
-
-try:
-    from FlagEmbedding import FlagReranker  # 可选依赖
-except ImportError:
-    FlagReranker = None
 
 
 def sigmoid(x):
     return 1 / (1 + np.exp(-x))
 
 
-class HuggingfaceReranker:
-    def __init__(self, model_dir, device="cpu"):
-        self.device = device
-        logging.info(f"Loading Huggingface reranker model from {model_dir} on {device}")
-        self.tokenizer = AutoTokenizer.from_pretrained(model_dir, local_files_only=True)
-        self.model = AutoModelForSequenceClassification.from_pretrained(model_dir, local_files_only=True)
-        self.model.to(device)
-        self.model.eval()
-        logging.info("Huggingface model and tokenizer loaded successfully.")
-
-    def compute_score(self, pairs: List[Tuple[str, str]], normalize=True):
-        inputs = self.tokenizer(
-            [q for q, d in pairs],
-            [d for q, d in pairs],
-            padding=True,
-            truncation=True,
-            return_tensors="pt",
-            max_length=512,
-        ).to(self.device)
-
-        with torch.no_grad():
-            logits = self.model(**inputs).logits.squeeze(-1)
-            scores = logits.cpu().numpy()
-
-        return sigmoid(scores).tolist() if normalize else scores.tolist()
-
-
-class LocalFlagReranker(FlagReranker):
-    def __init__(self, model_name_or_path, device="cpu", **kwargs):
-        if FlagReranker is None:
-            raise ImportError("FlagEmbedding is not installed. Please install it first.")
-        super().__init__(model_name_or_path, use_fp16=True, device=device, **kwargs)
-
-
 class SiliconFlowReranker:
+    """SiliconFlow reranker API (recommended, no torch required)"""
+    
     def __init__(self, model_name):
         self.url = "https://api.siliconflow.cn/v1/rerank"
         self.model = model_name
+        api_key = os.getenv("SILICONFLOW_API_KEY")
+        if not api_key:
+            raise ValueError("Please set SILICONFLOW_API_KEY environment variable")
         self.headers = {
-            "Authorization": "Bearer sk-airshplskaflsntrycgajclaomhovoycgmcckhkkqmdvtjfi",
+            "Authorization": f"Bearer {api_key}",
             "Content-Type": "application/json"
         }
 
@@ -82,28 +53,95 @@ class SiliconFlowReranker:
         return [sigmoid(s) for s in scores] if normalize else scores
 
 
+# Optional: Local reranker (requires torch)
+HuggingfaceReranker = None
+LocalFlagReranker = None
+
+try:
+    import torch
+    from transformers import AutoTokenizer, AutoModelForSequenceClassification
+    
+    class HuggingfaceReranker:
+        """Local Huggingface reranker (requires torch and transformers)"""
+        
+        def __init__(self, model_dir, device="cpu"):
+            self.device = device
+            logging.info(f"Loading Huggingface reranker model from {model_dir} on {device}")
+            self.tokenizer = AutoTokenizer.from_pretrained(model_dir, local_files_only=True)
+            self.model = AutoModelForSequenceClassification.from_pretrained(model_dir, local_files_only=True)
+            self.model.to(device)
+            self.model.eval()
+            logging.info("Huggingface model and tokenizer loaded successfully.")
+
+        def compute_score(self, pairs: List[Tuple[str, str]], normalize=True):
+            inputs = self.tokenizer(
+                [q for q, d in pairs],
+                [d for q, d in pairs],
+                padding=True,
+                truncation=True,
+                return_tensors="pt",
+                max_length=512,
+            ).to(self.device)
+
+            with torch.no_grad():
+                logits = self.model(**inputs).logits.squeeze(-1)
+                scores = logits.cpu().numpy()
+
+            return sigmoid(scores).tolist() if normalize else scores.tolist()
+
+except ImportError:
+    pass  # torch not available, local reranker disabled
+
+try:
+    from FlagEmbedding import FlagReranker
+    
+    class LocalFlagReranker:
+        """Local Flag reranker (requires FlagEmbedding and torch)"""
+        
+        def __init__(self, model_name_or_path, device="cpu", **kwargs):
+            self._reranker = FlagReranker(model_name_or_path, use_fp16=True, device=device, **kwargs)
+        
+        def compute_score(self, pairs: List[Tuple[str, str]], normalize=True):
+            return self._reranker.compute_score(pairs, normalize=normalize)
+
+except ImportError:
+    pass  # FlagEmbedding not available
+
+
 class RerankerWrapper:
+    """Unified reranker interface"""
+    
     def __init__(self, reranker_key, model_name, local_path=None, device="cpu"):
         self.device = device
         self.reranker_key = reranker_key
         provider, short_name = reranker_key.split("/", 1)
-        if not os.path.isdir(local_path):
-            raise ValueError(f"local_path = {local_path} 不存在!")
+        provider = provider.lower()
 
-        # 自动选择后端并初始化reranker属性
-        if provider == "local":
-            self.reranker = HuggingfaceReranker(local_path, device)
-        elif provider == "Flag":
-            self.reranker = LocalFlagReranker(model_name)
-        elif provider == "siliconflow":
+        if provider == "siliconflow":
             self.reranker = SiliconFlowReranker(model_name)
+        elif provider == "local":
+            if HuggingfaceReranker is None:
+                raise ImportError(
+                    "本地 Huggingface reranker 需要安装 torch 和 transformers。\n"
+                    "请运行: pip install torch transformers\n"
+                    "或者使用远程 API: siliconflow/xxx"
+                )
+            if not local_path or not os.path.isdir(local_path):
+                raise ValueError(f"local_path = {local_path} 不存在!")
+            self.reranker = HuggingfaceReranker(local_path, device)
+        elif provider == "flag":
+            if LocalFlagReranker is None:
+                raise ImportError(
+                    "本地 Flag reranker 需要安装 FlagEmbedding 和 torch。\n"
+                    "请运行: pip install torch FlagEmbedding\n"
+                    "或者使用远程 API: siliconflow/xxx"
+                )
+            self.reranker = LocalFlagReranker(model_name)
         else:
             raise ValueError(f"Invalid reranker provider: {provider}")
 
     def run(self, query: str, docs: List[str], normalize=True):
-        """
-        调用不同后端的 reranker 来计算分数
-        """
+        """Compute rerank scores"""
         if isinstance(self.reranker, SiliconFlowReranker):
             return self.reranker.compute_score((query, docs), normalize=normalize)
         else:
@@ -119,20 +157,8 @@ if __name__ == '__main__':
         "天气真好，适合去散步。"
     ]
 
-    #  Huggingface
-    reranker = RerankerWrapper(
-        reranker_key="local/bge-reranker-v2-m3",
-        model_name="bge-reranker-v2-m3",
-        local_path="C:/Users/luke/Desktop/Smart-Assistant/resources/models/bge-reranker-v2-m3"
-    )
-    # Flagembedding
-    # reranker = RerankerWrapper(
-    #     reranker_key="Flag/bge-reranker-v2-m3",
-    #     model_name="BAAI/bge-reranker-v2-m3",
-    # )
-
-    # SiliconFlowAPI
-    # reranker = RerankerWrapper("siliconflow/bge-reranker-v2-m3", model_name="BAAI/bge-reranker-v2-m3")
+    # Recommended: SiliconFlow API (no torch required)
+    reranker = RerankerWrapper("siliconflow/bge-reranker-v2-m3", model_name="BAAI/bge-reranker-v2-m3")
 
     scores = reranker.run(query, docs)
     for doc, score in zip(docs, scores):

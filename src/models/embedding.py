@@ -1,18 +1,24 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+"""
+Embedding models - Remote API only (no local models)
+
+Supported providers:
+- openai: OpenAI-compatible API (SiliconFlow, etc.)
+- ollama: Local Ollama server
+- siliconflow: SiliconFlow API
+"""
 import warnings
 
 warnings.filterwarnings("ignore")
 import os
-import json
 import hashlib
 import requests
-from typing import List, Dict, Union, Generator, Any
+from typing import List, Dict, Union, Any
 
-from FlagEmbedding import FlagModel
 from src.utils import logger
 from configs.settings import *
-from configs.settings import EMBED_MODEL_INFO, MODEL_EMBEDDING_PATH
+from configs.settings import EMBED_MODEL_INFO
 
 _log = logger.LogManager()
 
@@ -67,36 +73,11 @@ class BaseEmbeddingModel:
         return data
 
 
-class LocalEmbeddingModel(FlagModel, BaseEmbeddingModel):
-    def __init__(self, config, **kwargs):
-        info = EMBED_MODEL_INFO[config.embed_model]
-        self.model = info["name"]
-        self.dimension = info["dimension"]
-
-        path_from_env = os.getenv("MODEL_EMBEDDING_PATH")
-        if path_from_env and os.path.exists(path_from_env):
-            resolved_path = path_from_env
-        elif MODEL_EMBEDDING_PATH and os.path.exists(MODEL_EMBEDDING_PATH):
-            resolved_path = MODEL_EMBEDDING_PATH
-        elif info.get("local_path") and os.path.exists(info["local_path"]):
-            resolved_path = info["local_path"]
-        else:
-            raise FileNotFoundError("无法定位本地嵌入模型路径，请检查MODEL_EMBEDDING_PATH 或 local_path 配置")
-
-        self.model = resolved_path
-        super().__init__(
-            self.model,
-            query_instruction_for_retrieval=info.get("query_instruction", ""),
-            use_fp16=False,
-            **kwargs
-        )
-        _log.info(f"Embedding model `{info['name']}` loaded.")
-
-
 class OllamaEmbedding(BaseEmbeddingModel):
+    """Ollama embedding via local Ollama server"""
+    
     def __init__(self, config) -> None:
-        info = EMBED_MODEL_INFO[
-            config.embed_model]  # {'name': 'bge-m3:latest  ', 'dimension': 1024, 'url': 'http://localhost:11434/api/embed'}
+        info = EMBED_MODEL_INFO[config.embed_model]
         self.model = info["name"]
         self.url = info.get("url", "http://localhost:11434/api/embed")
         self.dimension = info.get("dimension")
@@ -120,6 +101,8 @@ class OllamaEmbedding(BaseEmbeddingModel):
 
 
 class OpenAIEmbedding(BaseEmbeddingModel):
+    """OpenAI-compatible embedding API (supports SiliconFlow, etc.)"""
+    
     def __init__(self, config) -> None:
         self.api_key = os.getenv("OPENAI_API_KEY", MODEL_API_KEY)
         self.base_url = os.getenv("OPENAI_API_BASE", MODEL_API_BASE)
@@ -148,9 +131,6 @@ class OpenAIEmbedding(BaseEmbeddingModel):
             )
         try:
             result = response.json()
-            # OpenAIEmbedding 类中 predict() 方法里，加上打印
-            # print("实际返回维度:", len(result["data"][0]["embedding"]))
-
         except Exception as e:
             raise RuntimeError(f"OpenAI embedding response decode error: {e}")
         if "data" not in result:
@@ -163,67 +143,105 @@ class OpenAIEmbedding(BaseEmbeddingModel):
         return embeddings
 
 
-class OtherEmbedding(BaseEmbeddingModel):
+class SiliconFlowEmbedding(BaseEmbeddingModel):
+    """SiliconFlow embedding API"""
+    
     def __init__(self, config) -> None:
-        raise NotImplementedError("OtherEmbedding is not implemented yet.")
+        info = EMBED_MODEL_INFO[config.embed_model]
+        self.model = info["name"]
+        self.dimension = info.get("dimension", 1024)
+        self.url = info.get("url", "https://api.siliconflow.cn/v1/embeddings")
+        api_key_env = info.get("api_key", "SILICONFLOW_API_KEY")
+        self.api_key = os.getenv(api_key_env)
+        if not self.api_key:
+            raise ValueError(f"Please set {api_key_env} environment variable")
+        _log.info(f"Using SiliconFlow embedding model `{self.model}`")
+
+    def predict(self, message: Union[str, List[str]]) -> List[Any]:
+        if isinstance(message, str):
+            message = [message]
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json"
+        }
+        payload = {
+            "model": self.model,
+            "input": message
+        }
+        response = requests.post(self.url, headers=headers, json=payload)
+
+        if response.status_code != 200:
+            raise RuntimeError(
+                f"SiliconFlow embedding request failed with status {response.status_code}. "
+                f"Body: {response.text}"
+            )
+        try:
+            result = response.json()
+        except Exception as e:
+            raise RuntimeError(f"SiliconFlow embedding response decode error: {e}")
+        if "data" not in result:
+            raise RuntimeError(f"SiliconFlow embedding error: {result}")
+        return [d["embedding"] for d in result["data"]]
 
 
 def get_embedding_model(config) -> Union[BaseEmbeddingModel, None]:
+    """
+    Get embedding model based on config.
+    
+    Supported providers:
+    - openai/xxx: OpenAI-compatible API
+    - ollama/xxx: Local Ollama server
+    - siliconflow/xxx: SiliconFlow API
+    
+    Note: Local embedding models are no longer supported.
+    Please use remote API providers instead.
+    """
     if isinstance(config, dict):
         class ConfigObject:
             def __init__(self, config_dict):
                 for k, v in config_dict.items():
                     setattr(self, k, v)
-
         config = ConfigObject(config)
+    
     if not getattr(config, "enable_knowledge_base", False):
         return None
+    
     _log.debug(f"Loading embedding model: {config.embed_model}")
     provider, _ = config.embed_model.split('/', 1)
-    if provider.lower() == "local":
-        return LocalEmbeddingModel(config)
-    elif provider.lower() == "ollama":
+    provider = provider.lower()
+    
+    if provider == "local":
+        raise ValueError(
+            "本地 embedding 已不再支持。请使用远程 API 服务：\n"
+            "- openai/xxx: OpenAI 兼容 API\n"
+            "- ollama/xxx: Ollama 本地服务\n"
+            "- siliconflow/xxx: SiliconFlow API"
+        )
+    elif provider == "ollama":
         return OllamaEmbedding(config)
-    elif provider.lower() == "openai":
+    elif provider == "openai":
         return OpenAIEmbedding(config)
+    elif provider == "siliconflow":
+        return SiliconFlowEmbedding(config)
     else:
-        return OtherEmbedding(config)
+        raise ValueError(f"Unsupported embedding provider: {provider}")
 
 
 if __name__ == "__main__":
     class Config:
-        # 启用知识库功能
         enable_knowledge_base = True
-        # 指定 embedding 模型，格式为 "provider/bge-large-zh-v1.5"，此处选择本地模型
-        embed_model = "local/bge-large-zh-v1.5"
-        # embed_model = "ollama/bge-m3:latest"
-        # embed_model = "openai/bge-m3-pro"
+        # Use SiliconFlow API for embedding
+        embed_model = "siliconflow/BAAI/bge-m3"
 
-
-    # 创建配置实例
     config = Config()
-    # 调用辅助函数加载embedding模型
     embedding_model = get_embedding_model(config)
 
     if embedding_model:
-        # 对单条输入文本进行编码调用
         single_message = "请简单介绍一下人工智能的发展历程。"
         try:
             single_result = embedding_model.encode(single_message)
-            _log.info(f"单条编码结果: {single_result}")
+            _log.info(f"单条编码结果维度: {len(single_result[0])}")
         except Exception as e:
-            _log.error(f"单条编码调用失败: {e}")
-
-        # 演示批量调用
-        messages = [
-            "人工智能是什么？",
-            "机器学习与人工智能的关系是什么？",
-            "请介绍一下深度学习的基本原理。"
-        ]
-        try:
-            batch_result = embedding_model.batch_encode(messages, batch_size=2)
-            _log.info(f"批量编码结果: {batch_result}")
-        except Exception as e:
-            _log.error(f"批量编码调用失败: {e}")
+            _log.error(f"编码调用失败: {e}")
     else:
-        _log.error("知识库功能未启用或无法加载 embedding 模型。")
+        _log.error("知识库功能未启用。")

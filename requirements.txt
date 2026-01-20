@@ -14,13 +14,6 @@ langgraph==0.4.0
 pymilvus>=2.3.0
 py2neo==2021.2.4
 
-# Embeddings & NLP
-sentence-transformers==2.2.2
-transformers==4.35.2
-huggingface_hub==0.25.0
-FlagEmbedding==1.3.3
-nltk==3.9.1
-
 # Document processing
 html2text==2024.2.26
 python-docx==1.1.2
@@ -33,13 +26,12 @@ html-text==0.6.2
 
 # OCR & Vision
 Pillow==11.0.0
-opencv-python==4.10.0.84
+opencv-python-headless==4.10.0.84
 onnxruntime==1.20.1
 
 # ML & Data
 xgboost==2.1.3
 pyarrow==18.1.0
-peft==0.14.0
 
 # Text processing
 strsimpy==0.2.1
@@ -50,6 +42,7 @@ pyclipper==1.3.0.post6
 shapely==2.0.6
 pyahocorasick==2.1.1
 seqeval==1.2.2
+nltk==3.9.1
 
 # Web & API
 tavily-python==0.5.0
@@ -64,3 +57,9 @@ sqlalchemy==2.0.36
 trio==0.27.0
 pydantic==2.10.4
 faker==33.1.0
+numpy==1.26.4
+scikit-learn==1.5.2
+
+# Optional: PyTorch environment (for NER, local reranker)
+# Install if you need local NER or reranker models:
+# pip install torch transformers
