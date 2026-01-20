@@ -3,8 +3,8 @@ from pathlib import Path
 from typing import List, Optional
 from deepdoc.parser import PdfParser, DocxParser, ExcelParser, PptParser, TxtParser
 from deepdoc.vision._ocr import OCRHandler2
-from langchain.docstore.document import Document
-from langchain.text_splitter import CharacterTextSplitter
+from langchain_core.documents import Document
+from langchain_text_splitters import CharacterTextSplitter
 from src.utils import logger
 
 _log = logger.LogManager()

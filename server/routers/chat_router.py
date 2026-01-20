@@ -6,7 +6,7 @@ from typing import List, Dict, Any, Optional
 
 from fastapi import APIRouter, Body, HTTPException
 from fastapi.responses import StreamingResponse
-from langchain.schema import BaseMessage, HumanMessage, AIMessage, SystemMessage
+from langchain_core.messages import BaseMessage, HumanMessage, AIMessage, SystemMessage
 from fastapi import UploadFile, File
 from src import executor, config, get_retriever
 from rag.core import HistoryManager

@@ -159,6 +159,93 @@
 
 ---
 
+## 📁 项目结构
+
+```
+pokemon-chat/
+├── api/                    # API 接口层
+│   └── websearch/          # 网络搜索服务
+├── configs/                # 配置文件
+│   ├── settings.py         # 主配置（需从 settings_example.py 复制）
+│   └── settings_example.py # 配置示例
+├── deepdoc/                # 文档解析模块（PDF/Word/Excel/PPT）
+├── docker/                 # Docker 配置
+│   └── docker-compose.yml  # Neo4j/Milvus/MySQL/Whisper
+├── rag/                    # RAG 核心模块
+│   ├── core/               # 知识库核心（索引/历史/Milvus）
+│   └── graphrag/           # GraphRAG 实现
+├── resources/              # 资源文件（模型/数据/图片）
+├── script/                 # 脚本工具
+│   └── build_kg/           # 知识图谱构建
+├── server/                 # FastAPI 后端服务
+├── src/                    # 源代码
+│   ├── agents/             # 多智能体实现
+│   ├── config/             # 运行时配置
+│   ├── mcp/                # MCP 服务
+│   ├── models/             # 模型封装（LLM/Embedding）
+│   └── ner/                # 命名实体识别
+└── web/                    # Vue3 前端
+```
+
+---
+
+## ⚙️ 环境变量配置
+
+复制 `.env.template` 为 `.env`，配置以下变量：
+
+| 变量名 | 说明 | 示例 |
+|--------|------|------|
+| **LLM API Keys** | 至少配置一个 | |
+| `OPENAI_API_KEY` | OpenAI API Key | `sk-xxx` |
+| `DEEPSEEK_API_KEY` | DeepSeek API Key | `sk-xxx` |
+| `SILICONFLOW_API_KEY` | SiliconFlow API Key | `sk-xxx` |
+| `BAI_LIAN_API_KEY` | 阿里百炼 API Key | `sk-xxx` |
+| **数据库** | | |
+| `NEO4J_URI` | Neo4j 连接地址 | `bolt://localhost:7687` |
+| `NEO4J_USERNAME` | Neo4j 用户名 | `neo4j` |
+| `NEO4J_PASSWORD` | Neo4j 密码 | `your_password` |
+| `MYSQL_HOST` | MySQL 主机 | `127.0.0.1` |
+| `MYSQL_USER` | MySQL 用户名 | `root` |
+| `MYSQL_PASSWORD` | MySQL 密码 | `123456` |
+| `MILVUS_URI` | Milvus 连接地址 | `http://localhost:19530` |
+| **可选** | | |
+| `TAVILY_API_KEY` | 网络搜索 API Key | `tvly-xxx` |
+| `MODEL_DIR` | 本地模型目录 | `/path/to/models` |
+
+---
+
+## ❓ 常见问题
+
+<details>
+<summary><b>Q: 启动报错 "No model provider available"</b></summary>
+
+请确保在 `.env` 中至少配置了一个 LLM 提供商的 API Key，如 `SILICONFLOW_API_KEY`。
+</details>
+
+<details>
+<summary><b>Q: Neo4j 连接失败</b></summary>
+
+1. 确认 Docker 服务已启动：`docker compose ps`
+2. 检查 Neo4j 端口 7687 是否被占用
+3. 验证 `.env` 中的 `NEO4J_URI`、`NEO4J_USERNAME`、`NEO4J_PASSWORD` 配置正确
+</details>
+
+<details>
+<summary><b>Q: Milvus 向量检索无结果</b></summary>
+
+1. 确认已运行数据导入脚本
+2. 检查 `MILVUS_URI` 配置是否正确
+3. 验证 embedding 模型是否正常加载
+</details>
+
+<details>
+<summary><b>Q: 如何更换 LLM 模型？</b></summary>
+
+在前端设置中或修改 `configs/settings.py` 中的 `MODEL_NAME` 和 `MODEL_API_BASE`。
+</details>
+
+---
+
 ## 📄 License
 
 本项目遵循 **MIT License**，可自由用于商业或个人项目。二次开发请保留原作者与来源信息。

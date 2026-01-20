@@ -1,6 +1,6 @@
 from langchain_community.graphs import Neo4jGraph
 from langchain_openai import ChatOpenAI
-from langchain.chains import GraphCypherQAChain
+from langchain_community.chains.graph_qa.cypher import GraphCypherQAChain
 
 # 1. 连接图谱
 graph = Neo4jGraph(

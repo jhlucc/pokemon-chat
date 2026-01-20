@@ -1,6 +1,6 @@
 import os
 from typing import List, Optional, Dict
-from langchain.schema import Document
+from langchain_core.documents import Document
 from rag.core.indexing import parse_file, chunk_file
 from src.models.embedding import get_embedding_model
 from rag.core.Milvus import MilvusStorage

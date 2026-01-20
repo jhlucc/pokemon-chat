@@ -5,8 +5,8 @@ from copy import deepcopy
 from pathlib import Path
 
 import networkx as nx
-from langchain.document_loaders import TextLoader
-from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain_community.document_loaders import TextLoader
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_chroma.vectorstores import Chroma as ChromaVectorStore
 from langchain_graphrag.indexing import TextUnitExtractor
 from langchain_graphrag.indexing.artifacts_generation import (

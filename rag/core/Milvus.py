@@ -4,7 +4,7 @@ warnings.filterwarnings("ignore", category=FutureWarning)
 import numpy as np
 import torch
 from typing import List, Optional
-from langchain.schema import Document
+from langchain_core.documents import Document
 from pymilvus import (
     connections, FieldSchema, CollectionSchema,
     DataType, Collection, utility

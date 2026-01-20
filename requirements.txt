@@ -1,46 +1,66 @@
-langgraph
-langchain
+# LangChain 1.x compatible dependencies
+langchain==1.0.0
+langchain-core==1.0.0
+langchain-community==1.0.0
+langchain-openai==1.0.0
+langchain-text-splitters==1.0.0
+langchain-chroma==1.0.0
+langchain-graphrag==0.1.1
+langchain_ollama==1.0.0
+langchain_experimental==1.0.0
+langgraph==0.4.0
+
+# Vector & Graph databases
 pymilvus>=2.3.0
+py2neo==2021.2.4
+
+# Embeddings & NLP
 sentence-transformers==2.2.2
-langchain-community
-langchain-core
-langchain-openai
-html2text
-strsimpy
-python-docx
-openpyxl
-chardet
-html-text
-readability-lxml
-pdfplumber
-trio
-xgboost
-Pillow
-huggingface_hub==0.25.0
-pypdf
-python-pptx
-datrie
-hanziconv
-nltk
-opencv-python
-onnxruntime
-pyclipper
-shapely
-pyahocorasick
-seqeval
-py2neo
-langchain-chroma
-langchain-graphrag
-pyarrow
 transformers==4.35.2
-tavily-python
-FlagEmbedding
-peft
-dashscope
-pymysql
-sqlalchemy
-requests
-pydantic
-langchain_ollama
-faker
-langchain_experimental
+huggingface_hub==0.25.0
+FlagEmbedding==1.3.3
+nltk==3.9.1
+
+# Document processing
+html2text==2024.2.26
+python-docx==1.1.2
+openpyxl==3.1.5
+pypdf==5.1.0
+python-pptx==1.0.2
+pdfplumber==0.11.4
+readability-lxml==0.8.1
+html-text==0.6.2
+
+# OCR & Vision
+Pillow==11.0.0
+opencv-python==4.10.0.84
+onnxruntime==1.20.1
+
+# ML & Data
+xgboost==2.1.3
+pyarrow==18.1.0
+peft==0.14.0
+
+# Text processing
+strsimpy==0.2.1
+chardet==5.2.0
+datrie==0.8.2
+hanziconv==0.3.2
+pyclipper==1.3.0.post6
+shapely==2.0.6
+pyahocorasick==2.1.1
+seqeval==1.2.2
+
+# Web & API
+tavily-python==0.5.0
+dashscope==1.20.14
+requests==2.32.3
+
+# Database
+pymysql==1.1.1
+sqlalchemy==2.0.36
+
+# Core utilities
+trio==0.27.0
+pydantic==2.10.4
+faker==33.1.0
