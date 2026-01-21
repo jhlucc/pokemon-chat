@@ -6,14 +6,23 @@ from src.agents.chat_agent import PokemonKGChatAgent
 class AgentManager:
     def __init__(self):
         self.agents = {}
+        self.instances = {}
+
 
     def register(self, name: str, agent_class):
         self.agents[name] = agent_class
 
-    def get_agent(self, name: str):
+    def get_agent(self, name: str, force_new: bool = False):
         if name not in self.agents:
             raise ValueError(f"Agent '{name}' 未注册")
-        return self.agents[name]()  # 返回实例
+        
+        if force_new:
+            return self.agents[name]()
+            
+        if name not in self.instances:
+            self.instances[name] = self.agents[name]()
+            
+        return self.instances[name]
 
     def list_agents(self):
         return [self.get_agent(name).get_info() for name in self.agents]

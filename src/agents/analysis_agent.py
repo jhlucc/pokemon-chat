@@ -13,6 +13,7 @@ from langchain_experimental.utilities import PythonREPL
 from sqlalchemy import create_engine, Column, Integer, String, Float, ForeignKey
 from sqlalchemy.orm import sessionmaker, declarative_base
 from faker import Faker
+from src.core.settings import settings
 
 # ----- 数据库 & ORM -----
 Base = declarative_base()
@@ -57,7 +58,12 @@ class CompetitorAnalysis(Base):
 
 
 # ----- 初始化数据库 -----
-DATABASE_URI = 'mysql+pymysql://gpt:gpt@localhost:3307/langgraph?charset=utf8mb4'
+# ----- 初始化数据库 -----
+# DATABASE_URI = 'mysql+pymysql://gpt:gpt@localhost:3307/langgraph?charset=utf8mb4'
+# 使用 settings 中的配置构建 URI
+# 注意：analysis_agent 似乎是一个独立的 demo，这里假设它应该连接到 settings 配置的 MySQL
+DATABASE_URI = f"mysql+pymysql://{settings.database.mysql_user}:{settings.database.mysql_password}@{settings.database.mysql_host}:{settings.database.mysql_port}/{settings.database.mysql_database}?charset=utf8mb4"
+
 engine = create_engine(DATABASE_URI)
 Base.metadata.create_all(engine)
 Session = sessionmaker(bind=engine)
@@ -217,9 +223,17 @@ def create_agent(llm, tools, system_message: str):
 
 # 1) 数据库管理员代理
 def create_db_agent():
-    key = "hk-uomxwi1000053684154a700e0b331d4846fa5bf6fb77ddaf"
-    base_url = "https://api.openai-hk.com/v1"
-    db_llm = ChatOpenAI(model="gpt-4o", api_key=key, base_url=base_url, temperature=0)
+    # key = "hk-uomxwi1000053684154a700e0b331d4846fa5bf6fb77ddaf"
+    # base_url = "https://api.openai-hk.com/v1"
+    # db_llm = ChatOpenAI(model="gpt-4o", api_key=key, base_url=base_url, temperature=0)
+    
+    # 使用 settings 配置
+    db_llm = ChatOpenAI(
+        model=settings.llm.model_name, 
+        api_key=settings.llm.api_key, 
+        base_url=settings.llm.api_base, 
+        temperature=0
+    )
     db_tools = [add_sale, delete_sale, update_sale, query_sales]
 
     db_prompt = create_agent(db_llm, db_tools, "You should provide accurate data for the code_generator to use.")

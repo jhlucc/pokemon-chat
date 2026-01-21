@@ -11,11 +11,14 @@ from langchain_openai import ChatOpenAI
 from langgraph.graph import MessagesState, StateGraph, START, END
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.prebuilt import ToolNode
+from src.core.settings import settings
 
 # ---------- 数据库初始化 ----------
 Base = declarative_base()
 
-DATABASE_URI = 'mysql+pymysql://gpt:gpt@localhost:3307/langgraph?charset=utf8mb4'
+# DATABASE_URI = 'mysql+pymysql://gpt:gpt@localhost:3307/langgraph?charset=utf8mb4'
+# 使用 settings 中的配置
+DATABASE_URI = f"mysql+pymysql://{settings.database.mysql_user}:{settings.database.mysql_password}@{settings.database.mysql_host}:{settings.database.mysql_port}/{settings.database.mysql_database}?charset=utf8mb4"
 engine = create_engine(DATABASE_URI)
 Session = sessionmaker(bind=engine)
 
@@ -71,9 +74,9 @@ class DataAgent:
         self.tools = [import_data_to_db]
         self.tool_node = ToolNode(self.tools)
         self.llm = ChatOpenAI(
-            model="gpt-4o",
-            api_key="hk-uomxwi1000053684154a700e0b331d4846fa5bf6fb77ddaf",
-            base_url="https://api.openai-hk.com/v1",
+            model=settings.llm.model_name,
+            api_key=settings.llm.api_key,
+            base_url=settings.llm.api_base,
             temperature=0
         ).bind_tools(self.tools)
 

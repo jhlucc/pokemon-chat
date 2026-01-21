@@ -5,12 +5,14 @@ from server.routers.base_router import base
 from server.routers.tool_router import router as tool
 from server.routers.admin_router import admin
 from server.routers.mcp_router import router as mcp, lifespan
+from server.routers.agent_router import router as agent
 
 router = APIRouter()
 router.include_router(base)
 router.include_router(chat)
 router.include_router(data)
 router.include_router(tool)
+router.include_router(agent)
 router.include_router(admin)
 
 router.include_router(mcp)
