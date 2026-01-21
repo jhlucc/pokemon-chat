@@ -41,6 +41,7 @@ class AgentState(MessagesState):
     next: str
     user_id: Optional[str]
     thread_id: Optional[str]
+    response_mode: Optional[str] # "text", "json", "markdown"
 
 class PokemonKGChatAgent(BaseAgent):
     """宝可梦知识图谱聊天代理"""
@@ -107,7 +108,7 @@ class PokemonKGChatAgent(BaseAgent):
     def _init_components(self):
         """初始化所有组件"""
         # 初始化 LLM - 包装重试和回退中间件
-        base_llm = ChatOpenAI(
+        self.base_llm = ChatOpenAI(
             model=self.model_name,
             base_url=self.openai_base_url,
             api_key=self.openai_api_key,
@@ -119,7 +120,7 @@ class PokemonKGChatAgent(BaseAgent):
         context = MiddlewareContext(agent_name="chat_agent")
         # 包装 Invoke 方法以支持重试等中间件逻辑
         # 使用 RunnableLambda 保持 LangChain 兼容性
-        wrapped_invoke = self.middleware.wrap_model_call(base_llm.invoke, context)
+        wrapped_invoke = self.middleware.wrap_model_call(self.base_llm.invoke, context)
         self.llm = RunnableLambda(wrapped_invoke)
 
 
@@ -218,18 +219,48 @@ class PokemonKGChatAgent(BaseAgent):
         )
         messages = self.middleware.run_before_model(messages, context)
         
-        # 检查是否需要结构化输出 (从 state 中获取 meta 信息有点麻烦，这里简化为检查 thread_id 或约定)
-        # 更严谨的做法是在 State 中传递 config/meta
+        # 获取响应模式，默认为 text
+        response_mode = state.get("response_mode", "text")
         
-        # 暂时只演示默认文本模式，若要支持结构化输出，需修改 invoke 方式
-        # structured_llm = self.llm.with_structured_output(AgentResponse)
-        
-        model_response = self.llm.invoke(messages)
-        
-        if isinstance(model_response, AgentResponse):
-             # 如果 LLM 被配置为返回结构化对象
-             content = model_response.json()
-             model_response = AIMessage(content=content)
+        try:
+            if response_mode == "json":
+                # 结构化输出模式
+                # 1. 创建结构化 LLM
+                structured_base_llm = self.base_llm.with_structured_output(AgentResponse)
+                
+                # 2. 也是用 middleware 包装它，保证 retry/logging 生效
+                # 注意：wrap_model_call 包装的是一个 callable (input -> output)
+                wrapped_structured_invoke = self.middleware.wrap_model_call(structured_base_llm.invoke, context)
+                
+                # 3. 调用
+                model_response = wrapped_structured_invoke(messages)
+                
+                # 如果成功返回对象，转换为 JSON 字符串放入 content
+                if isinstance(model_response, AgentResponse):
+                    content = model_response.model_dump_json()
+                else:
+                    # 某些情况下可能直接返回了 dict 或其他
+                    import json
+                    content = json.dumps(model_response, ensure_ascii=False) if isinstance(model_response, dict) else str(model_response)
+                
+                model_response = AIMessage(content=content)
+            else:
+                # 默认文本模式
+                model_response = self.llm.invoke(messages)
+
+        except Exception as e:
+            logger.error(f"LLM invoke failed (mode={response_mode}): {e}")
+            if response_mode == "json":
+                # JSON 模式下发生错误，返回标准错误结构
+                from src.models.schemas import ErrorResponse
+                error_resp = ErrorResponse(
+                    error_code="llm_error", 
+                    message=f"Failed to generate structured response: {str(e)}"
+                )
+                model_response = AIMessage(content=error_resp.model_dump_json())
+            else:
+                # 文本模式，直接返回错误信息
+                model_response = AIMessage(content=f"Error generating response: {str(e)}")
 
         model_response = self.middleware.run_after_model(model_response, context)
         
@@ -353,11 +384,13 @@ class PokemonKGChatAgent(BaseAgent):
         meta = meta or {}
         thread_id = meta.get("thread_id", "default_thread")
         user_id = meta.get("user_id", "user")
+        response_mode = meta.get("response_mode", "text")
 
         input_message = {
             "messages": [HumanMessage(content=question)],
             "thread_id": thread_id,
             "user_id": user_id,
+            "response_mode": response_mode,
             "next": START 
         }
         
