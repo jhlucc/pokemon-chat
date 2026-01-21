@@ -6,6 +6,8 @@ from abc import ABC, abstractmethod
 from typing import Dict, List, Optional, Any
 
 from src.core.settings import *
+from src.models.schemas import Source
+
 
 # -------------------- 全局超时时长（秒） --------------------
 SEARCH_TIMEOUT = 10        # 你可以按需改成 5、15 等
@@ -19,9 +21,9 @@ logger.setLevel(logging.INFO)
 # ---------------------------------------------------------------------------
 
 class BaseWebSearcher(ABC):
-    """所有搜索器统一接口：同步 search(query) -> List[dict]"""
+    """所有搜索器统一接口：同步 search(query) -> List[Source]"""
     @abstractmethod
-    def search(self, query: str, top_k: int = 5) -> List[Dict[str, Any]]:
+    def search(self, query: str, top_k: int = 5) -> List[Source]:
         raise NotImplementedError
 
 
@@ -69,12 +71,12 @@ class TavilyBasicSearcher(BaseWebSearcher):
             return []
 
         return [
-            {
-                "title":   item.get("title", ""),
-                "content": item.get("content", ""),
-                "url":     item.get("url", ""),
-                "score":   item.get("score", 0),
-            }
+            Source(
+                title=item.get("title", ""),
+                content_snippet=item.get("content", ""),
+                url=item.get("url", ""),
+                score=item.get("score", 0)
+            )
             for item in raw["results"][:top_k]
         ]
 
@@ -123,11 +125,11 @@ class LiteBaseSearcher(BaseWebSearcher):
             return []
 
         return [
-            {
-                "title":   doc.get("title", ""),
-                "content": doc.get("snippet", ""),
-                "url":     doc.get("link", ""),
-            }
+            Source(
+                title=doc.get("title", ""),
+                content_snippet=doc.get("snippet", ""),
+                url=doc.get("link", "")
+            )
             for doc in raw_results[:top_k]
         ]
 

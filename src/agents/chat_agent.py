@@ -152,10 +152,22 @@ class PokemonKGChatAgent(BaseAgent):
                         return f"未能搜索到关于 '{query}' 的相关信息。"
                     
                     # 格式化结果
-                    formatted = "\n".join([
-                        f"- [{r.get('title', '未知标题')}]({r.get('url', '#')}): {r.get('content', '')}"
-                        for r in results
-                    ])
+                    
+                    # ])
+                    # return f"关于 '{query}' 的搜索结果：\n{formatted}"
+                    
+                    # 兼容 Source 对象列表
+                    from src.models.schemas import Source
+                    if results and isinstance(results[0], Source):
+                         formatted = "\n".join([
+                            f"- [{r.title}]({r.url or '#'}): {r.content_snippet}"
+                            for r in results
+                        ])
+                    else:
+                        formatted = "\n".join([
+                            f"- [{r.get('title', '未知标题')}]({r.get('url', '#')}): {r.get('content', '')}"
+                            for r in results
+                        ])
                     return f"关于 '{query}' 的搜索结果：\n{formatted}"
                 except Exception as e:
                     logger.error(f"Web search failed: {e}")
