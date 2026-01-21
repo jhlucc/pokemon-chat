@@ -6,7 +6,7 @@ from typing import List, Dict, Union, Generator, Any
 import json
 from openai import OpenAI
 from src.utils import logger
-from src.core.settings import MODEL_API_KEY, MODEL_API_BASE, MODEL_NAME
+from src.core.settings import settings
 from openai.types.chat import ChatCompletionMessage
 _log = logger.LogManager()
 
@@ -26,9 +26,12 @@ class OpenAIBase:
     OpenAI 模型调用基础类，统一封装 openai.ChatAPI的调用。
     """
 
-    def __init__(self, api_key: str = MODEL_API_KEY,
-                 base_url: str = MODEL_API_BASE,
-                 model_name: str = MODEL_NAME) -> None:
+    def __init__(self, api_key: str = None,
+                 base_url: str = None,
+                 model_name: str = None) -> None:
+        api_key = api_key or settings.llm.api_key
+        base_url = base_url or settings.llm.api_base
+        model_name = model_name or settings.llm.model_name
         self.api_key = api_key
         self.base_url = base_url
         self.model_name = model_name
@@ -87,11 +90,11 @@ class OpenModel(OpenAIBase):
     """
     针对 OpenAI 模型的封装，默认使用 "gpt-4o-mini" 模型。
     """
-    def __init__(self, model_name: str = MODEL_NAME) -> None:
-        model_name = model_name or "gpt-4o-mini"
+    def __init__(self, model_name: str = None) -> None:
+        model_name = model_name or settings.llm.model_name or "gpt-4o-mini"
         # 使用环境变量中配置的API key 和base_url
-        api_key = os.getenv("OPENAI_API_KEY", MODEL_API_KEY)
-        base_url = os.getenv("OPENAI_API_BASE", MODEL_API_BASE)
+        api_key = os.getenv("OPENAI_API_KEY", settings.llm.api_key)
+        base_url = os.getenv("OPENAI_API_BASE", settings.llm.api_base)
         super().__init__(api_key=api_key, base_url=base_url, model_name=model_name)
 
 

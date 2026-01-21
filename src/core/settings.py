@@ -1,8 +1,6 @@
 """
 Pokemon-Chat 统一配置
-
 使用 Pydantic v2 BaseSettings 管理所有配置
-替代旧的 configs/settings.py
 """
 import os
 from functools import lru_cache
@@ -156,11 +154,6 @@ class EmbeddingSettings(BaseSettings):
     model_name: str = "BAAI/bge-m3"
     dimension: int = 1024
     
-    @property
-    def model(self) -> str:
-        """兼容旧代码的 model 属性"""
-        return self.model_name
-
 
 class RerankerSettings(BaseSettings):
     """Reranker 配置"""
@@ -212,7 +205,7 @@ class AgentSettings(BaseSettings):
 
 
 class KnowledgeBaseConfig(BaseSettings):
-    """知识库配置（兼容旧 CONFIG 字典）"""
+    """知识库配置"""
     model_config = SettingsConfigDict(extra="ignore")
     
     milvus_uri: str = "http://localhost:19530"
@@ -256,85 +249,12 @@ def get_settings() -> Settings:
 settings = get_settings()
 
 
-# ============ 兼容旧代码的导出 ============
-# 路径 (str)
-BASE_DIR = str(settings.paths.base_dir)
-MODEL_RERANKER_PATH = str(settings.paths.model_reranker_path)
-MODEL_ROBERTA_PATH = str(settings.paths.model_roberta_path)
-MODEL_EMBEDDING_PATH = str(settings.paths.model_embedding_path)
-MODEL_OCR_PATH = str(settings.paths.model_ocr_path)
-CACHE_BERTA_MODEL = str(settings.paths.cache_berta_model)
-NER_TAG_PATH = str(settings.paths.ner_tag_path)
-LOG_DIR = str(settings.paths.log_dir)
-SAVE_YAML_PATH = str(settings.paths.save_yaml_path)
-JSON_DATA = str(settings.paths.json_data)
-ENTITY_DATA = str(settings.paths.entity_data)
-NER_DATA = str(settings.paths.ner_data)
-RAW_DATA = str(settings.paths.raw_data)
-RELATIONS_DATA = str(settings.paths.relations_data)
-GRAPHRAG_RAW_DATA = str(settings.paths.graphrag_raw_data)
-ARTIFACTS_DATA = str(settings.paths.artifacts_data)
-DATA_PARSER_DATA = str(settings.paths.data_parser_data)
-
-# API 配置
-MODEL_API_KEY = settings.llm.api_key
-MODEL_API_BASE = settings.llm.api_base
-MODEL_NAME = settings.llm.model_name
-TAVILY_API_KEY = settings.tavily.api_key
-
-# Embedding 配置
-EMBEDDING_MODEL = settings.embedding.model_name
-EMBEDDING_MODEL_DIM = settings.embedding.dimension
-
-# 数据库配置
-NEO4J_URI = settings.database.neo4j_uri
-NEO4J_AUTH = settings.database.neo4j_auth
-
-# 知识库配置（兼容旧 CONFIG 字典）
-CONFIG = {
-    "milvus_uri": settings.kb_config.milvus_uri,
-    "default_distance_threshold": settings.kb_config.default_distance_threshold,
-    "default_rerank_threshold": settings.kb_config.default_rerank_threshold,
-    "default_max_query_count": settings.kb_config.default_max_query_count,
-    "default_top_k": settings.kb_config.default_top_k,
-    "enable_knowledge_base": settings.features.enable_knowledge_base,
-    "embed_model": settings.kb_config.embed_model,
-    "reranker_key": settings.kb_config.reranker_key,
-    "model_name": settings.reranker.model_name,
-    "enable_reranker": settings.features.enable_reranker,
-    "MODEL_RERANKER_PATH": MODEL_RERANKER_PATH,
-}
-
-# Embedding 模型信息
-EMBED_MODEL_INFO = {
-    "siliconflow/BAAI/bge-m3": {
-        "name": "BAAI/bge-m3",
-        "dimension": 1024,
-        "url": settings.embedding.api_base,
-        "api_key": "SILICONFLOW_API_KEY",
-    },
-    "openai/bge-m3-pro": {
-        "name": "bge-m3-pro",
-        "dimension": 1024,
-    },
-    "ollama/bge-m3:latest": {
-        "name": "bge-m3:latest",
-        "dimension": 1024,
-        "url": "http://localhost:11434/api/embeddings",
-    },
-    "dashscope/text-embedding-v3": {
-        "name": "text-embedding-v3",
-        "dimension": 1024,
-        "url": "https://dashscope.aliyuncs.com/api/v1/services/embeddings",
-    },
-}
-
-
 if __name__ == "__main__":
     print("=== Settings Test ===")
-    print(f"BASE_DIR: {BASE_DIR}")
+    print(f"Base Dir: {settings.paths.base_dir}")
     print(f"Reranker Model: {settings.reranker.model_name}")
     print(f"Embedding Model: {settings.embedding.model_name}")
-    print(f"Neo4j URI: {NEO4J_URI}")
-    print(f"LOG_DIR: {LOG_DIR}")
+    print(f"Neo4j URI: {settings.database.neo4j_uri}")
+    print(f"Log Dir: {settings.paths.log_dir}")
+    print(f"LLM Model: {settings.llm.model_name}")
 

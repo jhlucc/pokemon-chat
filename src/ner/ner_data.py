@@ -5,7 +5,7 @@ import re
 # 自动机 用于字符串匹配
 import ahocorasick
 from tqdm import tqdm
-from src.core.settings import *
+from src.core.settings import settings
 
 
 # 制作训练集
@@ -18,7 +18,7 @@ class Build_Ner_data():
         self.ahos = [ahocorasick.Automaton() for i in range(len(idx2type))]
 
         for type in idx2type:
-            with open(os.path.join(BASE_DIR, 'resources/data/entity_data/', f'{type}.txt'), encoding='utf-8') as f:
+            with open(os.path.join(str(settings.paths.base_dir), 'resources/data/entity_data/', f'{type}.txt'), encoding='utf-8') as f:
                 all_en = f.read().split('\n')
             for en in all_en:
                 if len(en) >= 2:
@@ -101,7 +101,7 @@ class Build_Ner_data():
 
 # 将文本和对应的标签写入ner_data_aug.txt
 def build_file(all_text, all_label):
-    with open(os.path.join(BASE_DIR, 'resources/data/ner_data/', 'ner_data_aug.txt'), "w", encoding="utf-8") as f:
+    with open(os.path.join(str(settings.paths.base_dir), 'resources/data/ner_data/', 'ner_data_aug.txt'), "w", encoding="utf-8") as f:
         for text, label in zip(all_text, all_label):
             for t, l in zip(text, label):
                 f.write(f'{t} {l}\n')
@@ -119,7 +119,7 @@ def load_book_text(file_path):
 
 
 if __name__ == "__main__":
-    book_path = os.path.join(BASE_DIR, 'resources/data/raw_data/', 'book.txt')
+    book_path = os.path.join(str(settings.paths.base_dir), 'resources/data/raw_data/', 'book.txt')
 
     paragraphs = load_book_text(book_path)
 

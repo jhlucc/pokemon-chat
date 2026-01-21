@@ -1,7 +1,7 @@
 import os
 import json
 import yaml
-from src.core.settings import SAVE_YAML_PATH
+from src.core.settings import settings
 from pathlib import Path
 from dotenv import load_dotenv
 load_dotenv()
@@ -41,7 +41,7 @@ class Config(SimpleConfig):
     def __init__(self):
         super().__init__()
         self._config_items = {}
-        self.save_dir = SAVE_YAML_PATH
+        self.save_dir = str(settings.paths.save_yaml_path)
         self.filename = str(Path(self.save_dir) / "config" / "base.yaml")
         os.makedirs(os.path.dirname(self.filename), exist_ok=True)
         # # 如果配置文件不存在，则创建目录并保存默认配置

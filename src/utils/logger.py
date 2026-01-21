@@ -4,7 +4,7 @@
 import os
 import time
 import logging
-from src.core.settings import LOG_DIR
+from src.core.settings import settings
 
 
 class LogManager:
@@ -13,11 +13,11 @@ class LogManager:
     每个日志文件以当前小时为命名单位，而日志记录的时间格式只显示到分钟。
     """
 
-    def __init__(self, log_directory: str = LOG_DIR):
+    def __init__(self, log_directory: str = None):
         """
         :param log_directory: 日志存放的根目录
         """
-        self.log_directory = log_directory
+        self.log_directory = log_directory or str(settings.paths.log_dir)
         if not os.path.exists(self.log_directory):
             os.makedirs(self.log_directory)
         self.logger = logging.getLogger("LogManager")

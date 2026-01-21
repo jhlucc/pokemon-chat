@@ -20,7 +20,7 @@ if not logger.handlers:
     )
     console_handler.setFormatter(formatter)
     logger.addHandler(console_handler)
-from src.core.settings import *
+from src.core.settings import settings
 
 
 class MissingAPIKeyError(Exception):
@@ -59,7 +59,7 @@ class IndustrialWebSearcher:
         self.cache_ttl = timedelta(minutes=cache_ttl_minutes)
         self._search_cache: Dict[str, Dict] = {}
         # 初始化 MilvusService（负责插入向量和语义搜索）
-        self.milvus = MilvusService(collection_name=milvus_collection, embedding_model=EMBEDDING_MODEL,
+        self.milvus = MilvusService(collection_name=milvus_collection, embedding_model=settings.embedding.model_name,
                                     overwrite=True)
         logger.info("IndustrialWebSearcher 实例已创建。")
 
@@ -169,11 +169,16 @@ class IndustrialWebSearcherLLM:
             cache_ttl_minutes: int = 10,
             milvus_collection: str = "test",
             rag_top_k: int = 3,
-            llm_model: str = MODEL_NAME,
-            openai_base_url: str = MODEL_API_BASE,
-            openai_api_key: str = MODEL_API_KEY,
-            embedding_model: str = EMBEDDING_MODEL,
+            llm_model: str = None,
+            openai_base_url: str = None,
+            openai_api_key: str = None,
+            embedding_model: str = None,
     ):
+        # Apply defaults from settings
+        llm_model = llm_model or settings.llm.model_name
+        openai_base_url = openai_base_url or settings.llm.api_base
+        openai_api_key = openai_api_key or settings.llm.api_key
+        embedding_model = embedding_model or settings.embedding.model_name
         self.searcher = IndustrialWebSearcher(api_key=api_key, cache_ttl_minutes=cache_ttl_minutes,
                                               milvus_collection=milvus_collection)
         self.rag_top_k = rag_top_k
@@ -240,13 +245,13 @@ class IndustrialWebSearcherLLM:
 if __name__ == '__main__':
     async def main():
         searcher_llm = IndustrialWebSearcherLLM(
-            api_key=TAVILY_API_KEY,
+            api_key=settings.tavily.api_key,
             cache_ttl_minutes=10,
             milvus_collection="test2",
             rag_top_k=3,
-            llm_model=MODEL_NAME,
-            openai_api_key=MODEL_API_KEY,
-            openai_base_url=MODEL_API_BASE
+            llm_model=settings.llm.model_name,
+            openai_api_key=settings.llm.api_key,
+            openai_base_url=settings.llm.api_base
         )
         query_str = "皮卡丘进化是什么？"
         logger.info(f"正在执行搜索查询: {query_str}")

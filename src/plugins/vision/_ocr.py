@@ -10,7 +10,7 @@ from huggingface_hub import hf_hub_download
 from langchain_community.document_loaders import PyPDFLoader
 from rapidocr_onnxruntime import RapidOCR
 from tqdm import tqdm
-from src.core.settings import *
+from src.core.settings import settings
 
 # from argparse import ArgumentParser
 
@@ -110,7 +110,7 @@ class OCRHandler2:
         logging.info("正在初始化 OCR 引擎（首次调用）。")
 
         # 设置绝对路径，存放到 (MODEL_BASE)/SWHL/RapidOCR/PP-OCRv4
-        engine_path = os.path.join(MODEL_OCR_PATH, "PP-OCRv4")
+        engine_path = os.path.join(str(settings.paths.model_ocr_path), "PP-OCRv4")
         os.makedirs(engine_path, exist_ok=True)
 
         det_path = os.path.join(engine_path, "ch_PP-OCRv4_det_infer.onnx")
@@ -180,7 +180,7 @@ class OCRHandler2:
 
         # 2.逐页转换图像再 OCR
         pdf_filename = os.path.splitext(os.path.basename(pdf_path))[0]
-        storage_dir = os.path.join(DATA_PARSER_DATA, 'pdf2txt', pdf_filename)
+        storage_dir = os.path.join(str(settings.paths.data_parser_data), 'pdf2txt', pdf_filename)
         os.makedirs(storage_dir, exist_ok=True)
 
         images_for_ocr = self._pdf_2_imgs(pdf_path, storage_dir)

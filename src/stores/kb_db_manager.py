@@ -5,7 +5,7 @@ from sqlalchemy.orm import sessionmaker, joinedload
 from contextlib import contextmanager
 from sqlalchemy.orm.attributes import instance_state
 
-from src.core.settings import *
+from src.core.settings import settings
 from src.models.kb_models import Base, KnowledgeDatabase, KnowledgeFile, KnowledgeNode
 from src.utils.logger import LogManager
 logger=LogManager()
@@ -13,7 +13,7 @@ class KBDBManager:
     """知识库数据库管理器"""
 
     def __init__(self):
-        self.db_path = os.path.join(BASE_DIR, "data", "knowledge.db")
+        self.db_path = os.path.join(str(settings.paths.base_dir), "data", "knowledge.db")
         self.ensure_db_dir()
 
         # 创建SQLAlchemy引擎

@@ -4,7 +4,7 @@ from langchain_core.documents import Document
 from src.knowledge.core.indexing import parse_file, chunk_file
 from src.models.embedding import get_embedding_model
 from src.knowledge.core.Milvus import MilvusStorage
-from src.core.settings import *
+from src.core.settings import settings
 
 
 # 知识导入到向量数据库

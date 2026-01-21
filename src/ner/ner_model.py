@@ -4,7 +4,7 @@ import pickle
 import ahocorasick
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
-from src.core.settings import settings, CACHE_BERTA_MODEL, BASE_DIR, ENTITY_DATA, NER_DATA, MODEL_ROBERTA_PATH
+from src.core.settings import settings
 
 # Conditional imports for BERT-based NER
 # Only import torch/transformers if enable_ner_bert is True
@@ -25,7 +25,7 @@ if settings.features.enable_ner_bert:
         _BERT_AVAILABLE = False
 
 # 模型训练
-cache_model = CACHE_BERTA_MODEL
+cache_model = str(settings.paths.cache_berta_model)
 
 
 def get_data(path, max_len=None):
@@ -57,7 +57,7 @@ class rule_find:
         self.ahos = [ahocorasick.Automaton() for i in range(len(self.type2idx))]
 
         for type in idx2type:
-            with open(os.path.join(BASE_DIR, 'resources/data/entity_data/', f'{type}.txt'), encoding='utf-8') as f:
+            with open(os.path.join(str(settings.paths.base_dir), 'resources/data/entity_data/', f'{type}.txt'), encoding='utf-8') as f:
                 all_en = f.read().split('\n')
             for en in all_en:
                 en = en.split(' ')[0]
@@ -129,7 +129,7 @@ class tfidf_alignment:
     """
 
     def __init__(self):
-        eneities_path = os.path.join(ENTITY_DATA, '')
+        eneities_path = os.path.join(str(settings.paths.entity_data), '')
         files = os.listdir(eneities_path)
         # 排除 .py 文件
         files = [docu for docu in files if '.py' not in docu]
@@ -321,7 +321,7 @@ def get_ner_result_simple(sen, rule=None, tfidf_r=None):
 
 
 if __name__ == "__main__":
-    all_text, all_label = get_data(os.path.join(NER_DATA, 'ner_data_aug.txt'))
+    all_text, all_label = get_data(os.path.join(str(settings.paths.ner_data), 'ner_data_aug.txt'))
     train_text, dev_text, train_label, dev_label = train_test_split(all_text, all_label, test_size=0.02,
                                                                     random_state=42)
 
@@ -341,9 +341,9 @@ if __name__ == "__main__":
     batch_size = 60
     hidden_size = 128
     bi = True
-    model_name = MODEL_ROBERTA_PATH
+    model_name = str(settings.paths.model_roberta_path)
     # pip install -U huggingface_hub   huggingface-cli download --resume-download hfl/chinese-roberta-wwm-ext --local-dir ./
-    tokenizer = BertTokenizer.from_pretrained(model_name, cache_dir=MODEL_ROBERTA_PATH)
+    tokenizer = BertTokenizer.from_pretrained(model_name, cache_dir=str(settings.paths.model_roberta_path))
     lr = 1e-5
     is_train = False
 

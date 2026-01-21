@@ -3,7 +3,7 @@ warnings.filterwarnings("ignore")
 import sys
 from pathlib import Path
 from typing import Dict, List, Any, Iterator
-from src.core.settings import settings, NEO4J_URI, NEO4J_AUTH
+from src.core.settings import settings
 import torch
 from langchain_core.messages import HumanMessage
 from langchain_core.tools import tool
@@ -116,12 +116,13 @@ class EntityRecognitionSingleton:
     def _initialize(self):
         self.rule = rule_find()
         self.tfidf_r = tfidf_alignment()
-        self.base_dir = BASE_DIR
-        self.model_name = MODEL_ROBERTA_PATH
-        self.pt_path = CACHE_BERTA_MODEL
+        self.base_dir = str(settings.paths.base_dir)
+        self.model_name = str(settings.paths.model_roberta_path)
+        self.pt_path = str(settings.paths.cache_berta_model)
 
-        if os.path.exists(NER_TAG_PATH):
-            with open(NER_TAG_PATH, 'rb') as f:
+        ner_tag_path = str(settings.paths.ner_tag_path)
+        if os.path.exists(ner_tag_path):
+            with open(ner_tag_path, 'rb') as f:
                 self.tag2idx = pickle.load(f)
                 self.idx2tag = list(self.tag2idx)
         else:
@@ -129,7 +130,7 @@ class EntityRecognitionSingleton:
 
         self.device = torch.device('cuda:0') if torch.cuda.is_available() else torch.device('cpu')
 
-        self.tokenizer = BertTokenizer.from_pretrained(self.model_name, cache_dir=MODEL_ROBERTA_PATH)
+        self.tokenizer = BertTokenizer.from_pretrained(self.model_name, cache_dir=str(settings.paths.model_roberta_path))
 
         hidden_size = 128
         bi = True
@@ -157,7 +158,7 @@ class KGQueryAgent:
         初始化查询代理
         :param llm: 可选的语言模型实例，默认使用ChatOpenAI
         """
-        self.graph = Graph(NEO4J_URI, auth=NEO4J_AUTH)
+        self.graph = Graph(settings.database.neo4j_uri, auth=settings.database.neo4j_auth)
         self.llm = llm or self._default_llm()
         self.ner = EntityRecognitionSingleton()
         self.subgraph_extractor = GraphSubgraphExtractor(self.graph)

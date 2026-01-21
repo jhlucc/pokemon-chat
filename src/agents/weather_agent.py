@@ -10,6 +10,7 @@ from langgraph.graph import MessagesState, StateGraph, START, END
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.prebuilt import ToolNode
 from src.core.settings import settings
+from src.agents.base import ToolAgent
 
 # ---------- 数据库定义 ----------
 Base = declarative_base()
@@ -163,22 +164,26 @@ def delete_weather_from_db(city_name: str):
         session.close()
 
 
-class WeatherAgent:
+class WeatherAgent(ToolAgent):
+    """天气查询代理 - 继承自 ToolAgent"""
+    
     def __init__(self):
-        self.tools = [get_weather, insert_weather_to_db, query_weather_from_db, delete_weather_from_db]
-        self.tool_node = ToolNode(self.tools)
-        self.llm = ChatOpenAI(
-            model=settings.llm.model_name,
-            api_key=settings.llm.api_key,
-            base_url=settings.llm.api_base,
-            temperature=0
-        ).bind_tools(self.tools)
-        self.graph = self._build_workflow()
+        # 定义工具列表
+        tools = [get_weather, insert_weather_to_db, query_weather_from_db, delete_weather_from_db]
+        super().__init__(tools=tools, bind_tools=True)
+        self.tool_node = ToolNode(self._tools)
+
+    def get_info(self) -> dict:
+        """返回 Agent 元数据"""
+        return {
+            "name": "WeatherAgent",
+            "description": "天气查询和管理代理，支持获取实时天气、存储和查询数据库",
+            "tools": [t.name for t in self._tools],
+        }
 
     def _call_model(self, state):
         messages = state["messages"]
-        # print("[调试] LLM 接收到的消息:", messages)
-        response = self.llm.invoke(messages)
+        response = self.llm_with_tools.invoke(messages)
         return {"messages": [response]}
 
     def _should_continue(self, state):
@@ -193,7 +198,7 @@ class WeatherAgent:
     def _run_tool(self, state):
         new_messages = []
         tool_calls = state["messages"][-1].tool_calls
-        tool_map = {t.name: t for t in self.tools}
+        tool_map = {t.name: t for t in self._tools}
 
         for call in tool_calls:
             tool = tool_map.get(call["name"])
@@ -207,7 +212,8 @@ class WeatherAgent:
                 })
         return {"messages": new_messages}
 
-    def _build_workflow(self):
+    def _build_graph(self):
+        """构建 LangGraph 工作流"""
         workflow = StateGraph(MessagesState)
         workflow.add_node("agent", self._call_model)
         workflow.add_node("action", self.tool_node)
@@ -220,13 +226,13 @@ class WeatherAgent:
         })
         workflow.add_edge("action", "agent")
         workflow.add_edge("run_tool", "agent")
-        return workflow.compile(checkpointer=MemorySaver(), interrupt_before=["run_tool"])
+        return workflow.compile(checkpointer=self.checkpointer, interrupt_before=["run_tool"])
 
     def ask(self, question: str) -> str:
         config = {"configurable": {"thread_id": "session_1"}}
         user_message = {"role": "user", "content": question}
-        for chunk in self.graph.stream({"messages": [user_message]}, config, stream_mode="values"):
-            state = self.graph.get_state(config)
+        for chunk in self.stream({"messages": [user_message]}, config, stream_mode="values"):
+            state = self.get_state_sync("session_1")
             if not state.tasks:
                 return chunk["messages"][-1].content
 
@@ -238,16 +244,15 @@ class WeatherAgent:
             if user_input.lower() == "退出":
                 break
             user_message = {"role": "user", "content": user_input}
-            for chunk in self.graph.stream({"messages": [user_message]}, config, stream_mode="values"):
-                state = self.graph.get_state(config)
+            for chunk in self.stream({"messages": [user_message]}, config, stream_mode="values"):
+                state = self.get_state_sync("session_1")
                 if not state.tasks:
-                    # print("AI：", chunk["messages"][-1].content)
                     break
                 if state.tasks[0].name == "run_tool":
                     confirm = input("是否允许执行删除操作？(是/否): ")
                     if confirm == "是":
                         self.graph.update_state(config=config, values=chunk)
-                        for event in self.graph.stream(None, config, stream_mode="values"):
+                        for event in self.stream(None, config, stream_mode="values"):
                             print("AI：", event["messages"][-1].content)
                     else:
                         tool_call_id = state.values["messages"][-1].tool_calls[0]["id"]
@@ -258,10 +263,11 @@ class WeatherAgent:
                             "tool_call_id": tool_call_id
                         }
                         self.graph.update_state(config, {"messages": [new_message]}, as_node="run_tool")
-                        for event in self.graph.stream(None, config, stream_mode="values"):
+                        for event in self.stream(None, config, stream_mode="values"):
                             print("AI：", event["messages"][-1].content)
 
 
 if __name__ == "__main__":
     agent = WeatherAgent()
     agent.chat_loop()
+

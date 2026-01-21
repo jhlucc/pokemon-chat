@@ -12,6 +12,7 @@ from langgraph.graph import MessagesState, StateGraph, START, END
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.prebuilt import ToolNode
 from src.core.settings import settings
+from src.agents.base import ToolAgent
 
 # ---------- 数据库初始化 ----------
 Base = declarative_base()
@@ -68,27 +69,27 @@ def import_data_to_db(file_path: str, table_name: str):
 
 
 # ---------- Agent 定义 ----------
-class DataAgent:
+class DataAgent(ToolAgent):
+    """数据导入代理 - 继承自 ToolAgent"""
+    
     def __init__(self):
         # 将所有工具放进 ToolNode
-        self.tools = [import_data_to_db]
-        self.tool_node = ToolNode(self.tools)
-        self.llm = ChatOpenAI(
-            model=settings.llm.model_name,
-            api_key=settings.llm.api_key,
-            base_url=settings.llm.api_base,
-            temperature=0
-        ).bind_tools(self.tools)
+        tools = [import_data_to_db]
+        super().__init__(tools=tools, bind_tools=True)
+        self.tool_node = ToolNode(self._tools)
 
-        # 构建对话状态机
-        self.graph = self._build_workflow()
+    def get_info(self) -> dict:
+        """返回 Agent 元数据"""
+        return {
+            "name": "DataAgent",
+            "description": "数据导入代理，支持从CSV或JSON文件导入数据到数据库",
+            "tools": [t.name for t in self._tools],
+        }
 
     def _call_model(self, state):
-        """
-        让 LLM 处理当前消息并给出回复。
-        """
+        """让 LLM 处理当前消息并给出回复。"""
         messages = state["messages"]
-        response = self.llm.invoke(messages)
+        response = self.llm_with_tools.invoke(messages)
         return {"messages": [response]}
 
     def _should_continue(self, state):
@@ -103,12 +104,10 @@ class DataAgent:
         return "run_tool"
 
     def _run_tool(self, state):
-        """
-        执行工具并返回执行结果。
-        """
+        """执行工具并返回执行结果。"""
         new_messages = []
         tool_calls = state["messages"][-1].tool_calls
-        tool_map = {t.name: t for t in self.tools}
+        tool_map = {t.name: t for t in self._tools}
 
         for call in tool_calls:
             tool = tool_map.get(call["name"])
@@ -122,7 +121,7 @@ class DataAgent:
                 })
         return {"messages": new_messages}
 
-    def _build_workflow(self):
+    def _build_graph(self):
         """
         构建一个简单的状态机：
         START -> agent -> 根据 tool_calls 判断 -> run_tool -> agent -> ...
@@ -141,25 +140,19 @@ class DataAgent:
         workflow.add_edge("run_tool", "agent")
         workflow.add_edge("action", "agent")
 
-        # 注意，这里将 ToolNode 放置在 agent 之后，
-        # 让 LLM 有机会先决定是否需要 Tool，再进行调用
-        return workflow.compile(checkpointer=MemorySaver())
+        return workflow.compile(checkpointer=self.checkpointer)
 
     def ask(self, question: str) -> str:
-        """
-        单次问答交互，返回最终答案。
-        """
+        """单次问答交互，返回最终答案。"""
         config = {"configurable": {"thread_id": "session_1"}}
         user_message = {"role": "user", "content": question}
-        for chunk in self.graph.stream({"messages": [user_message]}, config, stream_mode="values"):
-            state = self.graph.get_state(config)
+        for chunk in self.stream({"messages": [user_message]}, config, stream_mode="values"):
+            state = self.get_state_sync("session_1")
             if not state.tasks:
                 return chunk["messages"][-1].content
 
     def chat_loop(self):
-        """
-        循环对话模式，用户可以多轮提问。
-        """
+        """循环对话模式，用户可以多轮提问。"""
         config = {"configurable": {"thread_id": "session_1"}}
         print("欢迎使用数据导入 Agent，输入 '退出' 结束对话")
         while True:
@@ -168,10 +161,9 @@ class DataAgent:
                 print("再见！")
                 break
             user_message = {"role": "user", "content": user_input}
-            for chunk in self.graph.stream({"messages": [user_message]}, config, stream_mode="values"):
-                state = self.graph.get_state(config)
+            for chunk in self.stream({"messages": [user_message]}, config, stream_mode="values"):
+                state = self.get_state_sync("session_1")
                 if not state.tasks:
-                    # 输出 AI 最后的回复
                     print("AI：", chunk["messages"][-1].content)
                     break
 
@@ -179,3 +171,4 @@ class DataAgent:
 if __name__ == "__main__":
     agent = DataAgent()
     agent.chat_loop()
+

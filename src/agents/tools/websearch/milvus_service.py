@@ -8,7 +8,7 @@ from pymilvus import (
     connections, FieldSchema, CollectionSchema,
     DataType, Collection, utility
 )
-from src.core.settings import *
+from src.core.settings import settings
 from src.models.reranker_model import *
 
 
@@ -20,13 +20,18 @@ class MilvusService:
             host: str = "localhost",
             port: str = "19530",
             overwrite: bool = False,
-            openai_base_url: str = MODEL_API_BASE,
-            openai_api_key: str = MODEL_API_KEY,
-            embedding_model: str = EMBEDDING_MODEL,
+            openai_base_url: str = None,
+            openai_api_key: str = None,
+            embedding_model: str = None,
             reranker_key: str = "siliconflow/bge-reranker-v2-m3",
-            reranker_local_path: str = MODEL_RERANKER_PATH,
+            reranker_local_path: str = None,
             reranker_model: str = 'BAAI/bge-reranker-v2-m3',
     ):
+        # Apply defaults from settings
+        openai_base_url = openai_base_url or settings.llm.api_base
+        openai_api_key = openai_api_key or settings.llm.api_key
+        embedding_model = embedding_model or settings.embedding.model_name
+        reranker_local_path = reranker_local_path or str(settings.paths.model_reranker_path)
         """
         初始化 Milvus 向量存储
         参数:

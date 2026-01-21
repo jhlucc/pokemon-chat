@@ -5,7 +5,7 @@ import concurrent.futures          # ← 新增
 from abc import ABC, abstractmethod
 from typing import Dict, List, Optional, Any
 
-from src.core.settings import *
+from src.core.settings import settings
 from src.models.schemas import Source
 
 
@@ -142,7 +142,7 @@ if __name__ == "__main__":
     query_text = "皮卡丘进化是什么？"
 
     try:
-        tavily_searcher = TavilyBasicSearcher(api_key=TAVILY_API_KEY)
+        tavily_searcher = TavilyBasicSearcher(api_key=settings.tavily.api_key)
         print("[Tavily] ->", tavily_searcher.search(query_text, top_k=3))
     except Exception as e:
         print(f"[Tavily] 初始化失败: {e}")

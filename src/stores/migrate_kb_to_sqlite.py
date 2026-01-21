@@ -4,14 +4,14 @@ import time
 from pathlib import Path
 import traceback
 
-from src.core.settings import *
+from src.core.settings import settings
 from src.utils.logger import LogManager
 from src.stores.kb_db_manager import kb_db_manager
 logger= LogManager()
 def migrate_json_to_sqlite():
     """将JSON文件数据迁移到SQLite数据库"""
     # 原始JSON文件路径
-    json_path = os.path.join(JSON_DATA, "database.json")
+    json_path = os.path.join(str(settings.paths.json_data), "database.json")
 
     if not os.path.exists(json_path):
         logger.info(f"未找到原始JSON文件: {json_path}，无需迁移")

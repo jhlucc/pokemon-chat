@@ -4,7 +4,7 @@ from src import config
 from src.utils.logger import LogManager
 from src.models.chat_model import OpenAIBase
 logger=LogManager()
-from src.core.settings import *
+from src.core.settings import settings
 from dotenv import load_dotenv
 load_dotenv("src/.env")
 def select_model(model_provider=None, model_name=None):

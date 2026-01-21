@@ -5,21 +5,26 @@ from langchain_openai import ChatOpenAI
 
 from src.agents.tools.websearch.milvus_service import MilvusService
 from src.agents.tools.websearch.utils import *
-from src.core.settings import *
+from src.core.settings import settings
 
 
 class WebSearcher:
     def __init__(
             self,
             milvus_collection: str = "test1",
-            embedding_model: str = EMBEDDING_MODEL,
+            embedding_model: str = None,
             search_top_k: int = 10,
             rerank_top_k: int = 5,
             rag_top_k: int = 3,
-            llm: str = MODEL_NAME,
-            openai_base_url: str = MODEL_API_BASE,
-            openai_api_key: str = MODEL_API_KEY,
+            llm: str = None,
+            openai_base_url: str = None,
+            openai_api_key: str = None,
     ):
+        # Apply defaults from settings
+        embedding_model = embedding_model or settings.embedding.model_name
+        llm = llm or settings.llm.model_name
+        openai_base_url = openai_base_url or settings.llm.api_base
+        openai_api_key = openai_api_key or settings.llm.api_key
         """
         初始化网络搜索器
         :param milvus_collection: Milvus集合名称

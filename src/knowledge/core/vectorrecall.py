@@ -6,7 +6,7 @@ import traceback
 from typing import Any, Dict, List, Callable
 
 from pymilvus import connections, Collection
-from src.core.settings import CONFIG as config
+from src.core.settings import settings
 from src.models.embedding import get_embedding_model
 
 try:
@@ -20,36 +20,38 @@ logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
 
 
-def dict_to_obj(d: dict) -> Any:
-    return type("ConfigWrapper", (), d)
-
-
 class VectorRecaller:
     def __init__(self) -> None:
-        host = config.get("milvus_host", "localhost")
-        port = config.get("milvus_port", "19530")
-        self.collection_name = config.get("collection_name", "documents_collection1")
+        # 解析 milvus_uri 获取 host 和 port
+        milvus_uri = settings.kb_config.milvus_uri
+        if milvus_uri.startswith("http://"):
+            uri_parts = milvus_uri.replace("http://", "").split(":")
+            host = uri_parts[0]
+            port = uri_parts[1] if len(uri_parts) > 1 else "19530"
+        else:
+            host = "localhost"
+            port = "19530"
+        self.collection_name = "documents_collection1"
 
         connections.connect(host=host, port=port)
         self.collection = Collection(self.collection_name)
         self.collection.load()
 
-        config_obj = dict_to_obj(config)
-        self.distance_threshold: float = config.get("default_distance_threshold", 0.5)
-        self.rerank_threshold: float = config.get("default_rerank_threshold", 0.1)
-        self.max_query_count: int = config.get("default_max_query_count", 20)
-        self.top_k: int = config.get("default_top_k", 10)
+        self.distance_threshold: float = settings.kb_config.default_distance_threshold
+        self.rerank_threshold: float = settings.kb_config.default_rerank_threshold
+        self.max_query_count: int = settings.kb_config.default_max_query_count
+        self.top_k: int = settings.kb_config.default_top_k
 
-        self.embed_model = get_embedding_model(config_obj)
+        self.embed_model = get_embedding_model(settings)
         if self.embed_model is None:
             logger.error("Embedding model is not loaded.")
             raise ValueError("Embedding model is None")
 
         self.reranker = None
-        if config_obj.enable_reranker and RERANK_AVAILABLE:
-            reranker_key = getattr(config_obj, "reranker_key", "local/bge-reranker-v2-m3")
-            model_name = getattr(config_obj, "model_name", "bge-reranker-v2-m3")
-            local_path = getattr(config_obj, "MODEL_RERANKER_PATH", "bge-reranker-v2-m3")
+        if settings.features.enable_reranker and RERANK_AVAILABLE:
+            reranker_key = settings.kb_config.reranker_key
+            model_name = settings.reranker.model_name
+            local_path = str(settings.paths.model_reranker_path)
             self.reranker = RerankerWrapper(reranker_key, model_name, local_path=local_path, device="cpu")
             logger.info("Reranker loaded.")
         else:
