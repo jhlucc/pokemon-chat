@@ -1,0 +1,48 @@
+FROM python:3.11-slim AS builder
+
+WORKDIR /wheels
+
+ENV PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    PIP_NO_CACHE_DIR=1
+
+# Build wheels once (keeps runtime image smaller and avoids shipping build toolchain).
+# NOTE: some networks block plain HTTP apt mirrors; switch to HTTPS.
+RUN sed -i 's|http://deb.debian.org|https://deb.debian.org|g' /etc/apt/sources.list.d/debian.sources \
+    && apt-get update \
+    && apt-get install -y --no-install-recommends build-essential gcc g++ \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY requirements.txt /tmp/requirements.txt
+
+RUN python -m pip install --upgrade pip \
+    && python -m pip wheel --wheel-dir /wheels -r /tmp/requirements.txt
+
+
+FROM python:3.11-slim
+
+WORKDIR /app
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PYTHONUTF8=1
+
+# Runtime libraries needed by some wheels (e.g., xgboost OpenMP).
+RUN sed -i 's|http://deb.debian.org|https://deb.debian.org|g' /etc/apt/sources.list.d/debian.sources \
+    && apt-get update \
+    && apt-get install -y --no-install-recommends libgomp1 \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY --from=builder /wheels /wheels
+RUN python -m pip install --no-cache-dir /wheels/* \
+    && rm -rf /wheels
+
+COPY . /app
+
+# Drop root privileges (app writes to /app/resources/save via volume).
+RUN useradd -m appuser \
+    && chown -R appuser:appuser /app
+USER appuser
+
+EXPOSE 5050
+
+CMD ["python", "-m", "uvicorn", "server.main:app", "--host", "0.0.0.0", "--port", "5050"]

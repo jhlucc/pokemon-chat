@@ -95,6 +95,22 @@
 
 > **前置要求**：已安装 Docker / Docker Compose、Node.js ≥ 18、Python ≥ 3.11
 
+### ✅ Docker 一键启动（推荐）
+
+在本地不想手动分别启动前后端时，可以直接用 Docker Compose 一键启动：
+
+```bash
+cd docker
+# 可选：复制 docker/.env.example 为 docker/.env 并填写 llm_api_key 等
+docker compose --profile infra up -d --build
+```
+
+访问：
+- Web UI：http://localhost:3100/
+- API 文档：http://localhost:3100/api/docs
+
+> 如需 MCP SSE 服务：`docker compose --profile infra --profile mcp up -d --build`
+
 1. 把数据放到[resources](https://pan.baidu.com/s/1o48ankI6l9jaky5MeRqgYw?pwd=rkdy)文件夹下
 
 2. **克隆仓库 & 配置环境变量**
@@ -116,7 +132,7 @@
 
    ```bash
    cd docker
-   docker compose up -d           
+   docker compose --profile infra up -d           
    ```
 
    > 提示：默认 `docker/docker-compose.yml` 将 MySQL 暴露在宿主机 `3307` 端口（容器内 `3306`）。

@@ -1,5 +1,117 @@
 services:
+  api:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.api
+    restart: unless-stopped
+    ports:
+      - "5050:5050"
+    # Compose loads variables from docker/.env (if present). You can also export them in your shell.
+    environment:
+      # ---- Feature flags (safe defaults) ----
+      enable_knowledge_base: ${enable_knowledge_base:-false}
+      enable_knowledge_graph: ${enable_knowledge_graph:-false}
+      enable_web_search: ${enable_web_search:-false}
+      enable_mcp: ${enable_mcp:-false}
+      enable_reranker: ${enable_reranker:-false}
+      enable_ner_bert: ${enable_ner_bert:-false}
+
+      # ---- LLM ----
+      llm_api_key: ${llm_api_key:-}
+      llm_api_base: ${llm_api_base:-https://api.siliconflow.cn/v1}
+      llm_model_name: ${llm_model_name:-Qwen/Qwen2.5-7B-Instruct}
+      llm_temperature: ${llm_temperature:-0.7}
+      llm_max_tokens: ${llm_max_tokens:-4096}
+
+      # ---- Embedding ----
+      embedding_provider: ${embedding_provider:-siliconflow}
+      embedding_api_key: ${embedding_api_key:-}
+      embedding_api_base: ${embedding_api_base:-https://api.siliconflow.cn/v1/embeddings}
+      embedding_model_name: ${embedding_model_name:-BAAI/bge-m3}
+      embedding_dimension: ${embedding_dimension:-1024}
+
+      # ---- Reranker ----
+      reranker_enabled: ${reranker_enabled:-true}
+      reranker_api_key: ${reranker_api_key:-}
+      reranker_api_base: ${reranker_api_base:-https://api.siliconflow.cn/v1}
+      reranker_model_name: ${reranker_model_name:-BAAI/bge-reranker-v2-m3}
+      reranker_top_k: ${reranker_top_k:-10}
+      reranker_threshold: ${reranker_threshold:-0.1}
+
+      # ---- Databases (docker-internal defaults) ----
+      neo4j_uri: ${neo4j_uri:-bolt://neo4j:7687}
+      neo4j_username: ${neo4j_username:-neo4j}
+      neo4j_password: ${neo4j_password:-}
+
+      milvus_uri: ${milvus_uri:-http://milvus:19530}
+
+      mysql_host: ${mysql_host:-mysql}
+      mysql_port: ${mysql_port:-3306}
+      mysql_user: ${mysql_user:-root}
+      mysql_password: ${mysql_password:-123456}
+      mysql_database: ${mysql_database:-langgraph}
+
+      # ---- MCP ----
+      mcp_sse_url: ${mcp_sse_url:-http://mcp:8000/sse}
+
+      # ---- Web search ----
+      tavily_api_key: ${tavily_api_key:-}
+
+      # ---- Provider keys (legacy auto-detection compatibility) ----
+      SILICONFLOW_API_KEY: ${SILICONFLOW_API_KEY:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}
+      ZHIPUAI_API_KEY: ${ZHIPUAI_API_KEY:-}
+      TAVILY_API_KEY: ${TAVILY_API_KEY:-}
+
+    volumes:
+      - ./volumes/app/save:/app/resources/save
+    networks:
+      - vector-net
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:5050/healthz').read()"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  web:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.web
+    restart: unless-stopped
+    ports:
+      - "3100:80"
+    depends_on:
+      api:
+        condition: service_healthy
+    networks:
+      - vector-net
+
+  mcp:
+    profiles: ["mcp"]
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.api
+    restart: unless-stopped
+    command: ["python", "-m", "src.mcp.mcp_server"]
+    ports:
+      - "8000:8000"
+    environment:
+      MCP_HOST: 0.0.0.0
+      MCP_PORT: 8000
+      mysql_host: ${mysql_host:-mysql}
+      mysql_port: ${mysql_port:-3306}
+      mysql_user: ${mysql_user:-root}
+      mysql_password: ${mysql_password:-123456}
+      mysql_database: ${mysql_database:-langgraph}
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - vector-net
+
   neo4j:
+    profiles: ["infra"]
     image: neo4j:5.14.0
     restart: always
     ports:
@@ -18,6 +130,7 @@ services:
       - vector-net
 
   etcd:
+    profiles: ["infra"]
     image: quay.io/coreos/etcd:v3.5.5
     restart: always
     environment:
@@ -25,7 +138,8 @@ services:
       - ETCD_AUTO_COMPACTION_RETENTION=1000
       - ETCD_QUOTA_BACKEND_BYTES=4294967296
       - ETCD_SNAPSHOT_COUNT=50000
-    command: etcd -advertise-client-urls=http://127.0.0.1:2379 -listen-client-urls http://0.0.0.0:2379 --data-dir /etcd
+    # NOTE: advertise-client-urls must be reachable by other containers.
+    command: etcd -advertise-client-urls=http://etcd:2379 -listen-client-urls http://0.0.0.0:2379 --data-dir /etcd
     volumes:
       - ./volumes/milvus/etcd:/etcd
     healthcheck:
@@ -37,6 +151,7 @@ services:
       - vector-net
 
   minio:
+    profiles: ["infra"]
     image: minio/minio:RELEASE.2023-09-20T22-49-55Z
     restart: always
     environment:
@@ -53,7 +168,8 @@ services:
     networks:
       - vector-net
   mysql:
-    image: registry.cn-hangzhou.aliyuncs.com/bigdata_cloudnative/mysql-test:5.7
+    profiles: ["infra"]
+    image: ${MYSQL_IMAGE:-mysql:5.7}
     container_name: mysql-pokemon
     restart: unless-stopped
     ports:
@@ -74,6 +190,7 @@ services:
       - vector-net
 
   milvus:
+    profiles: ["infra"]
     image: milvusdb/milvus:v2.3.0
     restart: always
     command: [ "milvus", "run", "standalone" ]
@@ -100,6 +217,7 @@ services:
     networks:
       - vector-net
   whisper:
+    profiles: ["infra"]
     image: onerahmet/openai-whisper-asr-webservice:latest
     restart: always
     ports:
@@ -111,13 +229,6 @@ services:
       - ./volumes/whisper/cache:/root/.cache
     networks:
       - vector-net
-
-volumes:
-  neo4j_data:
-  etcd_data:
-  minio_data:
-  milvus_data:
-  whisper_cache:
 
 networks:
   vector-net:

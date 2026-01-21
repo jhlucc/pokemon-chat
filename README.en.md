@@ -63,6 +63,22 @@ Architecture overview:
 
 > **Requirements**: Docker & Docker Compose, Node.js ≥ 18, Python ≥ 3.11
 
+### ✅ One-command Docker startup (Recommended)
+
+If you don’t want to start frontend/backend manually, you can bring up the stack with Docker Compose:
+
+```bash
+cd docker
+# Optional: copy docker/.env.example to docker/.env and fill llm_api_key, etc.
+docker compose --profile infra up -d --build
+```
+
+Open:
+- Web UI: http://localhost:3100/
+- API docs: http://localhost:3100/api/docs
+
+> To include the MCP SSE server: `docker compose --profile infra --profile mcp up -d --build`
+
 ### 1. Place the required data under [resources]( https://pan.baidu.com/s/1o48ankI6l9jaky5MeRqgYw?pwd=rkdy)
 
 ### 2. Clone the repo and configure environment variables
@@ -83,7 +99,7 @@ pip install -r requirements.txt
 
 ```bash
 cd docker
-docker compose up -d  # Neo4j · Milvus · Whisper · MySQL
+docker compose --profile infra up -d  # Neo4j · Milvus · Whisper · MySQL
 ```
 
 Note: In the default `docker/docker-compose.yml`, MySQL is exposed on host port `3307` (container `3306`).

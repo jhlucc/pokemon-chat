@@ -1,0 +1,24 @@
+.git
+.github
+.idea
+.vscode
+
+__pycache__/
+*.py[cod]
+
+*.log
+logs/
+
+# Local runtime / data
+data/
+saves/
+docker/volumes/
+
+# Frontend artifacts
+web/node_modules/
+web/dist/
+
+# Large resources (mount into container if needed)
+resources/
+
+importtime.txt

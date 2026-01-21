@@ -6,38 +6,53 @@ FastMCP 版本的 Pokémon-MySQL Server
     2. get_location_info
 """
 
-import os, json, logging
-from mysql.connector import connect, Error
-from dotenv import load_dotenv
-from mcp.server.fastmcp import FastMCP
-from mcp.types import TextContent         # 仅用来包装返回值
-from typing import List
+from __future__ import annotations
 
-# ──────────────────── 环境 & 日志 ────────────────────
-load_dotenv()
+import json
+import logging
+import os
+from typing import List, Sequence, Tuple
+
+import pymysql
+from mcp.server.fastmcp import FastMCP
+from mcp.types import TextContent  # 仅用来包装返回值
+
+# ──────────────────── 日志 ────────────────────
 logging.basicConfig(level=logging.INFO, format="%(asctime)s  %(levelname)s  %(message)s")
 logger = logging.getLogger(__name__)
 
-DB_CONF = dict(
-    host=os.getenv("MYSQL_HOST", "127.0.0.1"),
-    user=os.getenv("MYSQL_USER","root"),
-    password=os.getenv("MYSQL_PASSWORD","123456"),
-    database="langgraph",
-    port = 3307,
-    charset="utf8mb4"
+def _get_db_conf() -> dict:
+    # Keep compatibility with both legacy UPPERCASE env names and the project's settings keys.
+    host = os.getenv("MYSQL_HOST") or os.getenv("mysql_host") or "127.0.0.1"
+    user = os.getenv("MYSQL_USER") or os.getenv("mysql_user") or "root"
+    password = os.getenv("MYSQL_PASSWORD") or os.getenv("mysql_password") or ""
+    database = os.getenv("MYSQL_DATABASE") or os.getenv("mysql_database") or "langgraph"
+    port = int(os.getenv("MYSQL_PORT") or os.getenv("mysql_port") or "3306")
+    return dict(
+        host=host,
+        user=user,
+        password=password,
+        database=database,
+        port=port,
+        charset="utf8mb4",
+        cursorclass=pymysql.cursors.Cursor,
+    )
+
+app = FastMCP(
+    "pokemon-fastmcp",
+    host=os.getenv("MCP_HOST", "0.0.0.0"),
+    port=int(os.getenv("MCP_PORT", "8000")),
 )
 
-app = FastMCP("pokemon-fastmcp")
-
-ERR_TXT = lambda msg: [TextContent(type="text",
-                                   text=json.dumps({"error": msg}, ensure_ascii=False))]
+def _err_txt(msg: str) -> List[TextContent]:
+    return [TextContent(type="text", text=json.dumps({"error": msg}, ensure_ascii=False))]
 
 
 # ──────────────────── 公共辅助 ────────────────────
-def _rows_to_text(rows) -> List[TextContent]:
+def _rows_to_text(rows: Sequence[Tuple[float, float, str]]) -> List[TextContent]:
     if not rows:
-        return ERR_TXT("未找到匹配地点")
-    data = [{"location": name, "lat": lat, "lng": lng} for lat, lng, name in rows]
+        return _err_txt("未找到匹配地点")
+    data = [{"location": name, "lat": float(lat), "lng": float(lng)} for lat, lng, name in rows]
     return [TextContent(type="text",
                         text=json.dumps(data, ensure_ascii=False))]
 # ──────────────────── 工具 1 ────────────────────
@@ -53,12 +68,16 @@ def search_locations_by_pokemon(pokemon_name: str) -> List[TextContent]:
     """
     pattern = f"%{pokemon_name}%"
     try:
-        with connect(**DB_CONF) as conn, conn.cursor() as cur:
-            cur.execute(sql, (pattern,))
-            rows = cur.fetchall()
-    except Error as e:
+        conn = pymysql.connect(**_get_db_conf())
+        try:
+            with conn.cursor() as cur:
+                cur.execute(sql, (pattern,))
+                rows = cur.fetchall()
+        finally:
+            conn.close()
+    except Exception as e:
         logger.error("DB error: %s", e)
-        return ERR_TXT(f"数据库错误：{e}")
+        return _err_txt(f"数据库错误：{e}")
 
     return _rows_to_text(rows)
 
@@ -74,12 +93,16 @@ def get_location_info(location: str) -> List[TextContent]:
          WHERE pokemon_region = %s OR real_location = %s
     """
     try:
-        with connect(**DB_CONF) as conn, conn.cursor() as cur:
-            cur.execute(sql, (location, location))
-            rows = cur.fetchall()
-    except Error as e:
+        conn = pymysql.connect(**_get_db_conf())
+        try:
+            with conn.cursor() as cur:
+                cur.execute(sql, (location, location))
+                rows = cur.fetchall()
+        finally:
+            conn.close()
+    except Exception as e:
         logger.error("DB error: %s", e)
-        return ERR_TXT(f"数据库错误：{e}")
+        return _err_txt(f"数据库错误：{e}")
 
     return _rows_to_text(rows)
 

@@ -54,8 +54,8 @@ const route = useRoute()
 console.log(route)
 
 const apiDocsUrl = computed(() => {
-  // return `${import.meta.env.VITE_API_URL || `http://${window.location.hostname}:${window.location.port}`}/docs`
-  return `http://localhost:5050/docs`
+  // Use the same-origin reverse proxy in both dev (Vite proxy) and prod (Nginx).
+  return `/api/docs`
 })
 
 
