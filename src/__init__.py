@@ -12,5 +12,5 @@ from src.stores import KnowledgeBase
 knowledge_base = KnowledgeBase()
 
 def get_retriever():
-    from rag.core.retriever import Retriever
+    from src.knowledge.core.retriever import Retriever
     return Retriever()

@@ -87,13 +87,13 @@ class SiliconFlowEmbedding(BaseEmbeddingModel):
     """SiliconFlow Embedding API"""
     
     def __init__(self, model: str = None, api_key: str = None, dimension: int = None):
-        self.model = model or settings.embedding.model
-        self.api_key = api_key or settings.get_api_key("siliconflow")
+        self.model = model or settings.embedding.model_name
+        self.api_key = api_key or settings.embedding.api_key
         self.dimension = dimension or settings.embedding.dimension
-        self.url = settings.embedding.siliconflow_url
+        self.url = settings.embedding.api_base
         
         if not self.api_key:
-            raise ValueError("请设置 SILICONFLOW_API_KEY 环境变量")
+            raise ValueError("请设置 EMBEDDING_API_KEY 环境变量")
         
         _log.info(f"Using SiliconFlow embedding: {self.model}")
     
@@ -125,13 +125,13 @@ class OpenAIEmbedding(BaseEmbeddingModel):
     """OpenAI 兼容 Embedding API"""
     
     def __init__(self, model: str = None, api_key: str = None, base_url: str = None, dimension: int = None):
-        self.model = model or settings.embedding.model
-        self.api_key = api_key or settings.get_api_key("openai")
-        self.base_url = base_url or settings.api_keys.openai_api_base
+        self.model = model or settings.embedding.model_name
+        self.api_key = api_key or settings.embedding.api_key
+        self.base_url = base_url or settings.embedding.api_base
         self.dimension = dimension or settings.embedding.dimension
         
         if not self.api_key:
-            raise ValueError("请设置 OPENAI_API_KEY 环境变量")
+            raise ValueError("请设置 EMBEDDING_API_KEY 环境变量")
         
         _log.info(f"Using OpenAI-compatible embedding: {self.model} from {self.base_url}")
     
@@ -164,8 +164,8 @@ class OllamaEmbedding(BaseEmbeddingModel):
     """Ollama Embedding"""
     
     def __init__(self, model: str = None, url: str = None, dimension: int = None):
-        self.model = model or settings.embedding.model
-        self.url = url or settings.embedding.ollama_url
+        self.model = model or settings.embedding.model_name
+        self.url = url or "http://localhost:11434/api/embeddings"
         self.dimension = dimension or settings.embedding.dimension
         
         _log.info(f"Using Ollama embedding: {self.model} at {self.url}")
@@ -194,13 +194,13 @@ class DashScopeEmbedding(BaseEmbeddingModel):
     """阿里 DashScope Embedding API"""
     
     def __init__(self, model: str = None, api_key: str = None, dimension: int = None):
-        self.model = model or settings.embedding.model or "text-embedding-v3"
-        self.api_key = api_key or settings.get_api_key("dashscope")
+        self.model = model or settings.embedding.model_name or "text-embedding-v3"
+        self.api_key = api_key or settings.embedding.api_key
         self.dimension = dimension or settings.embedding.dimension
-        self.url = settings.embedding.dashscope_url
+        self.url = "https://dashscope.aliyuncs.com/api/v1/services/embeddings"
         
         if not self.api_key:
-            raise ValueError("请设置 DASHSCOPE_API_KEY 环境变量")
+            raise ValueError("请设置 EMBEDDING_API_KEY 环境变量")
         
         _log.info(f"Using DashScope embedding: {self.model}")
     
@@ -267,7 +267,7 @@ def get_embedding_model(
 if __name__ == "__main__":
     print(f"当前 Embedding 配置:")
     print(f"  Provider: {settings.embedding.provider}")
-    print(f"  Model: {settings.embedding.model}")
+    print(f"  Model: {settings.embedding.model_name}")
     print(f"  Dimension: {settings.embedding.dimension}")
     
     try:

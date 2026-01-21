@@ -70,17 +70,17 @@ class KnowledgeBase:
         from src.core.settings import settings
         
         # 使用新的 settings 获取 embedding 配置
-        provider = settings.embedding.provider
-        model = settings.embedding.model
+        # model_name格式: "BAAI/bge-m3" 或带provider前缀
+        model_name = settings.embedding.model_name
         
         # 如果传入了自定义配置，优先使用
         if embedding_config and isinstance(embedding_config, dict):
             embed_model_str = embedding_config.get("embed_model", "")
-            if "/" in embed_model_str:
-                provider = embed_model_str.split("/")[0]
+            if embed_model_str:
+                model_name = embed_model_str
         
-        self.conf = f"{provider}/{model}"
-        self.embed_model = get_embedding_model(provider=provider, model=model)
+        self.conf = model_name
+        self.embed_model = get_embedding_model(model=model_name)
         
         if config.enable_reranker:
             from src.models.reranker_model import get_reranker
@@ -168,7 +168,7 @@ class KnowledgeBase:
             path = os.path.join(base_dir, norm_path)
 
         # 分块
-        from rag.core.indexing import chunk_file
+        from src.knowledge.core.indexing import chunk_file
         try:
             if ext == 'pdf' or do_ocr:
                 docs = chunk_file(path, chunk_size, chunk_overlap, True, ocr_det_threshold)

@@ -99,12 +99,12 @@ class PathSettings(BaseSettings):
     @computed_field
     @property
     def artifacts_data(self) -> Path:
-        return _BASE_DIR_PATH / "rag" / "artifacts"
+        return _BASE_DIR_PATH / "src" / "knowledge" / "artifacts"
     
     @computed_field
     @property
     def data_parser_data(self) -> Path:
-        return _BASE_DIR_PATH / "resources" / "data_parser"
+        return _BASE_DIR_PATH / "src" / "plugins"
 
 
 class DatabaseSettings(BaseSettings):
@@ -142,10 +142,16 @@ class EmbeddingSettings(BaseSettings):
     """Embedding 配置"""
     model_config = SettingsConfigDict(env_prefix="embedding_", extra="ignore")
     
+    provider: str = "siliconflow"  # 默认提供商
     api_key: str = ""
     api_base: str = "https://api.siliconflow.cn/v1/embeddings"
     model_name: str = "BAAI/bge-m3"
     dimension: int = 1024
+    
+    @property
+    def model(self) -> str:
+        """兼容旧代码的 model 属性"""
+        return self.model_name
 
 
 class RerankerSettings(BaseSettings):
@@ -246,13 +252,13 @@ ARTIFACTS_DATA = str(settings.paths.artifacts_data)
 DATA_PARSER_DATA = str(settings.paths.data_parser_data)
 
 # API 配置
-MODEL_API_KEY = settings.llm.model_api_key or settings.api_keys.siliconflow_api_key
-MODEL_API_BASE = settings.llm.model_api_base
+MODEL_API_KEY = settings.llm.api_key
+MODEL_API_BASE = settings.llm.api_base
 MODEL_NAME = settings.llm.model_name
-TAVILY_API_KEY = settings.api_keys.tavily_api_key
+TAVILY_API_KEY = settings.tavily.api_key
 
 # Embedding 配置
-EMBEDDING_MODEL = settings.embedding.model
+EMBEDDING_MODEL = settings.embedding.model_name
 EMBEDDING_MODEL_DIM = settings.embedding.dimension
 
 # 数据库配置
@@ -269,7 +275,7 @@ CONFIG = {
     "enable_knowledge_base": settings.features.enable_knowledge_base,
     "embed_model": settings.kb_config.embed_model,
     "reranker_key": settings.kb_config.reranker_key,
-    "model_name": settings.reranker.model,
+    "model_name": settings.reranker.model_name,
     "enable_reranker": settings.features.enable_reranker,
     "MODEL_RERANKER_PATH": MODEL_RERANKER_PATH,
 }
@@ -279,7 +285,7 @@ EMBED_MODEL_INFO = {
     "siliconflow/BAAI/bge-m3": {
         "name": "BAAI/bge-m3",
         "dimension": 1024,
-        "url": settings.embedding.siliconflow_url,
+        "url": settings.embedding.api_base,
         "api_key": "SILICONFLOW_API_KEY",
     },
     "openai/bge-m3-pro": {
@@ -289,12 +295,12 @@ EMBED_MODEL_INFO = {
     "ollama/bge-m3:latest": {
         "name": "bge-m3:latest",
         "dimension": 1024,
-        "url": settings.embedding.ollama_url,
+        "url": "http://localhost:11434/api/embeddings",
     },
     "dashscope/text-embedding-v3": {
         "name": "text-embedding-v3",
         "dimension": 1024,
-        "url": settings.embedding.dashscope_url,
+        "url": "https://dashscope.aliyuncs.com/api/v1/services/embeddings",
     },
 }
 
@@ -302,8 +308,8 @@ EMBED_MODEL_INFO = {
 if __name__ == "__main__":
     print("=== Settings Test ===")
     print(f"BASE_DIR: {BASE_DIR}")
-    print(f"Reranker Provider: {settings.reranker.provider}")
-    print(f"Reranker Model: {settings.reranker.model}")
-    print(f"Embedding Provider: {settings.embedding.provider}")
+    print(f"Reranker Model: {settings.reranker.model_name}")
+    print(f"Embedding Model: {settings.embedding.model_name}")
     print(f"Neo4j URI: {NEO4J_URI}")
     print(f"LOG_DIR: {LOG_DIR}")
+

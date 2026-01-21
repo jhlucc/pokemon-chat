@@ -3,9 +3,9 @@ from src import config
 from src.models.reranker_model import RerankerWrapper
 from src.utils.logger import LogManager
 from src.models import select_model
-from rag.core.prompts import *
+from src.knowledge.core.prompts import *
 from src.stores import  KnowledgeBase
-from rag.core.operators import HyDEOperator
+from src.knowledge.core.operators import HyDEOperator
 from src.mcp.client_core import MCPClient
 import asyncio, inspect,json
 knowledge_base = KnowledgeBase()
@@ -28,7 +28,7 @@ class Retriever:
             self.reranker = RerankerWrapper(config)
 
         if config.enable_web_search:
-            from api.websearch.websearcher import LiteBaseSearcher, TavilyBasicSearcher
+            from src.agents.tools.websearch.websearcher import LiteBaseSearcher, TavilyBasicSearcher
             self.web_searcher = LiteBaseSearcher()
 
     def retrieval(self, query, history, meta):

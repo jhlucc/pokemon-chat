@@ -17,11 +17,11 @@ project_root = Path(__file__).parent.parent.parent.resolve()
 sys.path.insert(0, str(project_root))
 
 # 本地模块导入
-from rag import GraphRAG
-from api.websearch.websearcher import *
+from src.knowledge import GraphRAG
+from src.agents.tools.websearch.websearcher import *
 
 base_path = Path(__file__).parent.parent.parent  # Smart-Assistant 根目录
-artifacts_path = base_path / "rag" / "artifacts"
+artifacts_path = base_path / "src" / "knowledge" / "artifacts"
 
 # 辅助类
 class AgentState(MessagesState):

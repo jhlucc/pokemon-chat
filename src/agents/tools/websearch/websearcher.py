@@ -111,7 +111,7 @@ class LiteBaseSearcher(BaseWebSearcher):
             return []
 
         # 异步搜索工具（保持原来的导入路径）
-        from api.websearch.utils import search      # async def search(q, k) -> list
+        from src.agents.tools.websearch.utils import search      # async def search(q, k) -> list
 
         try:
             raw_results = self._run_sync(search(query, top_k))

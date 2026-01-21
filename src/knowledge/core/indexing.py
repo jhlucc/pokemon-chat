@@ -1,8 +1,8 @@
 import os
 from pathlib import Path
 from typing import List, Optional
-from deepdoc.parser import PdfParser, DocxParser, ExcelParser, PptParser, TxtParser
-from deepdoc.vision._ocr import OCRHandler2
+from src.plugins.parser import PdfParser, DocxParser, ExcelParser, PptParser, TxtParser
+from src.plugins.vision._ocr import OCRHandler2
 from langchain_core.documents import Document
 from langchain_text_splitters import CharacterTextSplitter
 from src.utils import logger

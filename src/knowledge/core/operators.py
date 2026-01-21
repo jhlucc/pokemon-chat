@@ -2,7 +2,7 @@
 这里面存放是 RAG 相关的一些组件
 """
 
-from rag.core import prompts
+from src.knowledge.core import prompts
 
 class BaseOperator:
     """

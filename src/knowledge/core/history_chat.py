@@ -4,7 +4,7 @@ from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 from langchain_community.chat_message_histories import ChatMessageHistory
 from langchain_core.messages import BaseMessage
 
-from rag.core.prompts import get_system_prompt
+from src.knowledge.core.prompts import get_system_prompt
 from src.utils import logger
 
 _log = logger.LogManager()
