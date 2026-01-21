@@ -17,7 +17,7 @@ from langgraph.graph import StateGraph, MessagesState, START, END
 # Project Imports
 from src.core.settings import settings
 from src.agents.base import BaseAgent
-from src.knowledge import GraphRAG
+from src.knowledge import PokemonLightRAG, get_lightrag_instance
 from src.agents.tools.websearch.websearcher import LiteBaseSearcher
 from src.agents.kg_agent import KGQueryAgent
 from src.utils.logger import LogManager
@@ -138,10 +138,10 @@ class PokemonKGChatAgent(BaseAgent):
                 logger.error(f"Failed to initialize KGQueryAgent: {e}")
 
 
-        # 初始化图RAG
-        self.graph_rag = GraphRAG(
-            artifacts_path=str(settings.paths.artifacts_data),
-            community_level=0
+        # 初始化图RAG (LightRAG)
+        self.lightrag = get_lightrag_instance(
+            workspace="pokemon_kb",
+            working_dir=str(settings.paths.artifacts_data),
         )
 
         # 初始化搜索工具
@@ -307,12 +307,20 @@ class PokemonKGChatAgent(BaseAgent):
             logger.error(f"KG SQL Error: {e}")
             return {"messages": [HumanMessage(content=f"查询知识图谱失败: {e}", name="kg_sqler")]}
 
-    def _graph_rager(self, state: AgentState):
-        """图RAG查询节点"""
+    async def _graph_rager(self, state: AgentState):
+        """图RAG查询节点 (LightRAG)"""
         messages = state["messages"]
+        last_content = messages[-1].content if messages else ""
+        
         try:
-            response = self.graph_rag.query(messages)
-            content = response.content if hasattr(response, "content") else str(response)
+            # Use LightRAG async query
+            response = await self.lightrag.query(
+                query_text=last_content,
+                mode="mix",
+                only_need_context=True,
+                top_k=10
+            )
+            content = response if isinstance(response, str) else str(response)
             return {"messages": [HumanMessage(content=content, name="graph_rager")]}
         except Exception as e:
             logger.error(f"Graph RAG Error: {e}")
