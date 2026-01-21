@@ -107,85 +107,66 @@ class PathSettings(BaseSettings):
         return _BASE_DIR_PATH / "resources" / "data_parser"
 
 
-class APIKeySettings(BaseSettings):
-    """API Keys 配置"""
-    model_config = SettingsConfigDict(extra="ignore")
-    
-    # LLM Providers
-    openai_api_key: str = Field(default="", alias="OPENAI_API_KEY")
-    openai_api_base: str = Field(default="https://api.openai.com/v1", alias="OPENAI_API_BASE")
-    deepseek_api_key: str = Field(default="", alias="DEEPSEEK_API_KEY")
-    zhipuai_api_key: str = Field(default="", alias="ZHIPUAI_API_KEY")
-    siliconflow_api_key: str = Field(default="", alias="SILICONFLOW_API_KEY")
-    dashscope_api_key: str = Field(default="", alias="DASHSCOPE_API_KEY")
-    together_api_key: str = Field(default="", alias="TOGETHER_API_KEY")
-    ark_api_key: str = Field(default="", alias="ARK_API_KEY")
-    
-    # Search & Tools
-    tavily_api_key: str = Field(default="", alias="TAVILY_API_KEY")
-    jina_api_key: str = Field(default="", alias="JINA_API_KEY")
-    cohere_api_key: str = Field(default="", alias="COHERE_API_KEY")
-
-
 class DatabaseSettings(BaseSettings):
     """数据库配置"""
-    model_config = SettingsConfigDict(extra="ignore")
+    model_config = SettingsConfigDict(env_prefix="", extra="ignore")
     
     # Neo4j
-    neo4j_uri: str = Field(default="bolt://localhost:7687", alias="NEO4J_URI")
-    neo4j_username: str = Field(default="neo4j", alias="NEO4J_USERNAME")
-    neo4j_password: str = Field(default="", alias="NEO4J_PASSWORD")
+    neo4j_uri: str = "bolt://localhost:7687"
+    neo4j_username: str = "neo4j"
+    neo4j_password: str = ""
     
     @property
     def neo4j_auth(self) -> Tuple[str, str]:
         return (self.neo4j_username, self.neo4j_password)
     
     # MySQL
-    mysql_host: str = Field(default="127.0.0.1", alias="MYSQL_HOST")
-    mysql_port: int = Field(default=3306, alias="MYSQL_PORT")
-    mysql_user: str = Field(default="root", alias="MYSQL_USER")
-    mysql_password: str = Field(default="", alias="MYSQL_PASSWORD")
-    mysql_database: str = Field(default="langgraph", alias="MYSQL_DATABASE")
+    mysql_host: str = "127.0.0.1"
+    mysql_port: int = 3306
+    mysql_user: str = "root"
+    mysql_password: str = ""
+    mysql_database: str = "langgraph"
     
     # Milvus
-    milvus_uri: str = Field(default="http://localhost:19530", alias="MILVUS_URI")
+    milvus_uri: str = "http://localhost:19530"
+
+
+class TavilySettings(BaseSettings):
+    """Tavily 搜索配置"""
+    model_config = SettingsConfigDict(env_prefix="tavily_", extra="ignore")
+    
+    api_key: str = ""
 
 
 class EmbeddingSettings(BaseSettings):
     """Embedding 配置"""
-    model_config = SettingsConfigDict(env_prefix="EMBEDDING_", extra="ignore")
+    model_config = SettingsConfigDict(env_prefix="embedding_", extra="ignore")
     
-    provider: Literal["siliconflow", "openai", "ollama", "dashscope"] = "siliconflow"
-    model: str = "BAAI/bge-m3"
+    api_key: str = ""
+    api_base: str = "https://api.siliconflow.cn/v1/embeddings"
+    model_name: str = "BAAI/bge-m3"
     dimension: int = 1024
-    
-    # URLs
-    siliconflow_url: str = "https://api.siliconflow.cn/v1/embeddings"
-    dashscope_url: str = "https://dashscope.aliyuncs.com/compatible-mode/v1/embeddings"
-    ollama_url: str = "http://localhost:11434/api/embed"
 
 
 class RerankerSettings(BaseSettings):
     """Reranker 配置"""
-    model_config = SettingsConfigDict(env_prefix="RERANKER_", extra="ignore")
+    model_config = SettingsConfigDict(env_prefix="reranker_", extra="ignore")
     
     enabled: bool = True
-    provider: Literal["siliconflow", "dashscope", "jina", "cohere"] = "siliconflow"
-    model: str = "BAAI/bge-reranker-v2-m3"
+    api_key: str = ""
+    api_base: str = "https://api.siliconflow.cn/v1"
+    model_name: str = "BAAI/bge-reranker-v2-m3"
     top_k: int = 10
     threshold: float = 0.1
 
 
 class LLMSettings(BaseSettings):
     """LLM 配置"""
-    model_config = SettingsConfigDict(extra="ignore")
+    model_config = SettingsConfigDict(env_prefix="llm_", extra="ignore")
     
-    # 主 API 配置（兼容旧变量名）
-    model_api_key: str = Field(default="", alias="MODEL_API_KEY")
-    model_api_base: str = Field(default="https://api.siliconflow.cn/v1", alias="MODEL_API_BASE")
-    model_name: str = Field(default="Qwen/Qwen2.5-7B-Instruct", alias="MODEL_NAME")
-    
-    provider: str = Field(default="siliconflow", alias="LLM_PROVIDER")
+    api_key: str = ""
+    api_base: str = "https://api.siliconflow.cn/v1"
+    model_name: str = "Qwen/Qwen2.5-7B-Instruct"
     temperature: float = 0.7
     max_tokens: int = 4096
 
@@ -224,27 +205,14 @@ class Settings(BaseSettings):
     
     # 子配置
     paths: PathSettings = Field(default_factory=PathSettings)
-    api_keys: APIKeySettings = Field(default_factory=APIKeySettings)
     database: DatabaseSettings = Field(default_factory=DatabaseSettings)
+    tavily: TavilySettings = Field(default_factory=TavilySettings)
     embedding: EmbeddingSettings = Field(default_factory=EmbeddingSettings)
     reranker: RerankerSettings = Field(default_factory=RerankerSettings)
     llm: LLMSettings = Field(default_factory=LLMSettings)
     features: FeatureSettings = Field(default_factory=FeatureSettings)
     kb_config: KnowledgeBaseConfig = Field(default_factory=KnowledgeBaseConfig)
-    
-    def get_api_key(self, provider: str) -> str:
-        """获取指定提供商的 API Key"""
-        key_map = {
-            "siliconflow": self.api_keys.siliconflow_api_key,
-            "openai": self.api_keys.openai_api_key,
-            "dashscope": self.api_keys.dashscope_api_key,
-            "jina": self.api_keys.jina_api_key,
-            "cohere": self.api_keys.cohere_api_key,
-            "deepseek": self.api_keys.deepseek_api_key,
-            "zhipu": self.api_keys.zhipuai_api_key,
-            "tavily": self.api_keys.tavily_api_key,
-        }
-        return key_map.get(provider.lower(), "")
+
 
 
 @lru_cache
