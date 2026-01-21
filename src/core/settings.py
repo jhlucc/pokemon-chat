@@ -138,6 +138,14 @@ class TavilySettings(BaseSettings):
     api_key: str = ""
 
 
+class ToolSettings(BaseSettings):
+    """第三方工具配置"""
+    model_config = SettingsConfigDict(env_prefix="tool_", extra="ignore")
+    
+    # OpenWeather
+    openweather_api_key: str = Field(default="", alias="OPENWEATHER_API_KEY")
+
+
 class EmbeddingSettings(BaseSettings):
     """Embedding 配置"""
     model_config = SettingsConfigDict(env_prefix="embedding_", extra="ignore")
@@ -232,6 +240,7 @@ class Settings(BaseSettings):
     llm: LLMSettings = Field(default_factory=LLMSettings)
     features: FeatureSettings = Field(default_factory=FeatureSettings)
     agent: AgentSettings = Field(default_factory=AgentSettings)
+    tools: ToolSettings = Field(default_factory=ToolSettings)
     kb_config: KnowledgeBaseConfig = Field(default_factory=KnowledgeBaseConfig)
 
 

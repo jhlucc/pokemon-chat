@@ -9,6 +9,7 @@ from langchain_openai import ChatOpenAI
 from langgraph.graph import MessagesState, StateGraph, START, END
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.prebuilt import ToolNode
+from src.core.settings import settings
 
 # ---------- 数据库定义 ----------
 Base = declarative_base()
@@ -42,7 +43,9 @@ class Weather(Base):
     temp_max = Column(Float)
 
 
-DATABASE_URI = 'mysql+pymysql://gpt:gpt@localhost:3307/langgraph?charset=utf8mb4'
+# DATABASE_URI = 'mysql+pymysql://gpt:gpt@localhost:3307/langgraph?charset=utf8mb4'
+# 使用 settings 中的配置
+DATABASE_URI = f"mysql+pymysql://{settings.database.mysql_user}:{settings.database.mysql_password}@{settings.database.mysql_host}:{settings.database.mysql_port}/{settings.database.mysql_database}?charset=utf8mb4"
 engine = create_engine(DATABASE_URI)
 Base.metadata.create_all(engine)
 Session = sessionmaker(bind=engine)
@@ -79,7 +82,7 @@ def get_weather(location):
     location = translate_city_name(location)
     params = {
         "q": location,
-        "appid": "ee5204216d6c4f500610967c11211409",
+        "appid": settings.tools.openweather_api_key or "ee5204216d6c4f500610967c11211409", # Fallback to existing key if not set, or remove fallback
         "units": "metric",
         "lang": "zh_cn"
     }
@@ -165,9 +168,9 @@ class WeatherAgent:
         self.tools = [get_weather, insert_weather_to_db, query_weather_from_db, delete_weather_from_db]
         self.tool_node = ToolNode(self.tools)
         self.llm = ChatOpenAI(
-            model="gpt-4o",
-            api_key="hk-uomxwi1000053684154a700e0b331d4846fa5bf6fb77ddaf",
-            base_url="https://api.openai-hk.com/v1",
+            model=settings.llm.model_name,
+            api_key=settings.llm.api_key,
+            base_url=settings.llm.api_base,
             temperature=0
         ).bind_tools(self.tools)
         self.graph = self._build_workflow()
