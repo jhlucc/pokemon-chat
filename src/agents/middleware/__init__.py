@@ -8,7 +8,7 @@ Middleware Package - LangGraph 中间件系统
 - MemoryMiddleware: 短期记忆管理
 """
 
-from .base import BaseMiddleware
+from .base import BaseMiddleware, MiddlewareChain, MiddlewareContext
 from .logging import LoggingMiddleware
 from .retry import RetryMiddleware
 from .fallback import FallbackMiddleware
@@ -16,6 +16,8 @@ from .memory import MemoryMiddleware
 
 __all__ = [
     "BaseMiddleware",
+    "MiddlewareChain",
+    "MiddlewareContext",
     "LoggingMiddleware", 
     "RetryMiddleware",
     "FallbackMiddleware",

@@ -4,17 +4,25 @@ from pathlib import Path
 from typing import cast, Dict, Any
 
 import pandas as pd
-from langchain_graphrag.indexing import IndexerArtifacts
-from langchain_graphrag.query.global_search import GlobalSearch
-from langchain_graphrag.query.global_search.community_weight_calculator import CommunityWeightCalculator
-from langchain_graphrag.query.global_search.key_points_aggregator import (
-    KeyPointsAggregator, KeyPointsAggregatorPromptBuilder, KeyPointsContextBuilder
-)
-from langchain_graphrag.query.global_search.key_points_generator import (
-    CommunityReportContextBuilder, KeyPointsGenerator, KeyPointsGeneratorPromptBuilder
-)
-from langchain_graphrag.types.graphs.community import CommunityLevel
-from langchain_graphrag.utils import TiktokenCounter
+try:
+    from langchain_graphrag.indexing import IndexerArtifacts
+    from langchain_graphrag.query.global_search import GlobalSearch
+    from langchain_graphrag.query.global_search.community_weight_calculator import CommunityWeightCalculator
+    from langchain_graphrag.query.global_search.key_points_aggregator import (
+        KeyPointsAggregator, KeyPointsAggregatorPromptBuilder, KeyPointsContextBuilder
+    )
+    from langchain_graphrag.query.global_search.key_points_generator import (
+        CommunityReportContextBuilder, KeyPointsGenerator, KeyPointsGeneratorPromptBuilder
+    )
+    from langchain_graphrag.types.graphs.community import CommunityLevel
+    from langchain_graphrag.utils import TiktokenCounter
+    HAS_GRAPHRAG = True
+except ImportError:
+    HAS_GRAPHRAG = False
+    # Define dummy placeholders to prevent NameError in class definition if type hinting uses them
+    IndexerArtifacts = Any
+    GlobalSearch = Any
+    
 from langchain_openai import ChatOpenAI
 from src.core.settings import *
 
@@ -52,6 +60,10 @@ class GraphRAG:
 
     def _initialize(self):
         """初始化系统组件"""
+        if not HAS_GRAPHRAG:
+            warnings.warn("langchain_graphrag module not found. GraphRAG functionality will be disabled.")
+            return
+
         # 1. 加载知识图谱数据
         self.artifacts = self._load_artifacts(self.artifacts_path)
 
@@ -147,6 +159,8 @@ class GraphRAG:
             回答结果
         """
         if not self.global_search:
+            if not HAS_GRAPHRAG:
+                return "GraphRAG functionality is not available (missing langchain_graphrag module)."
             raise ValueError("Global search not initialized")
 
         return self.global_search.invoke(question)

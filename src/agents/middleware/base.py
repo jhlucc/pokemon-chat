@@ -112,3 +112,15 @@ class MiddlewareChain:
             if result is not None:
                 return result
         return None
+
+    def wrap_model_call(self, model_callable, context: MiddlewareContext):
+        """
+        包装模型调用，应用所有中间件的包装逻辑
+        Middleware 顺序: [mw1, mw2]
+        Wrap 顺序: mw1(mw2(model_callable))
+        """
+        wrapped = model_callable
+        # 逆序应用，这样列表前面的中间件在最外层
+        for mw in reversed(self.middlewares):
+            wrapped = mw.wrap_model_call(wrapped, context)
+        return wrapped

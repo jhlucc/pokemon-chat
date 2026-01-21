@@ -3,7 +3,7 @@ warnings.filterwarnings("ignore")
 import sys
 from pathlib import Path
 from typing import Dict, List, Any, Iterator
-from src.core.settings import *
+from src.core.settings import settings, NEO4J_URI, NEO4J_AUTH
 import torch
 from langchain_core.messages import HumanMessage
 from langchain_core.tools import tool
@@ -12,15 +12,15 @@ from langgraph.prebuilt import create_react_agent
 from py2neo import Graph
 from pydantic import BaseModel, Field
 from transformers import BertTokenizer
-from src.core.settings import *
 from src.ner.ner_model import *
 # ---------- 项目路径处理 ----------
 project_root = Path(__file__).parent.parent.parent.resolve()
 sys.path.insert(0, str(project_root))
 
 # ---------- Neo4j 连接 ----------
+# 延迟初始化 or 使用全局配置
+# g = Graph(NEO4J_URI, auth=NEO4J_AUTH) # 移动到类内部初始化，避免 import 时连接失败
 
-g = Graph(NEO4J_URI, auth=NEO4J_AUTH)
 
 
 # ========== 子图提取器 ==========
@@ -157,18 +157,20 @@ class KGQueryAgent:
         初始化查询代理
         :param llm: 可选的语言模型实例，默认使用ChatOpenAI
         """
+        self.graph = Graph(NEO4J_URI, auth=NEO4J_AUTH)
         self.llm = llm or self._default_llm()
         self.ner = EntityRecognitionSingleton()
-        self.subgraph_extractor = GraphSubgraphExtractor(g)
+        self.subgraph_extractor = GraphSubgraphExtractor(self.graph)
         self.tools = self._init_tools()
         self.agent = self._create_agent()
 
     def _default_llm(self):
         """默认语言模型配置"""
         return ChatOpenAI(
-            model="Doubao-pro-256k-1.5",
-            base_url="http://139.224.116.116:3000/v1",
-            api_key="sk-36oMlDApF5Nlg0v23014A4B69e864000944151Cd75D82076"
+            model=settings.llm.model_name,
+            base_url=settings.llm.api_base,
+            api_key=settings.llm.api_key,
+            temperature=0
         )
 
     def _create_agent(self):
@@ -458,7 +460,7 @@ class KGQueryAgent:
         def execute_query(sql: str, result_key: str, not_found_msg: str):
             """执行Neo4j查询并返回格式化结果"""
             try:
-                result = g.run(sql).data()
+                result = self.graph.run(sql).data()
                 if result:
                     # 处理单条结果和列表结果
                     if isinstance(result[0].get(result_key), list):
@@ -507,7 +509,7 @@ class KGQueryAgent:
     def _execute_query(self, sql: str, result_key: str, not_found_msg: str) -> Dict:
         """执行Neo4j查询"""
         try:
-            result = g.run(sql).data()
+            result = self.graph.run(sql).data()
             if result:
                 return {result_key: result[0][result_key]}
             return {"message": not_found_msg}
