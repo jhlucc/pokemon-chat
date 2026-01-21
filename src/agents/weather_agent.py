@@ -44,12 +44,30 @@ class Weather(Base):
     temp_max = Column(Float)
 
 
-# DATABASE_URI = 'mysql+pymysql://gpt:gpt@localhost:3307/langgraph?charset=utf8mb4'
-# 使用 settings 中的配置
-DATABASE_URI = f"mysql+pymysql://{settings.database.mysql_user}:{settings.database.mysql_password}@{settings.database.mysql_host}:{settings.database.mysql_port}/{settings.database.mysql_database}?charset=utf8mb4"
-engine = create_engine(DATABASE_URI)
-Base.metadata.create_all(engine)
-Session = sessionmaker(bind=engine)
+# ---------- 延迟数据库初始化 ----------
+_engine = None
+_Session = None
+
+
+def _get_database_uri() -> str:
+    """构建数据库连接 URI"""
+    return f"mysql+pymysql://{settings.database.mysql_user}:{settings.database.mysql_password}@{settings.database.mysql_host}:{settings.database.mysql_port}/{settings.database.mysql_database}?charset=utf8mb4"
+
+
+def _ensure_db_initialized():
+    """延迟初始化数据库连接"""
+    global _engine, _Session
+    if _engine is None:
+        _engine = create_engine(_get_database_uri())
+        Base.metadata.create_all(_engine)
+        _Session = sessionmaker(bind=_engine)
+    return _Session
+
+
+def get_session():
+    """获取数据库会话"""
+    Session = _ensure_db_initialized()
+    return Session()
 
 
 # ---------- Pydantic Schemas ----------
@@ -95,7 +113,7 @@ def get_weather(location):
 @tool(args_schema=WeatherInfo)
 def insert_weather_to_db(city_id, city_name, main_weather, description, temperature, feels_like, temp_min, temp_max):
     """将天气信息插入数据库（如果存在则更新）"""
-    session = Session()
+    session = get_session()
     try:
         existing = session.query(Weather).filter(Weather.city_id == city_id).first()
         if existing:
@@ -132,7 +150,7 @@ def insert_weather_to_db(city_id, city_name, main_weather, description, temperat
 @tool(args_schema=QueryWeatherSchema)
 def query_weather_from_db(city_name: str):
     """根据城市名查询数据库中的天气信息"""
-    session = Session()
+    session = get_session()
     try:
         data = session.query(Weather).filter(Weather.city_name == city_name).first()
         if data:
@@ -148,7 +166,7 @@ def query_weather_from_db(city_name: str):
 @tool(args_schema=DeleteWeatherSchema)
 def delete_weather_from_db(city_name: str):
     """根据城市名删除数据库中的天气信息"""
-    session = Session()
+    session = get_session()
     try:
         data = session.query(Weather).filter(Weather.city_name == city_name).first()
         if data:

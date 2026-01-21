@@ -14,14 +14,37 @@ from langgraph.prebuilt import ToolNode
 from src.core.settings import settings
 from src.agents.base import ToolAgent
 
-# ---------- 数据库初始化 ----------
+# ---------- 数据库初始化 (延迟加载) ----------
 Base = declarative_base()
 
-# DATABASE_URI = 'mysql+pymysql://gpt:gpt@localhost:3307/langgraph?charset=utf8mb4'
-# 使用 settings 中的配置
-DATABASE_URI = f"mysql+pymysql://{settings.database.mysql_user}:{settings.database.mysql_password}@{settings.database.mysql_host}:{settings.database.mysql_port}/{settings.database.mysql_database}?charset=utf8mb4"
-engine = create_engine(DATABASE_URI)
-Session = sessionmaker(bind=engine)
+_engine = None
+_Session = None
+
+
+def _get_database_uri() -> str:
+    """构建数据库连接 URI"""
+    return f"mysql+pymysql://{settings.database.mysql_user}:{settings.database.mysql_password}@{settings.database.mysql_host}:{settings.database.mysql_port}/{settings.database.mysql_database}?charset=utf8mb4"
+
+
+def _ensure_db_initialized():
+    """延迟初始化数据库连接"""
+    global _engine, _Session
+    if _engine is None:
+        _engine = create_engine(_get_database_uri())
+        _Session = sessionmaker(bind=_engine)
+    return _engine, _Session
+
+
+def get_session():
+    """获取数据库会话"""
+    _, Session = _ensure_db_initialized()
+    return Session()
+
+
+def get_engine():
+    """获取数据库引擎"""
+    engine, _ = _ensure_db_initialized()
+    return engine
 
 
 class FileImportSchema(BaseModel):
@@ -41,7 +64,7 @@ def import_data_to_db(file_path: str, table_name: str):
     在数据库中创建对应的表，然后将数据插入到 table_name 表中。
     如果表已存在，则替换或追加。
     """
-    session = Session()
+    session = get_session()
     try:
         # 判定文件是否存在
         if not os.path.exists(file_path):
@@ -58,7 +81,7 @@ def import_data_to_db(file_path: str, table_name: str):
             return {"messages": [f"不支持的文件类型: {file_ext}，仅支持 CSV 或 JSON"]}
 
         # 利用 pandas 的 to_sql 方法自动创建表结构并插入数据
-        df.to_sql(name=table_name, con=engine, if_exists='replace', index=False)
+        df.to_sql(name=table_name, con=get_engine(), if_exists='replace', index=False)
 
         return {"messages": [f"文件 {file_path} 中的数据已成功写入 {table_name} 表。"]}
     except Exception as e:

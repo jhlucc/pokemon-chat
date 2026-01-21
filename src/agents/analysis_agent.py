@@ -23,7 +23,7 @@ class SalesData(Base):
     __tablename__ = 'sales_data'
     sales_id = Column(Integer, primary_key=True)
     product_id = Column(Integer, ForeignKey('product_information.product_id'))
-    employee_id = Column(Integer)  # 示例简化
+    employee_id = Column(Integer)  
     customer_id = Column(Integer, ForeignKey('customer_information.customer_id'))
     sale_date = Column(String(50))
     quantity = Column(Integer)
@@ -56,19 +56,32 @@ class CompetitorAnalysis(Base):
     region = Column(String(50))
     market_share = Column(Float)
 
+# ----- 延迟数据库初始化 -----
+_engine = None
+_Session = None
 
-# ----- 初始化数据库 -----
-# ----- 初始化数据库 -----
-# DATABASE_URI = 'mysql+pymysql://gpt:gpt@localhost:3307/langgraph?charset=utf8mb4'
-# 使用 settings 中的配置构建 URI
-# 注意：analysis_agent 似乎是一个独立的 demo，这里假设它应该连接到 settings 配置的 MySQL
-DATABASE_URI = f"mysql+pymysql://{settings.database.mysql_user}:{settings.database.mysql_password}@{settings.database.mysql_host}:{settings.database.mysql_port}/{settings.database.mysql_database}?charset=utf8mb4"
 
-engine = create_engine(DATABASE_URI)
-Base.metadata.create_all(engine)
-Session = sessionmaker(bind=engine)
+def _get_database_uri() -> str:
+    """构建数据库连接 URI"""
+    return f"mysql+pymysql://{settings.database.mysql_user}:{settings.database.mysql_password}@{settings.database.mysql_host}:{settings.database.mysql_port}/{settings.database.mysql_database}?charset=utf8mb4"
 
-# ----- 工具定义 (增删改查) -----
+
+def _ensure_db_initialized():
+    """延迟初始化数据库连接"""
+    global _engine, _Session
+    if _engine is None:
+        _engine = create_engine(_get_database_uri())
+        Base.metadata.create_all(_engine)
+        _Session = sessionmaker(bind=_engine)
+    return _Session
+
+
+def get_session():
+    """获取数据库会话"""
+    Session = _ensure_db_initialized()
+    return Session()
+
+
 from pydantic import BaseModel, Field
 
 
@@ -99,7 +112,7 @@ class QuerySalesSchema(BaseModel):
 @tool(args_schema=AddSaleSchema)
 def add_sale(product_id, employee_id, customer_id, sale_date, quantity, amount, discount):
     """Add sale record to the database."""
-    session = Session()
+    session = get_session()
     try:
         new_sale = SalesData(
             product_id=product_id,
@@ -112,7 +125,7 @@ def add_sale(product_id, employee_id, customer_id, sale_date, quantity, amount, 
         )
         session.add(new_sale)
         session.commit()
-        return {"messages": ["销售记录添加成功。"]}
+        return {"messages": ["记录添加成功。"]}
     except Exception as e:
         return {"messages": [f"添加失败，错误原因：{e}"]}
     finally:
@@ -122,13 +135,13 @@ def add_sale(product_id, employee_id, customer_id, sale_date, quantity, amount, 
 @tool(args_schema=DeleteSaleSchema)
 def delete_sale(sales_id):
     """Delete sale record from the database."""
-    session = Session()
+    session = get_session()
     try:
         sale_to_delete = session.query(SalesData).filter(SalesData.sales_id == sales_id).first()
         if sale_to_delete:
             session.delete(sale_to_delete)
             session.commit()
-            return {"messages": ["销售记录删除成功。"]}
+            return {"messages": ["记录删除成功。"]}
         else:
             return {"messages": [f"未找到销售记录ID：{sales_id}"]}
     except Exception as e:
@@ -140,7 +153,7 @@ def delete_sale(sales_id):
 @tool(args_schema=UpdateSaleSchema)
 def update_sale(sales_id, quantity, amount):
     """Update sale record in the database."""
-    session = Session()
+    session = get_session()
     try:
         sale_to_update = session.query(SalesData).filter(SalesData.sales_id == sales_id).first()
         if sale_to_update:
@@ -159,7 +172,7 @@ def update_sale(sales_id, quantity, amount):
 @tool(args_schema=QuerySalesSchema)
 def query_sales(sales_id):
     """Query sale record from the database."""
-    session = Session()
+    session = get_session()
     try:
         sale_data = session.query(SalesData).filter(SalesData.sales_id == sales_id).first()
         if sale_data:
@@ -223,10 +236,7 @@ def create_agent(llm, tools, system_message: str):
 
 # 1) 数据库管理员代理
 def create_db_agent():
-    # key = "hk-uomxwi1000053684154a700e0b331d4846fa5bf6fb77ddaf"
-    # base_url = "https://api.openai-hk.com/v1"
-    # db_llm = ChatOpenAI(model="gpt-4o", api_key=key, base_url=base_url, temperature=0)
-    
+
     # 使用 settings 配置
     db_llm = ChatOpenAI(
         model=settings.llm.model_name, 
