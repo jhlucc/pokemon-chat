@@ -22,6 +22,8 @@ from src.agents.tools.websearch.websearcher import LiteBaseSearcher
 from src.agents.kg_agent import KGQueryAgent
 from src.utils.logger import LogManager
 from src.models.schemas import AgentResponse
+from src.agents.interrupts import approval_node
+
 
 
 # Middleware Imports
@@ -42,6 +44,9 @@ class AgentState(MessagesState):
     user_id: Optional[str]
     thread_id: Optional[str]
     response_mode: Optional[str] # "text", "json", "markdown"
+    approval_status: Optional[str] # "approved", "rejected"
+    user_feedback: Optional[str]
+
 
 class PokemonKGChatAgent(BaseAgent):
     """宝可梦知识图谱聊天代理"""
@@ -189,6 +194,7 @@ class PokemonKGChatAgent(BaseAgent):
         builder.add_node("kg_sqler", self._kgsql_node)
         builder.add_node("graph_rager", self._graph_rager)
         builder.add_node("web_searcher", RunnableLambda(self._web_searcher))
+        builder.add_node("approval", approval_node)
 
         # 定义成员列表
         self.members = ["chat", "graph_rager", "web_searcher"]
@@ -200,7 +206,17 @@ class PokemonKGChatAgent(BaseAgent):
             builder.add_edge(member, "supervisor")
 
         # 添加条件边
-        builder.add_conditional_edges("supervisor", lambda state: state["next"])
+        def route_supervisor(state):
+            next_node = state["next"]
+            # 示例: 如果 supervisor 指定 approval，或者我们在某处检测到敏感操作
+            if next_node == "approval":
+                return "approval"
+            return next_node
+
+        builder.add_conditional_edges("supervisor", route_supervisor)
+        # approval 之后通常回到 supervisor 或继续执行
+        builder.add_edge("approval", "supervisor")
+        
         builder.add_edge(START, "supervisor")
 
         # 编译图 - 使用 checkpointer
@@ -336,6 +352,7 @@ class PokemonKGChatAgent(BaseAgent):
             "2. 可以链式调用多个模块\n"
             "3. 当某个模块结果不足时，继续调用其他模块\n"
             "4. 任务完成时，返回 FINISH 终止符\n"
+            "5. 当用户询问'删除记忆'或'清空历史'等敏感操作时，返回 'approval' 模块进行确认\n"
         )
 
         prompt = ChatPromptTemplate.from_template("""

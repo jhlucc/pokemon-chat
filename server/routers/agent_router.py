@@ -1,6 +1,8 @@
 from fastapi import APIRouter, HTTPException, BackgroundTasks, Body
 from typing import Dict, Any, List, Optional
+from langgraph.types import Command
 from src.agents.manager import agent_manager
+
 from src.utils.logger import LogManager
 
 logger = LogManager()
@@ -73,4 +75,38 @@ async def update_agent_state(
             raise HTTPException(status_code=400, detail="该 Agent 不支持状态更新")
     except Exception as e:
         logger.error(f"Error updating state: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/{agent_name}/resume/{thread_id}")
+async def resume_agent(
+    agent_name: str,
+    thread_id: str,
+    payload: Dict[str, Any] = Body(...)
+):
+    """恢复被中断的 Agent 执行"""
+    try:
+        agent = agent_manager.get_agent(agent_name)
+        if not hasattr(agent, "graph"):
+             raise HTTPException(status_code=400, detail="该 Agent 不支持图执行")
+        
+        # 使用 Command(resume=...) 恢复
+        # payload 通常包含用户对 interrupt 的反馈
+        resume_value = payload.get("resume")
+        if resume_value is None:
+             # 如果 payload 自身就是 resume 值
+             resume_value = payload
+
+        config = {"configurable": {"thread_id": thread_id}}
+        
+        # 异步调用 invoke 继续执行
+        # 注意: 这里 invoke 会继续运行直到结束或下一个中断
+        # 我们可能希望 background 运行或者 stream，为了简单这里 await 结果
+        # 但通常 resume 后是继续之前的 stream 逻辑
+        # 这里简单 await 返回最终状态
+        await agent.graph.ainvoke(Command(resume=resume_value), config)
+        
+        return {"status": "resumed"}
+        
+    except Exception as e:
+        logger.error(f"Error resuming agent: {e}")
         raise HTTPException(status_code=500, detail=str(e))

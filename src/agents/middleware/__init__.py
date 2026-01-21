@@ -24,4 +24,5 @@ __all__ = [
     "RetryMiddleware",
     "FallbackMiddleware",
     "MemoryMiddleware",
+    "InjectionMiddleware"
 ]
