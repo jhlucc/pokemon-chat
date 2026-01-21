@@ -50,7 +50,11 @@ class DeepAgent(BaseAgent):
     """
     
     def __init__(self):
-        self.graph = self._build_graph()
+        self._graph = self._build_graph()
+
+    @property
+    def graph(self):
+        return self._graph
 
     def _build_graph(self):
         builder = StateGraph(DeepContext)

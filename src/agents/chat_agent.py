@@ -220,7 +220,11 @@ class PokemonKGChatAgent(BaseAgent):
         builder.add_edge(START, "supervisor")
 
         # 编译图 - 使用 checkpointer
-        self.graph = builder.compile(checkpointer=self.checkpointer)
+        self._graph = builder.compile(checkpointer=self.checkpointer)
+
+    @property
+    def graph(self):
+        return self._graph
 
     # 节点函数定义 ... (后续补全)
     
