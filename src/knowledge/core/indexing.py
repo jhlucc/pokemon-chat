@@ -5,9 +5,9 @@ from src.plugins.parser import PdfParser, DocxParser, ExcelParser, PptParser, Tx
 from src.plugins.vision._ocr import OCRHandler2
 from langchain_core.documents import Document
 from langchain_text_splitters import CharacterTextSplitter
-from src.utils import logger
+from src.utils.logger import get_logger
 
-_log = logger.LogManager()
+_log = get_logger(__name__)
 
 
 def parse_file(

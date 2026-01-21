@@ -8,11 +8,14 @@ from src.agents.deep_agent.context import DeepContext
 from src.core.settings import settings
 from src.agents.tools.runtime import ToolRuntime
 from src.agents.context.prompts import dynamic_prompt
+from src.utils.logger import get_logger
+
+logger = get_logger(__name__)
 
 # Nodes
 async def research_node(state: DeepContext, config: RunnableConfig):
     """Execution step: Perform research or analysis"""
-    print(f"--- [DeepAgent] Researching: {state.get('topic')} (Iter: {state.get('iterations', 0)}) ---")
+    logger.info(f"--- [DeepAgent] Researching: {state.get('topic')} (Iter: {state.get('iterations', 0)}) ---")
     
     # In a real impl, this would call an LLM with search tools
     # For now, we simulate a finding
@@ -24,7 +27,7 @@ async def research_node(state: DeepContext, config: RunnableConfig):
 
 async def critique_node(state: DeepContext, config: RunnableConfig):
     """Critique step: Review findings"""
-    print("--- [DeepAgent] Critiquing ---")
+    logger.info("--- [DeepAgent] Critiquing ---")
     # Simulate critique
     return {
         "messages": [AIMessage(content="Critique: Needs more details on specific stats.")]
@@ -37,7 +40,7 @@ def route_step(state: DeepContext) -> Literal["critique", "finalize"]:
 
 async def finalize_node(state: DeepContext, config: RunnableConfig):
     """Finalize report"""
-    print("--- [DeepAgent] Finalizing ---")
+    logger.info("--- [DeepAgent] Finalizing ---")
     # Compile report
     return {
         "final_report": f"Final Report on {state.get('topic')}: ..."
@@ -49,12 +52,8 @@ class DeepAgent(BaseAgent):
     Uses a Research -> Critique loop.
     """
     
-    def __init__(self):
-        self._graph = self._build_graph()
-
-    @property
-    def graph(self):
-        return self._graph
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
 
     def _build_graph(self):
         builder = StateGraph(DeepContext)

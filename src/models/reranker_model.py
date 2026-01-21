@@ -57,7 +57,7 @@ class SiliconFlowReranker(BaseReranker):
     """SiliconFlow Reranker API"""
     
     def __init__(self, model: str = None, api_key: str = None):
-        self.model = model or settings.reranker.model
+        self.model = model or settings.reranker.model_name
         self.api_key = api_key or settings.get_api_key("siliconflow")
         self.url = "https://api.siliconflow.cn/v1/rerank"
         
@@ -94,7 +94,7 @@ class DashScopeReranker(BaseReranker):
     """阿里 DashScope Reranker API"""
     
     def __init__(self, model: str = None, api_key: str = None):
-        self.model = model or settings.reranker.model or "gte-rerank"
+        self.model = model or settings.reranker.model_name or "gte-rerank"
         self.api_key = api_key or settings.get_api_key("dashscope")
         self.url = "https://dashscope.aliyuncs.com/api/v1/services/rerank/text-rerank/v1/rerank"
         
@@ -136,7 +136,7 @@ class JinaReranker(BaseReranker):
     """Jina AI Reranker API"""
     
     def __init__(self, model: str = None, api_key: str = None):
-        self.model = model or settings.reranker.model or "jina-reranker-v2-base-multilingual"
+        self.model = model or settings.reranker.model_name or "jina-reranker-v2-base-multilingual"
         self.api_key = api_key or settings.get_api_key("jina")
         self.url = "https://api.jina.ai/v1/rerank"
         
@@ -173,7 +173,7 @@ class CohereReranker(BaseReranker):
     """Cohere Reranker API"""
     
     def __init__(self, model: str = None, api_key: str = None):
-        self.model = model or settings.reranker.model or "rerank-multilingual-v3.0"
+        self.model = model or settings.reranker.model_name or "rerank-multilingual-v3.0"
         self.api_key = api_key or settings.get_api_key("cohere")
         self.url = "https://api.cohere.ai/v1/rerank"
         
@@ -246,7 +246,7 @@ def get_reranker(
 
 # 兼容旧接口
 class RerankerWrapper:
-    """兼容旧版接口的包装类"""
+    """兼容接口的包装类"""
     
     def __init__(self, reranker_key: str = None, model_name: str = None, **kwargs):
         if reranker_key:
@@ -263,7 +263,7 @@ if __name__ == '__main__':
     # 测试
     print(f"当前 Reranker 配置:")
     print(f"  Provider: {settings.reranker.provider}")
-    print(f"  Model: {settings.reranker.model}")
+    print(f"  Model: {settings.reranker.model_name}")
     
     query = "皮卡丘的进化是什么？"
     docs = [

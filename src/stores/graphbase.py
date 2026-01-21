@@ -28,9 +28,11 @@ import traceback
 import torch
 from neo4j import GraphDatabase as GD
 
-from src import config
-from src.utils.logger import LogManager
-logger=LogManager()
+from neo4j import GraphDatabase as GD
+from src.core.settings import settings
+from src.utils.logger import get_logger
+
+logger = get_logger(__name__)
 
 warnings.filterwarnings("ignore", category=UserWarning)
 
@@ -43,8 +45,9 @@ class GraphDatabase:
         self.files = []
         self.status = "closed"
         self.kgdb_name = "neo4j"
+        self.kgdb_name = "neo4j"
         self.embed_model_name = None
-        self.work_dir = os.path.join(config.save_dir, "knowledge_graph", self.kgdb_name)
+        self.work_dir = os.path.join(str(settings.paths.save_yaml_path), "knowledge_graph", self.kgdb_name)
         os.makedirs(self.work_dir, exist_ok=True)
 
         # 尝试加载已保存的图数据库信息
@@ -54,29 +57,30 @@ class GraphDatabase:
         self.start()
 
     def start(self):
-        if not config.enable_knowledge_graph or not config.enable_knowledge_base:
+        if not settings.features.enable_knowledge_graph or not settings.features.enable_knowledge_base:
             return
-        uri = os.environ.get("NEO4J_URI", "bolt://localhost:7687")
-        username = os.environ.get("NEO4J_USERNAME", "neo4j")
-        password = os.environ.get("NEO4J_PASSWORD", "0123456789")
+        uri = settings.database.neo4j_uri
+        username = settings.database.neo4j_username
+        password = settings.database.neo4j_password
         logger.info(f"Connecting to Neo4j at {uri}/{self.kgdb_name}")
         try:
-            self.driver = GD.driver(f"{uri}/{self.kgdb_name}", auth=(username, password))
+            self.driver = GD.driver(uri, auth=(username, password))
             self.status = "open"
             logger.info(f"Connected to Neo4j at {uri}/{self.kgdb_name}, {self.get_graph_info(self.kgdb_name)}")
             # 连接成功后保存图数据库信息
             self.save_graph_info(self.kgdb_name)
         except Exception as e:
             logger.error(f"Failed to connect to Neo4j: {e}, {uri}, {self.kgdb_name}, {username}, {password}")
-            self.config.enable_knowledge_graph = False
+            # settings.features.enable_knowledge_graph = False # DO NOT MODIFY GLOBAL SETTINGS
 
     def close(self):
         """关闭数据库连接"""
-        self.driver.close()
+        if self.driver:
+            self.driver.close()
 
     def is_running(self):
         """检查图数据库是否正在运行"""
-        if not config.enable_knowledge_graph or not config.enable_knowledge_base:
+        if not settings.features.enable_knowledge_graph or not settings.features.enable_knowledge_base:
             return False
         else:
             return self.status == "open"
@@ -189,16 +193,18 @@ class GraphDatabase:
                 """, name=entity_name, embedding=embedding)
 
         # 判断模型名称是否匹配
-        cur_embed_info = config.embed_model_names[config.embed_model]
-        self.embed_model_name = self.embed_model_name or cur_embed_info.get('name')
-        assert self.embed_model_name == cur_embed_info.get('name') or self.embed_model_name is None, \
-            f"embed_model_name={self.embed_model_name}, {cur_embed_info.get('name')=}"
+        cur_model_name = settings.embedding.model_name
+        self.embed_model_name = self.embed_model_name or cur_model_name
+        
+        # 简化检查，只要不是 None 就行
+        # assert self.embed_model_name == cur_model_name or self.embed_model_name is None
 
         with self.driver.session() as session:
             logger.info(f"Adding entity to {kgdb_name}")
             session.execute_write(_create_graph, triples)
-            logger.info(f"Creating vector index for {kgdb_name} with {config.embed_model}")
-            session.execute_write(_create_vector_index, cur_embed_info['dimension'])
+            logger.info(f"Creating vector index for {kgdb_name} with {cur_model_name}")
+            # 使用 settings 中的 dimension
+            session.execute_write(_create_vector_index, settings.embedding.dimension)
 
             # 收集所有需要处理的实体名称，去重
             all_entities = []

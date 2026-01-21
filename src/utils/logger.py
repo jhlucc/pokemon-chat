@@ -4,104 +4,152 @@
 import os
 import time
 import logging
+from typing import Optional
 from src.core.settings import settings
+
+
+class HourlyFileHandler(logging.Handler):
+    """
+    自定义 Handler，将日志按 日期/小时.log 的结构存储
+    """
+    def __init__(self, log_directory: str):
+        super().__init__()
+        self.log_directory = log_directory
+        self.current_key = None
+        self.file_handler: Optional[logging.FileHandler] = None
+        # 定义 Formatter
+        self.formatter = logging.Formatter(
+            "[%(asctime)s] [%(filename)s|%(funcName)s] [line:%(lineno)d] %(levelname)-8s: %(message)s",
+            datefmt="%Y-%m-%d %H:%M"
+        )
+        self.setFormatter(self.formatter)
+
+    def emit(self, record):
+        try:
+            # 根据当前时间决定写入哪个文件
+            ts = time.time()
+            date_str = time.strftime("%Y-%m-%d", time.localtime(ts))
+            hour_str = time.strftime("%H", time.localtime(ts))
+            
+            key = f"{date_str}_{hour_str}"
+            
+            if self.current_key != key or self.file_handler is None:
+                self._rotate(date_str, hour_str, key)
+            
+            if self.file_handler:
+                self.file_handler.emit(record)
+        except Exception:
+            self.handleError(record)
+
+    def _rotate(self, date_str, hour_str, key):
+        """切换日志文件"""
+        if self.file_handler:
+            self.file_handler.close()
+            
+        date_folder = os.path.join(self.log_directory, date_str)
+        os.makedirs(date_folder, exist_ok=True)
+        
+        log_filename = f"{date_str}_{hour_str}.log"
+        log_file = os.path.join(date_folder, log_filename)
+        
+        self.file_handler = logging.FileHandler(log_file, encoding="utf-8")
+        self.file_handler.setFormatter(self.formatter)
+        self.current_key = key
+
+    def close(self):
+        if self.file_handler:
+            self.file_handler.close()
+        super().close()
+
+
+_setup_done = False
+
+def setup_global_logging():
+    """初始化全局日志配置"""
+    global _setup_done
+    if _setup_done:
+        return
+        
+    root_logger = logging.getLogger()
+    # 默认级别
+    root_logger.setLevel(logging.DEBUG)
+    
+    # 清除旧的 handlers (避免重复)
+    if root_logger.handlers:
+        for h in root_logger.handlers[:]:
+            root_logger.removeHandler(h)
+    
+    log_dir = str(settings.paths.log_dir)
+    if not os.path.exists(log_dir):
+        try:
+            os.makedirs(log_dir)
+        except Exception:
+            pass
+            
+    # 1. 所有的日志都输出到控制台
+    console_handler = logging.StreamHandler()
+    console_handler.setLevel(logging.DEBUG)
+    formatter = logging.Formatter(
+        "[%(asctime)s] [%(filename)s|%(funcName)s] [line:%(lineno)d] %(levelname)-8s: %(message)s",
+        datefmt="%Y-%m-%d %H:%M"
+    )
+    console_handler.setFormatter(formatter)
+    root_logger.addHandler(console_handler)
+    
+    # 2. 文件日志 (按小时轮转)
+    file_handler = HourlyFileHandler(log_dir)
+    file_handler.setLevel(logging.DEBUG)
+    root_logger.addHandler(file_handler)
+    
+    # 第三方库日志降噪
+    logging.getLogger("httpx").setLevel(logging.WARNING)
+    logging.getLogger("httpcore").setLevel(logging.WARNING)
+    logging.getLogger("urllib3").setLevel(logging.WARNING)
+    logging.getLogger("neo4j").setLevel(logging.WARNING)
+    
+    _setup_done = True
+
+
+def get_logger(name: Optional[str] = None) -> logging.Logger:
+    """
+    获取 Logger 实例
+    推荐使用: logger = get_logger(__name__)
+    """
+    setup_global_logging()
+    return logging.getLogger(name)
 
 
 class LogManager:
     """
-    日志文件会被存放到指定的日志根目录下，根据当前日期创建文件夹，
-    每个日志文件以当前小时为命名单位，而日志记录的时间格式只显示到分钟。
+    [Deprecated] 兼容旧代码的 LogManager。
+    请改用 get_logger(__name__)。
     """
-
     def __init__(self, log_directory: str = None):
-        """
-        :param log_directory: 日志存放的根目录
-        """
-        self.log_directory = log_directory or str(settings.paths.log_dir)
-        if not os.path.exists(self.log_directory):
-            os.makedirs(self.log_directory)
+        setup_global_logging()
+        # 保持旧行为，使用 "LogManager" 这个名字，
+        # 或者使用调用者的名字？旧代码没法自动获取调用者名字，除非 inspect。
+        # 这里统一用 LogManager，虽然会丢失 info，但兼容性最重要。
         self.logger = logging.getLogger("LogManager")
         self.logger.setLevel(logging.DEBUG)
-        # 将日志记录时间格式调整为到分钟级别
-        self.formatter = logging.Formatter(
-            "[%(asctime)s] [%(filename)s|%(funcName)s] [line:%(lineno)d] %(levelname)-8s: %(message)s",
-            datefmt="%Y-%m-%d %H:%M"  # 调整为到分钟精度
-        )
-
-    def _create_file_handler(self) -> logging.FileHandler:
-        """
-        根据当前日期和小时创建日志文件处理器。
-        """
-        # 当前日期
-        date_str = time.strftime("%Y-%m-%d")
-        # 当前小时（两位数）
-        hour_str = time.strftime("%H")
-        # 创建日期文件夹
-        date_folder = os.path.join(self.log_directory, date_str)
-        os.makedirs(date_folder, exist_ok=True)
-        # 文件名为 日期+小时.log，例如 2025-04-09_10.log
-        log_filename = f"{date_str}_{hour_str}.log"
-        log_file = os.path.join(date_folder, log_filename)
-
-        file_handler = logging.FileHandler(log_file, encoding="utf-8")
-        file_handler.setLevel(logging.DEBUG)
-        file_handler.setFormatter(self.formatter)
-        return file_handler
-
-    def _create_console_handler(self) -> logging.StreamHandler:
-        """
-        创建控制台日志处理器。
-        """
-        console_handler = logging.StreamHandler()
-        console_handler.setLevel(logging.DEBUG)
-        console_handler.setFormatter(self.formatter)
-        return console_handler
-
-    def _log(self, level: str, message: str) -> None:
-        """
-        :param level: 日志级别 ("debug"、"info"、"warning"、"error")
-        :param message: 要记录的日志消息
-        """
-        file_handler = self._create_file_handler()
-        console_handler = self._create_console_handler()
-
-        self.logger.addHandler(file_handler)
-        self.logger.addHandler(console_handler)
-
-        if level == "debug":
-            self.logger.debug(message)
-        elif level == "info":
-            self.logger.info(message)
-        elif level == "warning":
-            self.logger.warning(message)
-        elif level == "error":
-            self.logger.error(message)
-
-        # 记录完后移除处理器
-        self.logger.removeHandler(file_handler)
-        self.logger.removeHandler(console_handler)
-        file_handler.close()
 
     def debug(self, message: str) -> None:
-        """记录 DEBUG 日志"""
-        self._log("debug", message)
+        self.logger.debug(message, stacklevel=2)
 
     def info(self, message: str) -> None:
-        """记录 INFO 日志"""
-        self._log("info", message)
+        self.logger.info(message, stacklevel=2)
 
     def warning(self, message: str) -> None:
-        """记录 WARNING 日志"""
-        self._log("warning", message)
+        self.logger.warning(message, stacklevel=2)
 
     def error(self, message: str) -> None:
-        """记录 ERROR 日志"""
-        self._log("error", message)
+        self.logger.error(message, stacklevel=2)
 
 
 if __name__ == "__main__":
-    logger_instance = LogManager()
-    logger_instance.debug("这是一条调试信息")
-    logger_instance.info("这是一条普通信息")
-    logger_instance.warning("这是一条警告信息")
-    logger_instance.error("这是一条错误信息")
+    # Test new factory
+    log = get_logger("TestModule")
+    log.info("Testing get_logger")
+    
+    # Test legacy
+    legacy = LogManager()
+    legacy.info("Testing legacy LogManager")

@@ -1,8 +1,7 @@
-
-from src import config
+from src.core.settings import settings
 from src.models.reranker_model import RerankerWrapper
-from src.utils.logger import LogManager
-from src.models import select_model
+from src.utils.logger import get_logger
+from langchain_openai import ChatOpenAI
 from src.knowledge.core.prompts import *
 from src.stores import  KnowledgeBase
 from src.knowledge.core.operators import HyDEOperator
@@ -10,7 +9,7 @@ from src.mcp.client_core import MCPClient
 import asyncio, inspect,json
 knowledge_base = KnowledgeBase()
 
-_log = LogManager()
+_log = get_logger(__name__)
 
 def get_kg_agent():
     from src.agents.kg_agent import KGQueryAgent
@@ -20,20 +19,31 @@ class Retriever:
     def __init__(self):
         self._load_models()
         self.kg_agent = get_kg_agent()
-        self.default_distance_threshold = config.get("default_distance_threshold", 1.6)
-        self.top_k = config.get("default_top_k", 10)
+        self.default_distance_threshold = settings.kb_config.default_distance_threshold
+        self.top_k = settings.kb_config.default_top_k
         # self._mcp_client = MCPClient()  # 全局复用一条连接
-    def _load_models(self):
-        if config.enable_reranker:
-            self.reranker = RerankerWrapper(config)
 
-        if config.enable_web_search:
+    def _get_llm(self):
+        return ChatOpenAI(
+            model=settings.llm.model_name,
+            api_key=settings.llm.api_key,
+            base_url=settings.llm.api_base,
+            temperature=settings.llm.temperature,
+            max_tokens=settings.llm.max_tokens
+        )
+
+    def _load_models(self):
+        if settings.features.enable_reranker:
+            # 使用 settings 默认配置初始化
+            self.reranker = RerankerWrapper()
+
+        if settings.features.enable_web_search:
             from src.agents.tools.websearch.websearcher import LiteBaseSearcher, TavilyBasicSearcher
             self.web_searcher = LiteBaseSearcher()
 
     def retrieval(self, query, history, meta):
         refs = {"query": query, "history": history, "meta": meta}
-        refs["model_name"] = config.model_name
+        refs["model_name"] = settings.llm.model_name
         refs["entities"] = self.reco_entities(query, history, refs)
         refs["knowledge_base"] = self.query_knowledgebase(query, history, refs)
         refs["graph_base"] = self.query_graph(query, history, refs) #图谱
@@ -148,7 +158,7 @@ class Retriever:
 
         meta = refs["meta"]
         db_id = meta.get("db_id")
-        if not db_id or not config.enable_knowledge_base:
+        if not db_id or not settings.features.enable_knowledge_base:
             response["message"] = "知识库未启用、或未指定知识库、或知识库不存在"
             return response
 
@@ -171,7 +181,7 @@ class Retriever:
 
     def query_web(self, query, history, refs):
         """查询网络：直接同步调用 WebSearcher"""
-        if not (refs["meta"].get("use_web") and config.enable_web_search):
+        if not (refs["meta"].get("use_web") and settings.features.enable_web_search):
             return {"results": [], "message": "Web search is disabled"}
 
         try:
@@ -184,13 +194,12 @@ class Retriever:
 
     def rewrite_query(self, query, history, refs):
         """重写查询"""
-        model_provider = config.model_provider
-        model_name = config.model_name
-        model = select_model(model_provider=model_provider, model_name=model_name)
+        model = self._get_llm()
         if refs["meta"].get("mode") == "search":  # 如果是搜索模式，就使用 meta 的配置，否则就使用全局的配置
             rewrite_query_span = refs["meta"].get("use_rewrite_query", "off")
         else:
-            rewrite_query_span = config.use_rewrite_query
+            # 暂时默认为 off 或从 settings 读取如果存在
+            rewrite_query_span = "off" # settings.features.use_rewrite_query? 暂无该配置，默认为 off
 
         if rewrite_query_span == "off":
             rewritten_query = query
@@ -198,10 +207,10 @@ class Retriever:
 
             history_query = [entry["content"] for entry in history if entry["role"] == "user"] if history else ""
             rewritten_query_prompt = rewritten_query_prompt_template.format(history=history_query, query=query)
-            rewritten_query = model.predict(rewritten_query_prompt).content
+            rewritten_query = model.invoke(rewritten_query_prompt).content
 
         if rewrite_query_span == "hyde":
-            res = HyDEOperator.call(model_callable=model.predict, query=query, context_str=history_query)
+            res = HyDEOperator.call(model_callable=model.invoke, query=query, context_str=history_query)
             rewritten_query = res.content
 
         return rewritten_query
@@ -209,14 +218,12 @@ class Retriever:
     def reco_entities(self, query, history, refs):
         """识别句子中的实体"""
         query = refs.get("rewritten_query", query)
-        model_provider = config.model_provider
-        model_name = config.model_name
-        model = select_model(model_provider=model_provider, model_name=model_name)
+        model = self._get_llm()
 
         entities = []
         if refs["meta"].get("use_graph"):
             entity_extraction_prompt = keywords_prompt_template.format(text=query)
-            entities = model.predict(entity_extraction_prompt).content.split("<->")
+            entities = model.invoke(entity_extraction_prompt).content.split("<->")
             # entities = [entity for entity in entities if all(char.isalnum() or char in "汉字" for char in entity)]
 
         return entities

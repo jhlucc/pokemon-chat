@@ -7,12 +7,15 @@ from typing import List, Optional, Dict, Any
 
 from pymilvus import MilvusClient, MilvusException
 from pymilvus import FieldSchema, CollectionSchema, DataType
-from src import config
+from pymilvus import MilvusClient, MilvusException
+from pymilvus import FieldSchema, CollectionSchema, DataType
+from src.core.settings import settings
 from src.utils import  hashstr
 
 from src.stores.kb_db_manager import kb_db_manager
-from src.utils.logger import LogManager
-logger= LogManager()
+from src.utils.logger import get_logger
+
+logger = get_logger(__name__)
 # 知识库管理
 class KnowledgeBase:
     """
@@ -32,16 +35,16 @@ class KnowledgeBase:
         embedding_config: Optional[Dict[str, Any]] = None
     ) -> None:
         # 工作目录 & DB 管理
-        self.work_dir = os.path.join(config.save_dir, "data")
+        self.work_dir = os.path.join(str(settings.paths.save_yaml_path), "data")
         os.makedirs(self.work_dir, exist_ok=True)
         self.db_manager = kb_db_manager
 
         # 检索参数
-        self.default_distance_threshold = config.get("default_distance_threshold", 0.5)
-        self.default_rerank_threshold = config.get("default_rerank_threshold", 0.1)
-        self.default_max_query_count = config.get("default_max_query_count", 20)
-        self.top_k = config.get("default_top_k", 10)
-        self.conf=0
+        self.default_distance_threshold = settings.kb_config.default_distance_threshold
+        self.default_rerank_threshold = settings.kb_config.default_rerank_threshold
+        self.default_max_query_count = settings.kb_config.default_max_query_count
+        self.top_k = settings.kb_config.default_top_k
+        self.conf = ""
         # 初始化模型与服务
         self._check_migration()
         self._load_embedding_model(embedding_config)
@@ -62,12 +65,11 @@ class KnowledgeBase:
     # -- Embedding 模型 ---------------------------------------------------
     def _load_embedding_model(self, embedding_config: Optional[Dict[str, Any]]):
         logger.info(f"传入的 embedding_config: {embedding_config}")
-        if not config.enable_knowledge_base:
+        if not settings.features.enable_knowledge_base:
             self.embed_model = None
             return
         
         from src.models.embedding import get_embedding_model
-        from src.core.settings import settings
         
         # 使用新的 settings 获取 embedding 配置
         # model_name格式: "BAAI/bge-m3" 或带provider前缀
@@ -82,7 +84,7 @@ class KnowledgeBase:
         self.conf = model_name
         self.embed_model = get_embedding_model(model=model_name)
         
-        if config.enable_reranker:
+        if settings.features.enable_reranker:
             from src.models.reranker_model import get_reranker
             self.reranker = get_reranker()
         else:
@@ -91,8 +93,8 @@ class KnowledgeBase:
     # -- Milvus 连接 --------------------------------------------------------
     def _connect_milvus(self, uri: Optional[str]):
         try:
-            # 优先使用函数参数 -> 再看环境变量 -> 再看 config 默认值
-            target = uri or os.getenv("MILVUS_URI") or config.get("milvus_uri", "http://localhost:19530")
+            # 优先使用函数参数 -> 再看环境变量 -> 再看 settings 默认值
+            target = uri or os.getenv("MILVUS_URI") or settings.database.milvus_uri
 
             # 自动补 http:// 前缀，防止只写了 localhost:19530
             if not target.startswith("http://") and not target.startswith("https://"):
@@ -330,7 +332,7 @@ class KnowledgeBase:
         # 重排序
         if rerank and self.reranker and filtered:
             texts = [r["entity"]["text"] for r in filtered]
-            scores = self.reranker.compute_score([query, texts], normalize=False)
+            scores = self.reranker.compute_score(query, texts, normalize=False)
             for r, s in zip(filtered, scores):
                 r["rerank_score"] = float(s)  # 转 float，保证可 JSON
             filtered = [

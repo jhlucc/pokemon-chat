@@ -20,7 +20,7 @@ from src.agents.base import BaseAgent
 from src.knowledge import PokemonLightRAG
 from src.agents.tools.websearch.websearcher import LiteBaseSearcher
 from src.agents.kg_agent import KGQueryAgent
-from src.utils.logger import LogManager
+from src.utils.logger import get_logger
 from src.models.schemas import AgentResponse
 from src.agents.interrupts import approval_node
 
@@ -36,7 +36,7 @@ from src.agents.middleware import (
     MiddlewareContext
 )
 
-logger = LogManager()
+logger = get_logger(__name__)
 
 # 状态定义
 class AgentState(MessagesState):
@@ -55,63 +55,59 @@ class PokemonKGChatAgent(BaseAgent):
         self, 
         openai_base_url: str = None,
         openai_api_key: str = None,
-        model_name: str = None
+        model_name: str = None,
+        **kwargs
     ):
         # 优先使用传入参数，否则使用全局配置
         self.openai_base_url = openai_base_url or settings.llm.api_base
         self.openai_api_key = openai_api_key or settings.llm.api_key
         self.model_name = model_name or settings.llm.model_name
         
-        # 初始化中间件
-        self._init_middleware()
-        
-        # 初始化组件
-        self._init_components()
-        
         # 初始化 Checkpointer
-        self._init_checkpointer()
+        checkpointer = self._create_checkpointer()
         
-        # 构建图
-        self._build_graph()
+        # 调用父类初始化 (会自动调用 _init_components 和 _build_graph)
+        super().__init__(checkpointer=checkpointer, **kwargs)
 
-    def _init_checkpointer(self):
-        """初始化 Checkpointer"""
+    def _create_checkpointer(self):
+        """初始化并返回 Checkpointer"""
         type_ = settings.agent.checkpointer_type.lower()
         if type_ == "memory":
-            self.checkpointer = MemorySaver()
+            return MemorySaver()
         elif type_ == "sqlite":
             try:
                 from langgraph.checkpoint.sqlite import SqliteSaver
                 import sqlite3
                 conn = sqlite3.connect(":memory:", check_same_thread=False) 
-                # 注意: 真正的 SQLite 持久化需要文件路径，这里暂时演示用 :memory: 或者需要配置路径
-                # 由于环境限制，暂时使用 MemorySaver 替代不支持的情况
-                self.checkpointer = SqliteSaver(conn)
+                return SqliteSaver(conn)
             except ImportError:
                 logger.warning("langgraph-checkpoint-sqlite not found, falling back to MemorySaver")
-                self.checkpointer = MemorySaver()
+                return MemorySaver()
         else:
             logger.warning(f"Unknown checkpointer type '{type_}', falling back to MemorySaver")
-            self.checkpointer = MemorySaver()
+            return MemorySaver()
 
     def _init_middleware(self):
         """初始化中间件链"""
         self.middleware = MiddlewareChain()
         
-        # 1. 日志中间件
+        # 日志中间件
         self.middleware.add(LoggingMiddleware(log_messages=True))
         
-        # 2. 记忆管理中间件
+        # 记忆管理中间件
         self.middleware.add(MemoryMiddleware(
             max_messages=settings.agent.conversation_max_messages,
             strategy="trim"
         ))
         
-        # 3. 重试中间件
+        # 重试中间件
         self.middleware.add(RetryMiddleware(max_retries=2))
 
-    def _init_components(self):
+    def _init_components(self, **kwargs):
         """初始化所有组件"""
+        # 初始化中间件
+        self._init_middleware()
+
         # 初始化 LLM - 包装重试和回退中间件
         self.base_llm = ChatOpenAI(
             model=self.model_name,
@@ -124,16 +120,16 @@ class PokemonKGChatAgent(BaseAgent):
         # 使用中间件包装 LLM 调用
         context = MiddlewareContext(agent_name="chat_agent")
         # 包装 Invoke 方法以支持重试等中间件逻辑
-        # 使用 RunnableLambda 保持 LangChain 兼容性
         wrapped_invoke = self.middleware.wrap_model_call(self.base_llm.invoke, context)
-        self.llm = RunnableLambda(wrapped_invoke)
+        self._llm = RunnableLambda(wrapped_invoke)
 
 
         # 初始化知识图谱查询代理
         self.kgsql_agent = None
         if settings.features.enable_knowledge_graph:
             try:
-                self.kgsql_agent = KGQueryAgent(llm=self.llm)
+                # 使用 self._llm 而不是 self.llm
+                self.kgsql_agent = KGQueryAgent(llm=self._llm)
             except Exception as e:
                 logger.error(f"Failed to initialize KGQueryAgent: {e}")
 
@@ -462,21 +458,8 @@ class PokemonKGChatAgent(BaseAgent):
             "all_tools": ["graph_query", "retrieval", "web_search"]
         }
 
-    # Time Travel APIs
-    async def get_state(self, thread_id: str):
-        """获取当前状态"""
-        config = {"configurable": {"thread_id": thread_id}}
-        return await self.graph.aget_state(config)
+    # Time Travel APIs - 已由 BaseAgent 实现
 
-    async def get_state_history(self, thread_id: str, limit: int = 10):
-        """获取状态历史"""
-        config = {"configurable": {"thread_id": thread_id}}
-        return [s async for s in self.graph.aget_state_history(config, limit=limit)]
-
-    async def update_state(self, thread_id: str, values: dict, as_node: str = None):
-        """更新状态 (时间旅行/人工干预)"""
-        config = {"configurable": {"thread_id": thread_id}}
-        return await self.graph.aupdate_state(config, values, as_node=as_node)
 
 # 使用示例
 if __name__ == "__main__":

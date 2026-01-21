@@ -1,8 +1,8 @@
 from typing import Dict, Type, Any, Optional
 from src.agents.base import BaseAgent
-from src.utils.logger import LogManager
+from src.utils.logger import get_logger
 
-logger = LogManager()
+logger = get_logger(__name__)
 
 
 class SingletonMeta(type):

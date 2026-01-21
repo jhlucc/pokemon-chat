@@ -159,6 +159,7 @@ class RerankerSettings(BaseSettings):
     """Reranker 配置"""
     model_config = SettingsConfigDict(env_prefix="reranker_", extra="ignore")
     
+    provider: str = "siliconflow"
     enabled: bool = True
     api_key: str = ""
     api_base: str = "https://api.siliconflow.cn/v1"
@@ -236,6 +237,26 @@ class Settings(BaseSettings):
     agent: AgentSettings = Field(default_factory=AgentSettings)
     tools: ToolSettings = Field(default_factory=ToolSettings)
     kb_config: KnowledgeBaseConfig = Field(default_factory=KnowledgeBaseConfig)
+
+    def get_api_key(self, provider: str) -> str:
+        """根据 provider 获取 API Key"""
+        provider = provider.lower()
+        key = ""
+        if provider == "siliconflow":
+            # 优先使用 embedding/reranker/llm 配置中的 key
+            key = self.embedding.api_key or self.reranker.api_key or self.llm.api_key
+            if not key:
+                key = os.getenv("SILICONFLOW_API_KEY", "")
+        elif provider == "dashscope":
+            key = os.getenv("DASHSCOPE_API_KEY", "")
+        elif provider == "jina":
+            key = os.getenv("JINA_API_KEY", "")
+        elif provider == "cohere":
+            key = os.getenv("COHERE_API_KEY", "")
+        elif provider == "openai":
+            key = self.llm.api_key or os.getenv("OPENAI_API_KEY", "")
+        
+        return key
 
 
 

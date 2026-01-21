@@ -5,8 +5,8 @@ from src.core.settings import settings
 from pathlib import Path
 from dotenv import load_dotenv
 load_dotenv()
-from src.utils.logger import LogManager
-logger=LogManager()
+from src.utils.logger import get_logger
+logger = get_logger(__name__)
 DEFAULT_MOCK_API = 'this_is_mock_api_key_in_frontend'
 cur_dir = os.path.dirname(__file__)
 
