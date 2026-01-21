@@ -73,8 +73,8 @@ class Config(SimpleConfig):
 
         self.load()
         self.handle_self()
-        if not os.path.exists(self.filename):
-            self.save()
+        # if not os.path.exists(self.filename):
+        #     self.save()
     def add_item(self, key, default, des=None, choices=None):
         self.__setattr__(key, default)
         self._config_items[key] = {
@@ -90,6 +90,8 @@ class Config(SimpleConfig):
             "model_provider_status",
             "embed_model_names",
             "reranker_names",
+            "filename",
+            "save_dir",
         ]
         return {k: v for k, v in self.items() if k not in blocklist}
 
