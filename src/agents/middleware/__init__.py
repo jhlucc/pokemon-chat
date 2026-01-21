@@ -13,6 +13,8 @@ from .logging import LoggingMiddleware
 from .retry import RetryMiddleware
 from .fallback import FallbackMiddleware
 from .memory import MemoryMiddleware
+from .injection import InjectionMiddleware
+
 
 __all__ = [
     "BaseMiddleware",
