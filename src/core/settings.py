@@ -188,6 +188,20 @@ class FeatureSettings(BaseSettings):
     enable_reranker: bool = Field(default=True, alias="ENABLE_RERANKER")
 
 
+class AgentSettings(BaseSettings):
+    """Agent 高级功能配置"""
+    model_config = SettingsConfigDict(extra="ignore")
+    
+    # Checkpointer 类型: memory, sqlite
+    checkpointer_type: str = Field(default="memory", alias="CHECKPOINTER_TYPE")
+    # 对话最大消息数
+    conversation_max_messages: int = Field(default=50, alias="CONVERSATION_MAX_MESSAGES")
+    # 时间旅行功能
+    enable_time_travel: bool = Field(default=False, alias="ENABLE_TIME_TRAVEL")
+    # 中断/审批功能
+    enable_interrupts: bool = Field(default=False, alias="ENABLE_INTERRUPTS")
+
+
 class KnowledgeBaseConfig(BaseSettings):
     """知识库配置（兼容旧 CONFIG 字典）"""
     model_config = SettingsConfigDict(extra="ignore")
@@ -217,6 +231,7 @@ class Settings(BaseSettings):
     reranker: RerankerSettings = Field(default_factory=RerankerSettings)
     llm: LLMSettings = Field(default_factory=LLMSettings)
     features: FeatureSettings = Field(default_factory=FeatureSettings)
+    agent: AgentSettings = Field(default_factory=AgentSettings)
     kb_config: KnowledgeBaseConfig = Field(default_factory=KnowledgeBaseConfig)
 
 
