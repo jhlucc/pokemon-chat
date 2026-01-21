@@ -1,17 +1,17 @@
-# LangChain 1.x compatible dependencies
-langchain==1.0.0
-langchain-core==1.0.0
-langchain-community==1.0.0
-langchain-openai==1.0.0
-langchain-text-splitters==1.0.0
-langchain-chroma==1.0.0
+# LangChain 1.x compatible dependencies (Verified PyPI versions Jan 2026)
+langchain==1.2.6
+langchain-core==1.2.7
+langchain-community==0.4.1
+langchain-openai==1.1.7
+langchain-text-splitters==1.1.0
+langchain-chroma==1.1.0
 langchain-graphrag==0.1.1
-langchain_ollama==1.0.0
-langchain_experimental==1.0.0
-langgraph>=0.4.0
+langchain-ollama==1.0.1
+langchain-experimental==0.4.1
+langgraph==1.0.6
 
 # Vector & Graph databases
-pymilvus>=2.3.0
+pymilvus==2.5.0
 py2neo==2021.2.4
 
 # Document processing
