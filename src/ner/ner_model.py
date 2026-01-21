@@ -2,16 +2,27 @@ import os
 import pickle
 
 import ahocorasick
-import torch
-from seqeval.metrics import f1_score
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
-from sklearn.model_selection import train_test_split
-from torch import nn
-from torch.utils.data import Dataset, DataLoader
-from tqdm import tqdm
-from transformers import BertModel, BertTokenizer
-from src.core.settings import *
+from src.core.settings import settings, CACHE_BERTA_MODEL, BASE_DIR, ENTITY_DATA, NER_DATA, MODEL_ROBERTA_PATH
+
+# Conditional imports for BERT-based NER
+# Only import torch/transformers if enable_ner_bert is True
+_BERT_AVAILABLE = False
+if settings.features.enable_ner_bert:
+    try:
+        import torch
+        from torch import nn
+        from torch.utils.data import Dataset, DataLoader
+        from transformers import BertModel, BertTokenizer
+        from seqeval.metrics import f1_score
+        from sklearn.model_selection import train_test_split
+        from tqdm import tqdm
+        _BERT_AVAILABLE = True
+    except ImportError as e:
+        import warnings
+        warnings.warn(f"BERT NER dependencies not installed: {e}. BERT NER will be disabled.")
+        _BERT_AVAILABLE = False
 
 # 模型训练
 cache_model = CACHE_BERTA_MODEL
@@ -176,34 +187,36 @@ class tfidf_alignment:
         return new_result
 
 
-class Nerdataset(Dataset):
-    def __init__(self, all_text, all_label, tokenizer, max_len, tag2idx, is_dev=False):
-        self.all_text = all_text
-        self.all_label = all_label
-        self.tokenizer = tokenizer
-        self.max_len = max_len
-        self.tag2idx = tag2idx
-        self.is_dev = is_dev
+# BERT-dependent classes - only defined if BERT is available
+if _BERT_AVAILABLE:
+    class Nerdataset(Dataset):
+        def __init__(self, all_text, all_label, tokenizer, max_len, tag2idx, is_dev=False):
+            self.all_text = all_text
+            self.all_label = all_label
+            self.tokenizer = tokenizer
+            self.max_len = max_len
+            self.tag2idx = tag2idx
+            self.is_dev = is_dev
 
-    def __getitem__(self, x):
-        text, label = self.all_text[x], self.all_label[x]
-        if self.is_dev:
-            max_len = min(len(self.all_text[x]) + 2, 500)
-        else:
-            max_len = self.max_len
-        text, label = text[:max_len - 2], label[:max_len - 2]
+        def __getitem__(self, x):
+            text, label = self.all_text[x], self.all_label[x]
+            if self.is_dev:
+                max_len = min(len(self.all_text[x]) + 2, 500)
+            else:
+                max_len = self.max_len
+            text, label = text[:max_len - 2], label[:max_len - 2]
 
-        x_len = len(text)
-        assert len(text) == len(label)
-        text_idx = self.tokenizer.encode(text, add_special_token=True)
-        label_idx = [self.tag2idx['<PAD>']] + [self.tag2idx[i] for i in label] + [self.tag2idx['<PAD>']]
+            x_len = len(text)
+            assert len(text) == len(label)
+            text_idx = self.tokenizer.encode(text, add_special_token=True)
+            label_idx = [self.tag2idx['<PAD>']] + [self.tag2idx[i] for i in label] + [self.tag2idx['<PAD>']]
 
-        text_idx += [0] * (max_len - len(text_idx))
-        label_idx += [self.tag2idx['<PAD>']] * (max_len - len(label_idx))
-        return torch.tensor(text_idx), torch.tensor(label_idx), x_len
+            text_idx += [0] * (max_len - len(text_idx))
+            label_idx += [self.tag2idx['<PAD>']] * (max_len - len(label_idx))
+            return torch.tensor(text_idx), torch.tensor(label_idx), x_len
 
-    def __len__(self):
-        return len(self.all_text)
+        def __len__(self):
+            return len(self.all_text)
 
 
 def build_tag2idx(all_tag):
@@ -214,26 +227,28 @@ def build_tag2idx(all_tag):
     return tag2idx
 
 
-class Bert_Model(nn.Module):
-    def __init__(self, model_name, hidden_size, tag_num, bi):
-        super().__init__()
-        self.bert = BertModel.from_pretrained(model_name)
-        self.gru = nn.RNN(input_size=768, hidden_size=hidden_size, num_layers=2, batch_first=True, bidirectional=bi)
-        if bi:
-            self.classifier = nn.Linear(hidden_size * 2, tag_num)
-        else:
-            self.classifier = nn.Linear(hidden_size, tag_num)
-        self.loss_fn = nn.CrossEntropyLoss(ignore_index=0)
+if _BERT_AVAILABLE:
+    class Bert_Model(nn.Module):
+        def __init__(self, model_name, hidden_size, tag_num, bi):
+            super().__init__()
+            self.bert = BertModel.from_pretrained(model_name)
+            self.gru = nn.RNN(input_size=768, hidden_size=hidden_size, num_layers=2, batch_first=True, bidirectional=bi)
+            if bi:
+                self.classifier = nn.Linear(hidden_size * 2, tag_num)
+            else:
+                self.classifier = nn.Linear(hidden_size, tag_num)
+            self.loss_fn = nn.CrossEntropyLoss(ignore_index=0)
 
-    def forward(self, x, label=None):
-        bert_0, _ = self.bert(x, attention_mask=(x > 0), return_dict=False)
-        gru_0, _ = self.gru(bert_0)
-        pre = self.classifier(gru_0)
-        if label is not None:
-            loss = self.loss_fn(pre.reshape(-1, pre.shape[-1]), label.reshape(-1))
-            return loss
-        else:
-            return torch.argmax(pre, dim=-1).squeeze(0)
+        def forward(self, x, label=None):
+            bert_0, _ = self.bert(x, attention_mask=(x > 0), return_dict=False)
+            gru_0, _ = self.gru(bert_0)
+            pre = self.classifier(gru_0)
+            if label is not None:
+                loss = self.loss_fn(pre.reshape(-1, pre.shape[-1]), label.reshape(-1))
+                return loss
+            else:
+                return torch.argmax(pre, dim=-1).squeeze(0)
+
 
 
 def merge(model_result_word, rule_result):
@@ -252,6 +267,10 @@ def merge(model_result_word, rule_result):
 
 
 def get_ner_result(model, tokenizer, sen, rule, tfidf_r, device, idx2tag):
+    """BERT-based NER result (requires torch/transformers)"""
+    if not _BERT_AVAILABLE:
+        raise RuntimeError("BERT NER is disabled. Set enable_ner_bert=true and install torch/transformers.")
+    
     sen_to = tokenizer.encode(sen, add_special_tokens=True, return_tensors='pt').to(device)
 
     pre = model(sen_to).tolist()
@@ -271,6 +290,33 @@ def get_ner_result(model, tokenizer, sen, rule, tfidf_r, device, idx2tag):
     # print('规则结果',rule_result)
     # print('整合结果', merge_result)
     # print('tfidf对齐结果', tfidf_result)
+    return tfidf_result
+
+
+def get_ner_result_simple(sen, rule=None, tfidf_r=None):
+    """
+     NER - 仅使用 AC 自动机 + TF-IDF 对齐
+    不需要 BERT/torch/transformers
+    
+    Args:
+        sen: 输入句子
+        rule: rule_find 实例 (可选，如为 None 则自动创建)
+        tfidf_r: tfidf_alignment 实例 (可选，如为 None 则自动创建)
+    
+    Returns:
+        dict: {entity_type: [entity_names]}
+    """
+    if rule is None:
+        rule = rule_find()
+    if tfidf_r is None:
+        tfidf_r = tfidf_alignment()
+    
+    # 使用 AC 自动机规则匹配
+    rule_result = rule.find(sen)  # [(start,end,cls,word), ...]
+    
+    # TF-IDF 对齐
+    tfidf_result = tfidf_r.align(rule_result)
+    
     return tfidf_result
 
 

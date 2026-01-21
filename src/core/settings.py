@@ -194,6 +194,7 @@ class FeatureSettings(BaseSettings):
     enable_web_search: bool = Field(default=False, alias="ENABLE_WEB_SEARCH")
     enable_mcp: bool = Field(default=False, alias="ENABLE_MCP")
     enable_reranker: bool = Field(default=True, alias="ENABLE_RERANKER")
+    enable_ner_bert: bool = Field(default=False, alias="ENABLE_NER_BERT")
 
 
 class AgentSettings(BaseSettings):
