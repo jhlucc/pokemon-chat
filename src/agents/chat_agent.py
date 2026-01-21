@@ -17,7 +17,7 @@ from langgraph.graph import StateGraph, MessagesState, START, END
 # Project Imports
 from src.core.settings import settings
 from src.agents.base import BaseAgent
-from src.knowledge import PokemonLightRAG, get_lightrag_instance
+from src.knowledge import PokemonLightRAG
 from src.agents.tools.websearch.websearcher import LiteBaseSearcher
 from src.agents.kg_agent import KGQueryAgent
 from src.utils.logger import LogManager
@@ -139,7 +139,7 @@ class PokemonKGChatAgent(BaseAgent):
 
 
         # 初始化图RAG (LightRAG)
-        self.lightrag = get_lightrag_instance(
+        self.lightrag = PokemonLightRAG(
             workspace="pokemon_kb",
             working_dir=str(settings.paths.artifacts_data),
         )
