@@ -6,22 +6,27 @@ from typing import List, Optional, Dict, Any
 
 from fastapi import APIRouter, File, UploadFile, HTTPException, Body, Query, Form
 from fastapi.responses import JSONResponse
-from pymilvus import Collection, MilvusException
 from src.utils.logger import LogManager
 from src import config
-from src.stores import KnowledgeBase
 from src.utils import hashstr
 from pydantic import BaseModel
-from src.stores.graphbase import GraphDatabase   # ← 你的 GraphDatabase 类
-kgdb = GraphDatabase()                                # 单例，启动时自动连接 Neo4j
+from src.runtime import get_kb, get_graph_db
+
+
+class _KBProxy:
+    def __getattr__(self, name):
+        return getattr(get_kb(), name)
+
+
+class _GraphDBProxy:
+    def __getattr__(self, name):
+        return getattr(get_graph_db(), name)
+
+
+kb = _KBProxy()
+kgdb = _GraphDBProxy()
 logger = LogManager()
 data = APIRouter(prefix="/data")
-
-# 单例 或者 在模块顶层初始化一次
-kb = KnowledgeBase(
-    milvus_uri=config.get("milvus_uri"),
-    embedding_config={"enable_knowledge_base": True, **config}
-)
 
 @data.get("/")
 async def list_databases():
@@ -79,7 +84,7 @@ class FileChunkPayload(BaseModel):
 
 @data.post("/file-to-chunk")
 async def file_to_chunk(payload: FileChunkPayload):
-    from rag.core.indexing import chunk_file
+    from src.knowledge.core.indexing import chunk_file
     try:
         docs = chunk_file(
             payload.file,
@@ -210,10 +215,11 @@ async def upload_file(
         buf.write(await file.read())
     return {"file_path": path, "db_id": db_id}
 
-from pymilvus import Collection, connections
-
 @data.delete("/document")
 async def delete_document(db_id: str = Body(...), file_id: str = Body(...)):
+    # Lazy import: keep server startup cheap when KB features are unused.
+    from pymilvus import Collection, MilvusException, connections
+
     try:
         dim = kb.db_manager.get_database(db_id)['dimension']
 
@@ -266,8 +272,6 @@ async def list_uploaded_files(db_id: str = Query(...)):
         return {"error": "Upload folder not found"}
     files = os.listdir(upload_dir)
     return {"files": files}
-from neo4j import GraphDatabase
-
 # graph
 @data.get("/graph")
 async def get_graph_info():

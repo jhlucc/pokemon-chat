@@ -1,3 +1,9 @@
+import os
+import unittest
+
+if not os.getenv('RUN_INTEGRATION_TESTS'):
+    raise unittest.SkipTest("Integration tests are skipped by default. Set RUN_INTEGRATION_TESTS=1 to run.")
+
 
 import asyncio
 import json

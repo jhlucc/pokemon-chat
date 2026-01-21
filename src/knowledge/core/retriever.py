@@ -3,25 +3,32 @@ from src.models.reranker_model import RerankerWrapper
 from src.utils.logger import get_logger
 from langchain_openai import ChatOpenAI
 from src.knowledge.core.prompts import *
-from src.stores import  KnowledgeBase
 from src.knowledge.core.operators import HyDEOperator
-from src.mcp.client_core import MCPClient
-import asyncio, inspect,json
-knowledge_base = KnowledgeBase()
+from src.runtime import get_kb, get_kg_agent, get_mcp_client
+import asyncio
+import json
+import threading
 
 _log = get_logger(__name__)
 
-def get_kg_agent():
-    from src.agents.kg_agent import KGQueryAgent
-    return KGQueryAgent()
 class Retriever:
 
     def __init__(self):
         self._load_models()
-        self.kg_agent = get_kg_agent()
+        self._kg_agent = None
         self.default_distance_threshold = settings.kb_config.default_distance_threshold
         self.top_k = settings.kb_config.default_top_k
         # self._mcp_client = MCPClient()  # 全局复用一条连接
+
+    def _get_kb(self):
+        return get_kb()
+
+    def _get_kg_agent(self):
+        if not settings.features.enable_knowledge_graph:
+            return None
+        if self._kg_agent is None:
+            self._kg_agent = get_kg_agent()
+        return self._kg_agent
 
     def _get_llm(self):
         return ChatOpenAI(
@@ -33,12 +40,16 @@ class Retriever:
         )
 
     def _load_models(self):
+        # Defaults so callers can safely access attributes behind feature flags.
+        self.reranker = None
+        self.web_searcher = None
+
         if settings.features.enable_reranker:
             # 使用 settings 默认配置初始化
             self.reranker = RerankerWrapper()
 
         if settings.features.enable_web_search:
-            from src.agents.tools.websearch.websearcher import LiteBaseSearcher, TavilyBasicSearcher
+            from src.agents.tools.websearch.websearcher import LiteBaseSearcher
             self.web_searcher = LiteBaseSearcher()
 
     def retrieval(self, query, history, meta):
@@ -52,9 +63,8 @@ class Retriever:
         return refs
 
     async def _call_mcp(self, query: str) -> dict:
-        client = MCPClient()
-        answer,_ = await  client.ask(query)
-
+        client = get_mcp_client()
+        answer, _ = await client.ask(query)
         return {"answer": answer}
     def restart(self):
         """所有需要重启的模型"""
@@ -63,7 +73,7 @@ class Retriever:
     def query_mysql_mcp(self, query, history, refs):
         meta = refs["meta"]
         mcp_id = meta.get("mcp_id")  # 按钮亮时 = 'default'
-        if not mcp_id:
+        if not mcp_id or not settings.features.enable_mcp:
             return {"answer": "" }
 
         try:
@@ -74,9 +84,23 @@ class Retriever:
                 loop = None
 
             if loop and loop.is_running():
-                future = asyncio.run_coroutine_threadsafe(
-                    self._call_mcp(query), loop)
-                return future.result()
+                # Avoid deadlock: run the coroutine in a fresh thread/event-loop.
+                result: dict = {"answer": ""}
+                err: Exception | None = None
+
+                def _runner():
+                    nonlocal result, err
+                    try:
+                        result = asyncio.run(self._call_mcp(query))
+                    except Exception as e:
+                        err = e
+
+                t = threading.Thread(target=_runner, daemon=True)
+                t.start()
+                t.join()
+                if err:
+                    raise err
+                return result
 
             # B) 普通同步环境：自己开一个 loop
             return asyncio.run(self._call_mcp(query))
@@ -138,15 +162,24 @@ class Retriever:
         raise NotImplementedError
 
     def query_graph(self, query, history, refs):
-        if refs["meta"].get("use_graph"):
+        if not (refs["meta"].get("use_graph") and settings.features.enable_knowledge_graph):
+            return {"answer": None, "subgraph": {"nodes": [], "edges": []}}
+
+        try:
+            agent = self._get_kg_agent()
+            if agent is None:
+                return {"answer": None, "subgraph": {"nodes": [], "edges": []}}
+
             # 调用 KGQueryAgent.query，传hops参数
-            result = self.kg_agent.query(
+            result = agent.query(
                 query,
                 hops=refs["meta"].get("graphHops", 2)
             )
             # result = {"answer": "...", "subgraph": {nodes{},edges}}
             return result
-        return {"answer": None, "subgraph": None}
+        except Exception as e:
+            _log.error(f"Graph query error: {e}")
+            return {"answer": None, "subgraph": {"nodes": [], "edges": []}, "message": str(e)}
 
     def query_knowledgebase(self, query, history, refs):
         response = {
@@ -166,7 +199,8 @@ class Retriever:
         response["rw_query"] = rw_query
 
         try:
-            kb_res = knowledge_base.search(
+            kb = self._get_kb()
+            kb_res = kb.search(
                 query=rw_query,
                 db_id=db_id,
                 distance_threshold=meta.get("distanceThreshold", self.default_distance_threshold),

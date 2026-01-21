@@ -99,13 +99,19 @@ def get_weather(location):
     """根据城市名获取实时天气信息"""
     url = "https://api.openweathermap.org/data/2.5/weather"
     location = translate_city_name(location)
+    api_key = settings.tools.openweather_api_key
+    if not api_key:
+        raise ValueError(
+            "Missing OpenWeather API key. Set `tool_openweather_api_key` (or `OPENWEATHER_API_KEY`) in your .env."
+        )
     params = {
         "q": location,
-        "appid": settings.tools.openweather_api_key or "ee5204216d6c4f500610967c11211409", # Fallback to existing key if not set, or remove fallback
+        "appid": api_key,
         "units": "metric",
         "lang": "zh_cn"
     }
-    response = requests.get(url, params=params)
+    response = requests.get(url, params=params, timeout=10)
+    response.raise_for_status()
     data = response.json()
     return json.dumps(data)
 

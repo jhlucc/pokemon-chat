@@ -1,32 +1,26 @@
 import warnings
 warnings.filterwarnings("ignore")
-import sys
-from pathlib import Path
-from typing import Dict, List, Any, Iterator
-from src.core.settings import settings
-import torch
+
+import logging
+import os
+import pickle
+import traceback
+from typing import Any, Dict, Iterator, List
+
 from langchain_core.messages import HumanMessage
 from langchain_core.tools import tool
 from langchain_openai import ChatOpenAI
 from langgraph.prebuilt import create_react_agent
-from py2neo import Graph
 from pydantic import BaseModel, Field
-from transformers import BertTokenizer
-from src.ner.ner_model import *
-# ---------- 项目路径处理 ----------
-project_root = Path(__file__).parent.parent.parent.resolve()
-sys.path.insert(0, str(project_root))
-
-# ---------- Neo4j 连接 ----------
-# 延迟初始化 or 使用全局配置
-# g = Graph(NEO4J_URI, auth=NEO4J_AUTH) # 移动到类内部初始化，避免 import 时连接失败
-
-
-
-# ========== 子图提取器 ==========
-from typing import List, Dict
 from py2neo import Graph
-import logging, traceback
+
+from src.core.settings import settings
+from src.ner.ner_model import _BERT_AVAILABLE, get_ner_result_simple, rule_find, tfidf_alignment
+from src.utils.logger import get_logger
+
+_log = get_logger(__name__)
+
+
 
 # ========== 子图提取器 ==========
 class GraphSubgraphExtractor:
@@ -104,50 +98,106 @@ class GraphSubgraphExtractor:
         raw = self._query(entity, hops, limit)
         return None if not raw else self._format(raw)
 
-class EntityRecognitionSingleton:
-    _instance = None
+class EntityRecognizer:
+    """Entity recognition helper for KG subgraph extraction.
 
-    def __new__(cls):
-        if cls._instance is None:
-            cls._instance = super(EntityRecognitionSingleton, cls).__new__(cls)
-            cls._instance._initialize()
-        return cls._instance
+    Prefers BERT NER when enabled and resources are present; falls back to
+    AC automaton + TF-IDF alignment (no torch/transformers required).
+    """
 
-    def _initialize(self):
-        self.rule = rule_find()
-        self.tfidf_r = tfidf_alignment()
-        self.base_dir = str(settings.paths.base_dir)
-        self.model_name = str(settings.paths.model_roberta_path)
-        self.pt_path = str(settings.paths.cache_berta_model)
+    def __init__(self):
+        self._rule = None
+        self._tfidf_r = None
 
-        ner_tag_path = str(settings.paths.ner_tag_path)
-        if os.path.exists(ner_tag_path):
-            with open(ner_tag_path, 'rb') as f:
-                self.tag2idx = pickle.load(f)
-                self.idx2tag = list(self.tag2idx)
-        else:
-            raise FileNotFoundError("tag2idx文件不存在！")
+        self._use_bert = bool(settings.features.enable_ner_bert and _BERT_AVAILABLE)
+        self._bert_loaded = False
+        self._bert_model = None
+        self._bert_tokenizer = None
+        self._bert_device = None
+        self._idx2tag = None
+        self._bert_get_ner_result = None
 
-        self.device = torch.device('cuda:0') if torch.cuda.is_available() else torch.device('cpu')
+    def _ensure_simple(self):
+        if self._rule is not None and self._tfidf_r is not None:
+            return
+        try:
+            self._rule = rule_find()
+            self._tfidf_r = tfidf_alignment()
+        except Exception as e:
+            _log.warning(f"NER simple init failed, will return empty entities: {e}")
+            self._rule = None
+            self._tfidf_r = None
 
-        self.tokenizer = BertTokenizer.from_pretrained(self.model_name, cache_dir=str(settings.paths.model_roberta_path))
+    def _ensure_bert(self):
+        if not self._use_bert or self._bert_loaded:
+            return
 
-        hidden_size = 128
-        bi = True
-        self.model = Bert_Model(self.model_name, hidden_size, len(self.tag2idx), bi)
+        # BERT NER still needs rule/tfidf for merging/alignment.
+        self._ensure_simple()
+        if self._rule is None or self._tfidf_r is None:
+            self._use_bert = False
+            return
 
-        if os.path.exists(self.pt_path):
-            # print("加载已有模型")
-            self.model.load_state_dict(torch.load(self.pt_path, map_location=self.device))
-        else:
-            raise FileNotFoundError("未找到模型权重文件!!")
+        try:
+            import torch
+            from src.ner.ner_model import Bert_Model, BertTokenizer, get_ner_result
 
-        self.model = self.model.to(self.device)
+            ner_tag_path = str(settings.paths.ner_tag_path)
+            pt_path = str(settings.paths.cache_berta_model)
+            model_dir = str(settings.paths.model_roberta_path)
 
-        # print('模型初始化完成 ......')
+            if not (os.path.exists(ner_tag_path) and os.path.exists(pt_path) and os.path.exists(model_dir)):
+                raise FileNotFoundError("NER BERT resources missing")
 
-    def ner(self, question):
-        return get_ner_result(self.model, self.tokenizer, question, self.rule, self.tfidf_r, self.device, self.idx2tag)
+            with open(ner_tag_path, "rb") as f:
+                tag2idx = pickle.load(f)
+            idx2tag = list(tag2idx)
+
+            device = torch.device("cuda:0") if torch.cuda.is_available() else torch.device("cpu")
+            tokenizer = BertTokenizer.from_pretrained(model_dir, cache_dir=model_dir)
+            model = Bert_Model(model_dir, hidden_size=128, tag_num=len(tag2idx), bi=True)
+            model.load_state_dict(torch.load(pt_path, map_location=device))
+            model = model.to(device)
+
+            self._bert_model = model
+            self._bert_tokenizer = tokenizer
+            self._bert_device = device
+            self._idx2tag = idx2tag
+            self._bert_get_ner_result = get_ner_result
+            self._bert_loaded = True
+        except Exception as e:
+            _log.warning(f"NER BERT init failed, fallback to simple NER: {e}")
+            self._use_bert = False
+            self._bert_loaded = False
+
+    def ner(self, question: str) -> dict:
+        # Try BERT first
+        if self._use_bert:
+            self._ensure_bert()
+            if self._bert_loaded:
+                try:
+                    return self._bert_get_ner_result(
+                        self._bert_model,
+                        self._bert_tokenizer,
+                        question,
+                        self._rule,
+                        self._tfidf_r,
+                        self._bert_device,
+                        self._idx2tag,
+                    )
+                except Exception as e:
+                    _log.warning(f"NER BERT run failed, fallback to simple NER: {e}")
+                    self._use_bert = False
+
+        # Fallback: rule + tfidf
+        try:
+            self._ensure_simple()
+            if self._rule is None or self._tfidf_r is None:
+                return {}
+            return get_ner_result_simple(question, rule=self._rule, tfidf_r=self._tfidf_r)
+        except Exception as e:
+            _log.warning(f"NER fallback failed: {e}")
+            return {}
 
 
 class KGQueryAgent:
@@ -158,9 +208,13 @@ class KGQueryAgent:
         初始化查询代理
         :param llm: 可选的语言模型实例，默认使用ChatOpenAI
         """
-        self.graph = Graph(settings.database.neo4j_uri, auth=settings.database.neo4j_auth)
+        # Neo4j: docker-compose.yml uses `NEO4J_AUTH=none` by default, so auth may be empty.
+        if settings.database.neo4j_password:
+            self.graph = Graph(settings.database.neo4j_uri, auth=settings.database.neo4j_auth)
+        else:
+            self.graph = Graph(settings.database.neo4j_uri)
         self.llm = llm or self._default_llm()
-        self.ner = EntityRecognitionSingleton()
+        self.ner = EntityRecognizer()
         self.subgraph_extractor = GraphSubgraphExtractor(self.graph)
         self.tools = self._init_tools()
         self.agent = self._create_agent()
@@ -193,7 +247,11 @@ class KGQueryAgent:
 
         if stream:
             return self.agent.stream(input_message, stream_mode="updates")
-        llm_ans= self.agent.invoke(input_message)
+        try:
+            llm_ans = self.agent.invoke(input_message)
+        except Exception as e:
+            _log.error(f"KG agent invoke failed: {e}")
+            return {"answer": f"图谱查询失败: {e}", "subgraph": {"nodes": [], "edges": []}}
         # === 提取最终回答文本 ===
         final_answer = ""
         try:
@@ -211,8 +269,15 @@ class KGQueryAgent:
         except Exception:
             flat_entities = []
 
-        subgraph_json = self.subgraph_extractor.get_subgraph(flat_entities[0], hops=hops) if flat_entities else {
-            "nodes": [], "edges": []}
+        try:
+            subgraph_json = (
+                self.subgraph_extractor.get_subgraph(flat_entities[0], hops=hops)
+                if flat_entities
+                else {"nodes": [], "edges": []}
+            )
+        except Exception as e:
+            _log.warning(f"Subgraph extraction failed: {e}")
+            subgraph_json = {"nodes": [], "edges": []}
         # print(subgraph_json)
         final_answer = "有图谱中的内容可知：" + final_answer
         return {

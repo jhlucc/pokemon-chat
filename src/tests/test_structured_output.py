@@ -1,3 +1,9 @@
+import os
+import unittest
+
+if not os.getenv('RUN_INTEGRATION_TESTS'):
+    raise unittest.SkipTest("Integration tests are skipped by default. Set RUN_INTEGRATION_TESTS=1 to run.")
+
 from src.models.schemas import AgentResponse, Source
 
 def test_agent_response():

@@ -1,18 +1,15 @@
 import os
+import random
 import shutil
 import time
 import traceback
-import random
-from typing import List, Optional, Dict, Any
+from typing import Any, Dict, List, Optional
 
-from pymilvus import MilvusClient, MilvusException
-from pymilvus import FieldSchema, CollectionSchema, DataType
-from pymilvus import MilvusClient, MilvusException
-from pymilvus import FieldSchema, CollectionSchema, DataType
+from pymilvus import CollectionSchema, DataType, FieldSchema, MilvusClient, MilvusException
+
 from src.core.settings import settings
-from src.utils import  hashstr
-
 from src.stores.kb_db_manager import kb_db_manager
+from src.utils import hashstr
 from src.utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -34,6 +31,14 @@ class KnowledgeBase:
         milvus_uri: Optional[str] = None,
         embedding_config: Optional[Dict[str, Any]] = None
     ) -> None:
+        # "启用知识库" 既可以来自全局 settings，也可以来自调用方传入的 embedding_config
+        # （比如某些路由希望强制开启 KB 功能）
+        self._enabled = bool(
+            (embedding_config or {}).get("enable_knowledge_base", settings.features.enable_knowledge_base)
+        )
+        self._milvus_uri = milvus_uri
+        self._embedding_config = embedding_config
+
         # 工作目录 & DB 管理
         self.work_dir = os.path.join(str(settings.paths.save_yaml_path), "data")
         os.makedirs(self.work_dir, exist_ok=True)
@@ -45,10 +50,16 @@ class KnowledgeBase:
         self.default_max_query_count = settings.kb_config.default_max_query_count
         self.top_k = settings.kb_config.default_top_k
         self.conf = ""
-        # 初始化模型与服务
+
+        # 运行时依赖（懒加载）
+        self.client: Optional[MilvusClient] = None
+        self.embed_model = None
+        self.reranker = None
+
+        # 初始化（轻量）
         self._check_migration()
-        self._load_embedding_model(embedding_config)
-        self._connect_milvus(milvus_uri)
+        # 注意：Milvus/Embedding 初始化会阻塞/失败（服务未启动、未配置 key 等），
+        # 因此这里改为懒加载，直到真正调用 KB 相关能力时再连接。
 
     # -- 数据迁移 -----------------------------------------------------------
     def _check_migration(self):
@@ -65,8 +76,9 @@ class KnowledgeBase:
     # -- Embedding 模型 ---------------------------------------------------
     def _load_embedding_model(self, embedding_config: Optional[Dict[str, Any]]):
         logger.info(f"传入的 embedding_config: {embedding_config}")
-        if not settings.features.enable_knowledge_base:
+        if not self._enabled:
             self.embed_model = None
+            self.reranker = None
             return
         
         from src.models.embedding import get_embedding_model
@@ -107,8 +119,23 @@ class KnowledgeBase:
             logger.error(f"连接 Milvus 失败: {e}")
             raise
 
+    def _ensure_ready(self):
+        """
+        Ensure KB runtime dependencies are initialized.
+        This keeps module import cheap and prevents server startup from blocking.
+        """
+        if not self._enabled:
+            raise RuntimeError("KnowledgeBase is disabled (enable_knowledge_base=false).")
+
+        if self.embed_model is None:
+            self._load_embedding_model(self._embedding_config)
+
+        if self.client is None:
+            self._connect_milvus(self._milvus_uri)
+
     # -- 知识库管理 --------------------------------------------------------
     def create_database(self, name: str, description: str, dimension: Optional[int] = None) -> Dict[str, Any]:
+        self._ensure_ready()
         dim = dimension or self.embed_model.get_dimension()
         db_id = f"kb_{hashstr(name)}"
         info = self.db_manager.create_database(
@@ -123,8 +150,14 @@ class KnowledgeBase:
         return info
 
     def delete_database(self, db_id: str) -> None:
-        if self.client.has_collection(db_id):
-            self.client.drop_collection(db_id)
+        if self._enabled:
+            # Best-effort Milvus cleanup; still delete local metadata even if Milvus isn't reachable.
+            try:
+                self._ensure_ready()
+                if self.client.has_collection(db_id):
+                    self.client.drop_collection(db_id)
+            except Exception as e:
+                logger.warning(f"Drop Milvus collection failed (ignored): {e}")
         self.db_manager.delete_database(db_id)
         folder = os.path.join(self.work_dir, db_id)
         if os.path.isdir(folder): shutil.rmtree(folder)
@@ -194,6 +227,7 @@ class KnowledgeBase:
 
         # 向量插入
         try:
+            self._ensure_ready()
             chunks = [d.metadata | {"text": d.page_content} for d in docs]
             self._insert_vectors(db_id, file_id, texts, chunks)
             self.db_manager.update_file_status(file_id, 'done')
@@ -229,6 +263,7 @@ class KnowledgeBase:
 
     # -- Milvus Collection 操作 --------------------
     def add_collection(self, name: str, dimension: int) -> None:
+        self._ensure_ready()
         if self.client.has_collection(name):
             self.client.drop_collection(name)
 
@@ -255,6 +290,7 @@ class KnowledgeBase:
 
     def get_collection_info(self, name: str) -> Dict[str, Any]:
         try:
+            self._ensure_ready()
             info = self.client.describe_collection(name)
             info.update(self.client.get_collection_stats(name))
             return info
@@ -268,6 +304,7 @@ class KnowledgeBase:
             docs: List[str],
             chunk_infos: List[Dict[str, Any]]
     ) -> Any:
+        self._ensure_ready()
         if not self.client.has_collection(collection_name):
             raise ValueError("Collection不存在")
 
@@ -297,6 +334,7 @@ class KnowledgeBase:
             rerank: bool = True,
             top_k: Optional[int] = None
     ) -> Dict[str, Any]:
+        self._ensure_ready()
         dt = distance_threshold or self.default_distance_threshold
         tk = top_k or self.top_k
 
@@ -347,5 +385,8 @@ class KnowledgeBase:
         }
 
     def restart(self):
-        self._load_embedding_model(None)
-        self._connect_milvus(None)
+        # Reset runtime clients (lazy rebuild).
+        self.client = None
+        self.embed_model = None
+        self.reranker = None
+        # Keep previous config but delay actual connection until first use.

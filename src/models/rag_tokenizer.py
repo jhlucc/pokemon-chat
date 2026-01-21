@@ -21,6 +21,7 @@ import os
 import re
 import string
 import sys
+from functools import lru_cache
 
 import datrie
 from hanziconv import HanziConv
@@ -50,6 +51,10 @@ class RagTokenizer:
 
     def loadDict_(self, fnm):
         logging.info(f"[HUQIE]:Build trie from {fnm}")
+        if not os.path.exists(fnm):
+            # Optional dictionary; keep startup quiet if resources are not downloaded.
+            logging.warning(f"[HUQIE]:Dict file not found, skip building trie: {fnm}")
+            return
         try:
             of = open(fnm, "r", encoding='utf-8')
             while True:
@@ -69,7 +74,8 @@ class RagTokenizer:
             self.trie_.save(dict_file_cache)
             of.close()
         except Exception:
-            logging.exception(f"[HUQIE]:Build trie {fnm} failed")
+            # Do not spam stack traces on startup; tokenization can still work with an empty trie.
+            logging.warning(f"[HUQIE]:Build trie failed (ignored): {fnm}")
 
     def __init__(self, debug=False):
         self.DEBUG = debug
@@ -78,6 +84,8 @@ class RagTokenizer:
 
         self.stemmer = PorterStemmer()
         self.lemmatizer = WordNetLemmatizer()
+        self._nltk_punkt_warned = False
+        self._nltk_wordnet_warned = False
 
         self.SPLIT_CHAR = r"([ ,\.<>/?;:'\[\]\\`!@#$%^&*\(\)\{\}\|_+=《》，。？、；‘’：“”【】~！￥%……（）——-]+|[a-zA-Z0-9,\.-]+)"
 
@@ -341,7 +349,25 @@ class RagTokenizer:
         res = []
         for L, lang in arr:
             if not lang:
-                res.extend([self.stemmer.stem(self.lemmatizer.lemmatize(t)) for t in word_tokenize(L)])
+                try:
+                    tks = word_tokenize(L)
+                except LookupError:
+                    # NLTK data (punkt) is optional; fall back to a simple split.
+                    if not self._nltk_punkt_warned:
+                        logging.warning("[HUQIE]:NLTK punkt data not found, fallback to basic split tokenizer")
+                        self._nltk_punkt_warned = True
+                    tks = L.split()
+
+                for t in tks:
+                    try:
+                        t = self.lemmatizer.lemmatize(t)
+                    except LookupError:
+                        # wordnet corpus missing; keep the original token
+                        if not self._nltk_wordnet_warned:
+                            logging.warning("[HUQIE]:NLTK wordnet data not found, skip lemmatizer")
+                            self._nltk_wordnet_warned = True
+                        pass
+                    res.append(self.stemmer.stem(t))
                 continue
             if len(L) < 2 or re.match(
                     r"[a-z\.-]+$", L) or re.match(r"[0-9\.-]+$", L):
@@ -477,15 +503,56 @@ def naiveQie(txt):
     return tks
 
 
-tokenizer = RagTokenizer()
-tokenize = tokenizer.tokenize
-fine_grained_tokenize = tokenizer.fine_grained_tokenize
-tag = tokenizer.tag
-freq = tokenizer.freq
-loadUserDict = tokenizer.loadUserDict
-addUserDict = tokenizer.addUserDict
-tradi2simp = tokenizer._tradi2simp
-strQ2B = tokenizer._strQ2B
+@lru_cache(maxsize=1)
+def get_tokenizer() -> "RagTokenizer":
+    """Lazy singleton to keep server startup cheap."""
+    return RagTokenizer()
+
+
+class _TokenizerProxy:
+    """Backward-compatible `tokenizer` object that initializes lazily."""
+
+    def __getattr__(self, name):
+        return getattr(get_tokenizer(), name)
+
+    def __repr__(self) -> str:  # pragma: no cover
+        return "<RagTokenizerProxy lazy>"
+
+
+# Backward-compatible alias (lazy).
+tokenizer = _TokenizerProxy()
+
+
+def tokenize(*args, **kwargs):
+    return get_tokenizer().tokenize(*args, **kwargs)
+
+
+def fine_grained_tokenize(*args, **kwargs):
+    return get_tokenizer().fine_grained_tokenize(*args, **kwargs)
+
+
+def tag(*args, **kwargs):
+    return get_tokenizer().tag(*args, **kwargs)
+
+
+def freq(*args, **kwargs):
+    return get_tokenizer().freq(*args, **kwargs)
+
+
+def loadUserDict(*args, **kwargs):
+    return get_tokenizer().loadUserDict(*args, **kwargs)
+
+
+def addUserDict(*args, **kwargs):
+    return get_tokenizer().addUserDict(*args, **kwargs)
+
+
+def tradi2simp(*args, **kwargs):
+    return get_tokenizer()._tradi2simp(*args, **kwargs)
+
+
+def strQ2B(*args, **kwargs):
+    return get_tokenizer()._strQ2B(*args, **kwargs)
 
 if __name__ == '__main__':
     tknzr = RagTokenizer(debug=True)

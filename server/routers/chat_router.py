@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import json
 import asyncio
 import traceback
@@ -6,19 +8,13 @@ from typing import List, Dict, Any, Optional
 
 from fastapi import APIRouter, Body, HTTPException
 from fastapi.responses import StreamingResponse
-from langchain_core.messages import BaseMessage, HumanMessage, AIMessage, SystemMessage
 from fastapi import UploadFile, File
-from src import executor, config, get_retriever
-from rag.core import HistoryManager
-from src.models import select_model
+from src import executor, config
 from src.utils.logger import LogManager
-from src.agents.manager import agent_manager
-from src.utils.whisper_asr import WhisperClient
-retriever = get_retriever()
+from src.runtime import get_retriever, get_whisper_client
 logger = LogManager()
 import subprocess
 import tempfile
-client = WhisperClient()
 chat = APIRouter(prefix="/chat")
 
 # ---------------------------------------------------------
@@ -32,6 +28,9 @@ def convert_messages_to_dicts(messages: List[BaseMessage]) -> List[Dict[str, str
       - AIMessage     → "assistant"
       - SystemMessage → "system"
     """
+    # Lazy import: keeps server startup cheaper.
+    from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
+
     result: List[Dict[str, str]] = []
     for msg in messages:
         if isinstance(msg, HumanMessage):
@@ -51,6 +50,9 @@ def make_chunk(meta: Dict[str, Any],
                **kwargs) -> bytes:
     """统一的 SSE / chunk 打包函数（返回 bytes 行）"""
     def convert(obj):
+        # Lazy import: keeps server startup cheaper.
+        from langchain_core.messages import BaseMessage
+
         if isinstance(obj, BaseMessage):
             return {"role": getattr(obj, "_type", "user"), "content": obj.content}
         raise TypeError(f"Object of type {obj.__class__.__name__} is not JSON serializable")
@@ -86,6 +88,9 @@ async def chat_post(
     """主聊天接口，支持 **流式** 返回"""
 
     # 1. 选择模型 ----------------------------------------------------------------
+    from src.models import select_model
+    from src.knowledge.core.history_chat import HistoryManager
+
     model = select_model()
     if model is None:
         raise HTTPException(status_code=500, detail="没有可用的模型，请检查模型配置")
@@ -107,6 +112,7 @@ async def chat_post(
 
                 from asyncio import to_thread
 
+                retriever = get_retriever()
                 modified_query, refs = await to_thread(
                     retriever,  # 同步函数
                     modified_query,
@@ -200,13 +206,18 @@ async def chat_post(
                              message=f"Model error: {e}",
                              status="error")
 
-    return StreamingResponse(generate_response(),
-                             media_type="application/json")
+    return StreamingResponse(
+        generate_response(),
+        media_type="application/x-ndjson",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
 
 
 @chat.post("/call")
 async def call(query: str = Body(...), meta: Dict[str, Any] = Body({})):
     """同步调用完整模型"""
+    from src.models import select_model
+
     model = select_model(model_provider=meta.get("model_provider"), model_name=meta.get("model_name"))
     if model is None:
         raise HTTPException(status_code=500, detail="模型不可用")
@@ -220,6 +231,8 @@ async def call(query: str = Body(...), meta: Dict[str, Any] = Body({})):
 @chat.post("/call_lite")
 async def call_lite(query: str = Body(...), meta: Dict[str, Any] = Body({})):
     """使用 Lite 模型，同步调用"""
+    from src.models import select_model
+
     async def _predict_async(q):
         model_provider = meta.get("model_provider", config.model_provider_lite)
         model_name = meta.get("model_name", config.model_name_lite)
@@ -237,10 +250,13 @@ async def call_lite(query: str = Body(...), meta: Dict[str, Any] = Body({})):
 
 @chat.get("/agent")
 async def get_agent_list():
+    from src.agents.manager import agent_manager
+
+    infos = agent_manager.list_agents()
     return {
         "agents": [
-            agent_cls().get_info()
-            for agent_cls in agent_manager.agents.values()
+            ({**info, "name": name} if isinstance(info, dict) else {"name": name, "info": info})
+            for name, info in infos.items()
         ]
     }
 
@@ -253,9 +269,15 @@ async def chat_agent(
     cfg: Dict[str, Any] = Body({}),
     meta: Dict[str, Any] = Body({})
 ):
-    agent = agent_manager.get_agent(agent_name)
-    if not agent:
+    from src.agents.manager import agent_manager
+    from src.knowledge.core.history_chat import HistoryManager
+
+    try:
+        agent = agent_manager.get_agent(agent_name)
+    except ValueError:
         raise HTTPException(status_code=404, detail=f"Agent '{agent_name}' not found")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
     # 给历史消息补 id，防止前端缺字段
     for msg in history:
@@ -354,12 +376,18 @@ async def chat_agent(
                 error=str(e)
             )
 
-    return StreamingResponse(streamer(), media_type="application/json")
+    return StreamingResponse(
+        streamer(),
+        media_type="application/x-ndjson",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
 
 
 
 @chat.get("/models")
 async def get_chat_models(model_provider: str):
+    from src.models import select_model
+
     model = select_model(model_provider=model_provider)
     return {"models": model.get_models()}
 
@@ -391,7 +419,7 @@ async def asr_upload(file: UploadFile = File(...)):
         )
         with open(output_path, "rb") as f:
             wav_bytes = f.read()
-        result_text = client.transcribe(wav_bytes)
+        result_text = get_whisper_client().transcribe(wav_bytes)
         return {"text": result_text}
 
     except subprocess.CalledProcessError as e:

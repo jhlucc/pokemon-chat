@@ -1,12 +1,12 @@
+from __future__ import annotations
+
 import secrets
 import string
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
-from typing import List, Optional
-from sqlalchemy.orm import Session
+from typing import List, Optional, Any
 
 from server.db_manager import db_manager
-from server.models.token_model import AgentToken
 #把所有后台管理接口挂在 /admin/*
 admin = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -42,9 +42,11 @@ def generate_token(length=32):
 @admin.get("/tokens", response_model=List[TokenResponse])
 async def get_agent_tokens(
     agent_id: Optional[str] = Query(None),
-    db: Session = Depends(get_db)
+    db: Any = Depends(get_db)
 ):
     """获取智能体的token列表"""
+    from src.models.token_model import AgentToken
+
     query = db.query(AgentToken)
     if agent_id:
         query = query.filter(AgentToken.agent_id == agent_id)
@@ -54,9 +56,11 @@ async def get_agent_tokens(
 @admin.post("/tokens", response_model=TokenResponse)
 async def create_token(
     token_data: TokenCreate,
-    db: Session = Depends(get_db)
+    db: Any = Depends(get_db)
 ):
     """创建新的token"""
+    from src.models.token_model import AgentToken
+
     # 生成随机token
     token_value = generate_token()
 
@@ -75,8 +79,10 @@ async def create_token(
     return new_token.to_dict()
 
 @admin.delete("/tokens/{token_id}", response_model=dict)
-async def delete_token(token_id: int, db: Session = Depends(get_db)):
+async def delete_token(token_id: int, db: Any = Depends(get_db)):
     """删除token"""
+    from src.models.token_model import AgentToken
+
     token = db.query(AgentToken).filter(AgentToken.id == token_id).first()
     if not token:
         raise HTTPException(status_code=404, detail="Token not found")
@@ -89,9 +95,11 @@ async def delete_token(token_id: int, db: Session = Depends(get_db)):
 @admin.post("/verify_token")
 async def verify_agent_token(
     token_data: TokenVerify,
-    db: Session = Depends(get_db)
+    db: Any = Depends(get_db)
 ):
     """验证智能体访问令牌"""
+    from src.models.token_model import AgentToken
+
     token = db.query(AgentToken).filter(
         AgentToken.agent_id == token_data.agent_id,
         AgentToken.token == token_data.token

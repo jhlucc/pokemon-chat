@@ -172,12 +172,18 @@ class Config(SimpleConfig):
         #     logger.warning("TAVILY_API_KEY not set, web search will be disabled")
         #     self.enable_web_search = False
 
-        # 2025.04.08 修改为不手动配置，只要配置了TAVILY_API_KEY，就默认开启web_search
-        if os.getenv("TAVILY_API_KEY"):
+        # 2025.04.08 修改为不手动配置，只要配置了 Tavily key，就默认开启 web_search
+        if os.getenv("TAVILY_API_KEY") or os.getenv("tavily_api_key"):
             self.enable_web_search = True
 
         self.valuable_model_provider = [k for k, v in self.model_provider_status.items() if v]
-        assert len(self.valuable_model_provider) > 0, f"No model provider available, please check your `.env` file. API_KEY_LIST: {conds}"
+        if len(self.valuable_model_provider) == 0:
+            # Allow boot without any provider keys so the UI can still come up and let users configure custom models.
+            logger.warning(
+                "No model provider env keys detected. You can still run the server, but chat will fail until you "
+                "configure a provider API key (or add custom_models in config). "
+                f"Checked keys: {conds}"
+            )
 
     def load(self):
         """根据传入的文件覆盖掉默认配置"""
@@ -205,7 +211,15 @@ class Config(SimpleConfig):
                 logger.warning(f"Unknown config file type {self.filename}")
 
         else:
-            logger.warning(f"\n\n{'='*70}\n{'Config file not found':^70}\n{'You can custum your config in `' + self.filename + '`':^70}\n{'='*70}\n\n")
+            # First-run experience: create a default config file instead of warning every time.
+            try:
+                self.save()
+                logger.info(f"Config file not found; created default config at `{self.filename}`")
+            except Exception as e:
+                logger.warning(
+                    f"\n\n{'='*70}\n{'Config file not found':^70}\n{'You can custum your config in `' + self.filename + '`':^70}\n{'='*70}\n\n"
+                    f"(auto-create failed: {e})"
+                )
 
     def save(self):
         logger.info(f"Saving config to {self.filename}")

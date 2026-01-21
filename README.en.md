@@ -1,4 +1,4 @@
-
+﻿
 
 # <img src="resources/picture/11.png" alt="Kemeng Logo" width="27%" />
 
@@ -69,9 +69,8 @@ Architecture overview:
 
 ```bash
 git clone https://github.com/jhlucc/pokemon-chat.git
-cd Smart-Assistant
-cp src/.env.template src/.env
-cp Smart-Assistant/config/settings_example.py config/settings.py  # fill in API-KEYs as needed
+cd pokemon-chat
+cp .env.template .env   # fill in API keys as needed (can be left empty to start the UI)
 ```
 
 ### 3. Install Python dependencies
@@ -86,6 +85,8 @@ pip install -r requirements.txt
 cd docker
 docker compose up -d  # Neo4j · Milvus · Whisper · MySQL
 ```
+
+Note: In the default `docker/docker-compose.yml`, MySQL is exposed on host port `3307` (container `3306`).
 
 ### 5. Import data into the graph and MySQL
 

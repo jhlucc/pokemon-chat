@@ -1,11 +1,9 @@
-from fastapi import Request, Body
-from fastapi import APIRouter
+from fastapi import Body, APIRouter
+
+from src import config, knowledge_base
+from src.runtime import get_retriever
 
 base = APIRouter()
-from src import config, get_retriever, knowledge_base
-from src.agents.kg_agent import KGQueryAgent
-kg_agent = KGQueryAgent()        # Neo4j 图谱检索器
-retriever = get_retriever()
 
 @base.get("/")
 async def route_index():
@@ -27,7 +25,7 @@ async def update_config(key = Body(...), value = Body(...)):
 @base.post("/restart")
 async def restart():
     knowledge_base.restart()
-    retriever.restart()
+    get_retriever().restart()
     return {"message": "Restarted!"}
 
 

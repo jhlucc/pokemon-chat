@@ -5,10 +5,21 @@ from fastapi.middleware.cors import CORSMiddleware
 from server.routers import router
 from dotenv import load_dotenv
 from pathlib import Path
+from contextlib import asynccontextmanager
+from src.runtime import aclose_all
 
 # 强制加载.env
 load_dotenv(Path(__file__).parent.parent / ".env")
-app = FastAPI()
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    yield
+    # Best-effort cleanup for cached runtime singletons.
+    await aclose_all()
+
+
+app = FastAPI(lifespan=lifespan)
 app.include_router(router)
 
 # CORS 设置

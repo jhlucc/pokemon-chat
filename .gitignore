@@ -21,6 +21,9 @@ docker/volumes/
 resources/cache/
 resources/models/
 
+# Runtime config (may contain secrets)
+resources/save/config/base.yaml
+
 # SQLite and DB files
 *.sqlite3
 *.db

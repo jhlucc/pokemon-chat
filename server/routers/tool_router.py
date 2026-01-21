@@ -1,5 +1,6 @@
 # server/routers/tool_router.py
 
+import asyncio
 import os
 import json
 import uuid
@@ -10,12 +11,7 @@ from fastapi import APIRouter, Body
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
-#  chunk_file & parse_file
-from rag.core.indexing import chunk_file, parse_file
-
-#
-
-from src.agents.manager import agent_manager
+# NOTE: avoid importing heavy modules at module import time to keep startup cheap.
 # —— 日志
 from src.utils.logger import LogManager
 logger = LogManager()
@@ -94,11 +90,16 @@ class FileChunkPayload(BaseModel):
 @tools_router.post("/file-chunking")
 async def file_chunking(payload: FileChunkPayload):
     try:
-        docs = chunk_file(
+        # Lazy import to avoid pulling in PDF/OCR/tokenizer stacks during server startup.
+        from src.knowledge.core.indexing import chunk_file
+
+        # CPU-bound parsing/chunking: run in a worker thread to avoid blocking the event loop.
+        docs = await asyncio.to_thread(
+            chunk_file,
             payload.file,
             chunk_size=payload.chunk_size,
             chunk_overlap=payload.chunk_overlap,
-            do_ocr=False
+            do_ocr=False,
         )
         # Document.page_content + metadata
         return {"chunks": [
@@ -118,7 +119,10 @@ async def pdf_to_text(payload: PDFPayload):
         if not os.path.exists(real_path):
             raise FileNotFoundError(f"文件不存在: {real_path}")
 
-        text = parse_file(real_path, do_ocr=True)
+        # Lazy import to keep server startup cheap.
+        from src.knowledge.core.indexing import parse_file
+
+        text = await asyncio.to_thread(parse_file, real_path, do_ocr=True)
         return {"text": text}
     except Exception as e:
         logger.error(f"pdf2txt 出错: {e}\n{traceback.format_exc()}")

@@ -1,4 +1,4 @@
-                          
+﻿                          
 <div align="right">
   <details>
     <summary >🌐 Language</summary>
@@ -104,7 +104,6 @@
    https://github.com/jhlucc/pokemon-chat.git
    cd pokemon-chat
    cp .env.template .env   # 按需填写 API-KEY，可留空
-   cp pokemon-chat/config/settings_example.py  config/settings.py  # 填写 
    ```
 
 3. **安装依赖**
@@ -119,6 +118,8 @@
    cd docker
    docker compose up -d           
    ```
+
+   > 提示：默认 `docker/docker-compose.yml` 将 MySQL 暴露在宿主机 `3307` 端口（容器内 `3306`）。
 
 5. **导入图谱与地图数据**
 

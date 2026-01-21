@@ -6,7 +6,7 @@ import os
 from functools import lru_cache
 from pathlib import Path
 from typing import Literal, Optional, Tuple
-from pydantic import Field, computed_field
+from pydantic import AliasChoices, Field, computed_field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -138,10 +138,14 @@ class TavilySettings(BaseSettings):
 
 class ToolSettings(BaseSettings):
     """第三方工具配置"""
-    model_config = SettingsConfigDict(env_prefix="tool_", extra="ignore")
+    # Accept both `tool_openweather_api_key` (recommended) and legacy `OPENWEATHER_API_KEY`.
+    model_config = SettingsConfigDict(env_prefix="", extra="ignore")
     
     # OpenWeather
-    openweather_api_key: str = Field(default="", alias="OPENWEATHER_API_KEY")
+    openweather_api_key: str = Field(
+        default="",
+        validation_alias=AliasChoices("tool_openweather_api_key", "OPENWEATHER_API_KEY"),
+    )
 
 
 class EmbeddingSettings(BaseSettings):

@@ -20,15 +20,11 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN
 
-import os
+import asyncio
 import json
-import warnings
+import os
 import traceback
-
-import torch
-from neo4j import GraphDatabase as GD
-
-from neo4j import GraphDatabase as GD
+import warnings
 from src.core.settings import settings
 from src.utils.logger import get_logger
 
@@ -45,45 +41,74 @@ class GraphDatabase:
         self.files = []
         self.status = "closed"
         self.kgdb_name = "neo4j"
-        self.kgdb_name = "neo4j"
         self.embed_model_name = None
+        self._embed_model = None
+        self._last_connect_error = None
         self.work_dir = os.path.join(str(settings.paths.save_yaml_path), "knowledge_graph", self.kgdb_name)
         os.makedirs(self.work_dir, exist_ok=True)
 
         # 尝试加载已保存的图数据库信息
         if not self.load_graph_info():
             logger.info(f"未找到已保存的图数据库信息，将创建新的配置")
-
-        self.start()
+        # NOTE: do not auto-connect here. Keep init cheap; connect on first use.
 
     def start(self):
-        if not settings.features.enable_knowledge_graph or not settings.features.enable_knowledge_base:
+        if self.driver is not None and self.status == "open":
             return
+        if not settings.features.enable_knowledge_graph:
+            raise RuntimeError("Knowledge graph is disabled (enable_knowledge_graph=false).")
         uri = settings.database.neo4j_uri
         username = settings.database.neo4j_username
         password = settings.database.neo4j_password
         logger.info(f"Connecting to Neo4j at {uri}/{self.kgdb_name}")
         try:
-            self.driver = GD.driver(uri, auth=(username, password))
+            from neo4j import GraphDatabase as _GD  # lazy import
+
+            # docker-compose.yml may set `NEO4J_AUTH=none` (no auth). In that case, avoid sending auth.
+            if password:
+                self.driver = _GD.driver(uri, auth=(username, password))
+            else:
+                self.driver = _GD.driver(uri)
+            # Fail fast if the service is down / auth is wrong.
+            self.driver.verify_connectivity()
             self.status = "open"
-            logger.info(f"Connected to Neo4j at {uri}/{self.kgdb_name}, {self.get_graph_info(self.kgdb_name)}")
+            self._last_connect_error = None
+            logger.info(f"Connected to Neo4j at {uri}/{self.kgdb_name}")
             # 连接成功后保存图数据库信息
-            self.save_graph_info(self.kgdb_name)
+            try:
+                self.save_graph_info(self.kgdb_name)
+            except Exception:
+                # best-effort only
+                pass
         except Exception as e:
-            logger.error(f"Failed to connect to Neo4j: {e}, {uri}, {self.kgdb_name}, {username}, {password}")
-            # settings.features.enable_knowledge_graph = False # DO NOT MODIFY GLOBAL SETTINGS
+            self._last_connect_error = str(e)
+            self.driver = None
+            self.status = "closed"
+            # Never log passwords.
+            logger.error(f"Failed to connect to Neo4j: {e} (uri={uri}, db={self.kgdb_name}, user={username})")
+            raise RuntimeError(f"Failed to connect to Neo4j at {uri}.") from e
 
     def close(self):
         """关闭数据库连接"""
         if self.driver:
-            self.driver.close()
+            try:
+                self.driver.close()
+            finally:
+                self.driver = None
+                self.status = "closed"
 
     def is_running(self):
         """检查图数据库是否正在运行"""
-        if not settings.features.enable_knowledge_graph or not settings.features.enable_knowledge_base:
+        if not settings.features.enable_knowledge_graph:
             return False
-        else:
-            return self.status == "open"
+        return self.status == "open" and self.driver is not None
+
+    def _ensure_driver(self):
+        """Ensure the Neo4j driver is connected before accessing it."""
+        if self.driver is not None and self.status == "open":
+            return self.driver
+        self.start()
+        return self.driver
 
     def get_sample_nodes(self, kgdb_name='neo4j', num=50):
         """获取指定数据库的 num 个节点信息"""
@@ -97,6 +122,7 @@ class GraphDatabase:
 
     def create_graph_database(self, kgdb_name):
         """创建新的数据库，如果已存在则返回已有数据库的名称"""
+        self.use_database(self.kgdb_name)
         with self.driver.session() as session:
             existing_databases = session.run("SHOW DATABASES")
             existing_db_names = [db['name'] for db in existing_databases]
@@ -111,9 +137,11 @@ class GraphDatabase:
 
     def use_database(self, kgdb_name="neo4j"):
         """切换到指定数据库"""
-        assert kgdb_name == self.kgdb_name, f"传入的数据库名称 '{kgdb_name}' 与当前实例的数据库名称 '{self.kgdb_name}' 不一致"
-        if self.status == "closed":
-            self.start()
+        if kgdb_name != self.kgdb_name:
+            raise ValueError(
+                f"传入的数据库名称 '{kgdb_name}' 与当前实例的数据库名称 '{self.kgdb_name}' 不一致"
+            )
+        self._ensure_driver()
 
     def txt_add_entity(self, triples, kgdb_name='neo4j'):
         """添加实体三元组"""
@@ -207,12 +235,7 @@ class GraphDatabase:
             session.execute_write(_create_vector_index, settings.embedding.dimension)
 
             # 收集所有需要处理的实体名称，去重
-            all_entities = []
-            for entry in triples:
-                if entry['h'] not in all_entities:
-                    all_entities.append(entry['h'])
-                if entry['t'] not in all_entities:
-                    all_entities.append(entry['t'])
+            all_entities = list({entry["h"] for entry in triples} | {entry["t"] for entry in triples})
 
             # 筛选出没有embedding的节点
             nodes_without_embedding = session.execute_read(_get_nodes_without_embedding, all_entities)
@@ -287,8 +310,13 @@ class GraphDatabase:
         tx.run(query)
 
     def query_node(self, entity_name, **kwargs):
-        from src.agents.kg_agent import KGQueryAgent
-        res = KGQueryAgent().query(entity_name, **kwargs)
+        if not settings.features.enable_knowledge_graph:
+            raise RuntimeError("Knowledge graph is disabled (enable_knowledge_graph=false).")
+
+        # Use the runtime singleton to avoid re-initializing LLM/Neo4j clients per request.
+        from src.runtime import get_kg_agent
+
+        res = get_kg_agent().query(entity_name, **kwargs)
         # print(res.get("subgraph", {"nodes": [], "edges": []}))
         return res.get("subgraph", {"nodes": [], "edges": []})
 
@@ -392,25 +420,35 @@ class GraphDatabase:
         with self.driver.session() as session:
             return session.execute_read(query, node_name, hops)
 
-    async def aget_embedding(self, text):
-        from src import knowledge_base
+    def _get_embed_model(self):
+        if self._embed_model is not None:
+            return self._embed_model
 
+        from src.models.embedding import get_embedding_model
+
+        # Persist the model name we used for graph embeddings.
+        self.embed_model_name = self.embed_model_name or settings.embedding.model_name
+
+        try:
+            self._embed_model = get_embedding_model(model=self.embed_model_name)
+            return self._embed_model
+        except Exception as e:
+            raise RuntimeError(
+                "Embedding model is not available. Configure embedding_api_key / provider settings first."
+            ) from e
+
+    async def aget_embedding(self, text):
+        model = self._get_embed_model()
         if isinstance(text, list):
-            outputs = await knowledge_base.embed_model.abatch_encode(text, batch_size=40)
-            return outputs
-        else:
-            outputs = await knowledge_base.embed_model.aencode(text)
-            return outputs
+            return await asyncio.to_thread(model.batch_encode, text, batch_size=40)
+        vectors = await asyncio.to_thread(model.encode, [text])
+        return vectors[0]
 
     def get_embedding(self, text):
-        from src import knowledge_base
-
+        model = self._get_embed_model()
         if isinstance(text, list):
-            outputs = knowledge_base.embed_model.batch_encode(text, batch_size=40)
-            return outputs
-        else:
-            outputs = knowledge_base.embed_model.encode([text])[0]
-            return outputs
+            return model.batch_encode(text, batch_size=40)
+        return model.encode([text])[0]
 
     def set_embedding(self, tx, entity_name, embedding):
         tx.run("""
@@ -419,7 +457,15 @@ class GraphDatabase:
         """, name=entity_name, embedding=embedding)
 
     def get_graph_info(self, graph_name="neo4j"):
-        self.use_database(graph_name)
+        try:
+            self.use_database(graph_name)
+        except Exception as e:
+            return {
+                "graph_name": graph_name,
+                "status": "closed",
+                "error": str(e),
+                "embed_model_name": self.embed_model_name,
+            }
         def query(tx):
             entity_count = tx.run("MATCH (n) RETURN count(n) AS count").single()["count"]
             relationship_count = tx.run("MATCH ()-[r]->() RETURN count(r) AS count").single()["count"]
@@ -427,6 +473,9 @@ class GraphDatabase:
 
             # 获取所有标签
             labels = tx.run("CALL db.labels() YIELD label RETURN collect(label) AS labels").single()["labels"]
+            unindexed_node_count = tx.run(
+                "MATCH (n:Entity) WHERE n.embedding IS NULL RETURN count(n) AS count"
+            ).single()["count"]
 
             return {
                 "graph_name": graph_name,
@@ -436,19 +485,18 @@ class GraphDatabase:
                 "labels": labels,
                 "status": self.status,
                 "embed_model_name": self.embed_model_name,
-                "unindexed_node_count": self.query_nodes_without_embedding(graph_name)
+                "unindexed_node_count": unindexed_node_count,
             }
 
         try:
-            if self.status == "open" and self.driver and self.is_running():
-                # 获取数据库信息
-                with self.driver.session() as session:
-                    graph_info = session.execute_read(query)
+            with self.driver.session() as session:
+                graph_info = session.execute_read(query)
 
-                    # 添加时间戳
-                    from datetime import datetime
-                    graph_info["last_updated"] = datetime.now().isoformat()
-                    return graph_info
+            # 添加时间戳
+            from datetime import datetime
+
+            graph_info["last_updated"] = datetime.now().isoformat()
+            return graph_info
 
         except Exception as e:
             logger.error(f"获取图数据库信息失败：{e}, {traceback.format_exc()}")
@@ -461,7 +509,7 @@ class GraphDatabase:
         """
         try:
             graph_info = self.get_graph_info(graph_name)
-            if graph_info is None:
+            if graph_info is None or graph_info.get("error"):
                 logger.error(f"图数据库信息为空，无法保存")
                 return False
 
@@ -537,16 +585,51 @@ class GraphDatabase:
         if node_names is None:
             node_names = self.query_nodes_without_embedding(kgdb_name)
 
-        count = 0
-        with self.driver.session() as session:
-            for node_name in node_names:
-                try:
-                    embedding = self.get_embedding(node_name)
-                    session.execute_write(self.set_embedding, node_name, embedding)
-                    count += 1
-                except Exception as e:
-                    logger.error(f"为节点 '{node_name}' 添加嵌入向量失败: {e}, {traceback.format_exc()}")
+        if not node_names:
+            return 0
 
+        def _index_exists(tx, index_name):
+            result = tx.run("SHOW INDEXES")
+            for record in result:
+                if record["name"] == index_name:
+                    return True
+            return False
+
+        def _create_vector_index(tx, dim):
+            index_name = "entityEmbeddings"
+            if not _index_exists(tx, index_name):
+                tx.run(f"""
+                CREATE VECTOR INDEX {index_name}
+                FOR (n: Entity) ON (n.embedding)
+                OPTIONS {{indexConfig: {{
+                `vector.dimensions`: {dim},
+                `vector.similarity_function`: 'cosine'
+                }} }};
+                """)
+
+        def _batch_set_embeddings(tx, entity_embedding_pairs):
+            for entity_name, embedding in entity_embedding_pairs:
+                tx.run("""
+                MATCH (e:Entity {name: $name})
+                CALL db.create.setNodeVectorProperty(e, 'embedding', $embedding)
+                """, name=entity_name, embedding=embedding)
+
+        count = 0
+        max_batch_size = 256
+        with self.driver.session() as session:
+            session.execute_write(_create_vector_index, settings.embedding.dimension)
+
+            for i in range(0, len(node_names), max_batch_size):
+                batch_nodes = node_names[i:i + max_batch_size]
+                try:
+                    batch_embeddings = self.get_embedding(batch_nodes)
+                    pairs = list(zip(batch_nodes, batch_embeddings))
+                    session.execute_write(_batch_set_embeddings, pairs)
+                    count += len(pairs)
+                except Exception as e:
+                    logger.error(f"为节点批量添加嵌入向量失败: {e}, {traceback.format_exc()}")
+
+        self.save_graph_info()
         return count
 
 
@@ -588,6 +671,7 @@ class GraphDatabase:
 
     def format_general_results(self, results):
         formatted_results = {"nodes": [], "edges": []}
+        node_ids = set()
 
         for item in results:
             relationship = item[1]
@@ -599,8 +683,9 @@ class GraphDatabase:
                 continue
 
             for node in node_info:
-                if node["id"] not in [n["id"] for n in formatted_results["nodes"]]:
+                if node["id"] not in node_ids:
                     formatted_results["nodes"].append(node)
+                    node_ids.add(node["id"])
 
             formatted_results["edges"].append(edge_info)
 

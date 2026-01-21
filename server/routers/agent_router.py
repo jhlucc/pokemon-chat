@@ -1,8 +1,5 @@
 from fastapi import APIRouter, HTTPException, BackgroundTasks, Body
 from typing import Dict, Any, List, Optional
-from langgraph.types import Command
-from src.agents.manager import agent_manager
-
 from src.utils.logger import LogManager
 
 logger = LogManager()
@@ -12,6 +9,7 @@ router = APIRouter(prefix="/agent")
 async def get_agent_state(agent_name: str, thread_id: str):
     """获取 Agent 的当前状态"""
     try:
+        from src.agents.manager import agent_manager
         agent = agent_manager.get_agent(agent_name)
         if hasattr(agent, "get_state"):
             state = await agent.get_state(thread_id)
@@ -34,6 +32,7 @@ async def get_agent_state(agent_name: str, thread_id: str):
 async def get_agent_history(agent_name: str, thread_id: str, limit: int = 10):
     """获取 Agent 的状态历史（时间旅行）"""
     try:
+        from src.agents.manager import agent_manager
         agent = agent_manager.get_agent(agent_name)
         if hasattr(agent, "get_state_history"):
             history = await agent.get_state_history(thread_id, limit=limit)
@@ -64,6 +63,7 @@ async def update_agent_state(
 ):
     """更新 Agent 状态（干预/回滚）"""
     try:
+        from src.agents.manager import agent_manager
         agent = agent_manager.get_agent(agent_name)
         if hasattr(agent, "update_state"):
             values = payload.get("values", {})
@@ -85,6 +85,10 @@ async def resume_agent(
 ):
     """恢复被中断的 Agent 执行"""
     try:
+        # Lazy import: keep server startup cheap.
+        from langgraph.types import Command
+
+        from src.agents.manager import agent_manager
         agent = agent_manager.get_agent(agent_name)
         if not hasattr(agent, "graph"):
              raise HTTPException(status_code=400, detail="该 Agent 不支持图执行")
