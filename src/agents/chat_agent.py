@@ -21,6 +21,8 @@ from src.knowledge import GraphRAG
 from src.agents.tools.websearch.websearcher import LiteBaseSearcher
 from src.agents.kg_agent import KGQueryAgent
 from src.utils.logger import LogManager
+from src.models.schemas import AgentResponse
+
 
 # Middleware Imports
 from src.agents.middleware import (
@@ -204,8 +206,19 @@ class PokemonKGChatAgent(BaseAgent):
         )
         messages = self.middleware.run_before_model(messages, context)
         
+        # 检查是否需要结构化输出 (从 state 中获取 meta 信息有点麻烦，这里简化为检查 thread_id 或约定)
+        # 更严谨的做法是在 State 中传递 config/meta
+        
+        # 暂时只演示默认文本模式，若要支持结构化输出，需修改 invoke 方式
+        # structured_llm = self.llm.with_structured_output(AgentResponse)
+        
         model_response = self.llm.invoke(messages)
         
+        if isinstance(model_response, AgentResponse):
+             # 如果 LLM 被配置为返回结构化对象
+             content = model_response.json()
+             model_response = AIMessage(content=content)
+
         model_response = self.middleware.run_after_model(model_response, context)
         
         return {"messages": [model_response]}
