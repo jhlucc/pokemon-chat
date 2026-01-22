@@ -39,20 +39,20 @@ services:
       reranker_threshold: ${reranker_threshold:-0.1}
 
       # ---- Databases (docker-internal defaults) ----
-      neo4j_uri: ${neo4j_uri:-bolt://neo4j:7687}
+      neo4j_uri: bolt://neo4j:7687
       neo4j_username: ${neo4j_username:-neo4j}
       neo4j_password: ${neo4j_password:-}
 
-      milvus_uri: ${milvus_uri:-http://milvus:19530}
+      milvus_uri: http://milvus:19530
 
-      mysql_host: ${mysql_host:-mysql}
-      mysql_port: ${mysql_port:-3306}
+      mysql_host: mysql
+      mysql_port: 3306
       mysql_user: ${mysql_user:-root}
       mysql_password: ${mysql_password:-123456}
       mysql_database: ${mysql_database:-langgraph}
 
       # ---- MCP ----
-      mcp_sse_url: ${mcp_sse_url:-http://mcp:8000/sse}
+      mcp_sse_url: http://mcp:8000/sse
 
       # ---- Web search ----
       tavily_api_key: ${tavily_api_key:-}
@@ -99,8 +99,8 @@ services:
     environment:
       MCP_HOST: 0.0.0.0
       MCP_PORT: 8000
-      mysql_host: ${mysql_host:-mysql}
-      mysql_port: ${mysql_port:-3306}
+      mysql_host: mysql
+      mysql_port: 3306
       mysql_user: ${mysql_user:-root}
       mysql_password: ${mysql_password:-123456}
       mysql_database: ${mysql_database:-langgraph}

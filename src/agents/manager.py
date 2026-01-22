@@ -60,6 +60,12 @@ class AgentManager(metaclass=SingletonMeta):
         except Exception as e:
             logger.warning(f"Failed to register trainer_agent: {e}")
 
+        try:
+            from src.agents.supervisor_agent import SupervisorAgent
+            self.register("supervisor_agent", SupervisorAgent)
+        except Exception as e:
+            logger.warning(f"Failed to register supervisor_agent: {e}")
+
     def register(self, name: str, agent_cls: Type[BaseAgent]):
         """注册 Agent 类"""
         self._registry[name] = agent_cls

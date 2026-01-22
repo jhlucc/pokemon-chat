@@ -12,94 +12,17 @@ from markitdown import MarkItDown
 _log = get_logger(__name__)
 
 
+from src.knowledge.ingestion.parsers.base import parse_file as new_parse_file
+
 def parse_file(
         file_path: str,
         do_ocr: bool = False,
         ocr_det_threshold: float = 0.3,
 ) -> str:
     """
-    根据文件后缀来调用deepdoc对应的解析器，或 OCR。
-    返回合并后的纯文本（字符串）。
-    do_ocr为 True 时，优先使用 OCRHandler2.pdf_ocr_pipeline() 或其他 OCR 流程。
+    Deprecated: Delegates to src.knowledge.ingestion.parsers.base.parse_file
     """
-    if not os.path.isfile(file_path):
-        raise FileNotFoundError(f"parse_file: file not found => {file_path}")
-    ext = Path(file_path).suffix.lower()
-
-    if ext == ".pdf":
-        if do_ocr:
-            _log.info(f"parse_file - Using OCR pipeline for {file_path}")
-            ocr_handler = OCRHandler2(det_threshold=ocr_det_threshold)
-            return ocr_handler.pdf_ocr_pipeline(file_path)
-
-        _log.info(f"parse_file - Using PdfParser for {file_path}")
-        parser = PdfParser()
-        text_blocks, _tbls_or_figs = parser(file_path, need_image=False, zoomin=3, return_html=False)
-        all_text = []
-        for block in text_blocks:
-            if isinstance(block, str):
-                all_text.append(block)
-            elif isinstance(block, tuple):
-                all_text.append(block[0])
-        return "\n".join(all_text)
-
-    elif ext in [".txt", ".md"]:
-        try:
-            _log.info(f"parse_file - Using MarkItDown for {file_path}")
-            md = MarkItDown()
-            result = md.convert(file_path)
-            return result.text_content
-        except Exception as e:
-            _log.error(f"MarkItDown failed: {e}")
-            pass # Fallback
-            
-        _log.info(f"parse_file - Using simple read for {file_path}")
-        with open(file_path, "r", encoding="utf-8") as f:
-            return f.read()
-
-    elif ext in [".xls", ".xlsx", ".csv"]:
-        try:
-            _log.info(f"parse_file - Using MarkItDown for {file_path}")
-            md = MarkItDown()
-            result = md.convert(file_path)
-            return result.text_content
-        except Exception as e:
-            _log.warning(f"MarkItDown failed for {file_path}, falling back to ExcelParser: {e}")
-            _log.info(f"parse_file - Using ExcelParser for {file_path}")
-            parser = ExcelParser()
-            text_blocks = parser(file_path)
-            return "\n".join(text_blocks)
-
-    elif ext in [".ppt", ".pptx"]:
-        # User preference: Use DeepDoc (PptParser) for PPT
-        _log.info(f"parse_file - Using PptParser (DeepDoc) for {file_path}")
-        parser = PptParser()
-        text_blocks = parser(file_path)
-        return "\n".join(text_blocks)
-            
-
-    elif ext == ".docx":
-        try:
-             _log.info(f"parse_file - Using MarkItDown for {file_path}")
-             md = MarkItDown()
-             result = md.convert(file_path)
-             return result.text_content
-        except Exception:
-             pass # Fallback
-
-        _log.info(f"parse_file - Using DocxParser for {file_path}")
-        parser = DocxParser()
-        text_blocks, _tbls_or_figs = parser(file_path)
-        all_text = []
-        for block in text_blocks:
-            if isinstance(block, str):
-                all_text.append(block)
-            elif isinstance(block, tuple):
-                all_text.append(block[0])
-        return "\n".join(all_text)
-        
-    else:
-        raise ValueError(f"parse_file: Unsupported file type => {ext}")
+    return new_parse_file(file_path, do_ocr, ocr_det_threshold)
 
 
 def chunk_file(
