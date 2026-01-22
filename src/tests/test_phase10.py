@@ -13,20 +13,20 @@ class TestSemanticCache:
     """Test Semantic Cache functionality."""
     
     def test_cache_initialization(self):
-        with patch("src.knowledge.cache.semantic_cache.settings") as mock_settings:
+        with patch("src.knowledge.cache.cache.settings") as mock_settings:
             mock_settings.paths.data_dir = MagicMock()
             mock_settings.paths.data_dir.__truediv__ = MagicMock(return_value=MagicMock())
             
-            from src.knowledge.cache.semantic_cache import SemanticCache
+            from src.knowledge.cache.cache import SemanticCache
             cache = SemanticCache(cache_dir=MagicMock())
             
             assert cache.similarity_threshold == 0.92
             assert cache.max_cache_size == 10000
     
     def test_cosine_similarity(self):
-        from src.knowledge.cache.semantic_cache import SemanticCache
+        from src.knowledge.cache.cache import SemanticCache
         
-        with patch("src.knowledge.cache.semantic_cache.settings"):
+        with patch("src.knowledge.cache.cache.settings"):
             cache = SemanticCache.__new__(SemanticCache)
             cache._index = {}
             
@@ -46,8 +46,8 @@ class TestCRAGEvaluator:
     """Test CRAG Evaluator functionality."""
     
     def test_grade_no_docs(self):
-        with patch("src.graph.nodes.crag_evaluator.settings"):
-            from src.graph.nodes.crag_evaluator import CRAGEvaluator, RetrievalGrade
+        with patch("src.graph.nodes.crag.settings"):
+            from src.graph.nodes.crag import CRAGEvaluator, RetrievalGrade
             
             evaluator = CRAGEvaluator.__new__(CRAGEvaluator)
             evaluator.llm = MagicMock()

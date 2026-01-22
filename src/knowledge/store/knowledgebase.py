@@ -8,7 +8,7 @@ from typing import Any, Dict, List, Optional
 from pymilvus import CollectionSchema, DataType, FieldSchema, MilvusClient, MilvusException
 
 from src.core.settings import settings
-from src.stores.kb_db_manager import kb_db_manager
+from src.knowledge.store.kb_db import kb_db_manager
 from src.utils import hashstr
 from src.utils.logger import get_logger
 
@@ -67,7 +67,7 @@ class KnowledgeBase:
         if os.path.exists(legacy):
             logger.info("检测到旧 JSON 知识库，迁移中...")
             try:
-                from src.stores.migrate_kb_to_sqlite import migrate_json_to_sqlite
+                from scripts.migrate_kb_to_sqlite import migrate_json_to_sqlite
                 migrate_json_to_sqlite()
                 logger.info("迁移完成！")
             except Exception as e:

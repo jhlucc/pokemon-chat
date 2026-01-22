@@ -2,7 +2,7 @@ from typing import List, Dict, Any
 from langchain_core.messages import SystemMessage, BaseMessage, HumanMessage, AIMessage
 
 from src.agents.middleware.base import BaseMiddleware, MiddlewareContext
-from src.memory.semantic_memory import SemanticMemoryManager
+from src.knowledge.memory.semantic import SemanticMemoryManager
 from src.utils.logger import get_logger
 
 logger = get_logger(__name__)

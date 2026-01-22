@@ -8,7 +8,7 @@ from pathlib import Path
 from fastapi import APIRouter, BackgroundTasks, HTTPException
 from pydantic import BaseModel
 
-from src.knowledge.core.knowledge_refresh import get_knowledge_refresh_manager
+from src.knowledge.core.refresh import get_knowledge_refresh_manager
 from src.utils.logger import LogManager
 
 logger = LogManager()

@@ -7,7 +7,7 @@ from src.core.settings import settings
 from src.graph.state import AgentState
 from src.knowledge.store.vector import VectorStore
 from src.knowledge.core.operators import HyDEOperator
-from src.graph.nodes.crag_evaluator import get_crag_evaluator
+from src.graph.nodes.crag import get_crag_evaluator
 from src.knowledge.core.query_decomposer import get_query_decomposer
 from src.knowledge.core.self_rag import get_self_rag
 from src.utils.logger import get_logger

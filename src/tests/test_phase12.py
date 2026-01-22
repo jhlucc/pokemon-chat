@@ -80,10 +80,10 @@ class TestKnowledgeRefresh:
     """Test Knowledge Refresh functionality."""
     
     def test_manager_initialization(self):
-        with patch("src.knowledge.core.knowledge_refresh.settings") as mock_settings:
+        with patch("src.knowledge.core.refresh.settings") as mock_settings:
             mock_settings.paths.data_dir = Path(tempfile.mkdtemp())
             
-            from src.knowledge.core.knowledge_refresh import KnowledgeRefreshManager
+            from src.knowledge.core.refresh import KnowledgeRefreshManager
             
             manager = KnowledgeRefreshManager(
                 db_path=mock_settings.paths.data_dir / "test_refresh.db"
@@ -93,10 +93,10 @@ class TestKnowledgeRefresh:
             assert manager.db_path.exists()
     
     def test_content_hash(self):
-        with patch("src.knowledge.core.knowledge_refresh.settings") as mock_settings:
+        with patch("src.knowledge.core.refresh.settings") as mock_settings:
             mock_settings.paths.data_dir = Path(tempfile.mkdtemp())
             
-            from src.knowledge.core.knowledge_refresh import KnowledgeRefreshManager
+            from src.knowledge.core.refresh import KnowledgeRefreshManager
             
             manager = KnowledgeRefreshManager(
                 db_path=mock_settings.paths.data_dir / "test_refresh.db"
@@ -110,10 +110,10 @@ class TestKnowledgeRefresh:
             assert hash1 != hash3
     
     def test_chunk_text(self):
-        with patch("src.knowledge.core.knowledge_refresh.settings") as mock_settings:
+        with patch("src.knowledge.core.refresh.settings") as mock_settings:
             mock_settings.paths.data_dir = Path(tempfile.mkdtemp())
             
-            from src.knowledge.core.knowledge_refresh import KnowledgeRefreshManager
+            from src.knowledge.core.refresh import KnowledgeRefreshManager
             
             manager = KnowledgeRefreshManager(
                 db_path=mock_settings.paths.data_dir / "test_refresh.db"

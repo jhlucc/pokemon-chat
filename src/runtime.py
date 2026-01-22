@@ -35,7 +35,7 @@ _mcp_client_instance = None
 def get_kb():
     """KnowledgeBase singleton (Milvus-backed)."""
     global _kb_instance
-    from src.stores import KnowledgeBase
+    from src.knowledge.store import KnowledgeBase
 
     _kb_instance = KnowledgeBase()
     return _kb_instance
@@ -65,7 +65,7 @@ def get_kg_agent():
 def get_graph_db():
     """Neo4j GraphDatabase singleton (graph management/embedding helpers)."""
     global _graph_db_instance
-    from src.stores.graphbase import GraphDatabase
+    from src.knowledge.store.graphbase import GraphDatabase
 
     _graph_db_instance = GraphDatabase()
     return _graph_db_instance

@@ -17,10 +17,10 @@ import subprocess
 import tempfile
 
 # Semantic Cache
-from src.knowledge.cache.semantic_cache import get_semantic_cache
+from src.knowledge.cache.cache import get_semantic_cache
 
 # Agentic Memory
-from src.knowledge.memory.agentic_memory import get_agentic_memory
+from src.knowledge.memory.agentic import get_agentic_memory
 
 chat = APIRouter(prefix="/chat")
 

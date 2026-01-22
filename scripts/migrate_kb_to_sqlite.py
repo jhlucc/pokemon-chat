@@ -6,7 +6,7 @@ import traceback
 
 from src.core.settings import settings
 from src.utils.logger import LogManager
-from src.stores.kb_db_manager import kb_db_manager
+from src.knowledge.store.kb_db import kb_db_manager
 logger= LogManager()
 def migrate_json_to_sqlite():
     """将JSON文件数据迁移到SQLite数据库"""
