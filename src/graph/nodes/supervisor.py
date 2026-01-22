@@ -10,14 +10,20 @@ from src.graph.state import AgentState
 
 # Define the set of workers
 # Definition of workers
-AVAILABLE_WORKERS = ["rag_worker", "web_worker", "graph_worker", "stats_worker"]
+AVAILABLE_WORKERS = ["rag_worker", "web_worker", "graph_worker", "stats_worker", "mcp_worker"]
 
 system_prompt = (
     "You are a supervisor tasked with managing a conversation between the"
     " following workers: {members}. Given the following user request,"
     " respond with the worker to act next. Each worker will perform a"
     " task and respond with their results and status. When finished,"
-    " respond with FINISH."
+    " respond with FINISH.\n\n"
+    "Worker capabilities:\n"
+    "- rag_worker: Pokemon knowledge retrieval from vector database\n"
+    "- web_worker: Real-time web search for current information\n"
+    "- graph_worker: Knowledge graph queries (relationships, evolutions)\n"
+    "- stats_worker: Pokemon stats and battle calculations\n"
+    "- mcp_worker: Geographic location queries (real-world Pokemon locations)"
 )
 
 options = ["FINISH"] + AVAILABLE_WORKERS
@@ -54,7 +60,7 @@ prompt = ChatPromptTemplate.from_messages(
 
 
 class RouteResponse(BaseModel):
-    next: Literal["FINISH", "rag_worker", "web_worker", "graph_worker", "stats_worker"]
+    next: Literal["FINISH", "rag_worker", "web_worker", "graph_worker", "stats_worker", "mcp_worker"]
 
 class SupervisorNode:
     def __init__(self):

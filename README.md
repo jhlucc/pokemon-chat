@@ -65,15 +65,27 @@
 
 ---
 
+## 🚀 新增特性 (New Features)
+
+- **LangChain & LangGraph**: 支持 LangChain 1.x 与 LangGraph 1.0 多智能体编排
+- **LightRAG Integration**: 支持 HKU-DS LightRAG 高效检索框架
+- **Advanced RAG**: 集成 Self-RAG、CRAG、HyDE 与 Query Decomposition
+- **Agentic Memory**: 具备用户偏好自适应的长时记忆能力
+- **MCP Service**: 支持 Model Context Protocol 连接真实世界地理数据
+- **Performance**: 内置 Semantic Cache 与 Speculative RAG 加速生成
+
+---
+
 ## 🎯系统架构
 
 通过本项目的实施，我们不仅完成了vue3+fastapi的一个完整项目，同时构建了一个基于宝可梦知识图谱的智能问答系统。积累了语义结构建模如bert+tf-idf+规则匹配机制、以及图谱融合与生成式问答的丰富实践经验。系统支持对宝可梦的进化关系、属性克制、技能特征、地理分布等内容进行精准问答，极大提升了用户在交互式探索中的体验感。
 
-未来，我们将持续优化系统在多轮问答、复杂图谱推理、地图导航等场景下的表现，并扩展更多支持任务类型，如：基于图谱的推理问答、Pokédex 自动补全、角色对战策略建议等。同时，知识图谱将持续更新和扩展，以确保其**时效性、完整性与一致性**，助力宝可梦领域的智能系统构建与 AI 应用拓展。
+架构核心：
+- **混合检索**: 向量检索 (Milvus) + 图谱检索 (Neo4j) + 关键词检索 (BM25)
+- **智能体编排**: LangGraph 状态机管理复杂任务流
+- **知识增强**: GraphRAG 提取实体关系
 
 以下是本项目的核心技术架构图：
-
-
 
  <img src="resources/picture/now.png" alt="图标" style="width: 100%;" />
 
@@ -83,86 +95,79 @@
 2. 基于爬取数据构建了宝可梦知识图谱（维基百科）。
 3. 自动化标注训练NER数据，使用roberta+TF-IDF+规则匹配来命中图谱中的实体与属性。
 4. 使用whisper来实现ASR功能。
-5. 实现MCP服务，如获取宝可梦世界地点、宝可梦在对应真实世界的经纬度坐标显示在前端上。
+5. **[NEW]** 实现 **MCP 服务**，支持宝可梦世界与真实世界地理坐标的映射查询。
 6. 抽取RAGflow中的deepdoc来强化知识库的解析和抽取能力。
-7. 使用Langraph框架基于自己的数据实现graphrag+ web searcher + 知识库 智能体。
+7. **[NEW]** 使用 **LangGraph** 实现多智能体协同（RAG + Search + Graph + MCP）。
 8. 封装agent 基类实现多智能体功能。
 9. 支持知识图谱搜索、网络搜索、知识库搜索、MCP搜索、语音搜索，可以同时集成也可以任选其一。
 
 ---
 
-## 🚀 快速开始
+## 🛠️ 部署指南 (Deployment)
 
-> **前置要求**：已安装 Docker / Docker Compose、Node.js ≥ 18、Python ≥ 3.11
+> **前置要求**：已安装 Docker / Docker Compose
 
-### ✅ Docker 一键启动（推荐）
+### 🐳 Docker Compose 一键启动（推荐）
 
-在本地不想手动分别启动前后端时，可以直接用 Docker Compose 一键启动：
+无需手动配置复杂环境，直接使用 Docker Compose 启动所有服务：
 
 ```bash
+# 1. 克隆仓库
+git clone https://github.com/skygazer42/pokemon-chat.git
+cd pokemon-chat
+
+# 2. 配置环境变量 
+cp .env.template .env
+# 编辑 .env 文件，填写 LLM API KEY (如 SILICONFLOW_API_KEY)
+
+# 3. 启动所有服务 (API + Web + 数据库 + MCP)
 cd docker
-# 可选：复制 docker/.env.example 为 docker/.env 并填写 llm_api_key 等
-docker compose --profile infra up -d --build
+docker compose --profile infra --profile mcp up -d --build
 ```
 
 访问：
-- Web UI：http://localhost:3100/
-- API 文档：http://localhost:3100/api/docs
+- **Web UI**: http://localhost:3100/
+- **API 文档**: http://localhost:5050/docs
 
-> 如需 MCP SSE 服务：`docker compose --profile infra --profile mcp up -d --build`
+### 📦 数据初始化（首次运行）
 
-1. 把数据放到[resources](https://pan.baidu.com/s/1o48ankI6l9jaky5MeRqgYw?pwd=rkdy)文件夹下
+服务启动后，需要导入知识库与图谱数据。请将数据文件放入 `resources` 目录（[下载链接](https://pan.baidu.com/s/1o48ankI6l9jaky5MeRqgYw?pwd=rkdy)）。
 
-2. **克隆仓库 & 配置环境变量**
+然后执行导入脚本：
 
-   ```bash
-   git clone 
-   https://github.com/skygazer42/pokemon-chat.git
-   cd pokemon-chat
-   cp .env.template .env   # 按需填写 API-KEY，可留空
-   ```
+```bash
+# 进入 API 容器
+docker exec -it pokemon-chat-api-1 bash
 
-3. **安装依赖**
+# 导入 Neo4j 图谱数据
+python scripts/import_graph.py
 
-   ```bash
-   pip install -r requirements.txt
-   ```
+# 导入 MySQL 地图数据
+python scripts/import_pokemon_map.py
+```
 
-4. **启动核心服务**
+### 💻 本地开发模式
 
+如果你希望在本地运行前后端代码进行开发：
+
+1. **启动基础依赖 (Infrastructure)**
    ```bash
    cd docker
-   docker compose --profile infra up -d           
+   docker compose --profile infra up -d # 启动 Neo4j, Milvus, MySQL, Whisper
    ```
 
-   > 提示：默认 `docker/docker-compose.yml` 将 MySQL 暴露在宿主机 `3307` 端口（容器内 `3306`）。
-
-5. **导入图谱与地图数据**
-
-   ```bash
-   cd scripts
-   python import_graph.py          # 写入 Neo4j
-   python import_pokemon_map.py    # 写入 MySQL
-   ```
-
-   
-
-6. **启动后端服务**
-
+2. **启动后端 (Server)**
    ```bash
    cd server
-   python main.py                  # FastAPI + LangGraph
-   cd ../src/mcp
-   python mcp_server.py            # SSE 模式示例
+   pip install -r requirements.txt
+   python main.py
    ```
 
-7. **启动前端**
-
+3. **启动前端 (Web)**
    ```bash
    cd web
    npm install
    npm run dev
-   # 浏览器访问 http://localhost:3100/
    ```
 
 ---
@@ -170,7 +175,6 @@ docker compose --profile infra up -d --build
 ## 🔭 参考项目
 
 - https://github.com/xerrors/Yuxi-Know
-
 - https://github.com/BinNong/meet-libai
 
   
@@ -180,35 +184,3 @@ docker compose --profile infra up -d --build
 ## 📄 License
 
 本项目遵循 **MIT License**，可自由用于商业或个人项目。二次开发请保留原作者与来源信息。
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

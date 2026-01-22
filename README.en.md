@@ -1,8 +1,38 @@
 ﻿
+<div align="right">
+  <details>
+    <summary >🌐 Language</summary>
+    <div>  
+      <div align="center">
+        <a href="https://openaitx.github.io/view.html?user=jhlucc&project=pokemon-chat&lang=en">English</a>
+        | <a href="https://openaitx.github.io/view.html?user=jhlucc&project=pokemon-chat&lang=zh-CN">简体中文</a>
+        | <a href="https://openaitx.github.io/view.html?user=jhlucc&project=pokemon-chat&lang=zh-TW">繁體中文</a>
+        | <a href="https://openaitx.github.io/view.html?user=jhlucc&project=pokemon-chat&lang=ja">日本語</a>
+        | <a href="https://openaitx.github.io/view.html?user=jhlucc&project=pokemon-chat&lang=ko">한국어</a>
+        | <a href="https://openaitx.github.io/view.html?user=jhlucc&project=pokemon-chat&lang=hi">हिन्दी</a>
+        | <a href="https://openaitx.github.io/view.html?user=jhlucc&project=pokemon-chat&lang=th">ไทย</a>
+        | <a href="https://openaitx.github.io/view.html?user=jhlucc&project=pokemon-chat&lang=fr">Français</a>
+        | <a href="https://openaitx.github.io/view.html?user=jhlucc&project=pokemon-chat&lang=de">Deutsch</a>
+        | <a href="https://openaitx.github.io/view.html?user=jhlucc&project=pokemon-chat&lang=es">Español</a>
+        | <a href="https://openaitx.github.io/view.html?user=jhlucc&project=pokemon-chat&lang=it">Italiano</a>
+        | <a href="https://openaitx.github.io/view.html?user=jhlucc&project=pokemon-chat&lang=ru">Русский</a>
+        | <a href="https://openaitx.github.io/view.html?user=jhlucc&project=pokemon-chat&lang=pt">Português</a>
+        | <a href="https://openaitx.github.io/view.html?user=jhlucc&project=pokemon-chat&lang=nl">Nederlands</a>
+        | <a href="https://openaitx.github.io/view.html?user=jhlucc&project=pokemon-chat&lang=pl">Polski</a>
+        | <a href="https://openaitx.github.io/view.html?user=jhlucc&project=pokemon-chat&lang=ar">العربية</a>
+        | <a href="https://openaitx.github.io/view.html?user=jhlucc&project=pokemon-chat&lang=fa">فارسی</a>
+        | <a href="https://openaitx.github.io/view.html?user=jhlucc&project=pokemon-chat&lang=tr">Türkçe</a>
+        | <a href="https://openaitx.github.io/view.html?user=jhlucc&project=pokemon-chat&lang=vi">Tiếng Việt</a>
+        | <a href="https://openaitx.github.io/view.html?user=jhlucc&project=pokemon-chat&lang=id">Bahasa Indonesia</a>
+      </div>
+    </div>
+   </details> 
 
-# <img src="resources/picture/11.png" alt="Kemeng Logo" width="27%" />
+</div> 
 
+[中文](./README.md) | 📘 English
 
+<img src="resources/picture/11.png" alt="Kemeng Logo" width="27%" />
 
 # 「Kemeng」 <img src="resources/picture/brain-removebg-preview.png" alt="Brain Icon" width="11%" /> Domain Chat Assistant Based on Knowledge Graph and Corpus
 
@@ -31,17 +61,29 @@ This project is designed to be a **transferable, scalable domain assistant templ
 
 ---
 
+## 🚀 New Features
+
+- **LangChain & LangGraph**: Supports LangChain 1.x and LangGraph 1.0 for multi-agent orchestration
+- **LightRAG Integration**: Integrated with HKU-DS LightRAG for efficient retrieval
+- **Advanced RAG**: Features Self-RAG, CRAG, HyDE, and Query Decomposition
+- **Agentic Memory**: Long-term memory with user preference adaptation
+- **MCP Service**: Supports Model Context Protocol for real-world location mapping
+- **Performance**: Built-in Semantic Cache and Speculative RAG for speed
+
+---
+
 ## 🎯 System Architecture
 
 The project includes a complete Vue3 + FastAPI stack and a functional Pokémon knowledge graph-based Q&A system. It combines semantic modeling (BERT + TF-IDF + rule matching) with generative Q&A, supporting questions about evolution, attribute restraints, skills, and geographic distribution.
 
-In the future, we will optimize for multi-turn dialogs, complex graph reasoning, and navigation scenarios. We also plan to expand use cases like: graph-based reasoning, Pokédex auto-completion, and strategy suggestions.
+**Core Architecture**:
+- **Hybrid Retrieval**: Vector Retrieval (Milvus) + Graph Retrieval (Neo4j) + Keyword Retrieval (BM25)
+- **Agent Orchestration**: LangGraph state machine for complex task management
+- **Knowledge Enhancement**: GraphRAG for entity relationship extraction
 
 Architecture overview:
 
 <img src="resources/picture/now.png" alt="Architecture" style="width: 100%;" />
-
----
 
 ## 🎯 Highlights
 
@@ -49,87 +91,80 @@ Architecture overview:
 2. Built a Pokémon knowledge graph based on Wikipedia and forums.
 3. Automated NER training with RoBERTa + TF-IDF + rule-based matching.
 4. Integrated Whisper for ASR (speech-to-text) capabilities.
-5. Provided an MCP service to retrieve Pokémon-world locations and display real-world coordinates via Leaflet.
+5. **[NEW]** Implemented **MCP Service** to support mapping and querying of Pokémon world locations to real-world coordinates.
 6. Extracted documents with DeepDoc to enhance knowledge base parsing.
-7. Used LangGraph to combine GraphRAG + Web Searcher + Vector DB.
+7. **[NEW]** Used **LangGraph** to implement multi-agent collaboration (RAG + Search + Graph + MCP).
 8. Encapsulated agent base class for multi-agent workflows.
 9. Supports graph search, web search, knowledge base search, MCP queries, and voice input, in any combination.
 
 ---
 
+## 🛠️ Deployment
 
+> **Requirements**: Docker & Docker Compose
 
-## 🚀 Quick Start
+### 🐳 Docker Compose One-Click Start (Recommended)
 
-> **Requirements**: Docker & Docker Compose, Node.js ≥ 18, Python ≥ 3.11
-
-### ✅ One-command Docker startup (Recommended)
-
-If you don’t want to start frontend/backend manually, you can bring up the stack with Docker Compose:
+No manual environment configuration needed. Directly use Docker Compose to start all services:
 
 ```bash
-cd docker
-# Optional: copy docker/.env.example to docker/.env and fill llm_api_key, etc.
-docker compose --profile infra up -d --build
-```
-
-Open:
-- Web UI: http://localhost:3100/
-- API docs: http://localhost:3100/api/docs
-
-> To include the MCP SSE server: `docker compose --profile infra --profile mcp up -d --build`
-
-### 1. Place the required data under [resources]( https://pan.baidu.com/s/1o48ankI6l9jaky5MeRqgYw?pwd=rkdy)
-
-### 2. Clone the repo and configure environment variables
-
-```bash
-git clone https://github.com/jhlucc/pokemon-chat.git
+# 1. Clone the repository
+git clone https://github.com/skygazer42/pokemon-chat.git
 cd pokemon-chat
-cp .env.template .env   # fill in API keys as needed (can be left empty to start the UI)
-```
 
-### 3. Install Python dependencies
+# 2. Configure environment variables (Optional, defaults work out-of-the-box)
+cp .env.template .env
+# Edit .env file, fill in LLM API KEY (e.g., SILICONFLOW_API_KEY)
 
-```bash
-pip install -r requirements.txt
-```
-
-### 4. Start core services
-
-```bash
+# 3. Start all services (API + Web + DB + MCP)
 cd docker
-docker compose --profile infra up -d  # Neo4j · Milvus · Whisper · MySQL
+docker compose --profile infra --profile mcp up -d --build
 ```
 
-Note: In the default `docker/docker-compose.yml`, MySQL is exposed on host port `3307` (container `3306`).
+Access:
+- **Web UI**: http://localhost:3100/
+- **API Docs**: http://localhost:5050/docs
 
-### 5. Import data into the graph and MySQL
+### 📦 Data Initialization (First Run)
+
+After starting the services, you need to import knowledge base and graph data. Place data files in the `resources` directory ([Download Link](https://pan.baidu.com/s/1o48ankI6l9jaky5MeRqgYw?pwd=rkdy)).
+
+Then execute the import scripts:
 
 ```bash
-cd scripts
-python import_graph.py          # populate Neo4j
-python import_pokemon_map.py    # populate MySQL
+# Enter API container
+docker exec -it pokemon-chat-api-1 bash
+
+# Import Neo4j graph data
+python scripts/import_graph.py
+
+# Import MySQL map data
+python scripts/import_pokemon_map.py
 ```
 
-### 6. Launch backend services
+### 💻 Local Development Mode
 
-```bash
-cd server
-python main.py                  # FastAPI + LangGraph
+If you wish to run backend/frontend code locally for development:
 
-cd ../src/mcp
-python mcp_server.py            # SSE example
-```
+1. **Start Infrastructure**
+   ```bash
+   cd docker
+   docker compose --profile infra up -d # Starts Neo4j, Milvus, MySQL, Whisper
+   ```
 
-### 7. Launch frontend
+2. **Start Backend (Server)**
+   ```bash
+   cd server
+   pip install -r requirements.txt
+   python main.py
+   ```
 
-```bash
-cd web
-npm install
-npm run dev
-# visit http://localhost:3100/
-```
+3. **Start Frontend (Web)**
+   ```bash
+   cd web
+   npm install
+   npm run dev
+   ```
 
 ---
 
