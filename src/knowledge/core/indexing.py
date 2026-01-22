@@ -7,6 +7,8 @@ from langchain_core.documents import Document
 from langchain_text_splitters import CharacterTextSplitter
 from src.utils.logger import get_logger
 
+from markitdown import MarkItDown
+
 _log = get_logger(__name__)
 
 
@@ -58,16 +60,75 @@ def parse_file(
             return f.read()
 
     elif ext in [".xls", ".xlsx", ".csv"]:
-        _log.info(f"parse_file - Using ExcelParser for {file_path}")
-        parser = ExcelParser()
-        text_blocks = parser(file_path)
-        return "\n".join(text_blocks)
+        try:
+            _log.info(f"parse_file - Using MarkItDown for {file_path}")
+            md = MarkItDown()
+            result = md.convert(file_path)
+            return result.text_content
+        except Exception as e:
+            _log.warning(f"MarkItDown failed for {file_path}, falling back to ExcelParser: {e}")
+            _log.info(f"parse_file - Using ExcelParser for {file_path}")
+            parser = ExcelParser()
+            text_blocks = parser(file_path)
+            return "\n".join(text_blocks)
 
     elif ext in [".ppt", ".pptx"]:
-        _log.info(f"parse_file - Using PptParser for {file_path}")
-        parser = PptParser()
-        text_blocks = parser(file_path)
-        return "\n".join(text_blocks)
+        try:
+            _log.info(f"parse_file - Using MarkItDown for {file_path}")
+            md = MarkItDown()
+            result = md.convert(file_path)
+            return result.text_content
+        except Exception as e:
+            _log.warning(f"MarkItDown failed for {file_path}, falling back to PptParser: {e}")
+            _log.info(f"parse_file - Using PptParser for {file_path}")
+            parser = PptParser()
+            text_blocks = parser(file_path)
+            return "\n".join(text_blocks)
+            
+    elif ext == ".pdf" and not do_ocr:
+        # For non-OCR PDF, try MarkItDown first
+        try:
+            _log.info(f"parse_file - Using MarkItDown for {file_path}")
+            md = MarkItDown()
+            result = md.convert(file_path)
+            # Check if empty (sometimes happens with scanned pdfs)
+            if result.text_content.strip():
+                return result.text_content
+        except Exception as e:
+             _log.warning(f"MarkItDown failed for {file_path}: {e}")
+        
+        # Fallback to PdfParser
+        _log.info(f"parse_file - Using PdfParser for {file_path}")
+        parser = PdfParser()
+        text_blocks, _tbls_or_figs = parser(file_path, need_image=False, zoomin=3, return_html=False)
+        all_text = []
+        for block in text_blocks:
+            if isinstance(block, str):
+                all_text.append(block)
+            elif isinstance(block, tuple):
+                all_text.append(block[0])
+        return "\n".join(all_text)
+
+    elif ext == ".docx":
+        try:
+             _log.info(f"parse_file - Using MarkItDown for {file_path}")
+             md = MarkItDown()
+             result = md.convert(file_path)
+             return result.text_content
+        except Exception:
+             pass # Fallback
+
+        _log.info(f"parse_file - Using DocxParser for {file_path}")
+        parser = DocxParser()
+        text_blocks, _tbls_or_figs = parser(file_path)
+        all_text = []
+        for block in text_blocks:
+            if isinstance(block, str):
+                all_text.append(block)
+            elif isinstance(block, tuple):
+                all_text.append(block[0])
+        return "\n".join(all_text)
+        
     else:
         raise ValueError(f"parse_file: Unsupported file type => {ext}")
 

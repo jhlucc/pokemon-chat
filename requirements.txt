@@ -71,3 +71,4 @@ scikit-learn==1.5.2
 # Optional: PyTorch environment (for NER, local reranker)
 # Install if you need local NER or reranker models:
 # pip install torch transformers
+markitdown>=0.0.1
