@@ -19,6 +19,9 @@ import tempfile
 # Semantic Cache
 from src.knowledge.cache.semantic_cache import get_semantic_cache
 
+# Agentic Memory
+from src.knowledge.memory.agentic_memory import get_agentic_memory
+
 chat = APIRouter(prefix="/chat")
 
 # ---------------------------------------------------------
@@ -100,9 +103,21 @@ async def chat_post(
         raise HTTPException(status_code=500, detail="没有可用的模型，请检查模型配置")
 
     meta["server_model_name"] = model.model_name
-    history_manager = HistoryManager(system_prompt=meta.get("system_prompt"))
+    
+    # Get user preferences and inject into system prompt
+    user_id = thread_id or "default_user"
+    memory = get_agentic_memory()
+    preference_injection = memory.get_system_prompt_injection(user_id)
+    
+    base_system_prompt = meta.get("system_prompt", "")
+    enhanced_system_prompt = base_system_prompt + preference_injection if preference_injection else base_system_prompt
+    
+    history_manager = HistoryManager(system_prompt=enhanced_system_prompt)
 
     logger.debug(f"Received query: {query} with meta: {meta}")
+    
+    # Log conversation turn for memory extraction
+    memory.add_conversation_turn(user_id, "user", query)
 
     # ---------------------------------------------------------------------------
     async def generate_response():
@@ -172,6 +187,17 @@ async def chat_post(
             # 5. Cache the response (only cache non-retrieval queries for now)
             if content and not need_retrieve(meta):
                 cache.set(query, content)
+            
+            # 6. Log AI response and periodically extract preferences
+            memory.add_conversation_turn(user_id, "assistant", content)
+            
+            # Extract preferences every 5 conversation turns (configurable)
+            from random import random
+            if random() < 0.2:  # 20% chance to trigger extraction (async-friendly)
+                try:
+                    memory.extract_and_update_preferences(user_id)
+                except Exception as e:
+                    logger.warning(f"Preference extraction failed: {e}")
             # print(updated_history)
             # print(history_serializable)
 
