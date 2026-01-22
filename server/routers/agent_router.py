@@ -5,6 +5,34 @@ from src.utils.logger import LogManager
 logger = LogManager()
 router = APIRouter(prefix="/agent")
 
+# 根路由需要单独，这里添加一个 /agents 路由用于前端
+agents_router = APIRouter(prefix="/agents")
+
+@agents_router.get("/")
+async def list_agents():
+    """列出所有可用的 Agents"""
+    try:
+        from src.agents.manager import agent_manager
+        agents = agent_manager.list_agents()
+        return {
+            "agents": [
+                {
+                    "name": name,
+                    "description": info.get("description", ""),
+                    "supports_streaming": info.get("supports_streaming", True)
+                }
+                for name, info in agents.items()
+            ]
+        }
+    except Exception as e:
+        logger.error(f"Error listing agents: {e}")
+        # 返回默认的 supervisor_agent
+        return {
+            "agents": [
+                {"name": "supervisor_agent", "description": "智能多工具协调Agent", "supports_streaming": True}
+            ]
+        }
+
 @router.get("/{agent_name}/state/{thread_id}")
 async def get_agent_state(agent_name: str, thread_id: str):
     """获取 Agent 的当前状态"""

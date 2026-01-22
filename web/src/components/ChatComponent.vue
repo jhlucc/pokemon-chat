@@ -474,6 +474,20 @@ const loadDatabases = () => {
       })
 }
 
+const loadAgents = () => {
+  fetch('/api/agents/', {method: "GET",})
+      .then(response => response.json())
+      .then(data => {
+        console.log("Loaded agents:", data)
+        opts.agents = data.agents || []
+      })
+      .catch(err => {
+        console.warn("Failed to load agents:", err)
+        // 提供默认的 supervisor_agent
+        opts.agents = [{ name: "supervisor_agent", description: "智能多工具协调Agent" }]
+      })
+}
+
 // 新函数用于处理 fetch 请求
 const fetchChatResponse = (user_input, cur_res_id) => {
   const controller = new AbortController();

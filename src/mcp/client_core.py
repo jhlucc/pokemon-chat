@@ -116,6 +116,45 @@ class MCPClient:
             return answer, coords_json
 
 
+# ──────────────────── 单例 + 缓存 ────────────────────
+from functools import lru_cache
+from typing import Dict
+import time
+
+_mcp_client: Optional[MCPClient] = None
+_query_cache: Dict[str, tuple] = {}  # {query: (answer, coords, timestamp)}
+_cache_ttl = 300  # 5 minutes
+
+def get_mcp_client() -> MCPClient:
+    """获取 MCP 客户端单例"""
+    global _mcp_client
+    if _mcp_client is None:
+        _mcp_client = MCPClient()
+    return _mcp_client
+
+async def cached_ask(query: str, use_cache: bool = True) -> Tuple[str, Optional[str]]:
+    """带缓存的 MCP 查询"""
+    global _query_cache
+    
+    # 检查缓存
+    if use_cache and query in _query_cache:
+        answer, coords, ts = _query_cache[query]
+        if time.time() - ts < _cache_ttl:
+            return answer, coords
+        else:
+            del _query_cache[query]
+    
+    # 执行查询
+    client = get_mcp_client()
+    answer, coords = await client.ask(query)
+    
+    # 存入缓存
+    if use_cache and answer:
+        _query_cache[query] = (answer, coords, time.time())
+    
+    return answer, coords
+
+
 if __name__ == "__main__":
     import asyncio
 
@@ -131,3 +170,4 @@ if __name__ == "__main__":
             await client.aclose()
 
     asyncio.run(_test())
+

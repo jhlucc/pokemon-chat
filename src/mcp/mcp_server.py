@@ -38,6 +38,29 @@ def _get_db_conf() -> dict:
         cursorclass=pymysql.cursors.Cursor,
     )
 
+# ──────────────────── 连接池 ────────────────────
+_pool = None
+
+def _get_connection():
+    """获取连接池中的连接"""
+    global _pool
+    if _pool is None:
+        try:
+            from dbutils.pooled_db import PooledDB
+            _pool = PooledDB(
+                creator=pymysql,
+                maxconnections=10,
+                mincached=2,
+                maxcached=5,
+                blocking=True,
+                **_get_db_conf()
+            )
+            logger.info("MySQL connection pool initialized")
+        except ImportError:
+            logger.warning("DBUtils not installed, falling back to direct connections")
+            return pymysql.connect(**_get_db_conf())
+    return _pool.connection()
+
 app = FastMCP(
     "pokemon-fastmcp",
     host=os.getenv("MCP_HOST", "0.0.0.0"),
@@ -68,7 +91,7 @@ def search_locations_by_pokemon(pokemon_name: str) -> List[TextContent]:
     """
     pattern = f"%{pokemon_name}%"
     try:
-        conn = pymysql.connect(**_get_db_conf())
+        conn = _get_connection()
         try:
             with conn.cursor() as cur:
                 cur.execute(sql, (pattern,))
@@ -93,7 +116,7 @@ def get_location_info(location: str) -> List[TextContent]:
          WHERE pokemon_region = %s OR real_location = %s
     """
     try:
-        conn = pymysql.connect(**_get_db_conf())
+        conn = _get_connection()
         try:
             with conn.cursor() as cur:
                 cur.execute(sql, (location, location))
