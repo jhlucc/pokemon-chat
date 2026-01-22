@@ -2,7 +2,6 @@
 LightRAG Wrapper for Pokemon Knowledge Base
 
 基于 lightrag-hku 实现的知识图谱 RAG 系统。
-参考 Yuxi-Know 项目实现。
 """
 import os
 from typing import Optional, Dict, Any, List

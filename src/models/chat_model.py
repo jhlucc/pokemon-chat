@@ -5,10 +5,12 @@ import os
 from typing import List, Dict, Union, Generator, Any
 import json
 from openai import OpenAI
-from src.utils import logger
+from src.utils.logger import get_logger
 from src.core.settings import settings
 from openai.types.chat import ChatCompletionMessage
-_log = logger.LogManager()
+
+logger = get_logger(__name__)
+
 
 def to_chat_message(content: str, role: str = "assistant") -> ChatCompletionMessage:
     return ChatCompletionMessage(
@@ -37,7 +39,7 @@ class OpenAIBase:
         self.model_name = model_name
         # 创建OpenAI客户端实例
         self.client = OpenAI(api_key=api_key, base_url=base_url)
-        _log.debug(f"Models: {self.get_models()}")
+        logger.debug(f"Models: {self.get_models()}")
 
     def _prepare_messages(self, message: Union[str, List[Dict[str, str]]]) -> List[Dict[str, str]]:
         """将输入消息封装为消息列表格式"""
@@ -82,7 +84,7 @@ class OpenAIBase:
         try:
             return self.client.models.list()
         except Exception as e:
-            _log.error(f"Error getting models: {e}")
+            logger.error(f"Error getting models: {e}")
             return []
 
 
@@ -144,7 +146,7 @@ class Bailian:
                             content=data.get("choices", [{}])[0].get("delta", {}).get("content", "")
                         )
                     except Exception as e:
-                        _log.error(f"Stream chunk parse error: {e}")
+                        logger.error(f"Stream chunk parse error: {e}")
 
     def _get_response(self, messages: List[Dict[str, str]]) -> Any:
         payload = {
@@ -164,6 +166,6 @@ if __name__ == "__main__":
         test_message = "请简单介绍一下人工智能的发展历史。"
         result = model.predict(test_message, stream=False)
         print(result)
-        _log.info(f"模型返回: {result}")
+        logger.info(f"模型返回: {result}")
     except Exception as e:
-        _log.error(f"测试调用失败: {e}")
+        logger.error(f"测试调用失败: {e}")
