@@ -29,16 +29,19 @@
       <div v-else-if="message.status === 'searching' && isProcessing" class="searching-msg"><i>正在检索……</i></div>
       <div v-else-if="message.status === 'generating' && isProcessing" class="searching-msg"><i>正在生成……</i></div>
       <div v-else-if="message.status === 'error'" class="err-msg" @click="$emit('retry')">请求错误，请重试。{{ message.message }}</div>
-
-      <MdPreview v-else-if="message.content"
-        ref="editorRef"
-        editorId="preview-only"
-        previewTheme="github"
-        :showCodeRowNumber="false"
-        :modelValue="message.content"
-        :key="message.id"
-        class="message-md"
-      />
+      
+      <div v-else-if="message.content" class="content-block">
+          <template v-for="(part, idx) in contentParts" :key="idx">
+             <MdPreview v-if="part.type === 'text'"
+                editorId="preview-only"
+                previewTheme="github"
+                :showCodeRowNumber="false"
+                :modelValue="part.content"
+                class="message-md"
+             />
+             <GraphRenderer v-else-if="part.type === 'graph'" :data="part.data" />
+          </template>
+      </div>
       <div v-else-if="message.reasoning_content" class="empty-block"></div>
 
       <slot v-else-if="message.toolCalls && Object.keys(message.toolCalls).length > 0" name="tool-calls"></slot>
@@ -65,6 +68,7 @@
 import { computed, ref } from 'vue';
 import { CaretRightOutlined } from '@ant-design/icons-vue';
 import RefsComponent from '@/components/RefsComponent.vue'
+import GraphRenderer from '@/components/GraphRenderer.vue'
 
 
 import { MdPreview } from 'md-editor-v3'
@@ -121,6 +125,40 @@ const isEmptyAndLoading = computed(() => {
   const isEmpty = !props.message.content || props.message.content.length === 0;
   const isLoading = props.message.status === 'init' && props.isProcessing
   return isEmpty && isLoading;
+});
+
+const contentParts = computed(() => {
+    const text = props.message.content || "";
+    const parts = [];
+    const regex = /```json-graph\n([\s\S]*?)\n```/g;
+    
+    let lastIndex = 0;
+    let match;
+    
+    while ((match = regex.exec(text)) !== null) {
+        // Text before match
+        if (match.index > lastIndex) {
+            parts.push({ type: 'text', content: text.substring(lastIndex, match.index) });
+        }
+        
+        // Graph data
+        try {
+            const json = JSON.parse(match[1]);
+            parts.push({ type: 'graph', data: json });
+        } catch (e) {
+            console.error("Failed to parse graph json", e);
+            parts.push({ type: 'text', content: match[0] }); // Fallback to text
+        }
+        
+        lastIndex = regex.lastIndex;
+    }
+    
+    // Remaining text
+    if (lastIndex < text.length) {
+        parts.push({ type: 'text', content: text.substring(lastIndex) });
+    }
+    
+    return parts;
 });
 </script>
 

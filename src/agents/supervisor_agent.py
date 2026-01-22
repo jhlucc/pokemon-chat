@@ -1,4 +1,4 @@
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 import os
 import sqlite3
 from langgraph.graph.state import CompiledStateGraph

@@ -40,6 +40,15 @@
           {{ item }}/{{ model }}
         </a-menu-item>
       </a-menu-item-group>
+      <a-menu-item-group v-if="opts.agents && opts.agents.length > 0" title="智能体 (Agents)">
+         <a-menu-item
+          v-for="(agent, idx) in opts.agents"
+          :key="`agent-${idx}`"
+          @click="selectModel('agent', agent.name)"
+        >
+          agent/{{ agent.name }}
+        </a-menu-item>
+      </a-menu-item-group>
       <a-menu-item-group v-if="customModels.length > 0" title="自定义模型">
         <a-menu-item
           v-for="(model, idx) in customModels"
@@ -220,7 +229,8 @@ const opts = reactive({
   showModelCard: false,
   openDetail: false,
   databases: [],
-  mcps: []
+  mcps: [],
+  agents: []
 })
 
 const meta = reactive(JSON.parse(localStorage.getItem('meta')) || {
@@ -401,6 +411,18 @@ const updateMessage = (info) => {
         msg.showThinking = info.showThinking;
       }
 
+      // Handle structured data (tool events)
+      if (info.data) {
+          const evt = info.data;
+          if (evt.status === 'tool_start') {
+              const toolText = `\n> 🔧 **调用工具**: \`${evt.tool}\`\n> 参数: \`${JSON.stringify(evt.input || {})}\`\n\n`;
+              msg.reasoning_content = (msg.reasoning_content || '') + toolText;
+          } else if (evt.status === 'tool_end') {
+              const toolText = `\n> ✅ **工具完成**: \`${evt.tool}\`\n\n`;
+              msg.reasoning_content = (msg.reasoning_content || '') + toolText;
+          }
+      }
+
       scrollToBottom();
     } catch (error) {
       console.error('Error updating message:', error);
@@ -465,7 +487,16 @@ const fetchChatResponse = (user_input, cur_res_id) => {
   }
   console.log(params)
 
-  fetch('/api/chat/', {
+  console.log(params)
+
+  let url = '/api/chat/';
+  // If model_provider is 'agent', route to agent endpoint
+  if (configStore.config.model_provider === 'agent') {
+      const agentName = configStore.config.model_name;
+      url = `/api/chat/agent/${agentName}`;
+  }
+
+  fetch(url, {
     method: 'POST',
     body: JSON.stringify(params),
     headers: {
@@ -596,7 +627,9 @@ const retryMessage = (id) => {
 // 从本地存储加载数据
 onMounted(() => {
   scrollToBottom()
+  scrollToBottom()
   loadDatabases()
+  loadAgents()
 
   chatContainer.value.addEventListener('scroll', handleUserScroll);
 

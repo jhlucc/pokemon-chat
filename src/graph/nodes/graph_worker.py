@@ -45,7 +45,8 @@ class GraphWorker:
                 graph=self.graph_store.graph,
                 verbose=True,
                 cypher_prompt=CYPHER_GENERATION_PROMPT,
-                allow_dangerous_requests=True # Required for read/write but we mainly read
+                allow_dangerous_requests=True,
+                return_intermediate_steps=True
             )
         else:
             self.chain = None
@@ -62,6 +63,36 @@ class GraphWorker:
                 # Invoke the chain
                 response = self.chain.invoke({"query": query})
                 response_text = response.get("result", "I couldn't find an answer in the graph.")
+                
+                # Extract graph data
+                intermediate = response.get("intermediate_steps", [])
+                if intermediate:
+                    # intermediate_steps is tuple (str(cypher), List[Dict](context))
+                    cypher_query = intermediate[0].get("query", "")
+                    graph_data = intermediate[1] # This is the context/result
+                    
+                    # Serialize graph_data to JSON-Graph format
+                    # Need to convert Neo4j objects (nodes/rels) to simple dicts
+                    # Usually graph_data is a list of dicts like [{ 'p.name': 'Pikachu', ... }]
+                    # We might need to construct nodes/edges.
+                    
+                    # For now, let's just dump the raw data into a json block 
+                    # effectively giving the frontend the visual data
+                    import json
+                    
+                    # Helper to serialize Neo4j types if they leak out, 
+                    # but LangChain usually converts them to dicts/values?
+                    # Let's hope it's serializable.
+                    try:
+                        graph_json = json.dumps(graph_data, default=str, ensure_ascii=False)
+                        response_text += f"\n\n```json-graph\n{graph_json}\n```"
+                        
+                        # We also append the cypher for debugging
+                        response_text += f"\n\n> **Cypher**: `{cypher_query}`"
+                        
+                    except Exception as json_err:
+                        logger.warning(f"Failed to serialize graph data: {json_err}")
+
             except Exception as e:
                 logger.error(f"GraphWorker query failed: {e}")
                 response_text = f"Error querying knowledge graph: {str(e)}"

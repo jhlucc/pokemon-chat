@@ -300,7 +300,11 @@ async def chat_agent(
         msg_id: str,
         error: str | None = None,
         history_resp=None,
-        refs=None
+        msg_id: str,
+        error: str | None = None,
+        history_resp=None,
+        refs=None,
+        data: Dict[str, Any] | None = None
     ):
         """
         前端必须要拿到 msg.id，所以这里统一塞一个 msg 字段
@@ -320,6 +324,8 @@ async def chat_agent(
             payload["history"] = history_resp
         if refs:
             payload["refs"] = refs
+        if data:
+            payload["data"] = data
         return json.dumps(payload, ensure_ascii=False).encode() + b"\n"
 
     # ----------   streaming   ----------
@@ -330,16 +336,26 @@ async def chat_agent(
         # ① init
         yield make_agent_chunk(status="init", msg_id=cur_msg_id)
 
-        # ② token-by-token
-        final_answer = ""
-        try:
-            async for part in agent.query(query, meta=meta, history=history):
-                final_answer += part
-                yield make_agent_chunk(
-                    content=part,
-                    status="loading",
-                    msg_id=cur_msg_id
-                )
+            # ② token-by-token
+            final_answer = ""
+            try:
+                async for part in agent.query(query, meta=meta, history=history):
+                    if isinstance(part, str):
+                        # Token
+                        final_answer += part
+                        yield make_agent_chunk(
+                            content=part,
+                            status="loading",
+                            msg_id=cur_msg_id
+                        )
+                    elif isinstance(part, dict):
+                         # Structured Metadata (e.g. status update)
+                         if "status" in part:
+                             yield make_agent_chunk(
+                                 status=part.get("status_text", "thinking"),
+                                 msg_id=cur_msg_id,
+                                 data=part
+                             )
 
             # ③ finished
             updated           = history_mgr.update_ai(final_answer)

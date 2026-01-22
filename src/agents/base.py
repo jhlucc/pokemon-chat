@@ -158,6 +158,46 @@ class BaseAgent(ABC, Generic[TState]):
             history.append(state)
         return history
 
+    async def query(self, query: str, meta: Dict[str, Any] = None, history: List[Dict[str, Any]] = None) -> AsyncIterator[str]:
+        """
+        Unified query interface for API endpoints.
+        Uses `astream_events` to yield tokens and internal steps (status).
+        """
+        from langchain_core.messages import HumanMessage
+        
+        input_state = {"messages": [HumanMessage(content=query)]}
+        config = {"configurable": {"thread_id": meta.get("thread_id", "default")}}
+        
+        # astream_events (v2) allows seeing internal events
+        async for event in self.graph.astream_events(input_state, config, version="v1"):
+            kind = event["event"]
+            
+            if kind == "on_chat_model_stream":
+                # Token streaming
+                content = event["data"]["chunk"].content
+                if content:
+                    yield content
+                    
+            elif kind == "on_tool_start":
+                # Tool execution (Status update)
+                tool_name = event["name"]
+                tool_input = event["data"].get("input")
+                # Yield a status update chunk
+                yield {
+                    "status": "tool_start",
+                    "status_text": f"正在使用工具 {tool_name}...", 
+                    "tool": tool_name,
+                    "input": tool_input
+                }
+            elif kind == "on_tool_end":
+                tool_name = event["name"]
+                # Yield a status update chunk
+                yield {
+                    "status": "tool_end",
+                    "status_text": f"工具 {tool_name} 执行完成",
+                    "tool": tool_name
+                }
+
 
 class ToolAgent(BaseAgent[TState]):
     """
