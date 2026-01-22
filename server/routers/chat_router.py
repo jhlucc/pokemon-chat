@@ -15,6 +15,10 @@ from src.runtime import get_retriever, get_whisper_client
 logger = LogManager()
 import subprocess
 import tempfile
+
+# Semantic Cache
+from src.knowledge.cache.semantic_cache import get_semantic_cache
+
 chat = APIRouter(prefix="/chat")
 
 # ---------------------------------------------------------
@@ -104,6 +108,13 @@ async def chat_post(
     async def generate_response():
         modified_query = query
         refs = None
+        
+        # 1. Check Semantic Cache FIRST ----------------------------------------
+        cache = get_semantic_cache()
+        cached_response = cache.get(query)
+        if cached_response:
+            yield make_chunk(meta, content=cached_response, status="finished")
+            return
 
         # 2. 检索阶段 -------------------------------------------------------------
         if meta and need_retrieve(meta):
@@ -157,6 +168,10 @@ async def chat_post(
             # 4. 更新历史，发送最终块
             updated_history = history_manager.update_ai(content)
             history_serializable = convert_messages_to_dicts(updated_history)
+            
+            # 5. Cache the response (only cache non-retrieval queries for now)
+            if content and not need_retrieve(meta):
+                cache.set(query, content)
             # print(updated_history)
             # print(history_serializable)
 

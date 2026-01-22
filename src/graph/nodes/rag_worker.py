@@ -5,9 +5,13 @@ from langchain_openai import ChatOpenAI
 
 from src.core.settings import settings
 from src.graph.state import AgentState
-from src.graph.state import AgentState
 from src.knowledge.store.vector import VectorStore
 from src.knowledge.core.operators import HyDEOperator
+from src.graph.nodes.crag_evaluator import get_crag_evaluator
+from src.knowledge.core.query_decomposer import get_query_decomposer
+from src.utils.logger import get_logger
+
+logger = get_logger(__name__)
 
 class RagWorker:
     def __init__(self):
@@ -61,6 +65,59 @@ class RagWorker:
             return context
         except Exception as e:
             return f"Error retrieving knowledge: {e}"
+    
+    def retrieve_with_crag(self, query: str) -> str:
+        """
+        Retrieve with CRAG (Corrective RAG) - evaluates and corrects retrieval quality.
+        """
+        # 1. Initial retrieval
+        results = self.vector_store.search(query, top_k=5, rerank=settings.features.enable_reranker)
+        
+        if not results:
+            # No docs - use web search directly
+            logger.info("CRAG: No docs retrieved, falling back to web search")
+            return self._web_search_context(query)
+        
+        # 2. Grade retrieval quality  
+        doc_contents = [doc.page_content for doc in results]
+        evaluator = get_crag_evaluator()
+        grade = evaluator.grade(query, doc_contents)
+        
+        # 3. Apply correction
+        if grade.grade == "CORRECT":
+            logger.info("CRAG: Retrieval CORRECT, using original docs")
+            return self._format_context(results)
+        
+        elif grade.grade == "AMBIGUOUS":
+            logger.info("CRAG: Retrieval AMBIGUOUS, supplementing with web")
+            web_context = self._web_search_context(query)
+            if web_context:
+                return self._format_context(results) + "\n\n[Web Search Results]\n" + web_context
+            return self._format_context(results)
+        
+        else:  # WRONG
+            logger.info("CRAG: Retrieval WRONG, using web search only")
+            web_context = self._web_search_context(query)
+            if web_context:
+                return web_context
+            # Fallback to original if web fails
+            return self._format_context(results)
+    
+    def _format_context(self, docs) -> str:
+        """Format documents into context string."""
+        return "\n\n".join([f"[{i+1}] {doc.page_content}" for i, doc in enumerate(docs)])
+    
+    def _web_search_context(self, query: str) -> str:
+        """Perform web search and return context."""
+        try:
+            from tavily import TavilyClient
+            client = TavilyClient(api_key=settings.web_search.tavily_api_key)
+            response = client.search(query, max_results=3)
+            if response and "results" in response:
+                return "\n\n".join([f"[Web {i+1}] {r.get('content', '')}" for i, r in enumerate(response["results"])])
+        except Exception as e:
+            logger.warning(f"Web search failed: {e}")
+        return ""
 
     def __call__(self, state: AgentState) -> Dict[str, Any]:
         """
@@ -69,6 +126,14 @@ class RagWorker:
         messages = state["messages"]
         last_message = messages[-1]
         query = last_message.content
+        
+        # 0. Query Decomposition for complex questions
+        decomposer = get_query_decomposer()
+        if decomposer.is_complex(query):
+            sub_queries = decomposer.decompose(query)
+            logger.info(f"Query decomposed into {len(sub_queries)} sub-queries")
+        else:
+            sub_queries = [query]
         
         # 1. HyDE Expansion (Optional but recommended)
         hyde_query = query
@@ -92,8 +157,17 @@ class RagWorker:
              # Fallback to original query
              pass
 
-        # 2. Retrieve
-        context = self.retrieve(hyde_query)
+        # 2. Retrieve with CRAG (Self-Correcting) for each sub-query
+        all_contexts = []
+        for sq in sub_queries:
+            if settings.features.enable_web_search:
+                ctx = self.retrieve_with_crag(sq if sq == query else sq)  # Use original hyde_query for main
+            else:
+                ctx = self.retrieve(sq if sq == query else sq)
+            if ctx:
+                all_contexts.append(f"[Sub-Q: {sq[:50]}...]\n{ctx}")
+        
+        context = "\n\n---\n\n".join(all_contexts) if all_contexts else "No relevant information found."
         
         # 2. Generate
         prompt = ChatPromptTemplate.from_messages([
