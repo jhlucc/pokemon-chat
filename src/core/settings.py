@@ -127,6 +127,7 @@ class DatabaseSettings(BaseSettings):
 
     # Milvus
     milvus_uri: str = "http://localhost:19530"
+    milvus_collection_name: str = "pokemon_knowledge"
 
 
 class TavilySettings(BaseSettings):
