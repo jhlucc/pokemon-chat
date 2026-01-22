@@ -4,7 +4,7 @@ import re
 
 import aiohttp
 from html2text import HTML2Text
-from langchain.docstore.document import Document
+from langchain_core.documents import Document
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from strsimpy.normalized_levenshtein import NormalizedLevenshtein
 

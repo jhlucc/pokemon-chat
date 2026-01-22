@@ -51,6 +51,13 @@ POKEMON_KNOWLEDGE = {
 async def generate_queries_node(state: DeepContext, config: RunnableConfig) -> Dict[str, Any]:
     """生成研究查询 - 基于当前主题和已有学习"""
     topic = state.get("topic", "")
+    
+    # [NEW] 如果没有 topic，尝试从消息中提取
+    if not topic and state.get("messages"):
+        last_msg = state["messages"][-1]
+        topic = last_msg.content
+        logger.info(f"[DeepResearch] 从消息提取主题: {topic}")
+    
     learnings = state.get("learnings", [])
     breadth = state.get("breadth", 3)
     
@@ -66,6 +73,7 @@ async def generate_queries_node(state: DeepContext, config: RunnableConfig) -> D
         research_directions = ["宝可梦基础属性", "进化链研究", "属性相克关系"]
     
     return {
+        "topic": topic, #以此确保 topic 被回写到状态中
         "research_directions": research_directions[:breadth],
         "messages": [AIMessage(content=f"生成了 {len(research_directions[:breadth])} 个研究方向")]
     }

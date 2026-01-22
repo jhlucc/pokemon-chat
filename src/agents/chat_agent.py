@@ -23,6 +23,7 @@ from src.agents.kg_agent import KGQueryAgent
 from src.agents.pokemon_stats_agent import PokemonStatsAgent
 from src.agents.pokedex_agent import PokedexAgent
 from src.agents.trainer_agent import TrainerAgent
+from src.agents.deep_agent.graph import DeepAgent
 from src.utils.logger import get_logger
 from src.models.schemas import AgentResponse
 from src.agents.interrupts import approval_node
@@ -142,6 +143,7 @@ class PokemonKGChatAgent(BaseAgent):
             self.stats_agent = PokemonStatsAgent()
             self.pokedex_agent = PokedexAgent()
             self.trainer_agent = TrainerAgent()
+            self.deep_agent = DeepAgent()
         except Exception as e:
             logger.error(f"Failed to initialize specialized agents: {e}")
 
@@ -204,8 +206,15 @@ class PokemonKGChatAgent(BaseAgent):
         builder.add_node("web_searcher", RunnableLambda(self._web_searcher))
         builder.add_node("approval", approval_node)
 
+        # [NEW] 专业代理节点
+        builder.add_node("stats_agent", self._stats_node)
+        builder.add_node("pokedex_agent", self._pokedex_node)
+        builder.add_node("trainer_agent", self._trainer_node)
+        builder.add_node("deep_researcher", self._deep_research_node)
+
         # 定义成员列表
-        self.members = ["chat", "graph_rager", "web_searcher"]
+        self.members = ["chat", "graph_rager", "web_searcher", 
+                       "stats_agent", "pokedex_agent", "trainer_agent", "deep_researcher"]
         if self.kgsql_agent:
             self.members.append("kg_sqler")
 
@@ -232,6 +241,9 @@ class PokemonKGChatAgent(BaseAgent):
             next_node = state["next"]
             if next_node == "approval":
                 return "approval"
+            # 兼容旧代码，如果没有 next 可能是 finish
+            if not next_node:
+                return END
             return next_node
 
         builder.add_conditional_edges("supervisor", route_supervisor)
@@ -300,20 +312,35 @@ class PokemonKGChatAgent(BaseAgent):
             "- chat：【日常闲聊与兜底】\n"
             "  • 处理问候、感谢等日常对话\n"
             "  • 当其他专家无法回答时进行尝试\n"
-            "- kg_sqler：【结构化数据专家】\n"
-            "  • 查询精确数据：种族值、身高体重、属性、进化链、特性效果\n"
+            "- kg_sqler：【知识图谱查询】\n"
+            "  • 查询精确数据：身高体重、属性、特性效果\n"
             "  • 查询特定关系：某人的宝可梦、某地的道馆\n"
-            "- graph_rager：【知识库专家】\n"
-            "  • 回答复杂问题：剧情背景、人物生平、以及不适合 SQL 查询的非结构化信息\n"
+            "- graph_rager：【知识库RAG】\n"
+            "  • 回答复杂问题：剧情背景、人物生平、传说故事\n"
+            "- stats_agent：【数值与战斗专家】\n"
+            "  • 分析宝可梦种族值强弱、对比两只宝可梦\n"
+            "  • 计算属性克制关系、预测战斗胜负\n"
+            "- pokedex_agent：【图鉴查询专家】\n"
+            "  • 搜索宝可梦（按世代/属性）、查询进化链\n"
+            "  • 查询招式列表、特性详细效果\n"
+            "- trainer_agent：【训练师顾问】\n"
+            "  • 组建队伍建议（雨天队/空间队等）、分析队伍打击面\n"
+            "  • 推荐宝可梦配招（性格/努力值思路）\n"
+            "- deep_researcher：【深度研究员】\n"
+            "  • 执行复杂、多步骤的深度研究任务\n"
+            "  • 生成详细的研究报告（如：进化历史、生态系统分析）\n"
             "- web_searcher：【情报探员】\n"
             "  • 查询最新发售信息、新闻、活动、当前对战环境 meta\n\n"
             "调度逻辑：\n"
             "1. 仔细分析用户意图，选择最匹配的专家。\n"
-            "2. 如果用户问的是'皮卡丘的种族值'，必须选 kg_sqler。\n"
-            "3. 如果用户问'小智在阿罗拉发生了什么'，选 graph_rager。\n"
-            "4. 如果用户问'最新的朱紫DLC什么时候出'，选 web_searcher。\n"
-            "5. 如果只是打招呼，选 chat。\n"
-            "6. 任务完成返回 FINISH。\n"
+            "2. 优先使用 stats_agent 进行数值分析和对比。\n"
+            "3. 优先使用 pokedex_agent 查询招式和进化。\n"
+            "4. 优先使用 trainer_agent 进行配招和组队。\n"
+            "4. 优先使用 trainer_agent 进行配招和组队。\n"
+            "5. 对于需要深入调研、撰写报告的任务，使用 deep_researcher。\n"
+            "6. kg_sqler 用于简单的实体属性查询。\n"
+            "7. 涉及最新消息用 web_searcher。\n"
+            "8. 任务完成返回 FINISH。\n"
         )
 
         prompt = ChatPromptTemplate.from_template("""
@@ -518,6 +545,10 @@ class PokemonKGChatAgent(BaseAgent):
     def _trainer_node(self, state: AgentState):
         """训练师助手节点"""
         return self._invoke_subagent(self.trainer_agent, state, "trainer_agent")
+
+    def _deep_research_node(self, state: AgentState):
+        """深度研究节点"""
+        return self._invoke_subagent(self.deep_agent, state, "deep_researcher")
 
     # 公共接口
     async def query(

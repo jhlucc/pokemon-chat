@@ -5,7 +5,7 @@ from typing import List, Dict, Optional
 import asyncio
 
 from tavily import TavilyClient
-from src.agents.tools.websearch.milvus_service import MilvusService
+from src.knowledge.vector.milvus_store import MilvusService
 from langchain_core.prompts import PromptTemplate
 from langchain_openai import ChatOpenAI
 

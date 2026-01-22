@@ -7,6 +7,10 @@ from typing import Dict, List, Optional, Any
 
 from src.core.settings import settings
 from src.models.schemas import Source
+from langchain_openai import ChatOpenAI
+from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.output_parsers import JsonOutputParser
+from langchain_core.messages import AIMessage
 
 
 # -------------------- 全局超时时长（秒） --------------------
@@ -87,7 +91,38 @@ class TavilyBasicSearcher(BaseWebSearcher):
 
 class LiteBaseSearcher(BaseWebSearcher):
     def __init__(self, some_config: Optional[Any] = None):
-        pass
+        self.llm = ChatOpenAI(
+            model=settings.llm.model_name,
+            base_url=settings.llm.api_base,
+            api_key=settings.llm.api_key,
+            temperature=0.0
+        )
+
+    def _check_safety(self, query: str) -> Dict[str, Any]:
+        """检查查询是否安全/相关"""
+        prompt = ChatPromptTemplate.from_template("""
+        你是 Pokemon 搜索守门人。你的任务是判断用户的搜索查询是否与 "Pokemon (宝可梦/口袋妖怪)"、"动画/游戏" 相关。
+        
+        判断规则：
+        1. 如果包含宝可梦名称、角色、招式、地点等，返回 "pass"。
+        2. 如果是日常问候（你好、早上好等），返回 "pass"。
+        3. 如果是完全无关的话题（如：政治、股票、其他动漫、编程问题等），返回 "block"。
+        
+        请输出 JSON 格式:
+        {{
+            "status": "pass" 或 "block",
+            "reason": "原因"
+        }}
+        
+        用户查询: {query}
+        """)
+        
+        chain = prompt | self.llm | JsonOutputParser()
+        try:
+            return chain.invoke({"query": query})
+        except Exception as e:
+            logger.error(f"Guardrail check failed: {e}")
+            return {"status": "pass", "reason": "check_failed"}
 
     # ---------- 内部工具 ----------
 
@@ -111,6 +146,27 @@ class LiteBaseSearcher(BaseWebSearcher):
         logger.info(f"[LiteWebSearcher] Searching for: {query} (top_k={top_k})")
         if not query.strip():
             return []
+
+        # [Guardrail] 安全检查
+        try:
+            # 可以在线程中运行 check 以避免阻塞 async loop (如果外层是 loop)
+            # 但这里 _run_sync 已经很复杂了，直接在这里同步调用 LLM (invoke is sync by default unless ainvoke)
+            # 考虑到 LiteBaseSearcher 主要在 synchronous context (search is sync method) 使用，直接调用即可。
+            check_result = self._check_safety(query)
+            if check_result.get("status") == "block":
+                logger.warning(f"[Guardrail] 拦截搜索: {query} | Reason: {check_result.get('reason')}")
+                return [
+                    Source(
+                        title="搜索被拒绝",
+                        content_snippet=f"抱歉，我无法搜索不是宝可梦主题的内容~ (原因: {check_result.get('reason', '无关内容')})",
+                        url="#",
+                        score=0.0
+                    )
+                ]
+        except Exception as e:
+            logger.error(f"Guardrail check error: {e}")
+            # 出错放行
+            pass
 
         # 异步搜索工具（保持原来的导入路径）
         from src.agents.tools.websearch.utils import search      # async def search(q, k) -> list

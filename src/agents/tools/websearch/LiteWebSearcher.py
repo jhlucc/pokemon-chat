@@ -3,7 +3,7 @@ from typing import List, Dict
 from langchain_core.prompts import PromptTemplate
 from langchain_openai import ChatOpenAI
 
-from src.agents.tools.websearch.milvus_service import MilvusService
+from src.knowledge.vector.milvus_store import MilvusService
 from src.agents.tools.websearch.utils import *
 from src.core.settings import settings
 
