@@ -26,23 +26,27 @@ class RetrievalGrade(BaseModel):
 
 
 GRADING_PROMPT = ChatPromptTemplate.from_messages([
-    ("system", """You are a retrieval quality evaluator. 
-Given a user query and retrieved documents, evaluate if the documents are relevant and sufficient to answer the query.
+    ("system", """你是宝可梦知识检索质量评估员。
+给定用户问题和检索到的文档，评估文档是否相关且足以回答问题。
 
-Grade as:
-- CORRECT: Documents directly answer the query with high confidence
-- AMBIGUOUS: Documents are partially relevant but may need supplementation
-- WRONG: Documents are irrelevant or do not help answer the query
+评分标准：
+- CORRECT：文档直接回答了问题
+  例：问"皮卡丘属性"，文档明确说"电系"
+- AMBIGUOUS：文档部分相关，可能需要补充
+  例：问"皮卡丘对抗岩系怎么样"，文档只说了皮卡丘是电系
+- WRONG：文档与问题无关
+  例：问"皮卡丘"，文档讲的是"喇叭芽"
 
-Be strict but fair. If the query is about a specific topic and documents mention it, that's usually CORRECT.
-If documents are about related but different topics, that's AMBIGUOUS.
-If documents are completely off-topic, that's WRONG."""),
-    ("human", """Query: {query}
+宝可梦特殊考量：
+- 如果文档讲的是进化链上的相关宝可梦，可以算AMBIGUOUS
+- 如果文档讲的是相同属性的其他宝可梦，可以算AMBIGUOUS
+- 如果文档完全距离，算WRONG"""),
+    ("human", """用户问题: {query}
 
-Retrieved Documents:
+检索到的宝可梦知识:
 {documents}
 
-Provide your grade (CORRECT/AMBIGUOUS/WRONG) and a brief reason.""")
+请评估检索质量 (CORRECT/AMBIGUOUS/WRONG) 并简要说明理由。""")
 ])
 
 

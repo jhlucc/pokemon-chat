@@ -7,6 +7,7 @@ from server.routers.admin_router import admin
 from server.routers.mcp_router import router as mcp
 from server.routers.agent_router import router as agent
 from server.routers.health_router import health
+from server.routers.refresh_router import refresh_router
 
 router = APIRouter()
 router.include_router(base)
@@ -16,5 +17,5 @@ router.include_router(data)
 router.include_router(tool)
 router.include_router(agent)
 router.include_router(admin)
-
 router.include_router(mcp)
+router.include_router(refresh_router)

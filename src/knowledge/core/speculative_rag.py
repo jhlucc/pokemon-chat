@@ -32,34 +32,50 @@ class VerificationResult(BaseModel):
 
 
 DRAFT_PROMPT = ChatPromptTemplate.from_messages([
-    ("system", """You are a helpful Pokemon assistant. Generate a draft answer to the question.
-Include your confidence level (0-1) and brief reasoning.
-Be concise but accurate. Use the provided context if available."""),
-    ("human", """Context: {context}
+    ("system", """你是宝可梦知识草案生成器。根据用户问题和参考资料，生成一个草案回答。
 
-Question: {query}
+回答要求：
+- 使用准确的宝可梦术语（属性、特性、技能、种族值等）
+- 如果涉及数值，确保准确
+- 简洁但全面
+- 评估自己的信心程度（0-1）
 
-Generate a draft answer with confidence score and reasoning.""")
+信心评分标准：
+- 0.9+: 文档直接支持回答
+- 0.7-0.9: 文档部分支持，需要推理
+- 0.5-0.7: 主要基于常识
+- <0.5: 不确定"""),
+    ("human", """参考资料: {context}
+
+用户问题: {query}
+
+请生成草案回答，并评估信心度和简要理由。""")
 ])
 
 
 VERIFY_PROMPT = ChatPromptTemplate.from_messages([
-    ("system", """You are an expert verifier. Given multiple draft answers to a question,
-select the best one and optionally refine it.
+    ("system", """你是宝可梦知识专家审核员。给定多个草案回答，选择最佳的一个并可选择性地优化它。
 
-Criteria for selection:
-1. Factual accuracy (most important)
-2. Completeness
-3. Clarity
-4. Confidence alignment (high confidence should match quality)"""),
-    ("human", """Question: {query}
+评估标准（按重要性排序）：
+1. 宝可梦信息准确性（最重要）
+   - 属性、类型、进化链是否正确
+   - 数值数据是否精确
+2. 回答完整性
+   - 是否覆盖了问题的各个方面
+3. 表达清晰度
+   - 是否易于理解
+4. 信心与质量匹配
+   - 高信心的回答质量应该也高
 
-Context: {context}
+如果多个草案质量相似，选择最全面的那个。"""),
+    ("human", """用户问题: {query}
 
-Draft Answers:
+参考资料: {context}
+
+候选草案:
 {drafts}
 
-Select the best draft (by index starting from 0), provide the final answer (may refine), and explain your choice.""")
+请选择最佳草案（按索引0开始），给出最终回答（可以优化），并解释选择理由。""")
 ])
 
 

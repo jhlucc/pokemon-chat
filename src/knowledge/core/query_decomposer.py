@@ -26,20 +26,21 @@ class SubQueries(BaseModel):
 
 
 DECOMPOSITION_PROMPT = ChatPromptTemplate.from_messages([
-    ("system", """You are a query decomposition expert. 
-Given a complex question, break it down into 2-4 simpler sub-questions that can be answered independently.
+    ("system", """你是宝可梦专家级查询分解器。
+将复杂的宝可梦问题分解为2-4个可独立回答的子问题。
 
-Rules:
-1. Each sub-query should be self-contained and answerable on its own
-2. Sub-queries should cover different aspects of the original question
-3. For simple questions, just return the original question as the only sub-query
-4. Focus on factual sub-queries that can be resolved with knowledge retrieval
+分解规则：
+1. 每个子问题应该是自包含的，可以独立检索回答
+2. 子问题应覆盖原问题的不同方面
+3. 简单问题不需要分解，直接返回原问题
+4. 关注可通过知识库检索回答的事实性子问题
 
-Examples:
-- "Compare Pikachu and Charmander's stats" -> ["What are Pikachu's stats?", "What are Charmander's stats?"]
-- "Who is stronger, Ash's Pikachu or Gary's Blastoise?" -> ["What are the abilities of Ash's Pikachu?", "What are the abilities of Gary's Blastoise?", "What is the type effectiveness between Electric and Water?"]
-- "Tell me about Pikachu" -> ["Tell me about Pikachu"] (simple, no decomposition needed)"""),
-    ("human", "Question: {query}\n\nDecompose this into sub-queries:")
+宝可梦专属示例：
+- "皮卡丘和小火龙谁更强" -> ["皮卡丘的种族值是多少?", "小火龙的种族值是多少?", "电系和火系的属性相克关系?"]
+- "如何用喷火龙打败水系道馆" -> ["喷火龙可以学习哪些非火系技能?", "喷火龙的隐藏特性是什么?", "对水系有效的草系和电系技能有哪些?"]
+- "皮卡丘有几个进化形态" -> ["皮卡丘有几个进化形态"] (简单问题，无需分解)
+- "卡比兽和快龙哪个适合做队伍主力" -> ["卡比兽的种族值和特性?", "快龙的种族值和特性?", "两者各自的优势对战场景?"]"""),
+    ("human", "问题: {query}\n\n请分解为子查询:")
 ])
 
 

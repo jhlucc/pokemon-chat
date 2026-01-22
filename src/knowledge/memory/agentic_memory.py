@@ -30,23 +30,27 @@ class UserPreferences(BaseModel):
 
 
 EXTRACTION_PROMPT = ChatPromptTemplate.from_messages([
-    ("system", """You are analyzing a conversation to extract user preferences.
-Based on the conversation, identify:
-1. Favorite Pokemon mentioned or implied
-2. Preferred Pokemon types (Fire, Water, etc.)
-3. Response style preference (does user want brief or detailed answers?)
-4. Topics of interest
-5. Any other notable preferences
+    ("system", """你是宝可梦训练师偏好分析专家。
+分析对话内容，提取用户的宝可梦偏好：
 
-Be conservative - only extract preferences that are clearly expressed or strongly implied.
-If no clear preference is shown, leave the field empty."""),
-    ("human", """Conversation:
+提取维度：
+1. 喜爱的宝可梦 - 用户明确表示喜欢或经常询问的宝可梦
+2. 偏好的属性 - 如火系、水系、龙系等
+3. 回答风格 - 用户是喜欢简洁明了还是详细深入的回答
+4. 兴趣话题 - 对战策略、动画剧情、图鉴收集、竞技培养等
+5. 其他备注 - 如游戏版本偏好、最喜欢的世代等
+
+提取原则：
+- 保守提取，只记录明确表达或强烈暗示的偏好
+- 如果没有明确偏好，保持字段为空
+- 注意区分临时询问和真实偏好（反复问同一只宝可梦才算偏好）"""),
+    ("human", """对话记录:
 {conversation}
 
-Current known preferences:
+已知用户偏好:
 {current_preferences}
 
-Extract any NEW preferences from this conversation (merge with existing).""")
+请提取本次对话中的新偏好（与现有偏好合并）。""")
 ])
 
 

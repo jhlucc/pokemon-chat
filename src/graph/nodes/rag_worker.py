@@ -9,6 +9,7 @@ from src.knowledge.store.vector import VectorStore
 from src.knowledge.core.operators import HyDEOperator
 from src.graph.nodes.crag_evaluator import get_crag_evaluator
 from src.knowledge.core.query_decomposer import get_query_decomposer
+from src.knowledge.core.self_rag import get_self_rag
 from src.utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -126,6 +127,21 @@ class RagWorker:
         messages = state["messages"]
         last_message = messages[-1]
         query = last_message.content
+        
+        # -1. Self-RAG: Decide if retrieval is needed
+        self_rag = get_self_rag()
+        retrieval_decision = self_rag.should_retrieve(query)
+        
+        if not retrieval_decision.should_retrieve:
+            # Skip retrieval, generate directly from LLM knowledge
+            logger.info(f"Self-RAG: Skipping retrieval ({retrieval_decision.reason})")
+            prompt = ChatPromptTemplate.from_messages([
+                ("system", "You are a helpful Pokemon assistant. Answer based on your knowledge."),
+                ("user", "{query}")
+            ])
+            chain = prompt | self.llm
+            response = chain.invoke({"query": query})
+            return {"messages": [response]}
         
         # 0. Query Decomposition for complex questions
         decomposer = get_query_decomposer()
