@@ -31,7 +31,33 @@ class RagWorker:
             if not results:
                 return "No relevant information found in the knowledge base."
             
-            context = "\n\n".join([f"[{i+1}] {doc.page_content}" for i, doc in enumerate(results)])
+            # Context Window Expansion
+            expanded_docs = []
+            processed_ids = set() # (file_id, chunk_index)
+            
+            for doc in results:
+                meta = doc.metadata
+                file_id = meta.get("file_id")
+                idx = meta.get("chunk_index")
+                
+                if file_id is not None and idx is not None:
+                     # Fetch window
+                     window = self.vector_store.get_adjacent_chunks(file_id, idx, radius=1)
+                     for w_doc in window:
+                         w_meta = w_doc.metadata
+                         tag = (w_meta.get("file_id"), w_meta.get("chunk_index"))
+                         if tag not in processed_ids:
+                             expanded_docs.append(w_doc)
+                             processed_ids.add(tag)
+                else:
+                     # Fallback for docs without tracking info
+                     if doc.page_content not in [d.page_content for d in expanded_docs]:
+                         expanded_docs.append(doc)
+            
+            if not expanded_docs:
+                return "No relevant information found."
+
+            context = "\n\n".join([f"[{i+1}] {doc.page_content}" for i, doc in enumerate(expanded_docs)])
             return context
         except Exception as e:
             return f"Error retrieving knowledge: {e}"
