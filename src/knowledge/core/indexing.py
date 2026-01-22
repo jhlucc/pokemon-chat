@@ -43,18 +43,16 @@ def parse_file(
                 all_text.append(block[0])
         return "\n".join(all_text)
 
-    elif ext == ".docx":
-        _log.info(f"parse_file - Using DocxParser for {file_path}")
-        parser = DocxParser()
-        text_blocks, _tbls_or_figs = parser(file_path)
-        all_text = []
-        for block in text_blocks:
-            if isinstance(block, str):
-                all_text.append(block)
-            elif isinstance(block, tuple):
-                all_text.append(block[0])
-        return "\n".join(all_text)
     elif ext in [".txt", ".md"]:
+        try:
+            _log.info(f"parse_file - Using MarkItDown for {file_path}")
+            md = MarkItDown()
+            result = md.convert(file_path)
+            return result.text_content
+        except Exception as e:
+            _log.error(f"MarkItDown failed: {e}")
+            pass # Fallback
+            
         _log.info(f"parse_file - Using simple read for {file_path}")
         with open(file_path, "r", encoding="utf-8") as f:
             return f.read()
@@ -73,41 +71,12 @@ def parse_file(
             return "\n".join(text_blocks)
 
     elif ext in [".ppt", ".pptx"]:
-        try:
-            _log.info(f"parse_file - Using MarkItDown for {file_path}")
-            md = MarkItDown()
-            result = md.convert(file_path)
-            return result.text_content
-        except Exception as e:
-            _log.warning(f"MarkItDown failed for {file_path}, falling back to PptParser: {e}")
-            _log.info(f"parse_file - Using PptParser for {file_path}")
-            parser = PptParser()
-            text_blocks = parser(file_path)
-            return "\n".join(text_blocks)
+        # User preference: Use DeepDoc (PptParser) for PPT
+        _log.info(f"parse_file - Using PptParser (DeepDoc) for {file_path}")
+        parser = PptParser()
+        text_blocks = parser(file_path)
+        return "\n".join(text_blocks)
             
-    elif ext == ".pdf" and not do_ocr:
-        # For non-OCR PDF, try MarkItDown first
-        try:
-            _log.info(f"parse_file - Using MarkItDown for {file_path}")
-            md = MarkItDown()
-            result = md.convert(file_path)
-            # Check if empty (sometimes happens with scanned pdfs)
-            if result.text_content.strip():
-                return result.text_content
-        except Exception as e:
-             _log.warning(f"MarkItDown failed for {file_path}: {e}")
-        
-        # Fallback to PdfParser
-        _log.info(f"parse_file - Using PdfParser for {file_path}")
-        parser = PdfParser()
-        text_blocks, _tbls_or_figs = parser(file_path, need_image=False, zoomin=3, return_html=False)
-        all_text = []
-        for block in text_blocks:
-            if isinstance(block, str):
-                all_text.append(block)
-            elif isinstance(block, tuple):
-                all_text.append(block[0])
-        return "\n".join(all_text)
 
     elif ext == ".docx":
         try:
