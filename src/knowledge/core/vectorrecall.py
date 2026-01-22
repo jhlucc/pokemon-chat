@@ -8,14 +8,7 @@ from typing import Any, Dict, List, Callable
 from pymilvus import connections, Collection
 from src.core.settings import settings
 from src.models.embedding import get_embedding_model
-
-try:
-    from src.models.reranker_model import RerankerWrapper
-
-    RERANK_AVAILABLE = True
-except ImportError:
-    RERANK_AVAILABLE = False
-
+from src.models.reranker_model import RerankerWrapper
 from src.utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -49,14 +42,14 @@ class VectorRecaller:
             raise ValueError("Embedding model is None")
 
         self.reranker = None
-        if settings.features.enable_reranker and RERANK_AVAILABLE:
+        if settings.features.enable_reranker:
             reranker_key = settings.kb_config.reranker_key
             model_name = settings.reranker.model_name
             local_path = str(settings.paths.model_reranker_path)
             self.reranker = RerankerWrapper(reranker_key, model_name, local_path=local_path, device="cpu")
             logger.info("Reranker loaded.")
         else:
-            logger.info("Reranker not enabled or not available.")
+            logger.info("Reranker not enabled.")
 
     def search_by_vector(self, vector: List[float], limit: int = 10) -> List[Any]:
         search_params = {

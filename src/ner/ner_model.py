@@ -6,23 +6,17 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 from src.core.settings import settings
 
-# Conditional imports for BERT-based NER
-# Only import torch/transformers if enable_ner_bert is True
+# BERT-based NER (only if enabled)
 _BERT_AVAILABLE = False
 if settings.features.enable_ner_bert:
-    try:
-        import torch
-        from torch import nn
-        from torch.utils.data import Dataset, DataLoader
-        from transformers import BertModel, BertTokenizer
-        from seqeval.metrics import f1_score
-        from sklearn.model_selection import train_test_split
-        from tqdm import tqdm
-        _BERT_AVAILABLE = True
-    except ImportError as e:
-        import warnings
-        warnings.warn(f"BERT NER dependencies not installed: {e}. BERT NER will be disabled.")
-        _BERT_AVAILABLE = False
+    import torch
+    from torch import nn
+    from torch.utils.data import Dataset, DataLoader
+    from transformers import BertModel, BertTokenizer
+    from seqeval.metrics import f1_score
+    from sklearn.model_selection import train_test_split
+    from tqdm import tqdm
+    _BERT_AVAILABLE = True
 
 # 模型训练
 cache_model = str(settings.paths.cache_berta_model)

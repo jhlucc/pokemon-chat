@@ -1,8 +1,5 @@
 import os
-try:
-    from rapidocr_onnxruntime import RapidOCR
-except ImportError:
-    RapidOCR = None
+from rapidocr_onnxruntime import RapidOCR
 
 from src.plugins.document_processor_base import BaseDocumentProcessor, ProcessingResult
 from typing import Dict, Any
@@ -11,16 +8,8 @@ class RapidOCRProcessor(BaseDocumentProcessor):
     """RapidOCR 处理器"""
     
     def __init__(self):
-        if RapidOCR is None:
-            self.model = None
-            self.error = "rapidocr_onnxruntime not installed"
-        else:
-            try:
-                self.model = RapidOCR()
-                self.error = None
-            except Exception as e:
-                self.model = None
-                self.error = str(e)
+        self.model = RapidOCR()
+        self.error = None
                 
     def process_file(self, file_path: str, params: Dict[str, Any] = None) -> ProcessingResult:
         if self.model is None:

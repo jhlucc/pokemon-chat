@@ -24,12 +24,7 @@ from typing import List, Dict, Union, Any, Tuple, Optional
 from src.core.settings import settings
 from src.utils.logger import get_logger
 
-# Optional async HTTP client
-try:
-    import httpx
-    HTTPX_AVAILABLE = True
-except ImportError:
-    HTTPX_AVAILABLE = False
+import httpx
 
 logger = get_logger(__name__)
 
@@ -266,9 +261,6 @@ class SiliconFlowEmbedding(BaseEmbeddingModel):
     
     async def _aembed_impl(self, texts: List[str]) -> List[List[float]]:
         """Native async implementation using httpx"""
-        if not HTTPX_AVAILABLE:
-            return await super()._aembed_impl(texts)
-        
         headers = {
             "Authorization": f"Bearer {self.api_key}",
             "Content-Type": "application/json"

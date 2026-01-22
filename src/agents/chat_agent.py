@@ -75,17 +75,12 @@ class PokemonKGChatAgent(BaseAgent):
         if type_ == "memory":
             return MemorySaver()
         elif type_ == "sqlite":
-            try:
-                from langgraph.checkpoint.sqlite import SqliteSaver
-                import sqlite3
-                conn = sqlite3.connect(":memory:", check_same_thread=False) 
-                return SqliteSaver(conn)
-            except ImportError:
-                logger.warning("langgraph-checkpoint-sqlite not found, falling back to MemorySaver")
-                return MemorySaver()
+            from langgraph.checkpoint.sqlite import SqliteSaver
+            import sqlite3
+            conn = sqlite3.connect(":memory:", check_same_thread=False) 
+            return SqliteSaver(conn)
         else:
-            logger.warning(f"Unknown checkpointer type '{type_}', falling back to MemorySaver")
-            return MemorySaver()
+            raise ValueError(f"Unknown checkpointer type: {type_}")
 
     def _init_middleware(self):
         """初始化中间件链"""
