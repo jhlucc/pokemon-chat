@@ -1,18 +1,35 @@
-from typing import TypedDict, List, Annotated
-from langchain_core.messages import AnyMessage
-import operator
+"""
+Pokemon Deep Research Context
 
-class DeepContext(TypedDict):
-    """Deep Agent State"""
-    # 消息历史，追加模式
-    messages: Annotated[List[AnyMessage], operator.add]
-    # 当前研究主题
+State definition for the Pokemon Deep Research agent.
+"""
+from typing import List, Dict, Any, Optional, Annotated
+from typing_extensions import TypedDict
+from langgraph.graph import add_messages
+from langchain_core.messages import BaseMessage
+
+
+class DeepContext(TypedDict, total=False):
+    """State for Pokemon Deep Research Agent"""
+    # Core research fields
     topic: str
-    # 最终报告
-    final_report: str
-    # 迭代次数
+    messages: Annotated[List[BaseMessage], add_messages]
     iterations: int
-    # 用户 ID
-    user_id: str
-    # 线程 ID
-    thread_id: str
+    
+    # Research parameters
+    breadth: int  # Number of parallel queries
+    depth: int    # Current depth level
+    max_depth: int
+    
+    # Accumulated learnings
+    learnings: List[str]
+    research_directions: List[str]
+    sources: List[str]
+    
+    # Pokemon-specific context
+    pokemon_entities: List[str]  # Discovered Pokemon names
+    type_analysis: Dict[str, Any]
+    battle_insights: List[str]
+    
+    # Final output
+    final_report: Optional[str]

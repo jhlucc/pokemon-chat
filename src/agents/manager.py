@@ -29,7 +29,7 @@ class AgentManager(metaclass=SingletonMeta):
         self._register_builtin_agents()
 
     def _register_builtin_agents(self):
-        """注册内置 Agent"""
+        """注册内置 Pokemon 主题 Agent"""
         try:
             from src.agents.chat_agent import PokemonKGChatAgent
             self.register("chat_agent", PokemonKGChatAgent)
@@ -43,16 +43,22 @@ class AgentManager(metaclass=SingletonMeta):
             logger.warning(f"Failed to register deep_agent: {e}")
         
         try:
-            from src.agents.weather_agent import WeatherAgent
-            self.register("weather_agent", WeatherAgent)
+            from src.agents.pokemon_stats_agent import PokemonStatsAgent
+            self.register("stats_agent", PokemonStatsAgent)
         except Exception as e:
-            logger.warning(f"Failed to register weather_agent: {e}")
+            logger.warning(f"Failed to register stats_agent: {e}")
         
         try:
-            from src.agents.mysql_agent import DataAgent
-            self.register("data_agent", DataAgent)
+            from src.agents.pokedex_agent import PokedexAgent
+            self.register("pokedex_agent", PokedexAgent)
         except Exception as e:
-            logger.warning(f"Failed to register data_agent: {e}")
+            logger.warning(f"Failed to register pokedex_agent: {e}")
+        
+        try:
+            from src.agents.trainer_agent import TrainerAgent
+            self.register("trainer_agent", TrainerAgent)
+        except Exception as e:
+            logger.warning(f"Failed to register trainer_agent: {e}")
 
     def register(self, name: str, agent_cls: Type[BaseAgent]):
         """注册 Agent 类"""
