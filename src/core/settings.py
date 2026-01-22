@@ -5,7 +5,7 @@ Pokemon-Chat 统一配置
 import os
 from functools import lru_cache
 from pathlib import Path
-from typing import Literal, Optional, Tuple
+from typing import Tuple
 from pydantic import AliasChoices, Field, computed_field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -17,88 +17,88 @@ _BASE_DIR_PATH = Path(__file__).parent.parent.parent.resolve()
 class PathSettings(BaseSettings):
     """路径配置"""
     model_config = SettingsConfigDict(extra="ignore")
-    
+
     @computed_field
     @property
     def base_dir(self) -> Path:
         return _BASE_DIR_PATH
-    
+
     @computed_field
     @property
     def model_reranker_path(self) -> Path:
         return _BASE_DIR_PATH / "resources" / "models" / "bge-reranker-v2-m3"
-    
+
     @computed_field
     @property
     def model_roberta_path(self) -> Path:
         return _BASE_DIR_PATH / "resources" / "models" / "chinese-roberta-wwm-ext"
-    
+
     @computed_field
     @property
     def model_embedding_path(self) -> Path:
         return _BASE_DIR_PATH / "resources" / "models" / "bge-large-zh-v1.5"
-    
+
     @computed_field
     @property
     def model_ocr_path(self) -> Path:
         return _BASE_DIR_PATH / "resources" / "models" / "ocr"
-    
+
     @computed_field
     @property
     def cache_berta_model(self) -> Path:
         return _BASE_DIR_PATH / "resources" / "cache" / "roberta" / "best_roberta.pt"
-    
+
     @computed_field
     @property
     def ner_tag_path(self) -> Path:
         return _BASE_DIR_PATH / "resources" / "data" / "ner_data" / "tag2idx.npy"
-    
+
     @computed_field
     @property
     def log_dir(self) -> Path:
         return _BASE_DIR_PATH / "logs"
-    
+
     @computed_field
     @property
     def save_yaml_path(self) -> Path:
         return _BASE_DIR_PATH / "resources" / "save"
-    
+
     # Data paths
     @computed_field
     @property
     def json_data(self) -> Path:
         return _BASE_DIR_PATH / "resources" / "data" / "json_data"
-    
+
     @computed_field
     @property
     def entity_data(self) -> Path:
         return _BASE_DIR_PATH / "resources" / "data" / "entity_data"
-    
+
     @computed_field
     @property
     def ner_data(self) -> Path:
         return _BASE_DIR_PATH / "resources" / "data" / "ner_data"
-    
+
     @computed_field
     @property
     def raw_data(self) -> Path:
         return _BASE_DIR_PATH / "resources" / "data" / "raw_data"
-    
+
     @computed_field
     @property
     def relations_data(self) -> Path:
         return _BASE_DIR_PATH / "resources" / "data" / "relations_data"
-    
+
     @computed_field
     @property
     def graphrag_raw_data(self) -> Path:
         return _BASE_DIR_PATH / "resources" / "data" / "graph_data" / "精灵之沙暴天王.txt"
-    
+
     @computed_field
     @property
     def artifacts_data(self) -> Path:
         return _BASE_DIR_PATH / "src" / "knowledge" / "artifacts"
-    
+
     @computed_field
     @property
     def data_parser_data(self) -> Path:
@@ -108,23 +108,23 @@ class PathSettings(BaseSettings):
 class DatabaseSettings(BaseSettings):
     """数据库配置"""
     model_config = SettingsConfigDict(env_prefix="", extra="ignore")
-    
+
     # Neo4j
     neo4j_uri: str = "bolt://localhost:7687"
     neo4j_username: str = "neo4j"
     neo4j_password: str = ""
-    
+
     @property
     def neo4j_auth(self) -> Tuple[str, str]:
         return (self.neo4j_username, self.neo4j_password)
-    
+
     # MySQL
     mysql_host: str = "127.0.0.1"
     mysql_port: int = 3306
     mysql_user: str = "root"
     mysql_password: str = ""
     mysql_database: str = "langgraph"
-    
+
     # Milvus
     milvus_uri: str = "http://localhost:19530"
 
@@ -132,7 +132,7 @@ class DatabaseSettings(BaseSettings):
 class TavilySettings(BaseSettings):
     """Tavily 搜索配置"""
     model_config = SettingsConfigDict(env_prefix="tavily_", extra="ignore")
-    
+
     api_key: str = ""
 
 
@@ -140,7 +140,7 @@ class ToolSettings(BaseSettings):
     """第三方工具配置"""
     # Accept both `tool_openweather_api_key` (recommended) and legacy `OPENWEATHER_API_KEY`.
     model_config = SettingsConfigDict(env_prefix="", extra="ignore")
-    
+
     # OpenWeather
     openweather_api_key: str = Field(
         default="",
@@ -151,18 +151,18 @@ class ToolSettings(BaseSettings):
 class EmbeddingSettings(BaseSettings):
     """Embedding 配置"""
     model_config = SettingsConfigDict(env_prefix="embedding_", extra="ignore")
-    
+
     provider: str = "siliconflow"  # 默认提供商
     api_key: str = ""
     api_base: str = "https://api.siliconflow.cn/v1/embeddings"
     model_name: str = "BAAI/bge-m3"
     dimension: int = 1024
-    
+
 
 class RerankerSettings(BaseSettings):
     """Reranker 配置"""
     model_config = SettingsConfigDict(env_prefix="reranker_", extra="ignore")
-    
+
     provider: str = "siliconflow"
     enabled: bool = True
     api_key: str = ""
@@ -175,7 +175,7 @@ class RerankerSettings(BaseSettings):
 class LLMSettings(BaseSettings):
     """LLM 配置"""
     model_config = SettingsConfigDict(env_prefix="llm_", extra="ignore")
-    
+
     api_key: str = ""
     api_base: str = "https://api.siliconflow.cn/v1"
     model_name: str = "Qwen/Qwen2.5-7B-Instruct"
@@ -186,7 +186,7 @@ class LLMSettings(BaseSettings):
 class FeatureSettings(BaseSettings):
     """功能开关"""
     model_config = SettingsConfigDict(extra="ignore")
-    
+
     enable_knowledge_base: bool = Field(default=False, alias="ENABLE_KNOWLEDGE_BASE")
     enable_knowledge_graph: bool = Field(default=False, alias="ENABLE_KNOWLEDGE_GRAPH")
     enable_web_search: bool = Field(default=False, alias="ENABLE_WEB_SEARCH")
@@ -198,7 +198,7 @@ class FeatureSettings(BaseSettings):
 class AgentSettings(BaseSettings):
     """Agent 高级功能配置"""
     model_config = SettingsConfigDict(extra="ignore")
-    
+
     # Checkpointer 类型: memory, sqlite
     checkpointer_type: str = Field(default="memory", alias="CHECKPOINTER_TYPE")
     # 对话最大消息数
@@ -212,7 +212,7 @@ class AgentSettings(BaseSettings):
 class KnowledgeBaseConfig(BaseSettings):
     """知识库配置"""
     model_config = SettingsConfigDict(extra="ignore")
-    
+
     milvus_uri: str = "http://localhost:19530"
     default_distance_threshold: float = 0.5
     default_rerank_threshold: float = 0.1
@@ -229,7 +229,7 @@ class Settings(BaseSettings):
         env_file_encoding="utf-8",
         extra="ignore",
     )
-    
+
     # 子配置
     paths: PathSettings = Field(default_factory=PathSettings)
     database: DatabaseSettings = Field(default_factory=DatabaseSettings)
@@ -259,7 +259,7 @@ class Settings(BaseSettings):
             key = os.getenv("COHERE_API_KEY", "")
         elif provider == "openai":
             key = self.llm.api_key or os.getenv("OPENAI_API_KEY", "")
-        
+
         return key
 
 

@@ -117,7 +117,7 @@ docker compose --profile infra up -d --build
 
    ```bash
    git clone 
-   https://github.com/jhlucc/pokemon-chat.git
+   https://github.com/skygazer42/pokemon-chat.git
    cd pokemon-chat
    cp .env.template .env   # 按需填写 API-KEY，可留空
    ```
