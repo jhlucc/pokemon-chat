@@ -20,11 +20,12 @@ from src.agents.base import BaseAgent
 from src.knowledge import PokemonLightRAG
 from src.agents.tools.websearch.websearcher import LiteBaseSearcher
 from src.agents.kg_agent import KGQueryAgent
+from src.agents.pokemon_stats_agent import PokemonStatsAgent
+from src.agents.pokedex_agent import PokedexAgent
+from src.agents.trainer_agent import TrainerAgent
 from src.utils.logger import get_logger
 from src.models.schemas import AgentResponse
 from src.agents.interrupts import approval_node
-
-
 
 # Middleware Imports
 from src.agents.middleware import (
@@ -97,6 +98,14 @@ class PokemonKGChatAgent(BaseAgent):
         
         # 重试中间件
         self.middleware.add(RetryMiddleware(max_retries=2))
+        
+        # [NEW] 语义长期记忆中间件
+        try:
+            from src.agents.middleware.long_term_memory import LongTermMemoryMiddleware
+            self.middleware.add(LongTermMemoryMiddleware())
+            logger.info("✅ Semantic Long-Term Memory middleware added")
+        except Exception as e:
+            logger.error(f"❌ Failed to add LongTermMemoryMiddleware: {e}")
 
     def _init_components(self, **kwargs):
         """初始化所有组件"""
@@ -128,6 +137,13 @@ class PokemonKGChatAgent(BaseAgent):
             except Exception as e:
                 logger.error(f"Failed to initialize KGQueryAgent: {e}")
 
+        # [NEW] 初始化专业代理 (作为子图)
+        try:
+            self.stats_agent = PokemonStatsAgent()
+            self.pokedex_agent = PokedexAgent()
+            self.trainer_agent = TrainerAgent()
+        except Exception as e:
+            logger.error(f"Failed to initialize specialized agents: {e}")
 
         # 初始化图RAG (LightRAG)
         self.lightrag = PokemonLightRAG(
@@ -459,6 +475,49 @@ class PokemonKGChatAgent(BaseAgent):
             return {"messages": [HumanMessage(content=response, name="web_searcher")]}
         except Exception as e:
              return {"messages": [HumanMessage(content=f"网络搜索失败: {e}", name="web_searcher")]}
+
+    # [NEW] 子代理调用节点
+    def _invoke_subagent(self, agent, state: AgentState, name: str):
+        """通用子代理调用逻辑"""
+        if not agent:
+             return {"messages": [HumanMessage(content=f"{name} 未初始化", name=name)]}
+        try:
+             # 计算调用前的消息数量，用于提取新增消息
+             start_len = len(state["messages"])
+             
+             # 调用子图
+             result = agent.graph.invoke(state)
+             
+             # 获取结果消息
+             all_msgs = result["messages"]
+             
+             # 为了避免消息重复 (LangGraph reducer)，我们只返回新增的消息
+             new_msgs = all_msgs[start_len:]
+             
+             # 如果没有新消息（异常？），至少返回最后一条
+             if not new_msgs and all_msgs:
+                 new_msgs = [all_msgs[-1]]
+             
+             # 确保名字标记（可选）
+             # for m in new_msgs:
+             #    if not m.name: m.name = name
+                 
+             return {"messages": new_msgs}
+        except Exception as e:
+             logger.error(f"{name} invoke failed: {e}")
+             return {"messages": [HumanMessage(content=f"{name} 运行失败: {e}", name=name)]}
+
+    def _stats_node(self, state: AgentState):
+        """数值分析节点"""
+        return self._invoke_subagent(self.stats_agent, state, "stats_agent")
+
+    def _pokedex_node(self, state: AgentState):
+        """图鉴查询节点"""
+        return self._invoke_subagent(self.pokedex_agent, state, "pokedex_agent")
+
+    def _trainer_node(self, state: AgentState):
+        """训练师助手节点"""
+        return self._invoke_subagent(self.trainer_agent, state, "trainer_agent")
 
     # 公共接口
     async def query(
