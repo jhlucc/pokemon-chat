@@ -180,6 +180,7 @@ class PokemonKGChatAgent(BaseAgent):
         builder = StateGraph(AgentState)
 
         # 添加节点
+        builder.add_node("guardrail", self._guardrail_node)
         builder.add_node("supervisor", self._supervisor)
         builder.add_node("chat", self._chat)
         builder.add_node("kg_sqler", self._kgsql_node)
@@ -196,10 +197,23 @@ class PokemonKGChatAgent(BaseAgent):
         for member in self.members:
             builder.add_edge(member, "supervisor")
 
-        # 添加条件边
+        # 添加条件边 for guardrail
+        def route_guardrail(state):
+            # guardrail node 返回的 next
+            # check if it set any temp state (hacky)
+            # 但 guardrail 返回了 dict with 'next' key which updates the state via "next" field (if defined in schema)
+            # AgentState has 'next': str
+            nxt = state.get("next")
+            if nxt == "end_with_block":
+                return END
+            return "supervisor"
+
+        builder.add_edge(START, "guardrail")
+        builder.add_conditional_edges("guardrail", route_guardrail)
+
+        # 添加条件边 for supervisor
         def route_supervisor(state):
             next_node = state["next"]
-            # 示例: 如果 supervisor 指定 approval，或者我们在某处检测到敏感操作
             if next_node == "approval":
                 return "approval"
             return next_node
@@ -207,11 +221,10 @@ class PokemonKGChatAgent(BaseAgent):
         builder.add_conditional_edges("supervisor", route_supervisor)
         # approval 之后通常回到 supervisor 或继续执行
         builder.add_edge("approval", "supervisor")
-        
-        builder.add_edge(START, "supervisor")
 
         # 编译图 - 使用 checkpointer
         self._graph = builder.compile(checkpointer=self.checkpointer)
+        return self._graph
 
     @property
     def graph(self):
@@ -219,9 +232,130 @@ class PokemonKGChatAgent(BaseAgent):
 
     # 节点函数定义 ... (后续补全)
     
+    async def _guardrail_node(self, state: AgentState):
+        """
+        守卫节点：检查用户输入是否与 Pokemon 相关。
+        """
+        messages = state["messages"]
+        last_user_msg = messages[-1]
+        
+        # 定义系统的守卫提示词
+        guardrail_prompt = ChatPromptTemplate.from_template("""
+        你是 Pokemon 世界的守门人。你的任务是判断用户的输入是否与 "Pokemon (宝可梦/口袋妖怪)"、"动画/游戏" 或 "日常闲聊" 相关。
+        
+        判断规则：
+        1. 如果包含宝可梦名称、角色、招式、地点等，返回 "pass"。
+        2. 如果是日常问候（你好、早上好等），返回 "pass"。
+        3. 如果是完全无关的话题（如：写Python代码、政治新闻、股票分析、其他动漫等），返回 "block"。
+        
+        请输出 JSON 格式:
+        {{
+            "status": "pass" 或 "block",
+            "reason": "原因"
+        }}
+        
+        用户输入: {input}
+        """)
+        
+        chain = guardrail_prompt | self.llm | JsonOutputParser()
+        
+        try:
+            result = await chain.ainvoke({"input": last_user_msg.content})
+            status = result.get("status", "pass")
+            
+            if status == "block":
+                return {
+                    "next": "end_with_block",
+                    "messages": [AIMessage(content="抱歉，作为一个宝可梦专家，我只能回答与宝可梦相关的问题。让我们聊聊宝可梦吧！")]
+                }
+            return {"next": "supervisor"}
+            
+        except Exception as e:
+            logger.error(f"Guardrail check failed: {e}")
+            # 出错时默认放行，避免阻断服务
+            return {"next": "supervisor"}
+
+    def _supervisor(self, state: AgentState):
+        """监督员节点"""
+        # (保持原有的 prompt 逻辑，但可以使用 prompt template 功能)
+        system_prompt = (
+            "你是 Pokemon 世界的顶尖博士助手 (Supervisor)，负责协调以下专家的工作：{members}\n\n"
+            "专家职能：\n"
+            "- chat：【日常闲聊与兜底】\n"
+            "  • 处理问候、感谢等日常对话\n"
+            "  • 当其他专家无法回答时进行尝试\n"
+            "- kg_sqler：【结构化数据专家】\n"
+            "  • 查询精确数据：种族值、身高体重、属性、进化链、特性效果\n"
+            "  • 查询特定关系：某人的宝可梦、某地的道馆\n"
+            "- graph_rager：【知识库专家】\n"
+            "  • 回答复杂问题：剧情背景、人物生平、以及不适合 SQL 查询的非结构化信息\n"
+            "- web_searcher：【情报探员】\n"
+            "  • 查询最新发售信息、新闻、活动、当前对战环境 meta\n\n"
+            "调度逻辑：\n"
+            "1. 仔细分析用户意图，选择最匹配的专家。\n"
+            "2. 如果用户问的是'皮卡丘的种族值'，必须选 kg_sqler。\n"
+            "3. 如果用户问'小智在阿罗拉发生了什么'，选 graph_rager。\n"
+            "4. 如果用户问'最新的朱紫DLC什么时候出'，选 web_searcher。\n"
+            "5. 如果只是打招呼，选 chat。\n"
+            "6. 任务完成返回 FINISH。\n"
+        )
+
+        prompt = ChatPromptTemplate.from_template("""
+        {system_prompt}
+        
+        请严格按以下JSON格式回复:
+        {{
+            "next": "模块名称" (或 "FINISH")
+        }}
+        
+        当前对话:
+        {history}
+        
+        最新输入: {input}
+        """)
+
+        # 获取最后几条消息作为输入 context
+        messages = state["messages"]
+        
+        # 提取最近几条历史作为 history 文本，避免传入过多 token
+        history_msgs = messages[:-1]
+        last_msg = messages[-1]
+        
+        history_text = "\n".join([f"{m.type}: {m.content}" for m in history_msgs[-5:]])
+        
+        chain = prompt | self.llm | JsonOutputParser()
+        
+        # 动态构建 members 描述
+        members_desc = ", ".join(self.members)
+        
+        try:
+            response = chain.invoke({
+                "system_prompt": system_prompt.format(members=members_desc),
+                "history": history_text,
+                "input": last_msg.content
+            })
+            next_ = response.get("next", "FINISH")
+        except Exception as e:
+            logger.error(f"Supervisor parsing error: {e}")
+            next_ = "FINISH"
+
+        return {"next": END if next_ == "FINISH" else next_}
+
     def _chat(self, state: AgentState):
         """自然语言聊天节点"""
+        # 修改为更智能的 Persona Prompt
+        persona_prompt = (
+            "你是一个热爱宝可梦的 AI 助手。你的名字叫 '洛托姆图鉴'。\n"
+            "性格：热情、活泼、有时会加口癖 '洛托'。\n"
+            "任务：回答用户关于宝可梦的问题，或者进行愉快的闲聊。\n"
+            "知识截止：不要编造数据，如果不确定，请建议用户去查阅图鉴。\n"
+            "注意：只回答宝可梦相关话题。如果用户强行聊无关话题，请委婉拒绝并拉回宝可梦话题。\n"
+        )
+        
         messages = state["messages"]
+        # 在 messages 最前面插入 SystemMessage (如果还可以插入的话，LangGraph state 通常是 append only)
+        # 这里我们临时构建一个 input 给 llm
+        
         # 应用中间件
         context = MiddlewareContext(
             agent_name="chat_agent",
@@ -230,27 +364,26 @@ class PokemonKGChatAgent(BaseAgent):
         )
         messages = self.middleware.run_before_model(messages, context)
         
+        # 注入 Persona
+        if not isinstance(messages[0], SystemMessage):
+            messages = [SystemMessage(content=persona_prompt)] + messages
+        else:
+            # 如果已有 SystemMessage，可能需要更新或保留
+            pass 
+
         # 获取响应模式，默认为 text
         response_mode = state.get("response_mode", "text")
         
         try:
             if response_mode == "json":
                 # 结构化输出模式
-                # 1. 创建结构化 LLM
                 structured_base_llm = self.base_llm.with_structured_output(AgentResponse)
-                
-                # 2. 也是用 middleware 包装它，保证 retry/logging 生效
-                # 注意：wrap_model_call 包装的是一个 callable (input -> output)
                 wrapped_structured_invoke = self.middleware.wrap_model_call(structured_base_llm.invoke, context)
-                
-                # 3. 调用
                 model_response = wrapped_structured_invoke(messages)
                 
-                # 如果成功返回对象，转换为 JSON 字符串放入 content
                 if isinstance(model_response, AgentResponse):
                     content = model_response.model_dump_json()
                 else:
-                    # 某些情况下可能直接返回了 dict 或其他
                     import json
                     content = json.dumps(model_response, ensure_ascii=False) if isinstance(model_response, dict) else str(model_response)
                 
@@ -262,7 +395,6 @@ class PokemonKGChatAgent(BaseAgent):
         except Exception as e:
             logger.error(f"LLM invoke failed (mode={response_mode}): {e}")
             if response_mode == "json":
-                # JSON 模式下发生错误，返回标准错误结构
                 from src.models.schemas import ErrorResponse
                 error_resp = ErrorResponse(
                     error_code="llm_error", 
@@ -270,7 +402,6 @@ class PokemonKGChatAgent(BaseAgent):
                 )
                 model_response = AIMessage(content=error_resp.model_dump_json())
             else:
-                # 文本模式，直接返回错误信息
                 model_response = AIMessage(content=f"Error generating response: {str(e)}")
 
         model_response = self.middleware.run_after_model(model_response, context)
@@ -328,71 +459,6 @@ class PokemonKGChatAgent(BaseAgent):
             return {"messages": [HumanMessage(content=response, name="web_searcher")]}
         except Exception as e:
              return {"messages": [HumanMessage(content=f"网络搜索失败: {e}", name="web_searcher")]}
-
-    def _supervisor(self, state: AgentState):
-        """监督员节点"""
-        # (保持原有的 prompt 逻辑，但可以使用 prompt template 功能)
-        system_prompt = (
-            "你被指定为对话监督员，负责协调以下工作模块的协作：{members}\n\n"
-            "各模块职能划分：\n"
-            "- chat：自然语言交互模块\n"
-            "  • 直接处理用户输入的自然语言响应\n"
-            "- kg_sqler：宝可梦知识图谱查询模块\n"
-            "  • 属性数据（种族值/进化链/特性）\n"
-            "  • 角色关系（训练师/劲敌/团队）\n"
-            "  • 地域情报（地点/道馆/栖息地）\n"
-            "- graph_rager：宝可梦知识库(RAG)\n"
-            "  • 人物介绍、社群发现、路径分析、时序关联\n"
-            "- web_searcher：实时联网搜索模块\n"
-            "  • 最新资讯、新闻、时效性内容、社区讨论\n\n"
-            "模块调用原则：\n"
-            "1. 优先使用本地知识库(kg_sqler/graph_rager)\n"
-            "2. 涉及最新/外部信息时调用 web_searcher\n"
-            "3. 无法回答时调用 chat 进行一般对话\n"
-            "4. 每个模块执行后将返回任务结果及状态。\n"
-            "执行流程规范：\n"
-            "1. chat模块最多能调用一次\n"
-            "2. 可以链式调用多个模块\n"
-            "3. 当某个模块结果不足时，继续调用其他模块\n"
-            "4. 任务完成时，返回 FINISH 终止符\n"
-            "5. 当用户询问'删除记忆'或'清空历史'等敏感操作时，返回 'approval' 模块进行确认\n"
-        )
-
-        prompt = ChatPromptTemplate.from_template("""
-        {system_prompt}
-        
-        请严格按以下JSON格式回复，只包含next字段:
-        {{
-            "next": "FINISH"
-        }}
-        或者
-        {{
-            "next": "模块名称"
-        }}
-        
-        输入：{input}
-        """)
-
-        # 获取最后几条消息作为输入 context
-        messages = state["messages"]
-        # 应用中间件修剪 (虽然 _init_middleware 已经加了, 但这里可以再次确保)
-        
-        chain = prompt | self.llm | JsonOutputParser()
-        
-        # 动态构建 members 描述
-        members_desc = ", ".join(self.members)
-        
-        try:
-            response = chain.invoke({
-                "system_prompt": system_prompt.format(members=members_desc),
-                "input": messages
-            })
-            next_ = response.get("next", "FINISH")
-        except Exception as e:
-            logger.error(f"Supervisor parsing error: {e}")
-            next_ = "FINISH"
-
-        return {"next": END if next_ == "FINISH" else next_}
 
     # 公共接口
     async def query(
