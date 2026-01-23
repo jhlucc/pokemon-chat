@@ -209,37 +209,39 @@ const handleSendOrStop = () => {
   width: 100%;
   height: auto;
   margin: 0 auto;
-  padding: 0.4rem 0.75rem;
-  border: 2px solid var(--gray-200);
-  border-radius: 0.8rem;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-  transition: all 0.3s ease;
+  padding: 10px 16px; /* More compact padding */
+  border: 1px solid var(--border-color);
+  background-color: #fff;
+  border-radius: 24px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
 
   &:focus-within {
-    border-color: var(--main-500);
+    border-color: var(--primary-color);
     background: white;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+    transform: translateY(-2px);
   }
 
   .input-area {
     display: flex;
     align-items: flex-end;
     gap: 8px;
-    margin-bottom: 4px;
+    margin-bottom: 2px; /* Reduce gap */
   }
 
   .user-input {
     flex: 1;
-    min-height: 44px;
-    padding: 0.5rem 0;
+    min-height: 40px; /* Slightly smaller min-height */
+    padding: 2px 0;
     background-color: transparent;
     border: none;
     margin: 0;
-    color: #222222;
-    font-size: 14px;
+    color: var(--text-color);
+    font-size: 15px;
     outline: none;
     resize: none;
-    line-height: 1.6;
+    line-height: 1.5;
 
     &:focus {
       outline: none;
@@ -251,21 +253,22 @@ const handleSendOrStop = () => {
     }
 
     &::placeholder {
-      color: #888888;
+      color: #aaa;
     }
   }
 
   .input-options {
     display: flex;
-    padding: 8px 0 0;
-    margin-top: 6px;
-    border-top: 1px solid var(--gray-100);
+    justify-content: space-between;
+    padding-top: 4px; /* Minimal separation */
+    margin-top: 0;
+    border-top: none;
 
     .options__left,
     .options__right {
       display: flex;
       align-items: center;
-      gap: 10px;
+      gap: 8px;
     }
 
     .options__right {
@@ -277,22 +280,27 @@ const handleSendOrStop = () => {
 
       :deep(.opt-item) {
         border-radius: 12px;
-        border: 1px solid var(--gray-300);
-        padding: 5px 10px;
+        border: 1px solid transparent;
+        background-color: rgba(0,0,0,0.03); /* Subtle background */
+        padding: 4px 10px;
         cursor: pointer;
         font-size: 12px;
-        color: var(--gray-700);
+        font-weight: 500;
+        color: var(--subtext-color);
         transition: all 0.2s ease;
+        display: flex;
+        align-items: center;
+        gap: 4px;
 
         &:hover {
-          background-color: var(--main-10);
-          color: var(--main-600);
+          background-color: rgba(0,0,0,0.06);
+          color: var(--text-color);
         }
 
         &.active {
-          color: var(--main-600);
-          border: 1px solid var(--main-500);
-          background-color: var(--main-10);
+          color: var(--primary-color);
+          background-color: var(--primary-bg-light);
+          font-weight: 600;
         }
       }
     }
@@ -300,26 +308,28 @@ const handleSendOrStop = () => {
 }
 
 button.ant-btn-icon-only {
-  height: 32px;
-  width: 32px;
+  height: 36px;
+  width: 36px;
   cursor: pointer;
-  background-color: var(--main-500);
+  background-color: var(--primary-color);
   border-radius: 50%;
   border: none;
-  transition: all 0.2s ease;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+  transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+  box-shadow: 0 2px 8px rgba(var(--primary-color-rgb), 0.4);
   color: white;
   padding: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 14px;
+  font-size: 16px;
 
   &:hover {
-    background-color: var(--main-600);
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+    background-color: var(--primary-dark-color);
+    box-shadow: 0 4px 12px rgba(var(--primary-color-rgb), 0.5);
+    transform: scale(1.05);
     color: white;
   }
+
 
   &:active {
     transform: translateY(0);

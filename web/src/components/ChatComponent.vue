@@ -89,93 +89,101 @@
         </div>
       </div>
     </div>
-<div v-if="conv.messages.length == 0" class="chat-examples">
-  <h1>你好，我是可萌，一个基于宝可梦知识图谱的智能助手</h1>
-  <div class="example-cards">
-    <div
-      class="card"
-      v-for="(exp, key) in examples"
-      :key="key"
-      @click="conv.inputText = exp"
-    >
-      <div class="blob"></div>
-      <div class="bg">
-        <span style="z-index: 3">{{ exp }}</span>
-      </div>
-    </div>
-  </div>
-</div>
-    <div class="chat-box" :class="{ 'wide-screen': meta.wideScreen, 'font-smaller': meta.fontSize === 'smaller', 'font-larger': meta.fontSize === 'larger' }">
-      <MessageComponent
-        v-for="message in conv.messages"
-        :message="message"
-        :key="message.id"
-        :is-processing="isStreaming"
-        :show-refs="true"
-        @retry="retryMessage(message.id)"
-        @retryStoppedMessage="retryStoppedMessage(message.id)"
-      >
-      </MessageComponent>
-    </div>
-    <div class="bottom">
-      <div class="message-input-wrapper"  :class="{ 'wide-screen': meta.wideScreen}">
+
+    <!-- Empty State: Centered Greeting & Input -->
+    <!-- Empty State: Centered Greeting & Input -->
+    <div v-if="conv.messages.length === 0" class="welcome-container">
+       <div class="logo-container">
+          <img src="@/assets/logo.svg" class="welcome-logo" alt="Logo" />
+       </div>
+       <div class="greeting">您今天在想什么？</div>
+       
+       <div class="center-input-wrapper">
         <MessageInputComponent
           v-model="conv.inputText"
           :is-loading="isStreaming"
           :send-button-disabled="!conv.inputText && !isStreaming"
-          :auto-size="{ minRows: 2, maxRows: 10 }"
+          :auto-size="{ minRows: 1, maxRows: 8 }"
           @send="handleSendOrStop"
           @keydown="handleKeyDown"
+          class="center-input"
         >
           <template #options-left>
-            <div
-              :class="{'switch': true, 'opt-item': true, 'active': meta.use_web}"
-              v-if="configStore.config.enable_web_search"
-              @click="meta.use_web=!meta.use_web"
-            >
-              <CompassOutlined style="margin-right: 3px;"/>
-              联网搜索
-            </div>
-            <div
-              :class="{'switch': true, 'opt-item': true, 'active': meta.use_graph}"
-              v-if="configStore.config.enable_knowledge_graph"
-              @click="meta.use_graph=!meta.use_graph"
-            >
-              <DeploymentUnitOutlined style="margin-right: 3px;"/>
-              知识图谱
-            </div>
-          <div
-              :class="{'switch': true, 'opt-item': true, 'active': meta.use_mcp}"
-              v-if="configStore.config.enable_mcp"
-              @click="
-                meta.use_mcp = !meta.use_mcp;
-                meta.mcp_id  = meta.use_mcp ? 'default' : null;
-            ">
-              <DatabaseOutlined style="margin-right:3px;" />MCP
-            </div>
-            <a-dropdown
-              v-if="configStore.config.enable_knowledge_base && opts.databases.length > 0"
-              :class="{'opt-item': true, 'active': meta.selectedKB !== null}"
-            >
-              <a class="ant-dropdown-link" @click.prevent>
-                <BookOutlined style="margin-right: 3px;"/>
-                <span class="text">{{ meta.selectedKB === null ? '不使用知识库' : opts.databases[meta.selectedKB]?.name }}</span>
-              </a>
-              <template #overlay>
-                <a-menu>
-                  <a-menu-item v-for="(db, index) in opts.databases" :key="index" @click="useDatabase(index)">
-                    <a href="javascript:;">{{ db.name }}</a>
-                  </a-menu-item>
-                  <a-menu-item @click="useDatabase(null)">
-                    <a href="javascript:;">不使用</a>
-                  </a-menu-item>
-                </a-menu>
-              </template>
-            </a-dropdown>
+             <!-- Reuse options logic -->
+             <div :class="{'switch': true, 'opt-item': true, 'active': meta.use_web}" v-if="configStore.config.enable_web_search" @click="meta.use_web=!meta.use_web"><CompassOutlined style="margin-right: 3px;"/>联网</div>
+             <div :class="{'switch': true, 'opt-item': true, 'active': meta.use_graph}" v-if="configStore.config.enable_knowledge_graph" @click="meta.use_graph=!meta.use_graph"><DeploymentUnitOutlined style="margin-right: 3px;"/>图谱</div>
+              <a-dropdown v-if="configStore.config.enable_knowledge_base && opts.databases.length > 0">
+                 <div :class="{'opt-item': true, 'active': meta.selectedKB !== null}">
+                    <BookOutlined style="margin-right: 3px;"/>{{ meta.selectedKB === null ? '知识库' : opts.databases[meta.selectedKB]?.name }}
+                 </div>
+                 <template #overlay>
+                    <a-menu>
+                      <a-menu-item v-for="(db, index) in opts.databases" :key="index" @click="useDatabase(index)">{{ db.name }}</a-menu-item>
+                      <a-menu-item @click="useDatabase(null)">不使用</a-menu-item>
+                    </a-menu>
+                 </template>
+              </a-dropdown>
           </template>
         </MessageInputComponent>
-        <p class="note">请注意辨别内容的可靠性 By {{ configStore.config?.model_provider }}: {{ configStore.config?.model_name }}</p>
-      </div>
+        </div>
+
+        <div class="suggestion-chips">
+           <div class="chip" @click="conv.inputText = '制定一个旅行计划'"><CompassOutlined /> 制定旅行计划</div>
+           <div class="chip" @click="conv.inputText = '帮我写一段Python代码'"><DeploymentUnitOutlined /> 代码助手</div>
+           <div class="chip" @click="conv.inputText = '分析一下这张图片'"><FolderOpenOutlined /> 图片分析</div>
+           <div class="chip" @click="conv.inputText = '今天有什么新闻？'"><BulbOutlined /> 新闻摘要</div>
+        </div>
+     </div>
+
+    <!-- Active Chat State -->
+    <div v-else class="chat-main-content">
+        <div class="chat-box" :class="{ 'wide-screen': meta.wideScreen, 'font-smaller': meta.fontSize === 'smaller', 'font-larger': meta.fontSize === 'larger' }">
+          <MessageComponent
+            v-for="message in conv.messages"
+            :message="message"
+            :key="message.id"
+            :is-processing="isStreaming"
+            :show-refs="true"
+            @retry="retryMessage(message.id)"
+            @retryStoppedMessage="retryStoppedMessage(message.id)"
+          >
+          </MessageComponent>
+        </div>
+        <div class="bottom">
+          <div class="message-input-wrapper"  :class="{ 'wide-screen': meta.wideScreen}">
+            <MessageInputComponent
+              v-model="conv.inputText"
+              :is-loading="isStreaming"
+              :send-button-disabled="!conv.inputText && !isStreaming"
+              :auto-size="{ minRows: 1, maxRows: 10 }"
+              @send="handleSendOrStop"
+              @keydown="handleKeyDown"
+            >
+              <template #options-left>
+                <div :class="{'switch': true, 'opt-item': true, 'active': meta.use_web}" v-if="configStore.config.enable_web_search" @click="meta.use_web=!meta.use_web"><CompassOutlined style="margin-right: 3px;"/>联网</div>
+                <div :class="{'switch': true, 'opt-item': true, 'active': meta.use_graph}" v-if="configStore.config.enable_knowledge_graph" @click="meta.use_graph=!meta.use_graph"><DeploymentUnitOutlined style="margin-right: 3px;"/>图谱</div>
+                 <div
+                  :class="{'switch': true, 'opt-item': true, 'active': meta.use_mcp}"
+                  v-if="configStore.config.enable_mcp"
+                  @click="meta.use_mcp = !meta.use_mcp; meta.mcp_id  = meta.use_mcp ? 'default' : null;">
+                  <DatabaseOutlined style="margin-right:3px;" />MCP
+                </div>
+                <a-dropdown v-if="configStore.config.enable_knowledge_base && opts.databases.length > 0">
+                 <div :class="{'opt-item': true, 'active': meta.selectedKB !== null}">
+                      <BookOutlined style="margin-right: 3px;"/>{{ meta.selectedKB === null ? '知识库' : opts.databases[meta.selectedKB]?.name }}
+                 </div>
+                  <template #overlay>
+                    <a-menu>
+                      <a-menu-item v-for="(db, index) in opts.databases" :key="index" @click="useDatabase(index)">{{ db.name }}</a-menu-item>
+                      <a-menu-item @click="useDatabase(null)">不使用</a-menu-item>
+                    </a-menu>
+                  </template>
+                </a-dropdown>
+              </template>
+            </MessageInputComponent>
+            <p class="note">请注意辨别内容的可靠性 By {{ configStore.config?.model_provider }}: {{ configStore.config?.model_name }}</p>
+          </div>
+        </div>
     </div>
   </div>
 </template>
@@ -747,88 +755,253 @@ const selectModel = (provider, name) => {
 }
 </script>
 
-<style lang="less" scoped>
+<style scoped lang="less">
+/* Main Layout */
 .chat {
   position: relative;
   width: 100%;
-  max-height: 100vh;
+  height: 100vh;
   display: flex;
   flex-direction: column;
-  overflow-x: hidden;
   background: var(--background-color);
-  position: relative;
-  box-sizing: border-box;
-  flex: 5 5 200px;
-  overflow-y: scroll;
+  overflow: hidden; /* Prevent double scrollbars */
 
   .chat-header {
-    user-select: none;
-    position: sticky;
-    top: 0;
+    flex: 0 0 64px;
     z-index: 10;
-    background-color: rgba(255, 255, 255, 0.85); /* Slightly more opaque */
+    // ... existing header styles ...
+    background-color: rgba(255, 255, 255, 0.85);
     backdrop-filter: blur(16px);
-    height: 64px; /* Consistent height */
     display: flex;
     justify-content: space-between;
     align-items: center;
     padding: 0 24px;
-    border-bottom: 1px solid var(--border-color); /* Subtle separator */
-
+    border-bottom: 1px solid var(--border-color);
+    
     .header__left, .header__right {
       display: flex;
       align-items: center;
       gap: 12px;
     }
-
-    .header__left {
-      .close {
-        margin-right: 0;
+    
+    .header__left .close {
         padding: 8px;
         border-radius: 8px;
-        transition: background-color 0.2s;
-        
-        &:hover {
-            background-color: var(--gray-100);
-        }
-      }
+        cursor: pointer;
+        &:hover { background-color: var(--gray-100); }
     }
   }
 
-  /* Improved Nav Button */
-  .nav-btn {
-    height: 36px;
+  /* Empty State / Welcome Screen */
+  .welcome-container {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 0 20px;
+      gap: 40px;
+      
+      .logo-container {
+          margin-bottom: 24px;
+          .welcome-logo {
+              width: 80px;
+              height: 80px;
+              opacity: 0.9;
+          }
+      }
+
+      .greeting {
+          font-size: 32px;
+          font-weight: 700;
+          color: var(--text-color);
+          margin-bottom: 0;
+          letter-spacing: -0.02em;
+      }
+      
+      .center-input-wrapper {
+          width: 100%;
+          max-width: 720px;
+          display: flex;
+          justify-content: center;
+      }
+      
+      /* Force the input component to have shadow in center mode */
+      :deep(.center-input) {
+          box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+      }
+
+      .suggestion-chips {
+          display: flex;
+          flex-wrap: wrap;
+          justify-content: center;
+          gap: 12px;
+          max-width: 800px;
+          
+          .chip {
+              padding: 10px 18px;
+              background-color: #fff;
+              border: 1px solid var(--border-color);
+              border-radius: 20px;
+              font-size: 13px;
+              color: var(--subtext-color);
+              cursor: pointer;
+              transition: all 0.2s ease;
+              display: flex;
+              align-items: center;
+              gap: 8px;
+              box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+              
+              &:hover {
+                  background-color: var(--gray-50);
+                  border-color: var(--primary-light-color);
+                  color: var(--text-color);
+                  transform: translateY(-2px);
+              }
+          }
+      }
+  }
+
+  /* Active Chat Layout */
+  .chat-main-content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden; /* Contain inner scroll */
+      position: relative;
+  }
+  
+  .chat-box {
+    flex: 1;
+    overflow-y: auto;
+    padding: 24px 0;
+    scroll-behavior: smooth;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    
+    &.font-smaller { font-size: 14px; }
+    &.font-larger { font-size: 18px; }
+
+    /* Width control for messages */
+    :deep(.message-row) {
+        width: 100%;
+        max-width: 800px; /* ChatGPT width */
+        margin: 0 auto;
+    }
+  }
+
+  /* Bottom Input Area */
+  .bottom {
+    flex: 0 0 auto;
+    padding: 24px;
+    background-color: transparent;
     display: flex;
     justify-content: center;
-    align-items: center;
-    border-radius: 8px;
-    color: var(--text-color);
-    cursor: pointer;
-    padding: 0 12px;
-    transition: all 0.2s ease;
-    border: 1px solid transparent;
-
-    .text {
-      margin-left: 8px;
-      font-weight: 500;
-      font-size: 14px;
-    }
-
-    &:hover {
-      background-color: var(--gray-100);
-      border-color: var(--gray-200);
+    position: relative;
+    
+    .message-input-wrapper {
+        width: 100%;
+        max-width: 800px;
     }
     
-    &.active {
-        background-color: var(--primary-bg-light);
-        color: var(--primary-color);
+    .note {
+        text-align: center;
+        font-size: 11px;
+        color: #999;
+        margin-top: 8px;
     }
   }
-
-  .model-select {
-    // handled below in .model-select class
-  }
 }
+
+/* Utils */
+.nav-btn {
+    height: 36px;
+    padding: 0 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    cursor: pointer;
+    color: var(--subtext-color);
+    transition: all 0.2s;
+    
+    &:hover {
+        background-color: var(--gray-100);
+        color: var(--text-color);
+    }
+    
+    &.text {
+        font-size: 14px;
+        gap: 6px;
+    }
+}
+
+.action-button {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    background-color: var(--surface-card);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 13px;
+    color: var(--text-color);
+    transition: margin 0.2s;
+    
+    &:hover {
+        background-color: var(--gray-50);
+    }
+}
+
+.model-select {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    cursor: pointer;
+    font-weight: 500;
+    color: var(--text-color);
+    border-radius: 8px;
+    &:hover { background-color: var(--gray-100); }
+}
+
+/* Animations */
+.swing-in-top-fwd {
+	animation: swing-in-top-fwd 0.5s cubic-bezier(0.175, 0.885, 0.320, 1.275) both;
+}
+@keyframes swing-in-top-fwd {
+  0% { transform: rotateX(-100deg); transform-origin: top; opacity: 0; }
+  100% { transform: rotateX(0deg); transform-origin: top; opacity: 1; }
+}
+
+/* Dropdown/Panel Styles */
+.my-panal {
+    position: absolute;
+    width: 320px;
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.15);
+    padding: 16px;
+    z-index: 100;
+    border: 1px solid var(--border-color);
+    top: 60px;
+    right: 24px;
+    
+    .flex-center {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 12px;
+        font-size: 14px;
+        color: var(--text-color);
+        
+        &:last-child { margin-bottom: 0; }
+    }
+}
+
+
 
 /* Settings Panel */
 .my-panal {
@@ -889,6 +1062,7 @@ const selectModel = (provider, name) => {
     color: var(--text-color);
     background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
     -webkit-background-clip: text;
+    background-clip: text;
     -webkit-text-fill-color: transparent;
     display: inline-block;
   }
