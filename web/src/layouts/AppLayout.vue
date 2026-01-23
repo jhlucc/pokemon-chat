@@ -152,6 +152,10 @@ const toggleCollapse = () => {
     width: 10px;
     height: 10px;
     border-radius: 50%;
+    
+    &.red { background-color: #FF5F56; }
+    &.yellow { background-color: #FFBD2E; }
+    &.green { background-color: #27C93F; }
 }
 
 .nav-menu {
@@ -215,6 +219,7 @@ const toggleCollapse = () => {
     justify-content: space-between;
     padding: 0 24px;
     z-index: 40;
+    background: transparent;
     
     .breadcrumbs {
         color: var(--subtext-color);
@@ -234,6 +239,12 @@ const toggleCollapse = () => {
     display: flex;
     gap: 12px;
     align-items: center;
+    color: var(--text-color);
+    
+    .ant-btn {
+        color: var(--subtext-color);
+        &:hover { color: var(--primary-color); background: var(--surface-secondary); }
+    }
 }
 
 .user-avatar {
@@ -246,6 +257,13 @@ const toggleCollapse = () => {
     align-items: center;
     justify-content: center;
     color: var(--subtext-color);
+    cursor: pointer;
+    transition: all 0.2s;
+    
+    &:hover {
+        border-color: var(--primary-color);
+        color: var(--primary-color);
+    }
 }
 
 .content-area {
@@ -264,5 +282,12 @@ const toggleCollapse = () => {
     overflow: hidden;
     display: flex;
     flex-direction: column;
+    position: relative;
+    
+    /* Ensure child components fill this window */
+    & > * {
+        height: 100%;
+        width: 100%;
+    }
 }
 </style>
