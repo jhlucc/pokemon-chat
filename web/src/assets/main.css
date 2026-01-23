@@ -1,0 +1,79 @@
+@import './base.css';
+
+/* layout */
+:root {
+  --header-height: 60px;
+}
+
+/* 页面主体布局容器 */
+.layout-container {
+  width: 100%;
+  padding: 0px 30px;
+  background-color: var(--layout-bg-color);
+
+  h2 {
+    margin: 20px 0 10px 0;
+  }
+}
+
+/* 通用图标尺寸定义 */
+.iconfont {
+  max-width: 100%;
+  max-height: 100%;
+
+  &.icon-10 { width: 10px; height: 10px; }
+  &.icon-16 { width: 16px; height: 16px; }
+  &.icon-20 { width: 20px; height: 20px; }
+  &.icon-24 { width: 24px; height: 24px; }
+}
+
+/* ==================== 暗色模式支持 ==================== */
+/* 统一通过 [data-theme="dark"] 控制，不要用 body.dark-theme */
+
+:root {
+  --layout-bg-color: var(--main-light-7); /* 浅色时背景色 */
+  --header-bg-color: rgba(255, 255, 255, 0.8);
+  --input-bg-color: #FFFFFF;
+  --input-border-color: var(--gray-300);
+  --button-bg-color: var(--main-500);
+  --button-hover-bg-color: var(--main-600);
+  --text-color: var(--gray-900);
+}
+
+:root[data-theme='dark'] {
+  --layout-bg-color: var(--gray-900); /* 暗色时背景色 */
+  --header-bg-color: var(--gray-800);
+  --input-bg-color: var(--gray-800);
+  --input-border-color: var(--gray-600);
+  --button-bg-color: var(--main-400);
+  --button-hover-bg-color: var(--main-300);
+  --text-color: var(--gray-100);
+}
+
+/* 具体区域应用变量 */
+
+.chat-header {
+  background-color: var(--header-bg-color);
+  color: var(--text-color);
+  border-bottom: 1px solid var(--input-border-color);
+}
+
+.user-input {
+  background-color: var(--input-bg-color);
+  color: var(--text-color);
+  border: 1px solid var(--input-border-color);
+}
+
+.input-box {
+  background-color: var(--input-bg-color);
+  border: 1px solid var(--input-border-color);
+}
+
+button.ant-btn-icon-only {
+  background-color: var(--button-bg-color);
+  color: var(--gray-0);
+}
+
+button.ant-btn-icon-only:hover {
+  background-color: var(--button-hover-bg-color);
+}

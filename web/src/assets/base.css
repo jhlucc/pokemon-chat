@@ -1,0 +1,127 @@
+/* === 基础亮色模式（默认） === */
+:root {
+  /* 主背景、文字、边框 */
+  --background-color: #ffffff;
+  --text-color: #212121;
+  --subtext-color: #666666;
+  --border-color: #e0e0e0;
+  --input-background-color: #fafafa;
+
+  /* 主色调 */
+  --primary-color: #2C86A8;
+  --primary-light-color: #8CC6E1;
+  --error-color: #ba1a1a;
+
+  /* 灰阶色 */
+  --gray-0: #ffffff;
+  --gray-100: #f5f5f5;
+  --gray-200: #eeeeee;
+  --gray-300: #e0e0e0;
+  --gray-400: #bdbdbd;
+  --gray-500: #9e9e9e;
+  --gray-600: #757575;
+  --gray-700: #616161;
+  --gray-800: #424242;
+  --gray-900: #212121;
+
+  /* 特殊：聊天区域 */
+  --chat-background-color: #ffffff;
+}
+
+/* === 暗黑模式 === */
+:root[data-theme='dark'] {
+  /* 主背景、文字、边框 */
+  --background-color: #181818;
+  --input-background-color: #1e1e1e;
+  --border-color: #333;
+  --text-color: #eeeeee;
+  /* 主色调（不变，除非你想换暗色版主色） */
+  --primary-color: #2C86A8;
+  --primary-light-color: #4e99b9;
+  --error-color: #ba1a1a;
+
+  /* 灰阶色（重新定义深色环境下的灰度层次） */
+  --gray-0: #121212;
+  --gray-100: #1d1d1d;
+  --gray-200: #2a2a2a;
+  --gray-300: #424242;
+  --gray-400: #616161;
+  --gray-500: #757575;
+  --gray-600: #9e9e9e;
+  --gray-700: #bdbdbd;
+  --gray-800: #d3d3d3;
+  --gray-900: #eeeeee;
+
+  /* 特殊：聊天区域 */
+  --chat-background-color: #181818;
+}
+
+/* === 全局重置 === */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  min-height: 100vh;
+  background-color: var(--background-color);
+  color: var(--text-color);
+  font-family: -apple-system, BlinkMacSystemFont, 'Noto Sans SC', 'Roboto', 'HarmonyOS Sans SC', 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+  font-size: 15px;
+  line-height: 1.6;
+  transition: all 0.3s ease; /* 主题切换平滑过渡 */
+}
+
+/* === 通用组件 === */
+.input-box {
+  background-color: var(--input-background-color);
+  color: var(--text-color);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 8px;
+  transition: all 0.3s ease;
+}
+
+.input-box textarea {
+  background-color: transparent;
+  color: var(--text-color);
+  border: none;
+  outline: none;
+}
+
+button {
+  background-color: var(--primary-color);
+  color: var(--gray-0);
+  border: none;
+  border-radius: 6px;
+  padding: 8px 16px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+button:hover {
+  background-color: var(--primary-light-color);
+}
+
+/* === 布局类容器 === */
+header, footer, aside {
+  background-color: var(--background-color);
+  color: var(--text-color);
+  transition: all 0.3s ease;
+}
+
+/* === 特别：聊天区域 ChatBox === */
+.chat-area {
+  background-color: var(--chat-background-color);
+  transition: background-color 0.3s ease;
+}
+
+/* === 特别：侧边栏 Sidebar（如果有） === */
+.sidebar {
+  background-color: var(--background-color);
+  border-right: 1px solid var(--border-color);
+  transition: all 0.3s ease;
+}
