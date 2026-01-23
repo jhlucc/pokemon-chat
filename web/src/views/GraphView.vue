@@ -209,10 +209,11 @@ const registerCustomNode = () => {
         draw(cfg, group) {
             const width = 160;
             const height = 60;
-            const r = 8; // Improved rounded corners
+            const r = 12; // Adjusted radius for radius-lg
             
-            // 1. Container Card (Glass-like visual handled by simple SVG/Canvas props, simulated)
-            // Note: Canvas cannot do real CSS glass, so we use solid colors matching the theme
+            // 1. Container Card
+            // Using colors that match the light/dark theme variables
+            // Ideally we'd detect theme, but safe defaults:
             const shape = group.addShape('rect', {
                 attrs: {
                     x: -width / 2,
@@ -220,11 +221,11 @@ const registerCustomNode = () => {
                     width: width,
                     height: height,
                     radius: r,
-                    fill: '#FFFFFF', // Should ideally match var(--surface-card)
-                    stroke: '#E2E8F0', // var(--border-color)
+                    fill: '#FFFFFF', // surface-card
+                    stroke: '#E2E8F0', // border-color (Slate-200)
                     lineWidth: 1,
-                    shadowColor: 'rgba(0, 0, 0, 0.06)',
-                    shadowBlur: 12,
+                    shadowColor: 'rgba(0, 0, 0, 0.05)',
+                    shadowBlur: 10,
                     cursor: 'pointer'
                 },
                 name: 'main-box',
@@ -245,17 +246,17 @@ const registerCustomNode = () => {
             group.addShape('text', {
                 attrs: {
                     x: 0,
-                    y: -height / 2 + 35, // Centered vertically in the "content" area roughly
+                    y: -height / 2 + 35, 
                     textAlign: 'center',
                     textBaseline: 'middle',
                     text: labelStr.length > 18 ? labelStr.substring(0, 16) + '...' : labelStr,
-                    fill: '#1E293B', // var(--text-color)
+                    fill: '#1E293B', // text-color (Slate-800)
                     fontSize: 13,
                     fontWeight: 600,
                     fontFamily: 'Inter, sans-serif'
                 },
                 name: 'label-text',
-                draggable: true // Allow dragging by text
+                draggable: true 
             });
             
             // 4. Metadata (Links Count)
@@ -267,10 +268,10 @@ const registerCustomNode = () => {
                         textAlign: 'center',
                         textBaseline: 'middle',
                         text: `Connections: ${cfg.data.degree}`,
-                        fill: '#94A3B8', // var(--subtext-color)
+                        fill: '#64748B', // subtext-color (Slate-500)
                         fontSize: 10,
                         fontFamily: 'JetBrains Mono, monospace',
-                        opacity: 0.8
+                        opacity: 0.9
                     },
                     name: 'sub-text',
                     draggable: true
@@ -286,13 +287,13 @@ const registerCustomNode = () => {
                  if(value) {
                      shape.attr('stroke', '#F97316'); // Primary Orange
                      shape.attr('lineWidth', 2);
-                     shape.attr('shadowColor', 'rgba(249, 115, 22, 0.25)');
-                     shape.attr('shadowBlur', 16);
+                     shape.attr('shadowColor', 'rgba(249, 115, 22, 0.2)');
+                     shape.attr('shadowBlur', 20);
                  } else {
                      shape.attr('stroke', '#E2E8F0');
                      shape.attr('lineWidth', 1);
-                     shape.attr('shadowColor', 'rgba(0, 0, 0, 0.06)');
-                     shape.attr('shadowBlur', 12);
+                     shape.attr('shadowColor', 'rgba(0, 0, 0, 0.05)');
+                     shape.attr('shadowBlur', 10);
                  }
              }
         }
@@ -493,11 +494,13 @@ onBeforeUnmount(() => {
     }
     
     .icon-btn {
-        border-radius: 8px;
+        border-radius: var(--radius-md);
         color: var(--subtext-color);
+        background: transparent;
+        border: 1px solid transparent;
         &:hover {
          color: var(--primary-color);
-         border-color: var(--primary-color);
+         background: var(--surface-secondary);
         }
     }
 }
@@ -539,8 +542,6 @@ onBeforeUnmount(() => {
         background-color: var(--surface-ground);
         background-image: radial-gradient(var(--slate-300) 1px, transparent 1px);
         background-size: 24px 24px;
-        
-         /* Dark mode adjustment done via global CSS variables usually, or specific media query */
     }
 }
 
@@ -560,7 +561,11 @@ onBeforeUnmount(() => {
     padding: 8px 12px;
     gap: 12px;
     /* Glass effect inherited from global .glass + .window-card */
-    background: rgba(255, 255, 255, 0.85);
+    background: var(--surface-overlay);
+    backdrop-filter: blur(12px);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-lg);
     
     .divider {
         width: 1px;
@@ -591,12 +596,9 @@ onBeforeUnmount(() => {
         width: 220px;
         :deep(.ant-input) {
             background: transparent !important;
+            color: var(--text-color);
         }
     }
-}
-
-[data-theme='dark'] .toolbar {
-    background: rgba(30, 41, 59, 0.85);
 }
 
 /* Overlays */
@@ -618,7 +620,7 @@ onBeforeUnmount(() => {
 .loading-overlay {
     position: absolute;
     inset: 0;
-    background: rgba(255, 255, 255, 0.4);
+    background: var(--surface-overlay);
     backdrop-filter: blur(4px);
     display: flex;
     justify-content: center;
@@ -628,7 +630,7 @@ onBeforeUnmount(() => {
     .loading-content {
         background: var(--surface-card);
         padding: 24px;
-        border-radius: 16px;
+        border-radius: var(--radius-lg);
         box-shadow: var(--shadow-lg);
         display: flex;
         flex-direction: column;
@@ -644,15 +646,12 @@ onBeforeUnmount(() => {
     }
 }
 
-[data-theme='dark'] .loading-overlay {
-    background: rgba(15, 23, 42, 0.4);
-}
-
 .database-empty {
   display: flex;
   justify-content: center;
   align-items: center;
   height: 100vh;
   flex-direction: column;
+  background-color: var(--background-color);
 }
 </style>
