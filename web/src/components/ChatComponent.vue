@@ -988,7 +988,7 @@ const selectModel = (provider, name) => {
     width: 100%;
     max-width: 800px;
     margin: 0 auto;
-    background-color: white;
+    background-color: var(--surface-color);
     animation: width 0.3s ease-in-out;
 
     &.wide-screen {
@@ -1000,7 +1000,7 @@ const selectModel = (provider, name) => {
       font-size: small;
       text-align: center;
       padding: 0;
-      color: #ccc;
+      color: var(--gray-600);
       margin-top: 4px;
       margin-bottom: 0;
       user-select: none;

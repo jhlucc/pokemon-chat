@@ -742,7 +742,7 @@ const toggleTool = (tool, checked) => {
 }
 
 .action-button {
-  background-color: white;
+  background-color: var(--surface-color);
   border: 1px solid var(--main-light-3);
   text-align: left;
   height: auto;
@@ -773,5 +773,4 @@ const toggleTool = (tool, checked) => {
   }
 }
 </style>
-
 
