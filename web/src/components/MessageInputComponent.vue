@@ -217,7 +217,7 @@ const handleSendOrStop = () => {
 
   &:focus-within {
     border-color: var(--main-500);
-    background: white;
+    background: var(--surface-color);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
   }
 
@@ -235,7 +235,7 @@ const handleSendOrStop = () => {
     background-color: transparent;
     border: none;
     margin: 0;
-    color: #222222;
+    color: var(--text-color);
     font-size: 14px;
     outline: none;
     resize: none;
@@ -251,7 +251,7 @@ const handleSendOrStop = () => {
     }
 
     &::placeholder {
-      color: #888888;
+      color: var(--gray-600);
     }
   }
 

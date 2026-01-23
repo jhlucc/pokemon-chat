@@ -1,6 +1,7 @@
 <script setup>
-import { reactive,onMounted, computed } from 'vue'
+import { reactive, onMounted, computed, ref, watch } from 'vue'
 import { RouterLink, RouterView, useRoute } from 'vue-router'
+import { usePreferredDark } from '@vueuse/core'
 import {
   MessageOutlined,
   MessageFilled,
@@ -15,19 +16,54 @@ import {
   ProjectOutlined,
   RedoOutlined,
   ApiOutlined,
+  MoonOutlined,
+  DesktopOutlined,
 } from '@ant-design/icons-vue'
-import { themeConfig } from '@/assets/theme'
+import { theme as antdTheme } from 'ant-design-vue'
+import { applyTheme, getSavedThemeMode, setThemeMode, themeConfig } from '@/assets/theme'
 import { useConfigStore } from '@/stores/config'
 import { useDatabaseStore } from '@/stores/database'
 import DebugComponent from '@/components/DebugComponent.vue'
 
 const configStore = useConfigStore()
 const databaseStore = useDatabaseStore()
+const preferredDark = usePreferredDark()
 
 const layoutSettings = reactive({
   showDebug: false,
   useTopBar: false, // 是否使用顶栏
 })
+
+// Theme mode: only "system" | "dark" (stored in localStorage)
+const themeMode = ref(getSavedThemeMode())
+const appliedIsDark = computed(() => themeMode.value === 'dark' || (themeMode.value === 'system' && preferredDark.value))
+const themeLabel = computed(() => (themeMode.value === 'dark' ? '暗色主题' : '跟随系统'))
+const appliedLabel = computed(() => (appliedIsDark.value ? '暗色' : '亮色'))
+
+watch(
+  () => themeMode.value,
+  (m) => {
+    setThemeMode(m)
+  },
+  { immediate: true }
+)
+watch(
+  () => preferredDark.value,
+  () => {
+    if (themeMode.value === 'system') {
+      applyTheme(preferredDark.value ? 'dark' : 'light')
+    }
+  }
+)
+
+const toggleThemeMode = () => {
+  themeMode.value = themeMode.value === 'dark' ? 'system' : 'dark'
+}
+
+const antdThemeConfig = computed(() => ({
+  ...themeConfig,
+  ...(appliedIsDark.value ? { algorithm: antdTheme.darkAlgorithm } : {}),
+}))
 
 
 
@@ -142,8 +178,14 @@ const mainList = [{
         <a-tooltip placement="right">
           <template #title>接口文档 {{ apiDocsUrl }}</template>
           <a :href="apiDocsUrl" target="_blank" class="github-link">
-            <ApiOutlined class="icon" style="color: #222;"/>
+            <ApiOutlined class="icon" />
           </a>
+        </a-tooltip>
+      </div>
+      <div class="nav-item theme-toggle" @click="toggleThemeMode" role="button" tabindex="0">
+        <a-tooltip placement="right">
+          <template #title>主题：{{ themeLabel }}（当前：{{ appliedLabel }}）</template>
+          <component class="icon" :is="themeMode === 'dark' ? MoonOutlined : DesktopOutlined" />
         </a-tooltip>
       </div>
       <RouterLink class="nav-item setting" to="/setting" active-class="active">
@@ -158,7 +200,7 @@ const mainList = [{
       <RouterLink to="/database" class="nav-item" active-class="active">知识</RouterLink>
       <RouterLink to="/setting" class="nav-item" active-class="active">设置</RouterLink>
     </div>
-    <a-config-provider :theme="themeConfig">
+    <a-config-provider :theme="antdThemeConfig">
     <router-view v-slot="{ Component, route }" id="app-router-view">
       <keep-alive v-if="route.meta.keepAlive !== false">
         <component :is="Component" />
@@ -234,7 +276,7 @@ div.header, #app-router-view {
       text-decoration: none;
       font-size: 24px;
       font-weight: bold;
-      color: #333;
+      color: var(--text-color);
     }
   }
 
@@ -249,7 +291,7 @@ div.header, #app-router-view {
     border: 1px solid transparent;
     border-radius: 8px;
     background-color: transparent;
-    color: #222;
+    color: var(--text-color);
     font-size: 20px;
     transition: background-color 0.2s ease-in-out;
     margin: 0 10px;
@@ -300,8 +342,8 @@ div.header, #app-router-view {
     &.active {
       font-weight: bold;
       color: var(--main-600);
-      background-color: white;
-      border: 1px solid white;
+      background-color: var(--surface-color);
+      border: 1px solid var(--surface-color);
     }
 
     &.warning {
@@ -309,8 +351,7 @@ div.header, #app-router-view {
     }
 
     &:hover {
-      background-color: rgba(255, 255, 255, 0.8);
-      backdrop-filter: blur(10px);
+      background-color: var(--hover-bg);
     }
 
     .text {
@@ -323,7 +364,7 @@ div.header, #app-router-view {
   .setting {
     width: auto;
     font-size: 20px;
-    color: #333;
+    color: var(--text-color);
     margin-bottom: 20px;
     margin-top: 10px;
 
@@ -376,7 +417,7 @@ div.header, #app-router-view {
       transition: color 0.1s ease-in-out, font-size 0.1s ease-in-out;
 
       &.active {
-        color: black;
+        color: var(--text-color);
         font-size: 1.1rem;
       }
     }

@@ -75,7 +75,7 @@ const props = defineProps({
   --header-desc: rgba(0, 0, 0, 0.45);
 }
 
-body.dark-theme {
+:root[data-theme='dark'] {
   --header-bg: rgba(30, 30, 30, 0.8);
   --header-border: #333333;
   --header-title: rgba(255, 255, 255, 0.85);

@@ -31,23 +31,21 @@
 /* 统一通过 [data-theme="dark"] 控制，不要用 body.dark-theme */
 
 :root {
-  --layout-bg-color: var(--main-light-7); /* 浅色时背景色 */
+  --layout-bg-color: var(--gray-100); /* 浅色时背景色 */
   --header-bg-color: rgba(255, 255, 255, 0.8);
   --input-bg-color: #FFFFFF;
   --input-border-color: var(--gray-300);
   --button-bg-color: var(--main-500);
   --button-hover-bg-color: var(--main-600);
-  --text-color: var(--gray-900);
 }
 
 :root[data-theme='dark'] {
-  --layout-bg-color: var(--gray-900); /* 暗色时背景色 */
-  --header-bg-color: var(--gray-800);
-  --input-bg-color: var(--gray-800);
-  --input-border-color: var(--gray-600);
+  --layout-bg-color: var(--background-color); /* 暗色时背景色 */
+  --header-bg-color: rgba(30, 30, 30, 0.8);
+  --input-bg-color: var(--input-background-color);
+  --input-border-color: var(--border-color);
   --button-bg-color: var(--main-400);
   --button-hover-bg-color: var(--main-300);
-  --text-color: var(--gray-100);
 }
 
 /* 具体区域应用变量 */

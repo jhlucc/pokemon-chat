@@ -333,7 +333,7 @@ const graphDescription = computed(() => {
 }
 
 .main {
-  background: #f7f7f7;
+  background: var(--surface-color);
   border-radius: 16px;
   width: 100%;
   height: calc(100vh - 240px);
@@ -346,7 +346,7 @@ const graphDescription = computed(() => {
   margin: 6px 0;
 
   .k {
-    color: rgba(0, 0, 0, 0.65);
+    color: var(--gray-700);
   }
   .v {
     font-weight: 600;
@@ -363,7 +363,6 @@ const graphDescription = computed(() => {
 }
 
 .muted {
-  color: rgba(0, 0, 0, 0.45);
+  color: var(--gray-600);
 }
 </style>
-

@@ -77,7 +77,7 @@ onMounted(() => {
   .tool-card {
     display: flex;
     flex-direction: column;
-    background-color: white;
+    background-color: var(--surface-color);
     border: 1px solid var(--gray-300);
     border-radius: 8px;
     padding: 20px;

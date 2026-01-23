@@ -12,6 +12,29 @@
   --primary-light-color: #8CC6E1;
   --error-color: #ba1a1a;
 
+  /* 通用表面色/交互色（用于自定义组件的暗色适配） */
+  --surface-color: #ffffff;
+  --surface-color-2: #fafafa;
+  --hover-bg: rgba(0, 0, 0, 0.04);
+  --min-width: 360px;
+
+  /* 兼容旧样式变量（项目内大量使用 --main-* / --main-light-*） */
+  --main-color: var(--primary-color);
+  --main-700: #1D5F78;
+  --main-600: #24779A;
+  --main-500: var(--primary-color);
+  --main-400: #4E99B9;
+  --main-300: var(--primary-light-color);
+  --main-10: rgba(44, 134, 168, 0.12);
+  --main-5: rgba(44, 134, 168, 0.06);
+
+  --main-light-2: var(--gray-300);
+  --main-light-3: var(--gray-200);
+  --main-light-4: var(--gray-100);
+  --main-light-5: var(--gray-100);
+  --main-light-6: var(--gray-100);
+  --main-light-7: var(--gray-100);
+
   /* 灰阶色 */
   --gray-0: #ffffff;
   --gray-100: #f5f5f5;
@@ -54,6 +77,23 @@
 
   /* 特殊：聊天区域 */
   --chat-background-color: #181818;
+
+  /* 通用表面色/交互色 */
+  --surface-color: #1e1e1e;
+  --surface-color-2: #121212;
+  --hover-bg: rgba(255, 255, 255, 0.06);
+
+  /* 暗色下的主色调微调（用于 hover/弱背景） */
+  --main-10: rgba(44, 134, 168, 0.18);
+  --main-5: rgba(44, 134, 168, 0.10);
+
+  /* main-light 变量在暗色下映射到更深的灰阶 */
+  --main-light-2: var(--gray-300);
+  --main-light-3: var(--gray-200);
+  --main-light-4: var(--gray-100);
+  --main-light-5: var(--gray-100);
+  --main-light-6: var(--gray-100);
+  --main-light-7: var(--gray-100);
 }
 
 /* === 全局重置 === */

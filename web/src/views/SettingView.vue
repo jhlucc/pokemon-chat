@@ -1,17 +1,6 @@
 <template>
   <div class="setting-page">
-    <HeaderComponent title="设置" class="setting-header">
-      <template #description>
-        <a-form layout="inline">
-          <a-form-item label="主题模式">
-            <a-select v-model:value="themeMode" style="width: 200px" @change="onThemeChange">
-              <a-select-option value="light">亮色模式</a-select-option>
-              <a-select-option value="dark">暗黑模式</a-select-option>
-              <a-select-option value="system">跟随系统</a-select-option>
-            </a-select>
-          </a-form-item>
-        </a-form>
-      </template>
+    <HeaderComponent title="设置" description="连接状态、模型选择与后端能力概览" class="setting-header">
       <template #actions>
         <a-space>
           <a-button @click="refreshAll" :loading="state.refreshing">
@@ -109,7 +98,6 @@ import { computed, reactive, ref, watch } from 'vue';
 import { message } from 'ant-design-vue';
 import HeaderComponent from '@/components/HeaderComponent.vue';
 import { useConfigStore } from '@/stores/config';
-import { setTheme } from '@/assets/theme.js';
 import { apiFetch } from '@/api/http';
 
 const configStore = useConfigStore();
@@ -117,12 +105,6 @@ const configStore = useConfigStore();
 const state = reactive({
   refreshing: false,
 });
-
-const themeMode = ref(localStorage.getItem('theme') || 'system');
-const onThemeChange = (value) => {
-  themeMode.value = value;
-  setTheme(value);
-};
 
 const backendOnline = computed(() => Boolean(configStore.config.backend?.online));
 const backendReady = computed(() => Boolean(configStore.config.backend?.ready));
@@ -191,13 +173,12 @@ const resetLocalConfig = () => {
   margin: 8px 0;
 }
 .k {
-  color: rgba(0, 0, 0, 0.65);
+  color: var(--gray-700);
 }
 .v {
   font-weight: 600;
 }
 .muted {
-  color: rgba(0, 0, 0, 0.45);
+  color: var(--gray-600);
 }
 </style>
-

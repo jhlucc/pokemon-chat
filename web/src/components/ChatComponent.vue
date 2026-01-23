@@ -236,8 +236,7 @@ const meta = reactive(JSON.parse(localStorage.getItem('meta')) || {
   db_id: null,
   fontSize: 'default',
 
-  wideScreen: false,
-  themeMode: false    // 控制亮/暗色模式
+  wideScreen: false
 })
 
 
@@ -650,16 +649,6 @@ watch(
     },
     {deep: true}
 );
-watch(
-    () => meta.themeMode,
-    (isDark) => {
-      if (isDark) {
-        document.body.classList.add('dark-theme');
-      } else {
-        document.body.classList.remove('dark-theme');
-      }
-    }
-);
 // 处理发送或停止
 const handleSendOrStop = () => {
   if (isStreaming.value) {
@@ -726,7 +715,7 @@ const selectModel = (provider, name) => {
     position: sticky;
     top: 0;
     z-index: 10;
-    background-color: rgba(255, 255, 255, 0.9);
+    background-color: var(--header-bg-color);
     backdrop-filter: blur(10px);
     height: var(--header-height);
     display: flex;
@@ -752,7 +741,7 @@ const selectModel = (provider, name) => {
     justify-content: center;
     align-items: center;
     border-radius: 8px;
-    color: var(--gray-900);
+    color: var(--text-color);
     cursor: pointer;
     // font-size: 1rem;
     width: auto;
@@ -790,8 +779,8 @@ const selectModel = (provider, name) => {
 .my-panal {
   position: absolute;
   margin-top: 5px;
-  background-color: white;
-  border: 1px solid #ccc;
+  background-color: var(--surface-color);
+  border: 1px solid var(--border-color);
   box-shadow: 0px 0px 10px 1px rgba(0, 0, 0, 0.05);
   border-radius: 12px;
   padding: 12px;
@@ -848,7 +837,7 @@ const selectModel = (provider, name) => {
   h1 {
     margin-bottom: 20px;
     font-size: 1.2rem;
-    color: #333;
+    color: var(--text-color);
   }
 
   .opts {
@@ -859,7 +848,7 @@ const selectModel = (provider, name) => {
 
     .opt__button {
       background-color: var(--gray-200);
-      color: #333;
+      color: var(--text-color);
       padding: .5rem 1.5rem;
       border-radius: 2rem;
       cursor: pointer;
@@ -869,7 +858,7 @@ const selectModel = (provider, name) => {
 
 
       &:hover {
-        background-color: #f0f1f1;
+        background-color: var(--hover-bg);
         // box-shadow: 0px 0px 10px 1px rgba(0, 0, 0, 0.1);
       }
     }
