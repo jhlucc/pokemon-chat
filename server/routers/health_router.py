@@ -79,14 +79,14 @@ async def readyz():
         "error": mysql_err,
     }
 
-    # Whisper (ASR)
-    whisper_host, whisper_port = _parse_host_port("http://localhost:9000", default_port=9000)
-    whisper_ok, whisper_err = _tcp_check(whisper_host, whisper_port)
-    checks["whisper"] = {
+    # FunASR (ASR)
+    funasr_host, funasr_port = _parse_host_port("ws://localhost:10095", default_port=10095)
+    funasr_ok, funasr_err = _tcp_check(funasr_host, funasr_port)
+    checks["funasr"] = {
         "enabled": True,
-        "target": f"{whisper_host}:{whisper_port}",
-        "ok": whisper_ok,
-        "error": whisper_err,
+        "target": f"{funasr_host}:{funasr_port}",
+        "ok": funasr_ok,
+        "error": funasr_err,
     }
 
     ok = all(v["ok"] for v in checks.values() if v.get("enabled"))

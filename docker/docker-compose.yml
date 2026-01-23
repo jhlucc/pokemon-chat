@@ -216,17 +216,24 @@ services:
       retries: 3
     networks:
       - vector-net
-  whisper:
+  funasr:
     profiles: ["infra"]
-    image: onerahmet/openai-whisper-asr-webservice:latest
+    image: registry.cn-hangzhou.aliyuncs.com/funasr_repo/funasr:funasr-runtime-sdk-cpu-0.4.5
     restart: always
     ports:
-      - "9000:9000"
-    environment:
-      - ASR_MODEL=base
-      - ASR_LANGUAGE=zh
+      - "10095:10095"
+    command: >
+      bash -c "cd /workspace/FunASR/runtime && 
+      nohup bash run_server.sh 
+      --download-model-dir /workspace/models 
+      --model-dir damo/speech_paraformer-large-vad-punc_asr_nat-zh-cn-16k-common-vocab8404-onnx
+      --vad-dir damo/speech_fsmn_vad_zh-cn-16k-common-onnx
+      --punc-dir damo/punc_ct-transformer_zh-cn-common-vocab272727-onnx
+      --itn-dir thuduj12/fst_itn_zh
+      --certfile 0
+      --hotword /workspace/hotwords.txt 2>&1 | tee /workspace/server.log"
     volumes:
-      - ./volumes/whisper/cache:/root/.cache
+      - ./volumes/funasr/models:/workspace/models
     networks:
       - vector-net
 

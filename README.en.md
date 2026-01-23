@@ -90,7 +90,7 @@ Architecture overview:
 1. Fine-tuned a Pokémon-domain LLM ("[Kemeng](https://huggingface.co/qwqqwq/qwen2.5-14b-instruct-pokemon-int4)") using web-scraped data.
 2. Built a Pokémon knowledge graph based on Wikipedia and forums.
 3. Automated NER training with RoBERTa + TF-IDF + rule-based matching.
-4. Integrated Whisper for ASR (speech-to-text) capabilities.
+4. Integrated FunASR (Alibaba DAMO Academy) for ASR (speech-to-text) capabilities.
 5. **[NEW]** Implemented **MCP Service** to support mapping and querying of Pokémon world locations to real-world coordinates.
 6. Extracted documents with DeepDoc to enhance knowledge base parsing.
 7. **[NEW]** Used **LangGraph** to implement multi-agent collaboration (RAG + Search + Graph + MCP).
@@ -149,7 +149,7 @@ If you wish to run backend/frontend code locally for development:
 1. **Start Infrastructure**
    ```bash
    cd docker
-   docker compose --profile infra up -d # Starts Neo4j, Milvus, MySQL, Whisper
+   docker compose --profile infra up -d # Starts Neo4j, Milvus, MySQL, FunASR
    ```
 
 2. **Start Backend (Server)**

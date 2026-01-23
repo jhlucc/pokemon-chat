@@ -11,7 +11,7 @@ from fastapi.responses import StreamingResponse
 from fastapi import UploadFile, File
 from src import executor, config
 from src.utils.logger import LogManager
-from src.runtime import get_retriever, get_whisper_client
+from src.runtime import get_retriever, get_asr_client
 logger = LogManager()
 import subprocess
 import tempfile
@@ -476,7 +476,7 @@ async def asr_upload(file: UploadFile = File(...)):
         )
         with open(output_path, "rb") as f:
             wav_bytes = f.read()
-        result_text = get_whisper_client().transcribe(wav_bytes)
+        result_text = get_asr_client().transcribe(wav_bytes)
         return {"text": result_text}
 
     except subprocess.CalledProcessError as e:

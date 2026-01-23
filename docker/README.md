@@ -3,7 +3,7 @@
 This folder contains a Docker Compose stack for:
 - `web` (Vue build served by Nginx, with `/api` reverse proxy)
 - `api` (FastAPI backend)
-- optional infra (`--profile infra`): Neo4j / Milvus / MySQL / Whisper
+- optional infra (`--profile infra`): Neo4j / Milvus / MySQL / FunASR
 - optional MCP (`--profile mcp`): FastMCP SSE server
 
 ## Quick Start (App Only)

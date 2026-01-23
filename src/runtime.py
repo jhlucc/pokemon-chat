@@ -22,7 +22,7 @@ _kb_instance = None
 _retriever_instance = None
 _kg_agent_instance = None
 _graph_db_instance = None
-_whisper_client_instance = None
+_asr_client_instance = None
 _mcp_client_instance = None
 
 
@@ -72,13 +72,13 @@ def get_graph_db():
 
 
 @lru_cache(maxsize=1)
-def get_whisper_client():
-    """Whisper ASR HTTP client singleton."""
-    global _whisper_client_instance
-    from src.utils.whisper_asr import WhisperClient
+def get_asr_client():
+    """FunASR client singleton."""
+    global _asr_client_instance
+    from src.utils.funasr_client import FunASRClient
 
-    _whisper_client_instance = WhisperClient()
-    return _whisper_client_instance
+    _asr_client_instance = FunASRClient()
+    return _asr_client_instance
 
 
 @lru_cache(maxsize=1)
@@ -98,18 +98,18 @@ def get_mcp_client():
 
 def reset_all():
     """Clear all cached singletons."""
-    global _kb_instance, _retriever_instance, _kg_agent_instance, _graph_db_instance, _whisper_client_instance, _mcp_client_instance
+    global _kb_instance, _retriever_instance, _kg_agent_instance, _graph_db_instance, _asr_client_instance, _mcp_client_instance
     get_kb.cache_clear()
     get_retriever.cache_clear()
     get_kg_agent.cache_clear()
     get_graph_db.cache_clear()
-    get_whisper_client.cache_clear()
+    get_asr_client.cache_clear()
     get_mcp_client.cache_clear()
     _kb_instance = None
     _retriever_instance = None
     _kg_agent_instance = None
     _graph_db_instance = None
-    _whisper_client_instance = None
+    _asr_client_instance = None
     _mcp_client_instance = None
     _log.info("Runtime singletons cleared.")
 

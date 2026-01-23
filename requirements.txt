@@ -55,6 +55,7 @@ python-dotenv==1.1.0
 openai==2.14.0
 mcp==1.25.0
 PyYAML==6.0.3
+websocket-client==1.7.0
 
 # Database
 pymysql==1.1.1

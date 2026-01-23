@@ -94,7 +94,7 @@
 1. 基于爬取的数据微调了基于宝可梦的专域大模型——[可萌](https://huggingface.co/qwqqwq/qwen2.5-14b-instruct-pokemon-int4) 。
 2. 基于爬取数据构建了宝可梦知识图谱（维基百科）。
 3. 自动化标注训练NER数据，使用roberta+TF-IDF+规则匹配来命中图谱中的实体与属性。
-4. 使用whisper来实现ASR功能。
+4. 使用FunASR来实现ASR功能（阿里达摩院开源语音识别）。
 5. 实现 MCP 服务，支持宝可梦世界与真实世界地理坐标的映射查询。
 6. 抽取RAGflow中的deepdoc来强化知识库的解析和抽取能力。
 7. 使用LangGraph实现多智能体协同（RAG + Search + Graph + MCP）。
@@ -153,7 +153,7 @@ python scripts/import_pokemon_map.py
 1. **启动基础依赖 (Infrastructure)**
    ```bash
    cd docker
-   docker compose --profile infra up -d # 启动 Neo4j, Milvus, MySQL, Whisper
+   docker compose --profile infra up -d # 启动 Neo4j, Milvus, MySQL, FunASR
    ```
 
 2. **启动后端 (Server)**
