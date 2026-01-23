@@ -70,7 +70,8 @@ watch(() => props.showArtifacts, (newVal) => {
     width: 100%;
     overflow: hidden;
     position: relative;
-    background: var(--background-color);
+    /* Grid background from body shows through */
+    background: transparent; 
 }
 
 .artifacts-pane-content {
@@ -78,23 +79,27 @@ watch(() => props.showArtifacts, (newVal) => {
     width: 100%;
     display: flex;
     flex-direction: column;
-    background: var(--surface-card);
+    background: var(--surface-card); /* Solid background for artifacts to be readable */
     border-left: 1px solid var(--border-color);
+    box-shadow: var(--shadow-xl); /* Lift it up */
 }
 
 .artifacts-header {
-    height: 50px;
+    height: 48px;
     display: flex;
     align-items: center;
     justify-content: space-between;
     padding: 0 16px;
     border-bottom: 1px solid var(--border-color);
-    background: var(--surface-overlay);
-    backdrop-filter: blur(8px);
+    background: var(--surface-card); /* Match card */
     
     .title {
+        font-family: var(--font-mono);
         font-weight: 600;
+        font-size: 13px;
         color: var(--text-color);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
     }
 }
 
@@ -102,21 +107,31 @@ watch(() => props.showArtifacts, (newVal) => {
     flex: 1;
     overflow: hidden;
     position: relative;
+    background: var(--surface-card);
 }
 
 /* Splitpanes Theme Overrides */
 :deep(.splitpanes__splitter) {
-    background-color: var(--border-color);
-    width: 4px;
+    background-color: transparent;
+    border-left: 1px solid var(--border-color);
+    width: 6px;
     position: relative;
     
-    &:before, &:after {
-        background-color: var(--subtext-color);
-        opacity: 0.3;
+    &:hover {
+        background-color: rgba(0,0,0,0.02);
     }
     
-    &:hover {
-        background-color: var(--primary-light-color);
+    /* Handle grip */
+    &:after {
+        content: '';
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 2px;
+        height: 24px;
+        background-color: var(--border-color);
+        border-radius: 1px;
     }
 }
 </style>

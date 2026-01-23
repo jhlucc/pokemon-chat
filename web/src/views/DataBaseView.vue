@@ -13,7 +13,7 @@
       <h3>知识库名称<span style="color: var(--error-color)">*</span></h3>
       <a-input v-model:value="newDatabase.name" placeholder="新建知识库名称" />
       <h3 style="margin-top: 20px;">知识库描述</h3>
-      <p style="color: var(--gray-700); font-size: 14px;">在智能体流程中，这里的描述会作为工具的描述。智能体会根据知识库的标题和描述来选择合适的工具。所以这里描述的越详细，智能体越容易选择到合适的工具。</p>
+      <p class="description-text">在智能体流程中，这里的描述会作为工具的描述。智能体会根据知识库的标题和描述来选择合适的工具。所以这里描述的越详细，智能体越容易选择到合适的工具。</p>
       <a-textarea
         v-model:value="newDatabase.description"
         placeholder="新建知识库描述"
@@ -181,82 +181,101 @@ onMounted(() => {
   margin-bottom: 20px;
 }
 .databases {
-  padding: 20px;
+  padding: 24px;
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-  gap: 16px;
-
-  .new-database {
-    background-color: #F0F3F4;
-  }
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 20px;
 }
 
-.database, .graphbase {
-  background-color: white;
-  box-shadow: 0px 1px 2px 0px rgba(16,24,40,.06),0px 1px 3px 0px rgba(16,24,40,.1);
-  border: 2px solid white;
-  transition: box-shadow 0.2s ease-in-out;
-
-  &:hover {
-    box-shadow: 0px 4px 6px -2px rgba(16,24,40,.03),0px 12px 16px -4px rgba(16,24,40,.08);
-  }
-}
-
-.dbcard, .database {
-  width: 100%;
-  padding: 10px;
-  border-radius: 12px;
-  height: 160px;
+.dbcard {
+  /* Use global window-card style conceptually */
+  background-color: var(--surface-card);
+  border: 1px solid var(--border-color);
+  box-shadow: var(--shadow-sm);
+  border-radius: var(--radius-lg);
   padding: 20px;
   cursor: pointer;
+  height: 160px;
+  transition: all 0.2s ease;
+  position: relative;
+  overflow: hidden;
 
-  .top {
+  &:hover {
+    box-shadow: var(--shadow-md);
+    transform: translateY(-2px);
+    border-color: var(--primary-light-color);
+  }
+}
+
+.new-database {
+  border-style: dashed;
+  background-color: transparent;
+  
+  &:hover {
+      background-color: var(--surface-card);
+      border-style: solid;
+  }
+}
+
+.dbcard .top {
     display: flex;
     align-items: center;
-    height: 50px;
-    margin-bottom: 10px;
+    margin-bottom: 12px;
 
     .icon {
-      width: 50px;
-      height: 50px;
-      font-size: 28px;
-      margin-right: 10px;
+      width: 40px;
+      height: 40px;
+      font-size: 20px;
+      margin-right: 12px;
       display: flex;
       justify-content: center;
       align-items: center;
-      background-color: #F5F8FF;
-      border-radius: 8px;
-      border: 1px solid #E0EAFF;
-      color: var(--main-color);
+      background-color: var(--surface-secondary);
+      border-radius: var(--radius-md);
+      color: var(--primary-color);
     }
 
     .info {
-      h3, p {
-        margin: 0;
-        color: black;
-      }
-
       h3 {
-        font-size: 16px;
-        font-weight: bold;
+        margin: 0;
+        font-size: 15px;
+        font-weight: 600;
+        color: var(--text-color);
       }
 
       p {
-        color: var(--gray-900);
-        font-size: small;
+        margin: 0;
+        color: var(--subtext-color);
+        font-size: 12px;
+        font-family: var(--font-mono);
       }
     }
-  }
+}
 
-  .description {
-    color: var(--gray-900);
+.dbcard .description {
+    color: var(--subtext-color);
+    font-size: 13px;
+    line-height: 1.5;
     overflow: hidden;
     display: -webkit-box;
-    -webkit-line-clamp: 1;
+    -webkit-line-clamp: 2;
     -webkit-box-orient: vertical;
     text-overflow: ellipsis;
-    margin-bottom: 10px;
-  }
+    margin-bottom: 12px;
+}
+
+.dbcard .tags {
+    display: flex;
+    gap: 6px;
+    
+    .ant-tag {
+        border-radius: 4px;
+        border: none;
+        background: var(--surface-secondary);
+        color: var(--subtext-color);
+        font-size: 10px;
+        font-family: var(--font-mono);
+    }
 }
 
 // 整个卡片是模糊的

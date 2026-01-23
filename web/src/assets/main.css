@@ -1,124 +1,126 @@
 @import './base.css';
 
-/* layout */
-:root {
-  --header-height: 64px;
+/* === Grid Background === */
+body {
+  background-color: var(--surface-ground);
+  background-image: radial-gradient(var(--slate-300) 1px, transparent 1px);
+  background-size: 24px 24px;
+  min-height: 100vh;
 }
 
-/* Glassmorphism Utilities */
+[data-theme='dark'] body {
+  background-image: radial-gradient(var(--slate-700) 1px, transparent 1px);
+}
+
+/* === Layout === */
+:root {
+  --header-height: 60px;
+  /* Slightly more compact */
+}
+
+.layout-container {
+  width: 100%;
+  height: 100vh;
+  overflow: hidden;
+  display: flex;
+  background: transparent;
+  /* Allow grid to show through */
+}
+
+/* === Glassmorphism & Window Effect === */
 .glass {
   background: rgba(255, 255, 255, 0.7);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.3);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.5);
 }
 
 [data-theme='dark'] .glass {
-  background: rgba(15, 23, 42, 0.7);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  background: rgba(30, 41, 59, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
-/* Page Main Container */
-.layout-container {
-  width: 100%;
-  padding: 24px 40px;
-  background-color: var(--background-color);
-  min-height: calc(100vh - var(--header-height));
-
-  h2 {
-    margin: 24px 0 16px 0;
-    font-weight: 600;
-    color: var(--text-color);
-    letter-spacing: -0.01em;
-  }
-}
-
-/* Icon Standardization */
-.iconfont {
-  max-width: 100%;
-  max-height: 100%;
-  display: inline-block;
-  vertical-align: middle;
-
-  &.icon-10 {
-    width: 10px;
-    height: 10px;
-  }
-
-  &.icon-16 {
-    width: 16px;
-    height: 16px;
-  }
-
-  &.icon-20 {
-    width: 20px;
-    height: 20px;
-  }
-
-  &.icon-24 {
-    width: 24px;
-    height: 24px;
-  }
-}
-
-/* ==================== Component Specific Overrides ==================== */
-
-/* Chat Header */
-.chat-header {
-  background: var(--surface-overlay);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+/* === Terminal Input Style === */
+.terminal-input {
+  font-family: var(--font-mono);
+  background: transparent;
+  border: none;
+  outline: none;
   color: var(--text-color);
-  border-bottom: 1px solid var(--border-color);
-  height: var(--header-height);
+  width: 100%;
+  font-size: 14px;
+}
+
+.input-wrapper {
   display: flex;
   align-items: center;
-  padding: 0 24px;
-  position: sticky;
-  top: 0;
-  z-index: 10;
-}
-
-/* User Input Logic mapped to new variables */
-.user-input {
-  background-color: var(--input-background-color);
-  color: var(--text-color);
+  background: var(--surface-card);
   border: 1px solid var(--border-color);
-  border-radius: var(--radius-2xl);
-  /* Pill shape */
-  box-shadow: var(--shadow-md);
-  /* Floating effect */
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.user-input:focus-within {
-  border-color: var(--primary-color);
-  box-shadow: 0 0 0 3px var(--primary-bg-light), var(--shadow-lg);
-  transform: translateY(-1px);
-}
-
-/* Ant Design Button Overrides for consistency */
-button.ant-btn-icon-only {
-  background-color: var(--surface-card);
-  color: var(--subtext-color);
   border-radius: var(--radius-md);
-  border: 1px solid var(--border-color);
+  /* Less rounded, more tech */
+  padding: 10px 16px;
+  box-shadow: var(--shadow-sm);
+  transition: all 0.2s;
+}
+
+.input-wrapper:focus-within {
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 2px var(--primary-bg-light);
+}
+
+.cmd-prompt {
+  color: var(--primary-color);
+  margin-right: 8px;
+  font-weight: bold;
+  font-family: var(--font-mono);
+  user-select: none;
+}
+
+/* === Component Overrides === */
+
+/* Buttons: Flat, Clean, Tech */
+button.ant-btn {
+  border-radius: var(--radius-md);
+  font-family: var(--font-sans);
+  font-weight: 600;
   box-shadow: var(--shadow-sm);
 }
 
-button.ant-btn-icon-only:hover {
-  background-color: var(--gray-100);
-  color: var(--primary-color);
-  border-color: var(--primary-light-color);
-  box-shadow: var(--shadow-md);
+button.ant-btn-primary {
+  background-color: var(--primary-color);
+  border-color: var(--primary-color);
 }
 
-[data-theme='dark'] button.ant-btn-icon-only {
-  background-color: var(--gray-800);
-  border-color: var(--gray-700);
+button.ant-btn-primary:hover {
+  background-color: var(--primary-hover-color);
+  border-color: var(--primary-hover-color);
 }
 
-[data-theme='dark'] button.ant-btn-icon-only:hover {
-  background-color: var(--gray-700);
-  border-color: var(--primary-light-color);
+/* Sidebar & Panels: Floating Window Style */
+.sidebar,
+.artifacts-panel {
+  background: var(--surface-card);
+  border-right: 1px solid var(--border-color);
+  /* No shadow here as splitpanes handles layout, but internal cards need shadows */
+}
+
+/* Typography Headings */
+h1,
+h2,
+h3,
+h4,
+h5 {
+  font-family: var(--font-sans);
+  color: var(--text-color);
+  letter-spacing: -0.02em;
+  /* Tighter for modern feel */
+}
+
+/* UI Labels */
+.label,
+.ui-text-mono {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
 }

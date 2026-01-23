@@ -1,428 +1,268 @@
-<script setup>
-import { reactive,onMounted, computed } from 'vue'
-import { RouterLink, RouterView, useRoute } from 'vue-router'
-import {
-  MessageOutlined,
-  MessageFilled,
-  SettingOutlined,
-  SettingFilled,
-  BookOutlined,
-  BookFilled,
-  ToolFilled,
-  ToolOutlined,
-  BugOutlined,
-  ProjectFilled,
-  ProjectOutlined,
-  RedoOutlined,
-  ApiOutlined,
-} from '@ant-design/icons-vue'
-import { themeConfig } from '@/assets/theme'
-import { useConfigStore } from '@/stores/config'
-import { useDatabaseStore } from '@/stores/database'
-import DebugComponent from '@/components/DebugComponent.vue'
-
-const configStore = useConfigStore()
-const databaseStore = useDatabaseStore()
-
-const layoutSettings = reactive({
-  showDebug: false,
-  useTopBar: false, // 是否使用顶栏
-})
-
-
-
-const getRemoteConfig = () => {
-  configStore.refreshConfig()
-}
-
-const getRemoteDatabase = () => {
-  if (!configStore.config.enable_knowledge_base) {
-    return
-  }
-  databaseStore.refreshDatabase()
-}
-
-
-onMounted(() => {
-  getRemoteConfig()
-  getRemoteDatabase()
-
-})
-
-// 打印当前页面的路由信息，使用vue3的setup composition API
-const route = useRoute()
-console.log(route)
-
-const apiDocsUrl = computed(() => {
-  // Use the same-origin reverse proxy in both dev (Vite proxy) and prod (Nginx).
-  return `/api/docs`
-})
-
-
-// 下面是导航菜单部分，添加智能体项
-const mainList = [{
-    name: '对话',
-    path: '/chat',
-    icon: MessageOutlined,
-    activeIcon: MessageFilled,
-  }, {
-    name: '图谱',
-    path: '/graph',
-    icon: ProjectOutlined,
-    activeIcon: ProjectFilled,
-    // hidden: !configStore.config.enable_knowledge_graph,
-  }, {
-    name: '知识库',
-    path: '/database',
-    icon: BookOutlined,
-    activeIcon: BookFilled,
-    // hidden: !configStore.config.enable_knowledge_base,
-  }, {
-    name: '工具',
-    path: '/tools',
-    icon: ToolOutlined,
-    activeIcon: ToolFilled,
-  },
-   {
-    name: '地图',
-    path: '/coords',
-    icon: RedoOutlined, // 你可以换成其他图标
-    activeIcon: RedoOutlined,
-  }
-]
-</script>
-
 <template>
-  <div class="app-layout" :class="{ 'use-top-bar': layoutSettings.useTopBar }">
-    <div class="debug-panel" >
-      <a-float-button
-        @click="layoutSettings.showDebug = !layoutSettings.showDebug"
-        tooltip="调试面板"
-        :style="{
-          right: '12px',
-        }"
-      >
-        <template #icon>
-          <BugOutlined />
-        </template>
-      </a-float-button>
-      <a-drawer
-        v-model:open="layoutSettings.showDebug"
-        title="调试面板"
-        width="800"
-        :contentWrapperStyle="{ maxWidth: '100%'}"
-        placement="right"
-      >
-        <DebugComponent />
-      </a-drawer>
-    </div>
-    <div class="header" :class="{ 'top-bar': layoutSettings.useTopBar }">
-      <div class="logo circle">
-        <router-link to="/">
-          <img src="/avatar.jpg">
-          <span class="logo-text">可萌</span>
-        </router-link>
-      </div>
-      <div class="nav">
-        <!-- 使用mainList渲染导航项 -->
-        <RouterLink
-          v-for="(item, index) in mainList"
-          :key="index"
-          :to="item.path"
-          v-show="!item.hidden"
-          class="nav-item"
-          active-class="active">
-          <component class="icon" :is="route.path.startsWith(item.path) ? item.activeIcon : item.icon" />
-          <span class="text">{{item.name}}</span>
-        </RouterLink>
-      </div>
-      <div class="fill" style="flex-grow: 1;"></div>
+  <div class="app-layout">
+    <!-- Side Navigation (Optional/Collapsible) -->
+    <aside class="sidebar" :class="{ collapsed: collapsed }">
+        <div class="logo-area">
+            <div class="traffic-lights">
+                <div class="traffic-light red"></div>
+                <div class="traffic-light yellow"></div>
+                <div class="traffic-light green"></div>
+            </div>
+            <span v-if="!collapsed" class="app-title">ThinkFlow</span>
+        </div>
 
-      <div class="nav-item api-docs">
-        <a-tooltip placement="right">
-          <template #title>接口文档 {{ apiDocsUrl }}</template>
-          <a :href="apiDocsUrl" target="_blank" class="github-link">
-            <ApiOutlined class="icon" style="color: var(--subtext-color);"/>
-          </a>
-        </a-tooltip>
-      </div>
-      <RouterLink class="nav-item setting" to="/setting" active-class="active">
-        <a-tooltip placement="right">
-          <template #title>设置</template>
-          <component class="icon" :is="route.path === '/setting' ? SettingFilled : SettingOutlined" />
-        </a-tooltip>
-      </RouterLink>
-    </div>
-    <div class="header-mobile">
-      <RouterLink to="/chat" class="nav-item" active-class="active">对话</RouterLink>
-      <RouterLink to="/database" class="nav-item" active-class="active">知识</RouterLink>
-      <RouterLink to="/setting" class="nav-item" active-class="active">设置</RouterLink>
-    </div>
-    <a-config-provider :theme="themeConfig">
-    <router-view v-slot="{ Component, route }" id="app-router-view">
-      <keep-alive v-if="route.meta.keepAlive !== false">
-        <component :is="Component" />
-      </keep-alive>
-      <component :is="Component" v-else />
-    </router-view>
-    </a-config-provider>
+        <nav class="nav-menu">
+            <router-link to="/chat" class="nav-item" active-class="active">
+                <MessageOutlined />
+                <span v-if="!collapsed">Chat</span>
+            </router-link>
+            <router-link to="/graph" class="nav-item" active-class="active">
+                <ShareAltOutlined />
+                <span v-if="!collapsed">Graph</span>
+            </router-link>
+            <router-link to="/database" class="nav-item" active-class="active">
+                <DatabaseOutlined />
+                <span v-if="!collapsed">Data</span>
+            </router-link>
+            <router-link to="/agent" class="nav-item" active-class="active">
+                <RobotOutlined />
+                <span v-if="!collapsed">Agents</span>
+            </router-link>
+             <router-link to="/setting" class="nav-item" active-class="active">
+                <SettingOutlined />
+                <span v-if="!collapsed">Settings</span>
+            </router-link>
+        </nav>
+
+        <div class="sidebar-footer" @click="toggleCollapse">
+            <MenuUnfoldOutlined v-if="collapsed" />
+            <MenuFoldOutlined v-else />
+        </div>
+    </aside>
+
+    <!-- Main Workspace -->
+    <main class="main-content">
+        <!-- Top Navigation / Status Bar -->
+        <header class="top-nav glass">
+             <div class="breadcrumbs mono-font">
+                 <span class="path-segment">~/thinkflow</span>
+                 <span class="path-segment">/workspace</span>
+             </div>
+             
+             <div class="top-actions">
+                 <a-button type="text" shape="circle">
+                     <GithubOutlined />
+                 </a-button>
+                 <a-button type="text" shape="circle">
+                     <BellOutlined />
+                 </a-button>
+                 <div class="user-avatar">
+                     <UserOutlined />
+                 </div>
+             </div>
+        </header>
+
+        <div class="content-area">
+            <div class="content-window">
+                <router-view v-slot="{ Component }">
+                  <keep-alive :include="['ChatView', 'GraphView']">
+                    <component :is="Component" />
+                  </keep-alive>
+                </router-view>
+            </div>
+        </div>
+    </main>
   </div>
 </template>
 
+<script setup>
+import { ref } from 'vue';
+import { 
+    MessageOutlined, 
+    ShareAltOutlined, 
+    DatabaseOutlined, 
+    RobotOutlined,
+    SettingOutlined,
+    MenuFoldOutlined,
+    MenuUnfoldOutlined,
+    GithubOutlined,
+    BellOutlined,
+    UserOutlined
+} from '@ant-design/icons-vue';
+
+const collapsed = ref(false);
+
+const toggleCollapse = () => {
+    collapsed.value = !collapsed.value;
+}
+</script>
+
 <style lang="less" scoped>
-@import '@/assets/main.css';
-
 .app-layout {
-  display: flex;
-  flex-direction: row;
-  width: 100%;
-  height: 100vh;
-  min-width: var(--min-width);
-  background-color: var(--background-color);
-
-  .header-mobile {
-    display: none;
-  }
-
-  .debug-panel {
-    position: absolute;
-    z-index: 100;
-    right: 0;
-    bottom: 50px;
-    border-radius: 20px 0 0 20px;
-    cursor: pointer;
-  }
+    display: flex;
+    height: 100vh;
+    width: 100vw;
+    background: transparent; /* Shows grid from body */
 }
 
-/* Glassy/Premium Sidebar */
-.header {
-  display: flex;
-  flex-direction: column;
-  flex: 0 0 88px; /* Slightly wider for elegance */
-  justify-content: flex-start;
-  align-items: center;
-  background-color: var(--sidebar-background-color);
-  height: 100%;
-  /* Removed border/shadow for seamless look, rely on spacing or subtle bg diff if any */
-  /* border-right: 1px solid var(--border-color); */
-  z-index: 10;
-  padding-bottom: 24px;
-
-  .logo {
-    width: 44px;
-    height: 44px;
-    margin: 32px 0 40px 0;
-    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-
-    &:hover {
-      transform: scale(1.1) rotate(5deg);
-    }
-
-    img {
-      width: 100%;
-      height: 100%;
-      border-radius: 14px;
-      box-shadow: var(--shadow-md);
-    }
-
-    .logo-text {
-      display: none;
-    }
-
-    & > a {
-      text-decoration: none;
-    }
-  }
-
-  .nav {
+.sidebar {
+    width: 240px;
+    height: 100%;
+    background: var(--surface-card);
+    border-right: 1px solid var(--border-color);
     display: flex;
     flex-direction: column;
-    justify-content: flex-start;
-    align-items: center;
-    width: 100%;
-    gap: 12px;
-
-    /* Nav Item Styling */
-    .nav-item {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      width: 56px;
-      height: 56px;
-      border-radius: 16px; /* Soft squircle */
-      color: var(--subtext-color);
-      background-color: transparent;
-      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-      text-decoration: none;
-      cursor: pointer;
-      position: relative;
-      margin: 0 16px; 
-
-      /* Hover State */
-      &:hover:not(.active) {
-        background-color: var(--gray-100);
-        color: var(--text-color);
-        transform: translateY(-2px);
-      }
-
-      /* Active State */
-      &.active {
-        color: var(--primary-color);
-        background-color: var(--primary-bg-light);
-        box-shadow: var(--shadow-sm);
-        
-        .icon {
-          transform: scale(1.1);
-        }
-
-        .text {
-            color: var(--primary-color);
-            font-weight: 600;
-        }
-      }
-
-      .icon {
-        font-size: 24px;
-        transition: transform 0.3s ease;
-      }
-
-      .text {
-        font-size: 10px;
-        margin-top: 4px;
-        font-weight: 500;
-        transition: color 0.3s ease;
-      }
-    }
-  }
-  
-  /* Bottom actions */
-  .api-docs, .setting {
-     margin-top: auto; /* Push to bottom */
-     margin-bottom: 0;
-  }
-}
-
-#app-router-view {
-  flex: 1 1 auto;
-  height: 100%;
-  max-width: 100%;
-  overflow-y: auto;
-  background-color: var(--background-color);
-  scroll-behavior: smooth;
-  /* Add subtle shadow to separate from sidebar if needed, but going for clean look */
-}
-
-/* Mobile Responsiveness */
-@media (max-width: 520px) {
-  .app-layout {
-    flex-direction: column-reverse;
-
-    div.header {
-      display: none;
-    }
-
-    .debug-panel {
-      bottom: 10rem;
-    }
-  }
-
-  .app-layout div.header-mobile {
-    display: flex;
-    flex-direction: row;
-    width: 100%;
-    padding: 0 20px;
-    justify-content: space-around;
-    align-items: center;
-    flex: 0 0 72px; /* Taller mobile bar */
-    height: 72px;
-    background-color: rgba(255, 255, 255, 0.9);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    border-top: 1px solid var(--border-color);
-    z-index: 20;
-    box-shadow: var(--shadow-lg);
-
-    .nav-item {
-      text-decoration: none;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      width: 64px;
-      height: 100%;
-      color: var(--subtext-color);
-      font-size: 12px;
-      font-weight: 500;
-      transition: all 0.2s ease;
-      
-      &.active {
-        color: var(--primary-color);
-        font-weight: 600;
-      }
-    }
-  }
-}
-
-/* Top Bar Mode (Optional) */
-.app-layout.use-top-bar {
-  flex-direction: column;
-}
-
-.header.top-bar {
-  flex-direction: row;
-  flex: 0 0 64px;
-  width: 100%;
-  height: 64px;
-  border-right: none;
-  border-bottom: 1px solid var(--border-color);
-  padding: 0 24px;
-  background-color: var(--sidebar-background-color);
-
-  .logo {
-    margin: 0 24px 0 0;
-    width: auto;
+    transition: width 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    z-index: 50;
     
-    img {
-        width: 32px;
-        height: 32px;
+    &.collapsed {
+        width: 64px;
+        
+        .logo-area { padding: 20px; justify-content: center; }
+        .traffic-lights { display: none; } /* Hide dots on collapse or stack them vertical? Hide for now */
+        .app-title { display: none; }
+        .nav-item span { display: none; }
+        .nav-item { justify-content: center; padding: 12px; }
     }
-    .logo-text {
-        display: block;
-        margin-left: 12px;
-        font-size: 18px;
+}
+
+.logo-area {
+    height: 60px;
+    padding: 0 24px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    border-bottom: 1px solid var(--border-color);
+    
+    .app-title {
+        font-family: var(--font-sans);
+        font-weight: 700;
+        font-size: 16px;
+        color: var(--text-color);
+        letter-spacing: -0.02em;
+    }
+}
+
+/* Traffic lights from base.css */
+.traffic-lights {
+    display: flex;
+    gap: 6px;
+}
+.traffic-light {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+}
+
+.nav-menu {
+    flex: 1;
+    padding: 16px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.nav-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 16px;
+    color: var(--subtext-color);
+    text-decoration: none;
+    border-radius: var(--radius-md);
+    font-family: var(--font-mono); /* Developer feel */
+    font-size: 13px;
+    font-weight: 500;
+    transition: all 0.2s;
+    
+    &:hover {
+        background: var(--surface-secondary);
         color: var(--text-color);
     }
-  }
-  
-  .nav {
-      flex-direction: row;
-      width: auto;
-      gap: 8px;
-      
-      .nav-item {
-          flex-direction: row;
-          width: auto;
-          height: 40px;
-          padding: 0 16px;
-          gap: 8px;
-          border-radius: 8px;
-          margin: 0;
-          
-          .text {
-              margin-top: 0;
-              font-size: 14px;
-          }
-          
-          .icon {
-              font-size: 18px;
-          }
-      }
-  }
-  
-  .fill {
-      display: flex;
-      flex-grow: 1;
-  }
+    
+    &.active {
+        background: var(--surface-secondary);
+        color: var(--primary-color);
+        border: 1px solid var(--border-color);
+    }
+    
+    .anticon { font-size: 16px; }
+}
+
+.sidebar-footer {
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-top: 1px solid var(--border-color);
+    cursor: pointer;
+    color: var(--subtext-color);
+    
+    &:hover { color: var(--text-color); }
+}
+
+.main-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.top-nav {
+    height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 24px;
+    z-index: 40;
+    
+    .breadcrumbs {
+        color: var(--subtext-color);
+        font-size: 13px;
+        
+        .path-segment:after {
+            content: '/';
+            margin: 0 8px;
+            color: var(--slate-300);
+        }
+        .path-segment:last-child:after { content: ''; }
+        .path-segment:last-child { color: var(--text-color); font-weight: 600; }
+    }
+}
+
+.top-actions {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+}
+
+.user-avatar {
+    width: 32px;
+    height: 32px;
+    background: var(--surface-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--subtext-color);
+}
+
+.content-area {
+    flex: 1;
+    padding: 24px;
+    overflow: hidden;
+    display: flex;
+}
+
+.content-window {
+    flex: 1;
+    background: var(--surface-card); /* Pure white card on the grid */
+    border: 1px solid var(--border-color); /* 1px border */
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-lg); /* Soft floating shadow */
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
 }
 </style>

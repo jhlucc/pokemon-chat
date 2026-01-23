@@ -1,14 +1,16 @@
 <template>
-  <div class="pdf2txt-container">
+  <div class="pdf2txt-container window-card">
     <div class="sidebar">
       <div class="additional-params">
         <h4>相关参数</h4>
-        <p>暂无相关参数</p>
+        <div class="empty-state">
+           <span class="subtext">暂无相关参数</span>
+        </div>
       </div>
     </div>
     <div class="result-container">
       <div class="input-container">
-        <div class="upload">
+        <div class="upload-wrapper">
           <a-upload-dragger
             class="upload-dragger"
             v-model:fileList="fileList"
@@ -19,19 +21,26 @@
             @change="handleFileUpload"
             @drop="handleDrop"
           >
+            <p class="ant-upload-drag-icon">
+              <inbox-outlined />
+            </p>
             <p class="ant-upload-text">点击或者把PDF文件拖拽到这里上传</p>
             <p class="ant-upload-hint">
               仅支持上传PDF文件。同名文件无法重复添加
             </p>
           </a-upload-dragger>
         </div>
-        <a-button type="primary" @click="convertPdfToText" :loading="state.loading">Convert PDF to Text</a-button>
+        <a-button type="primary" size="large" @click="convertPdfToText" :loading="state.loading" class="convert-btn">
+          Start Conversion
+        </a-button>
       </div>
       <div class="output-container">
-        <textarea v-model="convertedText" placeholder="Converted text will appear here" readonly></textarea>
+        <div class="textarea-wrapper">
+          <textarea v-model="convertedText" placeholder="Converted text will appear here..." readonly></textarea>
+        </div>
         <div class="infos">
-          <span>字符数: {{ charCount }}</span>
-          <span>Token 数：{{ estimatedTokenCount }}</span>
+          <a-tag color="blue">字符数: {{ charCount }}</a-tag>
+          <a-tag color="cyan">Token 数: {{ estimatedTokenCount }}</a-tag>
         </div>
       </div>
     </div>
@@ -41,6 +50,8 @@
 <script setup>
 import { reactive, ref, computed } from 'vue';
 import { message } from 'ant-design-vue';
+import { InboxOutlined } from '@ant-design/icons-vue';
+import axios from 'axios';
 
 const state = reactive({
   loading: false,
@@ -69,7 +80,7 @@ const estimatedTokenCount = computed(() => {
 const handleFileUpload = (info) => {
   const { status } = info.file;
   if (status !== 'uploading') {
-    console.log(info.file, info.fileList);
+    // console.log(info.file, info.fileList);
   }
   if (status === 'done') {
     message.success(`${info.file.name} file uploaded successfully.`);
@@ -79,35 +90,37 @@ const handleFileUpload = (info) => {
 };
 
 const handleDrop = (e) => {
-  console.log(e);
+  // console.log(e);
 };
 
 const convertPdfToText = async () => {
   if (fileList.value.length === 0) {
-    message.error("请上传PDF文件");
+    message.warning("请先上传PDF文件");
     return;
   }
 
-  const file = fileList.value[0].response.file_path;
+  // Ensure we have a valid response from the upload
+  const fileResponse = fileList.value[0].response;
+  if (!fileResponse || !fileResponse.file_path) {
+     message.error("文件上传尚未完成或失败");
+     return;
+  }
+  
+  const file = fileResponse.file_path;
 
   try {
     state.loading = true;
-    const response = await fetch('/api/tools/pdf2txt', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ file: file.toString() })
-    });
-
-    if (!response.ok) {
-      throw new Error(`HTTP error! Status: ${response.status}`);
+    const response = await axios.post('/api/tools/pdf2txt', { file: file.toString() });
+    
+    if (response.data) {
+       convertedText.value = response.data.text;
+    } else {
+       throw new Error("No data received");
     }
-
-    const data = await response.json();
-    convertedText.value = data.text;
-    state.loading = false;
   } catch (error) {
     console.error('Error converting PDF to text:', error);
     message.error('PDF转换失败，请重试');
+  } finally {
     state.loading = false;
   }
 };
@@ -116,66 +129,120 @@ const convertPdfToText = async () => {
 <style lang="less" scoped>
 .pdf2txt-container {
   display: flex;
-  border-radius: 8px;
-  font-family: 'Arial', sans-serif;
-
+  height: 100%;
+  overflow: hidden;
+  background-color: var(--surface-card); /* Standardized */
+  border: 1px solid var(--border-color);
+  
+  /* Inherits .window-card styles if class added, but scoped here for safety */
+  
   .sidebar {
-    position: sticky;
-    top: 0;
-    width: 350px;
-    background-color: var(--bg-sider);
-    border-right: 1px solid var(--main-light-3);
-    padding: 20px;
-    min-width: 250px;
-    flex: 1;
+    width: 280px;
+    background-color: var(--surface-secondary); /* Standardized */
+    border-right: 1px solid var(--border-color); /* Standardized */
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
 
     .additional-params {
       h4 {
-        font-size: 1.2em;
-        margin-bottom: 10px;
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--text-color);
+        margin-bottom: 16px;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+      }
+      
+      .subtext {
+        color: var(--subtext-color);
+        font-size: 13px;
       }
     }
   }
 
   .result-container {
-    flex: 3;
-    padding: 20px;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    padding: 24px;
+    gap: 24px;
+    overflow-y: auto;
 
     .input-container {
       display: flex;
       flex-direction: column;
-      margin-bottom: 15px;
+      gap: 16px;
 
-      .upload {
-        margin-bottom: 15px;
+      .upload-wrapper {
+        border-radius: var(--radius-lg);
+        overflow: hidden;
+        border: 1px dashed var(--border-color);
+        transition: border-color 0.3s;
+        
+         &:hover {
+            border-color: var(--primary-color);
+         }
+         
+         .ant-upload-text {
+            color: var(--text-color);
+            font-weight: 500;
+         }
+         
+         .ant-upload-hint {
+            color: var(--subtext-color);
+         }
+      }
+      
+      .convert-btn {
+         align-self: flex-start;
+         min-width: 120px;
       }
     }
 
     .output-container {
-      textarea {
-        width: 100%;
-        height: 300px;
-        resize: vertical;
-        padding: 1rem;
-        border: 1px solid var(--gray-300);
-        border-radius: 8px;
-        font-size: 1rem;
-        transition: border-color 0.3s;
-        background-color: var(--gray-100);
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      min-height: 0; 
 
-        &:focus {
-          border-color: var(--main-color);
-          outline: none;
-        }
+      .textarea-wrapper {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        
+        textarea {
+            flex: 1;
+            width: 100%;
+            padding: 16px;
+            border: 1px solid var(--border-color); /* Standardized */
+            border-radius: var(--radius-lg);
+            font-size: 14px;
+            line-height: 1.6;
+            font-family: var(--font-mono);
+            background-color: var(--input-background-color); /* Standardized */
+            color: var(--text-color);
+            resize: none;
+            transition: all 0.2s;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);
+    
+            &:focus {
+              border-color: var(--primary-color); /* Standardized */
+              outline: none;
+              box-shadow: 0 0 0 2px var(--primary-bg-light);
+            }
+            
+            &::placeholder {
+              color: var(--subtext-color);
+            }
+          }
       }
 
       .infos {
-        padding: 10px;
-        margin-top: 10px;
-        font-size: 1em;
-        color: var(--gray-800);
         display: flex;
-        gap: 16px;
+        gap: 12px;
+        align-items: center;
       }
     }
   }

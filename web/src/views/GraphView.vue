@@ -8,7 +8,7 @@
       </template>
     </a-empty>
   </div>
-  <div class="graph-container layout-container" v-else>
+  <div class="graph-container" v-else>
     <HeaderComponent
       title="图数据库"
       :description="graphDescription"
@@ -20,7 +20,7 @@
               <span class="status-text">{{ graphStatusText }}</span>
             </div>
             
-             <a-button type="default" class="icon-btn" @click="loadSampleNodes" :loading="state.fetching" title="刷新样本">
+             <a-button class="icon-btn" @click="loadSampleNodes" :loading="state.fetching" title="刷新样本">
                 <template #icon><ReloadOutlined /></template>
             </a-button>
         </div>
@@ -29,12 +29,12 @@
 
     <div class="main-content">
         <!-- Floating Toolbar -->
-        <div class="toolbar glass">
+        <div class="toolbar window-card glass">
             <div class="search-box">
                  <a-input-search
                   v-model:value="state.searchInput"
                   placeholder="搜索实体..."
-                  style="width: 240px"
+                  class="custom-search"
                   @search="onSearch"
                   :loading="state.searchLoading"
                   allowClear
@@ -42,12 +42,12 @@
             </div>
             <div class="divider"></div>
             <div class="tool-item">
-                <span class="label">数量:</span>
-                <a-input-number v-model:value="sampleNodeCount" :min="10" :max="500" style="width: 70px" size="small" :bordered="false"/>
+                <span class="label">节点数:</span>
+                <a-input-number v-model:value="sampleNodeCount" :min="10" :max="500" size="small" :bordered="false" class="count-input"/>
             </div>
             <div class="divider"></div>
             <a-tooltip title="导出当前视图数据">
-                 <a-button type="text" size="small" @click="exportData">
+                 <a-button type="text" size="small" @click="exportData" class="tool-btn">
                     <ExportOutlined />
                 </a-button>
             </a-tooltip>
@@ -55,9 +55,18 @@
 
         <div class="canvas-wrapper" ref="wrapper">
              <div id="container" ref="container"></div>
-             <a-empty v-if="graphData.nodes.length === 0 && !state.fetching" description="暂无数据，请尝试刷新或搜索" class="empty-state"/>
+             <!-- Empty State Overlay -->
+             <div v-if="graphData.nodes.length === 0 && !state.fetching" class="empty-overlay">
+                <a-empty description="暂无数据" />
+                <p class="sub-text">请尝试调整搜索条件或刷新图谱</p>
+             </div>
+             
+             <!-- Loading Overlay -->
              <div v-if="state.fetching || state.searchLoading" class="loading-overlay">
-                 <a-spin tip="加载图谱数据..." />
+                 <div class="loading-content">
+                     <a-spin size="large" />
+                     <span class="loading-text">正在分析图谱关联...</span>
+                 </div>
              </div>
         </div>
         
@@ -73,13 +82,14 @@
 </template>
 
 <script setup>
-import { Graph } from "@antv/g6";
-import { computed, onMounted, reactive, ref, watch } from 'vue';
+import G6, { Graph } from "@antv/g6";
+import { computed, onMounted, reactive, ref, onBeforeUnmount } from 'vue';
 import { message } from 'ant-design-vue';
 import { ReloadOutlined, ExportOutlined } from '@ant-design/icons-vue';
 import { useConfigStore } from '@/stores/config';
 import HeaderComponent from '@/components/HeaderComponent.vue';
 import GraphDetailPanel from '@/components/GraphDetailPanel.vue';
+import axios from 'axios';
 
 const configStore = useConfigStore()
 const container = ref(null);
@@ -104,59 +114,64 @@ const detailState = reactive({
 
 const graphInfo = ref({})
 
-const loadGraphInfo = () => {
+const loadGraphInfo = async () => {
   state.loadingGraphInfo = true
-  fetch('/api/data/graph')
-    .then(response => response.json())
-    .then(data => {
-      graphInfo.value = data
-    })
-    .catch(error => {
-      // Quiet fail for info
-      console.warn("Failed to load graph info", error)
-    })
-    .finally(() => state.loadingGraphInfo = false)
+  try {
+     const response = await axios.get('/api/data/graph');
+     graphInfo.value = response.data;
+  } catch (error) {
+      console.warn("Failed to load graph info", error);
+  } finally {
+      state.loadingGraphInfo = false;
+  }
 }
 
-const loadSampleNodes = () => {
+const loadSampleNodes = async () => {
   state.fetching = true
-  // Close detail when reloading
   closeDetail();
   
-  fetch(`/api/data/graph/nodes?kgdb_name=neo4j&num=${sampleNodeCount.value}`)
-    .then(res => res.json())
-    .then(data => {
-      if(data.result) {
-          graphData.nodes = data.result.nodes || []
-          graphData.edges = data.result.edges || []
-          renderGraph()
-      } else {
-          graphData.nodes = []
-          graphData.edges = []
-          renderGraph() // Clear
-      }
-    })
-    .catch(err => message.error(err.message))
-    .finally(() => state.fetching = false)
+  try {
+    const response = await axios.get('/api/data/graph/nodes', {
+        params: { kgdb_name: 'neo4j', num: sampleNodeCount.value }
+    });
+    
+    const data = response.data;
+    if(data.result) {
+        graphData.nodes = data.result.nodes || []
+        graphData.edges = data.result.edges || []
+    } else {
+        graphData.nodes = []
+        graphData.edges = []
+    }
+    renderGraph();
+  } catch (err) {
+      message.error(err.response?.data?.message || err.message);
+  } finally {
+      state.fetching = false;
+  }
 }
 
-const onSearch = () => {
+const onSearch = async () => {
   if (!state.searchInput) return loadSampleNodes();
   state.searchLoading = true
   closeDetail();
   
-  fetch(`/api/data/graph/node?entity_name=${state.searchInput}`)
-    .then(res => res.json())
-    .then(data => {
+  try {
+      const response = await axios.get('/api/data/graph/node', {
+          params: { entity_name: state.searchInput }
+      });
+      const data = response.data;
       if (data.result) {
           graphData.nodes = data.result.nodes || []
           graphData.edges = data.result.edges || []
           if (graphData.nodes.length === 0) message.info('未找到相关实体')
           renderGraph()
       }
-    })
-    .catch(err => message.error(err.message))
-    .finally(() => state.searchLoading = false)
+  } catch (err) {
+       message.error(err.response?.data?.message || err.message);
+  } finally {
+      state.searchLoading = false
+  }
 }
 
 const getGraphData = () => {
@@ -173,7 +188,7 @@ const getGraphData = () => {
       data: { 
           label: n.name, 
           degree: nodeDegrees[n.id],
-          original: n // Pass original data for detail panel
+          original: n 
       }
     })),
     edges: graphData.edges.map(e => ({
@@ -187,8 +202,105 @@ const getGraphData = () => {
   }
 }
 
+// --- G6 Registration & Rendering ---
+
+const registerCustomNode = () => {
+    G6.registerNode('window-node', {
+        draw(cfg, group) {
+            const width = 160;
+            const height = 60;
+            const r = 8; // Improved rounded corners
+            
+            // 1. Container Card (Glass-like visual handled by simple SVG/Canvas props, simulated)
+            // Note: Canvas cannot do real CSS glass, so we use solid colors matching the theme
+            const shape = group.addShape('rect', {
+                attrs: {
+                    x: -width / 2,
+                    y: -height / 2,
+                    width: width,
+                    height: height,
+                    radius: r,
+                    fill: '#FFFFFF', // Should ideally match var(--surface-card)
+                    stroke: '#E2E8F0', // var(--border-color)
+                    lineWidth: 1,
+                    shadowColor: 'rgba(0, 0, 0, 0.06)',
+                    shadowBlur: 12,
+                    cursor: 'pointer'
+                },
+                name: 'main-box',
+                draggable: true,
+            });
+
+            // 2. Traffic Lights (Mac-like window controls)
+            const startX = -width / 2 + 12;
+            const startY = -height / 2 + 12;
+            const gap = 14;
+            
+            group.addShape('circle', { attrs: { x: startX, y: startY, r: 4, fill: '#FF5F56' }, name: 'red-dot' });
+            group.addShape('circle', { attrs: { x: startX + gap, y: startY, r: 4, fill: '#FFBD2E' }, name: 'yellow-dot' });
+            group.addShape('circle', { attrs: { x: startX + gap * 2, y: startY, r: 4, fill: '#27C93F' }, name: 'green-dot' });
+
+            // 3. Label (Title)
+            const labelStr = cfg.label || '';
+            group.addShape('text', {
+                attrs: {
+                    x: 0,
+                    y: -height / 2 + 35, // Centered vertically in the "content" area roughly
+                    textAlign: 'center',
+                    textBaseline: 'middle',
+                    text: labelStr.length > 18 ? labelStr.substring(0, 16) + '...' : labelStr,
+                    fill: '#1E293B', // var(--text-color)
+                    fontSize: 13,
+                    fontWeight: 600,
+                    fontFamily: 'Inter, sans-serif'
+                },
+                name: 'label-text',
+                draggable: true // Allow dragging by text
+            });
+            
+            // 4. Metadata (Links Count)
+            if (cfg.data && cfg.data.degree !== undefined) {
+                 group.addShape('text', {
+                    attrs: {
+                        x: 0,
+                        y: height / 2 - 14,
+                        textAlign: 'center',
+                        textBaseline: 'middle',
+                        text: `Connections: ${cfg.data.degree}`,
+                        fill: '#94A3B8', // var(--subtext-color)
+                        fontSize: 10,
+                        fontFamily: 'JetBrains Mono, monospace',
+                        opacity: 0.8
+                    },
+                    name: 'sub-text',
+                    draggable: true
+                });
+            }
+
+            return shape;
+        },
+        setState(name, value, item) {
+             const group = item.getContainer();
+             const shape = group.get('children')[0]; // Main box
+             if(name === 'active' || name === 'selected') {
+                 if(value) {
+                     shape.attr('stroke', '#F97316'); // Primary Orange
+                     shape.attr('lineWidth', 2);
+                     shape.attr('shadowColor', 'rgba(249, 115, 22, 0.25)');
+                     shape.attr('shadowBlur', 16);
+                 } else {
+                     shape.attr('stroke', '#E2E8F0');
+                     shape.attr('lineWidth', 1);
+                     shape.attr('shadowColor', 'rgba(0, 0, 0, 0.06)');
+                     shape.attr('shadowBlur', 12);
+                 }
+             }
+        }
+    });
+}
+
 const renderGraph = () => {
-    if(!container.value) return;
+    if(!container.value || !wrapper.value) return;
     
     // Clean up
     if (graphInstance) {
@@ -198,8 +310,11 @@ const renderGraph = () => {
     
     if(graphData.nodes.length === 0) return;
 
+    // Use current dimensions
     const width = wrapper.value.offsetWidth;
     const height = wrapper.value.offsetHeight;
+
+    registerCustomNode();
 
     graphInstance = new Graph({
         container: container.value,
@@ -209,85 +324,65 @@ const renderGraph = () => {
         layout: {
             type: 'd3-force',
             preventOverlap: true,
-            nodeSize: 30,
-            linkDistance: 100,
+            nodeSize: [180, 80], // Consistent with draw method
+            linkDistance: 150,
             collide: { strength: 0.8 },
+            alphaDecay: 0.03 // Slower decay for better settling
         },
-        node: {
-            type: 'circle',
+        defaultNode: {
+            type: 'window-node',
+        },
+        defaultEdge: {
+            type: 'cubic-horizontal',
             style: {
-                labelText: d => d.data.label.length > 5 ? d.data.label.substring(0,5)+'...' : d.data.label,
-                labelFill: '#1e293b', // var(--text-color) approximation
-                labelFontSize: 12,
-                labelPlacement: 'bottom',
-                size: d => Math.max(20, Math.min(15 + (d.data.degree || 0) * 3, 60)),
-                fill: '#6366f1', // Indigo-500
-                stroke: '#ffffff',
+                stroke: '#CBD5E1', // Slate-300
+                endArrow: {
+                    path: G6.Arrow.triangle(6, 8, 0),
+                    fill: '#CBD5E1',
+                    d: 0 
+                },
+                lineWidth: 1.5
+            },
+            labelCfg: {
+                autoRotate: true,
+                style: {
+                    fill: '#64748B',
+                    fontSize: 11,
+                    background: {
+                        fill: '#F1F5F9', // Slate-100
+                        padding: [2, 6],
+                        radius: 4,
+                    },
+                }
+            }
+        },
+        edgeStateStyles: {
+             active: {
+                stroke: '#F97316',
                 lineWidth: 2,
-                cursor: 'pointer',
-            },
-            state: {
-                active: {
-                    fill: '#4338ca', // Indigo-700
-                    shadowColor: 'rgba(99, 102, 241, 0.4)',
-                    shadowBlur: 10
-                },
-                selected: {
-                    fill: '#e11d48', // Rose-600
-                    stroke: '#000',
-                    lineWidth: 3
+                endArrow: {
+                    path: G6.Arrow.triangle(6, 8, 0),
+                    fill: '#F97316',
                 }
             }
         },
-        edge: {
-            type: 'line',
-            style: {
-                labelText: d => d.data.label,
-                labelBackground: true,
-                labelBackgroundFill: '#f8fafc',
-                labelBackgroundRadius: 4,
-                labelFontSize: 10,
-                labelFill: '#64748b',
-                stroke: '#cbd5e1', // Slate-300
-                endArrow: true,
-                cursor: 'pointer'
-            },
-            state: {
-                active: {
-                    stroke: '#6366f1',
-                    lineWidth: 2
-                },
-                selected: {
-                    stroke: '#e11d48',
-                    lineWidth: 3
-                }
-            }
+        modes: {
+            default: ['drag-canvas', 'zoom-canvas', 'drag-node', 'activate-relations'],
         },
-        behaviors: [
-            'drag-element', 
-            'zoom-canvas', 
-            'drag-canvas',
-            {
-                type: 'click-select',
-                multiple: false,
-                trigger: 'click', // Required to trigger selection
-                onClick: (e) => {
-                   // Handled in event listener below for more control if needed
-                }
-            },
-            {
-                type: 'hover-activate',
-                degree: 1 // Highlight neighbors
-            }
-        ],
     });
 
-    graphInstance.setData(getGraphData());
+    graphInstance.data(getGraphData());
     graphInstance.render();
     
-    // Event Listeners
+    // Interactions
     graphInstance.on('node:click', (e) => {
-        const model = e.target.id ? graphInstance.getNodeData(e.target.id) : null;
+        const model = e.item.getModel();
+        // Reset previous selection if needed
+        const nodes = graphInstance.getNodes();
+        nodes.forEach(n => graphInstance.setItemState(n, 'selected', false));
+        
+        graphInstance.setItemState(e.item, 'selected', true);
+        
         if(model) {
             detailState.item = model;
             detailState.type = 'node';
@@ -296,7 +391,7 @@ const renderGraph = () => {
     });
 
     graphInstance.on('edge:click', (e) => {
-         const model = e.target.id ? graphInstance.getEdgeData(e.target.id) : null;
+         const model = e.item.getModel();
          if(model) {
             detailState.item = model;
             detailState.type = 'edge';
@@ -306,6 +401,9 @@ const renderGraph = () => {
     
     graphInstance.on('canvas:click', () => {
         closeDetail();
+        // Clear selection
+         const nodes = graphInstance.getNodes();
+         nodes.forEach(n => graphInstance.setItemState(n, 'selected', false));
     });
 }
 
@@ -313,8 +411,6 @@ const renderGraph = () => {
 const closeDetail = () => {
     detailState.visible = false;
     detailState.item = null;
-    // Optional: Clear selection in graph if needed
-    // if(graphInstance) graphInstance.setItemState(item, 'selected', false);
 }
 
 const exportData = () => {
@@ -324,7 +420,7 @@ const exportData = () => {
     const link = document.createElement('a');
     link.href = url;
     link.download = `graph_export_${new Date().toISOString()}.json`;
-    document.body.click(); // Fix for firefox?
+    document.body.click(); 
     link.click();
     URL.revokeObjectURL(url);
     message.success("导出成功");
@@ -342,49 +438,67 @@ const graphStatusText = computed(() => {
 
 const graphDescription = computed(() => {
   const { graph_name, entity_count, relationship_count } = graphInfo.value || {}
-  if(!graph_name && !entity_count) return "探索知识图谱中的实体关系";
+  if(!graph_name && !entity_count) return "探索知识图谱中的实体关系 network";
   return `${graph_name || 'KB'} • ${entity_count || 0} 实体 • ${relationship_count || 0} 关系`
 });
 
+// Resize handler
+const handleResize = () => {
+   if(graphInstance && wrapper.value) {
+      graphInstance.changeSize(wrapper.value.offsetWidth, wrapper.value.offsetHeight);
+   }
+};
+
 onMounted(() => {
-  loadGraphInfo()
-  // Slight delay to ensure container dimension
+  loadGraphInfo();
+  window.addEventListener('resize', handleResize);
+  // Initial load
   setTimeout(() => loadSampleNodes(), 100);
-  
-  window.addEventListener('resize', () => {
-      if(graphInstance && wrapper.value) {
-          graphInstance.setSize(wrapper.value.offsetWidth, wrapper.value.offsetHeight);
-      }
-  })
-})
+});
+
+onBeforeUnmount(() => {
+    window.removeEventListener('resize', handleResize);
+    if(graphInstance) graphInstance.destroy();
+});
 </script>
 
 <style lang="less" scoped>
 .graph-container { 
-    padding: 0; 
     display: flex;
     flex-direction: column;
-    height: 100%;
+    height: 100vh;
+    overflow: hidden;
+    background-color: var(--background-color);
 }
 
 .header-actions {
     display: flex;
     align-items: center;
-    gap: 16px;
+    gap: 12px;
     
     .status-wrapper {
       display: flex;
       align-items: center;
       padding: 4px 12px;
-      background: var(--gray-100);
-      border-radius: 20px;
+      background: var(--surface-secondary);
+      border-radius: 99px;
       font-size: 12px;
+      border: 1px solid var(--border-color);
       
       .status-text {
-          margin-left: 6px;
+          margin-left: 8px;
           color: var(--subtext-color);
           font-weight: 500;
       }
+    }
+    
+    .icon-btn {
+        border-radius: 8px;
+        color: var(--subtext-color);
+        &:hover {
+         color: var(--primary-color);
+         border-color: var(--primary-color);
+        }
     }
 }
 
@@ -394,8 +508,8 @@ onMounted(() => {
   border-radius: 50%;
   display: inline-block;
   &.loading { background: #faad14; animation: pulse 1.5s infinite ease-in-out; }
-  &.open { background: #52c41a; box-shadow: 0 0 8px rgba(82, 196, 26, 0.4); }
-  &.closed { background: #f5222d; }
+  &.open { background: #10B981; box-shadow: 0 0 8px rgba(16, 185, 129, 0.4); }
+  &.closed { background: #EF4444; }
 }
 
 @keyframes pulse {
@@ -407,9 +521,8 @@ onMounted(() => {
 .main-content {
     position: relative;
     flex: 1;
-    display: flex;
-    flex-direction: column;
-    background: var(--surface-ground); // Checkered or simple bg
+    display: flex; /* Ensure canvas wrapper fills space */
+    width: 100%;
     overflow: hidden;
 }
 
@@ -418,73 +531,128 @@ onMounted(() => {
     position: relative;
     width: 100%;
     height: 100%;
-    overflow: hidden;
     
     #container {
         width: 100%;
         height: 100%;
         /* Grid pattern background */
-        background-color: var(--surface-card);
-        background-image: radial-gradient(var(--gray-200) 1px, transparent 1px);
-        background-size: 20px 20px;
+        background-color: var(--surface-ground);
+        background-image: radial-gradient(var(--slate-300) 1px, transparent 1px);
+        background-size: 24px 24px;
+        
+         /* Dark mode adjustment done via global CSS variables usually, or specific media query */
     }
 }
 
-/* Floating Toolbar */
+[data-theme='dark'] .canvas-wrapper #container {
+     background-image: radial-gradient(var(--slate-700) 1px, transparent 1px);
+}
+
+
+/* Toolbar Styles */
 .toolbar {
     position: absolute;
-    top: 16px;
+    top: 24px;
     left: 24px;
     z-index: 10;
     display: flex;
     align-items: center;
     padding: 8px 12px;
     gap: 12px;
-    border-radius: 12px;
-    background: var(--surface-overlay);
-    border: 1px solid var(--border-color);
-    box-shadow: var(--shadow-md);
+    /* Glass effect inherited from global .glass + .window-card */
+    background: rgba(255, 255, 255, 0.85);
     
     .divider {
         width: 1px;
-        height: 16px;
+        height: 20px;
         background: var(--border-color);
     }
     
     .tool-item {
         display: flex;
         align-items: center;
-        gap: 6px;
-        font-size: 12px;
+        gap: 8px;
+        font-size: 13px;
         color: var(--subtext-color);
+        
+        .label {
+            font-weight: 500;
+        }
+    }
+    
+    .tool-btn {
+        color: var(--subtext-color);
+        &:hover {
+            color: var(--primary-color);
+        }
+    }
+    
+    .custom-search {
+        width: 220px;
+        :deep(.ant-input) {
+            background: transparent !important;
+        }
     }
 }
 
-.empty-state {
+[data-theme='dark'] .toolbar {
+    background: rgba(30, 41, 59, 0.85);
+}
+
+/* Overlays */
+.empty-overlay {
     position: absolute;
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
+    text-align: center;
     pointer-events: none;
+    
+    .sub-text {
+        margin-top: 8px;
+        color: var(--subtext-color);
+        font-size: 13px;
+    }
 }
 
 .loading-overlay {
     position: absolute;
     inset: 0;
-    background: rgba(255, 255, 255, 0.6);
-    backdrop-filter: blur(2px);
+    background: rgba(255, 255, 255, 0.4);
+    backdrop-filter: blur(4px);
     display: flex;
     justify-content: center;
     align-items: center;
-    z-index: 5;
+    z-index: 20;
+    
+    .loading-content {
+        background: var(--surface-card);
+        padding: 24px;
+        border-radius: 16px;
+        box-shadow: var(--shadow-lg);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 16px;
+        border: 1px solid var(--border-color);
+        
+        .loading-text {
+            font-weight: 500;
+            color: var(--primary-color);
+            font-size: 14px;
+        }
+    }
+}
+
+[data-theme='dark'] .loading-overlay {
+    background: rgba(15, 23, 42, 0.4);
 }
 
 .database-empty {
   display: flex;
   justify-content: center;
   align-items: center;
-  height: 100%;
+  height: 100vh;
   flex-direction: column;
-  color: var(--gray-900);
 }
 </style>

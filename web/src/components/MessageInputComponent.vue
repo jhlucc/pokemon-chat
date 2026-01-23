@@ -209,49 +209,54 @@ const handleSendOrStop = () => {
   width: 100%;
   height: auto;
   margin: 0 auto;
-  padding: 0.4rem 0.75rem;
-  border: 2px solid var(--gray-200);
-  border-radius: 0.8rem;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  /* Terminal Window Style */
+  background: var(--surface-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  padding: 12px 16px;
   transition: all 0.3s ease;
 
   &:focus-within {
-    border-color: var(--main-500);
-    background: white;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 2px var(--primary-bg-light), var(--shadow-lg);
   }
 
   .input-area {
     display: flex;
-    align-items: flex-end;
+    align-items: flex-start;
     gap: 8px;
     margin-bottom: 4px;
+    
+    /* Terminal Prompt Symbol */
+    &:before {
+        content: '$';
+        font-family: var(--font-mono);
+        color: var(--primary-color);
+        font-weight: bold;
+        margin-top: 10px; /* Align with first line of text */
+        font-size: 15px;
+    }
   }
 
   .user-input {
     flex: 1;
-    min-height: 44px;
+    min-height: 24px;
     padding: 0.5rem 0;
+    /* Transparent bg for terminal feel */
     background-color: transparent;
     border: none;
     margin: 0;
-    color: #222222;
-    font-size: 14px;
+    color: var(--text-color);
+    font-family: var(--font-mono); /* Monospace input */
+    font-size: 15px;
     outline: none;
     resize: none;
     line-height: 1.6;
 
-    &:focus {
-      outline: none;
-      box-shadow: none;
-    }
-
-    &:active {
-      outline: none;
-    }
-
     &::placeholder {
-      color: #888888;
+      color: var(--subtext-color);
+      opacity: 0.6;
     }
   }
 
@@ -276,23 +281,25 @@ const handleSendOrStop = () => {
       flex: 1;
 
       :deep(.opt-item) {
-        border-radius: 12px;
-        border: 1px solid var(--gray-300);
-        padding: 5px 10px;
+        border-radius: 4px; /* Squarer tech look */
+        border: 1px solid transparent;
+        padding: 4px 8px;
         cursor: pointer;
         font-size: 12px;
-        color: var(--gray-700);
+        font-family: var(--font-mono);
+        color: var(--subtext-color);
         transition: all 0.2s ease;
+        background: var(--gray-50);
 
         &:hover {
-          background-color: var(--main-10);
-          color: var(--main-600);
+          background-color: var(--gray-100);
+          color: var(--text-color);
         }
 
         &.active {
-          color: var(--main-600);
-          border: 1px solid var(--main-500);
-          background-color: var(--main-10);
+          color: var(--primary-color);
+          background-color: var(--primary-bg-light);
+          border-color: var(--primary-light-color);
         }
       }
     }
@@ -300,44 +307,34 @@ const handleSendOrStop = () => {
 }
 
 button.ant-btn-icon-only {
+  /* Clean tech button */
   height: 32px;
   width: 32px;
-  cursor: pointer;
-  background-color: var(--main-500);
-  border-radius: 50%;
-  border: none;
-  transition: all 0.2s ease;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
-  color: white;
-  padding: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 14px;
-
+  background-color: transparent;
+  color: var(--subtext-color);
+  border-radius: 4px;
+  border: 1px solid transparent;
+  box-shadow: none;
+  
   &:hover {
-    background-color: var(--main-600);
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
-    color: white;
+    color: var(--primary-color);
+    background-color: var(--primary-bg-light);
   }
-
-  &:active {
-    transform: translateY(0);
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  
+  &.send-btn {
+      color: var(--primary-color);
   }
 
   &:disabled {
-    background-color: var(--gray-400);
-    cursor: not-allowed;
-    transform: none;
-    box-shadow: none;
+    color: var(--gray-300);
+    background: transparent;
   }
 }
 
 @media (max-width: 520px) {
   .input-box {
-    border-radius: 15px;
-    padding: 0.625rem 0.875rem;
+    border-radius: 12px;
+    padding: 10px 12px;
   }
 }
 </style>
