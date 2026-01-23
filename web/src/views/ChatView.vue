@@ -2,28 +2,40 @@
   <div class="chat-container">
 <!--    左边是侧边栏（对话列表 conversations）-->
     <div class="conversations" :class="{ 'is-open': state.isSidebarOpen }">
-      <div class="actions">
-        <!-- <div class="action new" @click="addNewConv"><FormOutlined /></div> -->
-            <div class="action new" @click="addNewConv" title="新建对话">
-      <!-- 使用 PlusCircleOutlined 比较直观 -->
-        <PlusCircleOutlined />
-            </div>
-         <span class="header-title">对话历史</span>
-        <div class="action close" @click="state.isSidebarOpen = false">
-          <img src="@/assets/icons/sidebar_left.svg" class="iconfont icon-20" alt="设置" />
+      <div class="sidebar-header">
+        <button class="new-chat-btn" @click="addNewConv">
+          <PlusOutlined />
+          <span>新对话</span>
+        </button>
+        <div class="action close" @click="state.isSidebarOpen = false" title="收起列表">
+             <MenuFoldOutlined />
         </div>
       </div>
+      
       <div class="conversation-list">
+        <div class="list-title" v-if="convs.length > 0">近期记录</div>
         <div class="conversation"
           v-for="(state, index) in convs"
           :key="index"
           :class="{ active: curConvId === index }"
           @click="goToConversation(index)">
-          <div class="conversation__title"><CommentOutlined /> &nbsp;{{ state.title }}</div>
+          <div class="conversation__icon">
+              <MessageOutlined v-if="curConvId !== index"/>
+              <MessageFilled v-else />
+          </div>
+          <div class="conversation__content">
+              <div class="conversation__title">{{ state.title }}</div>
+          </div>
           <div class="conversation__delete" @click.stop="delConv(index)"><DeleteOutlined /></div>
         </div>
       </div>
     </div>
+    
+    <!-- Sidebar Toggle (Visible when closed) -->
+     <div v-if="!state.isSidebarOpen" class="sidebar-toggle" @click="state.isSidebarOpen = true">
+      <MenuUnfoldOutlined />
+    </div>
+
 <!--    聊天组件（ChatComponent） 渲染右边聊天内容区域。  把当前选中的对话 (convs[curConvId]) 作为 prop 传给 ChatComponent,传递状态对象 state-->
     <ChatComponent
       :conv="convs[curConvId]"
@@ -38,7 +50,16 @@
 import { reactive, ref, watch, onMounted } from 'vue'
 
 import ChatComponent from '@/components/ChatComponent.vue'
-import { DeleteOutlined, CommentOutlined, PlusCircleOutlined } from '@ant-design/icons-vue'
+import { 
+    DeleteOutlined, 
+    CommentOutlined, 
+    PlusOutlined, 
+    MessageOutlined, 
+    MessageFilled,
+    MenuFoldOutlined,
+    MenuUnfoldOutlined
+} from '@ant-design/icons-vue'
+
 // 从 localStorage 里读取历史对话记录，如果没有就用一个初始默认对话。
 const convs = reactive(JSON.parse(localStorage.getItem('chat-convs')) || [
   {
@@ -141,71 +162,76 @@ onMounted(() => {
 }
 
 .conversations {
-  width: 260px; /* Slightly wider for better readability */
-  max-width: 280px;
+  width: 280px; 
+  height: 100%;
   border-right: 1px solid var(--border-color);
   background-color: var(--sidebar-background-color);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  white-space: nowrap;
-  overflow: hidden;
   display: flex;
   flex-direction: column;
 
   &.is-open {
-    width: 260px;
+    width: 280px;
     opacity: 1;
+    transform: translateX(0);
   }
 
   &:not(.is-open) {
     width: 0;
-    padding: 0;
     opacity: 0;
+    padding: 0;
     overflow: hidden;
+    transform: translateX(-20px);
   }
 
   /* Header Actions */
-  .actions {
-    height: 64px; /* Match header height */
+  .sidebar-header {
+    height: auto;
+    padding: 20px 16px 12px 16px;
     display: flex;
-    justify-content: space-between;
     align-items: center;
-    padding: 0 16px;
-    z-index: 9;
-    /* No border bottom for cleaner look, or very subtle */
-    border-bottom: 1px solid transparent; 
-
-    .header-title {
-      font-weight: 600;
-      font-size: 16px;
-      color: var(--text-color);
-      user-select: none;
-    }
-
-    .action {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      width: 32px;
-      height: 32px;
-      border-radius: 8px;
-      color: var(--subtext-color);
-      cursor: pointer;
-      transition: all 0.2s ease;
-
-      &:hover {
-        background-color: var(--gray-100);
+    justify-content: space-between;
+    gap: 8px;
+    
+    .new-chat-btn {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        height: 44px;
+        background-color: var(--surface-card);
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-lg);
         color: var(--text-color);
-      }
-
-      &.new {
-        color: var(--primary-color);
-        background-color: var(--primary-bg-light);
+        font-weight: 500;
+        font-size: 14px;
+        box-shadow: var(--shadow-sm);
+        transition: all 0.2s ease;
         
         &:hover {
-            background-color: var(--primary-light-color);
-            color: #FFF;
+            border-color: var(--primary-color);
+            color: var(--primary-color);
+            background-color: var(--surface-card);
+            box-shadow: var(--shadow-md);
         }
-      }
+    }
+    
+    .action.close {
+        width: 32px;
+        height: 32px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--subtext-color);
+        cursor: pointer;
+        border-radius: var(--radius-md);
+        transition: all 0.2s ease;
+        
+        &:hover {
+            background-color: var(--gray-200);
+            color: var(--text-color);
+        }
     }
   }
 
@@ -214,58 +240,92 @@ onMounted(() => {
     display: flex;
     flex-direction: column;
     overflow-y: auto;
-    padding: 12px;
-    gap: 4px; /* Spacing between items */
+    padding: 8px 12px 20px 12px;
+    gap: 4px;
+    
+    .list-title {
+        font-size: 11px;
+        font-weight: 600;
+        color: var(--subtext-color);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin: 12px 0 8px 8px;
+    }
   }
 
   .conversation-list .conversation {
     display: flex;
-    justify-content: space-between;
     align-items: center;
     padding: 10px 12px;
     cursor: pointer;
     width: 100%;
     user-select: none;
-    border-radius: 8px; /* Rounded items */
+    border-radius: var(--radius-md); 
     transition: all 0.2s ease;
     border: 1px solid transparent;
+    color: var(--text-color);
+    position: relative;
+    height: 44px;
+
+    &__icon {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 16px;
+        color: var(--subtext-color);
+        margin-right: 12px;
+        opacity: 0.7;
+    }
+
+    &__content {
+        flex: 1;
+        overflow: hidden;
+    }
 
     &__title {
-      color: var(--subtext-color);
       font-size: 14px;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
-      display: flex;
-      align-items: center;
-      gap: 8px;
+      font-weight: 400;
     }
 
     &__delete {
       display: none;
+      position: absolute;
+      right: 8px;
       color: var(--subtext-color);
-      font-size: 12px;
+      font-size: 14px;
       padding: 4px;
       border-radius: 4px;
-      transition: all 0.2s ease;
+      z-index: 2;
+      background: linear-gradient(to right, transparent, var(--sidebar-background-color) 20%);
+      padding-left: 12px;
 
       &:hover {
         color: var(--error-color);
-        background-color: rgba(239, 68, 68, 0.1);
       }
     }
 
+    /* Active State */
     &.active {
-      background-color: var(--primary-bg-light);
-      border-color: rgba(79, 70, 229, 0.1);
+      background-color: var(--surface-card);
+      box-shadow: var(--shadow-sm);
+      border-color: var(--border-color);
 
-      & .conversation__title {
+      .conversation__title {
         color: var(--primary-color);
         font-weight: 500;
       }
+      
+      .conversation__icon {
+          color: var(--primary-color);
+          opacity: 1;
+      }
     }
-
-    &:not(.active):hover {
+    
+    /* Hover State */
+    &:hover:not(.active) {
       background-color: var(--gray-100);
       
       & .conversation__delete {
@@ -273,6 +333,30 @@ onMounted(() => {
       }
     }
   }
+}
+
+.sidebar-toggle {
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    z-index: 10;
+    width: 36px;
+    height: 36px;
+    background-color: var(--surface-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: var(--shadow-md);
+    color: var(--subtext-color);
+    transition: all 0.2s ease;
+    
+    &:hover {
+        color: var(--primary-color);
+        transform: scale(1.05);
+    }
 }
 
 /* Scrollbar Styling */
@@ -285,33 +369,38 @@ onMounted(() => {
 }
 
 .conversation-list::-webkit-scrollbar-thumb {
-  background: var(--gray-300);
+  background: transparent;
   border-radius: 4px;
 }
 
-.conversation-list::-webkit-scrollbar-thumb:hover {
-  background: var(--gray-400);
+.conversation-list:hover::-webkit-scrollbar-thumb {
+    background: var(--gray-300);
 }
 
 @media (max-width: 520px) {
   .conversations {
     position: absolute;
     z-index: 101;
-    width: 280px;
+    width: 80%;
     height: 100%;
     border-radius: 0;
-    box-shadow: var(--shadow-xl); /* Stronger shadow for floating sidebar */
-    background-color: var(--background-color);
+    box-shadow: var(--shadow-xl); 
+    background-color: var(--sidebar-background-color);
 
     &.is-open {
         transform: translateX(0);
     }
 
     &:not(.is-open) {
-      width: 280px; /* Keep width but transform off-screen */
+      width: 80%; 
       transform: translateX(-100%);
       padding: 0;
     }
+  }
+  
+  .sidebar-toggle {
+      left: 16px;
+      top: 12px;
   }
 }
 </style>

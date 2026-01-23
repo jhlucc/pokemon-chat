@@ -168,31 +168,32 @@ const contentParts = computed(() => {
 .message-wrapper {
   display: flex;
   align-items: flex-start;
-  margin-bottom: 1.5rem; /* More breathing room */
+  margin-bottom: 24px; /* More breathing room */
 
   &.from-user {
     flex-direction: row-reverse;
     .message-box { 
         background: var(--primary-bg-light); 
         color: var(--text-color);
-        border-radius: 1.25rem 1.25rem 0 1.25rem; /* Modern shape */
+        border-radius: 20px 20px 4px 20px; /* Modern shape */
         border: 1px solid rgba(79, 70, 229, 0.1); 
     }
   }
   &.from-ai   {
     flex-direction: row;
     .message-box { 
-        background: var(--gray-50); 
+        background: transparent;  /* Transparent for cleaner look, text sits on page */
         color: var(--text-color);
-        border-radius: 1.25rem 1.25rem 1.25rem 0;
-        border: 1px solid var(--border-color);
+        border-radius: 4px 20px 20px 20px;
+        border: none;
+        padding-left: 0; /* Align with avatar */
     }
   }
   .avatar{
     width: 36px;
     height: 36px;
-    border-radius: 10px; /* Rounded square is more premium than circle often */
-    margin: 0 12px;
+    border-radius: 8px; /* Slightly squarer */
+    margin: 0 16px; /* More gap */
     object-fit: cover;
     box-shadow: var(--shadow-sm);
   }
@@ -219,27 +220,23 @@ const contentParts = computed(() => {
   line-height: 1.6;
   max-width: 100%;
   position: relative;
-  box-shadow: var(--shadow-sm);
   
   &.assistant,&.received{
       width:100%;
       text-align:left;
-      margin:0 0 16px;
-      padding: 0 8px; /* Remove excessive padding for AI response to align with avatar */
-      background: transparent !important; /* AI messages blend with background usually */
-      border: none !important;
-      box-shadow: none !important;
+      margin:0;
+      padding-top: 4px; /* Align text top with avatar */
   }
   
   .err-msg{color: var(--error-color); border:1px solid var(--error-color); padding:.5rem 1rem; border-radius:8px; background: rgba(239, 68, 68, 0.05); margin-bottom:10px; cursor:pointer;}
   .searching-msg{color:var(--subtext-color); font-size: 13px; animation:colorPulse 2s infinite ease-in-out;}
   
   .reasoning-box{
-      margin:10px 0 15px;
+      margin: 8px 0 16px;
       border-left: 3px solid var(--primary-light-color); /* Cleaner look */
       background-color: var(--gray-50);
-      border-radius: 4px; /* Slight radius */
-      padding: 8px 12px;
+      border-radius: 4px; 
+      padding: 12px 16px;
     
     .reasoning-content{font-size:13px;color:var(--subtext-color);white-space:pre-wrap;margin:0}
     .reasoning-header { font-size: 13px; font-weight: 600; color: var(--subtext-color); margin-bottom: 4px;}
@@ -268,13 +265,13 @@ const contentParts = computed(() => {
 
 :deep(.tool-call-display){
   display:inline-flex!important;
-   flex: 0 0 auto !important;
+  flex: 0 0 auto !important;
   align-items:center;
   gap:6px;
-  padding:4px 10px;
+  padding:6px 14px;
   width:auto!important;
   max-width:max-content!important;
-  background:var(--background-color);
+  background:var(--surface-card);
   border:1px solid var(--border-color);
   border-radius:20px; /* Pill shape */
   box-shadow: var(--shadow-sm);

@@ -142,7 +142,7 @@ const mainList = [{
         <a-tooltip placement="right">
           <template #title>接口文档 {{ apiDocsUrl }}</template>
           <a :href="apiDocsUrl" target="_blank" class="github-link">
-            <ApiOutlined class="icon" style="color: #222;"/>
+            <ApiOutlined class="icon" style="color: var(--subtext-color);"/>
           </a>
         </a-tooltip>
       </div>
@@ -198,31 +198,31 @@ const mainList = [{
 .header {
   display: flex;
   flex-direction: column;
-  flex: 0 0 80px; /* Slightly wider sidebar */
+  flex: 0 0 88px; /* Slightly wider for elegance */
   justify-content: flex-start;
   align-items: center;
   background-color: var(--sidebar-background-color);
   height: 100%;
-  border-right: 1px solid var(--border-color);
+  /* Removed border/shadow for seamless look, rely on spacing or subtle bg diff if any */
+  /* border-right: 1px solid var(--border-color); */
   z-index: 10;
-  transition: all 0.3s ease;
-  box-shadow: 1px 0 4px rgba(0, 0, 0, 0.02);
+  padding-bottom: 24px;
 
   .logo {
-    width: 48px;
-    height: 48px;
-    margin: 24px 0;
-    transition: transform 0.3s ease;
+    width: 44px;
+    height: 44px;
+    margin: 32px 0 40px 0;
+    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
 
     &:hover {
-      transform: scale(1.05);
+      transform: scale(1.1) rotate(5deg);
     }
 
     img {
       width: 100%;
       height: 100%;
-      border-radius: 12px; /* Soft rounding */
-      box-shadow: var(--shadow-sm);
+      border-radius: 14px;
+      box-shadow: var(--shadow-md);
     }
 
     .logo-text {
@@ -231,19 +231,16 @@ const mainList = [{
 
     & > a {
       text-decoration: none;
-      font-size: 24px;
-      font-weight: bold;
-      color: var(--text-color);
     }
   }
 
   .nav {
     display: flex;
     flex-direction: column;
-    justify-content: flex-start; /* Changed from space-between to avoid huge gaps */
+    justify-content: flex-start;
     align-items: center;
     width: 100%;
-    gap: 16px; /* consistent gap */
+    gap: 12px;
 
     /* Nav Item Styling */
     .nav-item {
@@ -253,38 +250,48 @@ const mainList = [{
       justify-content: center;
       width: 56px;
       height: 56px;
-      border-radius: 12px;
+      border-radius: 16px; /* Soft squircle */
       color: var(--subtext-color);
       background-color: transparent;
-      transition: all 0.2s ease;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
       text-decoration: none;
       cursor: pointer;
       position: relative;
+      margin: 0 16px; 
 
+      /* Hover State */
+      &:hover:not(.active) {
+        background-color: var(--gray-100);
+        color: var(--text-color);
+        transform: translateY(-2px);
+      }
+
+      /* Active State */
       &.active {
-        color: #FFFFFF;
-        background-color: var(--primary-color);
-        box-shadow: var(--shadow-md);
+        color: var(--primary-color);
+        background-color: var(--primary-bg-light);
+        box-shadow: var(--shadow-sm);
         
+        .icon {
+          transform: scale(1.1);
+        }
+
         .text {
-            color: rgba(255,255,255,0.9);
+            color: var(--primary-color);
+            font-weight: 600;
         }
       }
 
-      &:hover:not(.active) {
-        background-color: var(--gray-100);
-        color: var(--primary-color);
-      }
-
       .icon {
-        font-size: 22px;
+        font-size: 24px;
+        transition: transform 0.3s ease;
       }
 
       .text {
-        font-size: 11px;
+        font-size: 10px;
         margin-top: 4px;
         font-weight: 500;
-        transition: color 0.2s ease;
+        transition: color 0.3s ease;
       }
     }
   }
@@ -292,7 +299,7 @@ const mainList = [{
   /* Bottom actions */
   .api-docs, .setting {
      margin-top: auto; /* Push to bottom */
-     margin-bottom: 12px;
+     margin-bottom: 0;
   }
 }
 
@@ -302,8 +309,8 @@ const mainList = [{
   max-width: 100%;
   overflow-y: auto;
   background-color: var(--background-color);
-  /* Smooth scroll behavior */
   scroll-behavior: smooth;
+  /* Add subtle shadow to separate from sidebar if needed, but going for clean look */
 }
 
 /* Mobile Responsiveness */
@@ -327,11 +334,14 @@ const mainList = [{
     padding: 0 20px;
     justify-content: space-around;
     align-items: center;
-    flex: 0 0 64px;
-    height: 64px;
-    background-color: var(--sidebar-background-color);
+    flex: 0 0 72px; /* Taller mobile bar */
+    height: 72px;
+    background-color: rgba(255, 255, 255, 0.9);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
     border-top: 1px solid var(--border-color);
     z-index: 20;
+    box-shadow: var(--shadow-lg);
 
     .nav-item {
       text-decoration: none;
@@ -339,12 +349,13 @@ const mainList = [{
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      width: 48px;
+      width: 64px;
+      height: 100%;
       color: var(--subtext-color);
       font-size: 12px;
       font-weight: 500;
-      transition: color 0.2s ease;
-
+      transition: all 0.2s ease;
+      
       &.active {
         color: var(--primary-color);
         font-weight: 600;
@@ -395,6 +406,8 @@ const mainList = [{
           height: 40px;
           padding: 0 16px;
           gap: 8px;
+          border-radius: 8px;
+          margin: 0;
           
           .text {
               margin-top: 0;
