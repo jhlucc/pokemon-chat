@@ -1,0 +1,77 @@
+import logging
+from typing import List, Optional
+from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel
+from mem0 import Memory
+import os
+
+from src.core.settings import settings
+
+router = APIRouter(prefix="/memory", tags=["memory"])
+logger = logging.getLogger(__name__)
+
+# Initialize Mem0
+# Using basic config for now. For production, should use Qdrant/Milvus properly configured.
+os.environ["OPENAI_API_KEY"] = settings.openai_api_key or ""
+if settings.openai_api_base:
+    os.environ["OPENAI_BASE_URL"] = settings.openai_api_base
+
+# Initialize with a local user_id basic config
+memory_client = Memory()
+
+class MemoryAddRequest(BaseModel):
+    user_id: str
+    text: str
+    metadata: Optional[dict] = None
+
+class MemorySearchRequest(BaseModel):
+    user_id: str
+    query: str
+    limit: int = 5
+
+@router.post("/add")
+async def add_memory(request: MemoryAddRequest):
+    try:
+        result = memory_client.add(request.text, user_id=request.user_id, metadata=request.metadata)
+        return {"status": "success", "result": result}
+    except Exception as e:
+        logger.error(f"Error adding memory: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/all")
+async def get_all_memories(user_id: str):
+    try:
+        if not user_id:
+             raise HTTPException(status_code=400, detail="user_id required")
+        memories = memory_client.get_all(user_id=user_id)
+        return {"result": memories}
+    except Exception as e:
+        logger.error(f"Error getting memories: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/search")
+async def search_memory(request: MemorySearchRequest):
+    try:
+        memories = memory_client.search(request.query, user_id=request.user_id, limit=request.limit)
+        return {"result": memories}
+    except Exception as e:
+        logger.error(f"Error searching memory: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.delete("/")
+async def delete_memory(memory_id: str):
+    try:
+        memory_client.delete(memory_id)
+        return {"status": "success"}
+    except Exception as e:
+        logger.error(f"Error deleting memory: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.delete("/all")
+async def delete_all_memories(user_id: str):
+    try:
+        memory_client.delete_all(user_id=user_id)
+        return {"status": "success"}
+    except Exception as e:
+        logger.error(f"Error deleting all memories: {e}")
+        raise HTTPException(status_code=500, detail=str(e))

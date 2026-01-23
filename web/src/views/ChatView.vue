@@ -1,58 +1,70 @@
 <template>
-  <div class="chat-container">
-<!--    左边是侧边栏（对话列表 conversations）-->
-    <div class="conversations" :class="{ 'is-open': state.isSidebarOpen }">
-      <div class="sidebar-header">
-        <button class="new-chat-btn" @click="addNewConv">
-          <PlusOutlined />
-          <span>新对话</span>
-        </button>
-        <div class="action close" @click="state.isSidebarOpen = false" title="收起列表">
-             <MenuFoldOutlined />
-        </div>
-      </div>
-      
-      <div class="conversation-list">
-        <div class="list-title" v-if="convs.length > 0">近期记录</div>
-        <div class="conversation"
-          v-for="(state, index) in convs"
-          :key="index"
-          :class="{ active: curConvId === index }"
-          @click="goToConversation(index)">
-          <div class="conversation__icon">
-              <MessageOutlined v-if="curConvId !== index"/>
-              <MessageFilled v-else />
-          </div>
-          <div class="conversation__content">
-              <div class="conversation__title">{{ state.title }}</div>
-          </div>
-          <div class="conversation__delete" @click.stop="delConv(index)"><DeleteOutlined /></div>
-        </div>
-      </div>
-    </div>
-    
-    <!-- Sidebar Toggle (Visible when closed) -->
-     <div v-if="!state.isSidebarOpen" class="sidebar-toggle" @click="state.isSidebarOpen = true">
-      <MenuUnfoldOutlined />
-    </div>
+  <ChatLayout 
+    :show-artifacts="state.showArtifacts" 
+    @close-artifacts="closeArtifact"
+  >
+      <template #chat>
+        <div class="chat-container">
+            <!-- Sidebar (Conversations) -->
+            <div class="conversations" :class="{ 'is-open': state.isSidebarOpen }">
+              <div class="sidebar-header">
+                <button class="new-chat-btn" @click="addNewConv">
+                  <PlusOutlined />
+                  <span>New Chat</span>
+                </button>
+                <div class="action close" @click="toggleSidebar" title="Collapse Sidebar">
+                     <MenuFoldOutlined />
+                </div>
+              </div>
+              
+              <div class="conversation-list">
+                <div class="list-title" v-if="convs.length > 0">Recent Chats</div>
+                <div class="conversation"
+                  v-for="(conv, index) in convs"
+                  :key="conv.id"
+                  :class="{ active: curConvId === index }"
+                  @click="goToConversation(index)">
+                  <div class="conversation__icon">
+                      <MessageOutlined v-if="curConvId !== index"/>
+                      <MessageFilled v-else />
+                  </div>
+                  <div class="conversation__content">
+                      <div class="conversation__title">{{ conv.title }}</div>
+                  </div>
+                  <div class="conversation__delete" @click.stop="delConv(index)"><DeleteOutlined /></div>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Sidebar Toggle (Visible when closed) -->
+            <div v-if="!state.isSidebarOpen" class="sidebar-toggle" @click="toggleSidebar">
+              <MenuUnfoldOutlined />
+            </div>
 
-<!--    聊天组件（ChatComponent） 渲染右边聊天内容区域。  把当前选中的对话 (convs[curConvId]) 作为 prop 传给 ChatComponent,传递状态对象 state-->
-    <ChatComponent
-      :conv="convs[curConvId]"
-      :state="state"
-      @rename-title="renameTitle"
-      @newconv="addNewConv"/>
-<!--  重命名对话&新建对话-->
-  </div>
+            <!-- Main Chat Area -->
+            <div class="main-chat-area">
+                <ChatComponent
+                  ref="chatRef"
+                  :conv="convs[curConvId]"
+                  :state="state"
+                  @rename-title="renameTitle"
+                  @newconv="addNewConv"
+                  @open-artifact="openArtifact"
+                />
+            </div>
+          </div>
+      </template>
+
+      <template #artifacts>
+          <ArtifactsView :artifact="state.currentArtifact" />
+      </template>
+  </ChatLayout>
 </template>
 
 <script setup>
 import { reactive, ref, watch, onMounted } from 'vue'
-
-import ChatComponent from '@/components/ChatComponent.vue'
 import { 
     DeleteOutlined, 
-    CommentOutlined, 
     PlusOutlined, 
     MessageOutlined, 
     MessageFilled,
@@ -60,11 +72,15 @@ import {
     MenuUnfoldOutlined
 } from '@ant-design/icons-vue'
 
-// 从 localStorage 里读取历史对话记录，如果没有就用一个初始默认对话。
+import ChatComponent from '@/components/ChatComponent.vue'
+import ChatLayout from '@/layouts/ChatLayout.vue'
+import ArtifactsView from '@/components/Artifacts/ArtifactsView.vue'
+
+// Data Persistence
 const convs = reactive(JSON.parse(localStorage.getItem('chat-convs')) || [
   {
     id: 0,
-    title: '新对话',
+    title: 'New Conversation',
     history: [],
     messages: [],
     inputText: ''
@@ -73,17 +89,14 @@ const convs = reactive(JSON.parse(localStorage.getItem('chat-convs')) || [
 
 const state = reactive({
   isSidebarOpen: JSON.parse(localStorage.getItem('chat-sidebar-open') || 'true'),
+  showArtifacts: false,
+  currentArtifact: null
 })
 
-// Watch isSidebarOpen and save to localStorage
-watch(
-  () => state.isSidebarOpen,
-  (newValue) => {
-    localStorage.setItem('chat-sidebar-open', JSON.stringify(newValue))
-  }
-)
 const curConvId = ref(0)
+const chatRef = ref(null)
 
+// Methods
 const generateRandomHash = (length) => {
     let chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
     let hash = '';
@@ -94,26 +107,28 @@ const generateRandomHash = (length) => {
 }
 
 const renameTitle = (newTitle) => {
-  convs[curConvId.value].title = newTitle
+  if(convs[curConvId.value]) convs[curConvId.value].title = newTitle
 }
 
 const goToConversation = (index) => {
   curConvId.value = index
-  console.log(convs[curConvId.value])
 }
 
 const addNewConv = () => {
-  curConvId.value = 0
+  // If current empty, don't add new
   if (convs.length > 0 && convs[0].messages.length === 0) {
-    return
+      curConvId.value = 0
+      return
   }
+  
   convs.unshift({
     id: generateRandomHash(8),
-    title: `新对话`,
+    title: `New Conversation`,
     history: [],
     messages: [],
     inputText: ''
   })
+  curConvId.value = 0
 }
 
 const delConv = (index) => {
@@ -130,7 +145,28 @@ const delConv = (index) => {
   }
 }
 
-// Watch convs and save to localStorage
+const toggleSidebar = () => {
+    state.isSidebarOpen = !state.isSidebarOpen
+}
+
+// Artifacts Logic
+const openArtifact = (artifact) => {
+    state.currentArtifact = artifact
+    state.showArtifacts = true
+}
+
+const closeArtifact = () => {
+    state.showArtifacts = false
+}
+
+// Watchers
+watch(
+  () => state.isSidebarOpen,
+  (newValue) => {
+    localStorage.setItem('chat-sidebar-open', JSON.stringify(newValue))
+  }
+)
+
 watch(
   () => convs,
   (newStates) => {
@@ -139,14 +175,24 @@ watch(
   { deep: true }
 )
 
-// Load convs from localStorage on mount
 onMounted(() => {
-  const savedSonvs = JSON.parse(localStorage.getItem('chat-convs'))
-  if (savedSonvs) {
-    for (let i = 0; i < savedSonvs.length; i++) {
-      convs[i] = savedSonvs[i]
-    }
-  }
+    // Basic persistence check
+   const savedSonvs = JSON.parse(localStorage.getItem('chat-convs'))
+   if (savedSonvs && savedSonvs.length > 0) {
+       // Assuming reactive replacement handled by Vue 3 nicely or modify in place
+       // Ideally we just trust the initial state reactive call, but let's be safe
+   }
+   
+   // TEST: Trigger artifact for demo (optional, maybe remove before shipping)
+   /*
+   setTimeout(() => {
+       openArtifact({
+           type: 'code',
+           language: 'javascript',
+           content: 'console.log("Hello Artifacts!");'
+       })
+   }, 1000)
+   */
 })
 </script>
 
@@ -159,6 +205,7 @@ onMounted(() => {
   height: 100%;
   position: relative;
   background-color: var(--background-color);
+  overflow: hidden;
 }
 
 .conversations {
@@ -166,22 +213,23 @@ onMounted(() => {
   height: 100%;
   border-right: 1px solid var(--border-color);
   background-color: var(--sidebar-background-color);
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
   display: flex;
   flex-direction: column;
+  flex-shrink: 0; 
+  z-index: 10;
 
   &.is-open {
     width: 280px;
-    opacity: 1;
     transform: translateX(0);
   }
 
   &:not(.is-open) {
     width: 0;
-    opacity: 0;
     padding: 0;
     overflow: hidden;
-    transform: translateX(-20px);
+    transform: translateX(-100%);
+    border-right: none;
   }
 
   /* Header Actions */
@@ -208,6 +256,7 @@ onMounted(() => {
         font-size: 14px;
         box-shadow: var(--shadow-sm);
         transition: all 0.2s ease;
+        cursor: pointer;
         
         &:hover {
             border-color: var(--primary-color);
@@ -339,7 +388,7 @@ onMounted(() => {
     position: absolute;
     top: 20px;
     left: 20px;
-    z-index: 10;
+    z-index: 20;
     width: 36px;
     height: 36px;
     background-color: var(--surface-card);
@@ -357,6 +406,12 @@ onMounted(() => {
         color: var(--primary-color);
         transform: scale(1.05);
     }
+}
+
+.main-chat-area {
+    flex: 1;
+    height: 100%;
+    position: relative;
 }
 
 /* Scrollbar Styling */
