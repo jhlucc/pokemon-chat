@@ -82,7 +82,7 @@
 </template>
 
 <script setup>
-import G6, { Graph } from "@antv/g6";
+import { Graph, register, ExtensionCategory, Rect } from "@antv/g6";
 import { computed, onMounted, reactive, ref, onBeforeUnmount } from 'vue';
 import { message } from 'ant-design-vue';
 import { ReloadOutlined, ExportOutlined } from '@ant-design/icons-vue';
@@ -202,103 +202,7 @@ const getGraphData = () => {
   }
 }
 
-// --- G6 Registration & Rendering ---
-
-const registerCustomNode = () => {
-    G6.registerNode('window-node', {
-        draw(cfg, group) {
-            const width = 160;
-            const height = 60;
-            const r = 12; // Adjusted radius for radius-lg
-            
-            // 1. Container Card
-            // Using colors that match the light/dark theme variables
-            // Ideally we'd detect theme, but safe defaults:
-            const shape = group.addShape('rect', {
-                attrs: {
-                    x: -width / 2,
-                    y: -height / 2,
-                    width: width,
-                    height: height,
-                    radius: r,
-                    fill: '#FFFFFF', // surface-card
-                    stroke: '#E2E8F0', // border-color (Slate-200)
-                    lineWidth: 1,
-                    shadowColor: 'rgba(0, 0, 0, 0.05)',
-                    shadowBlur: 10,
-                    cursor: 'pointer'
-                },
-                name: 'main-box',
-                draggable: true,
-            });
-
-            // 2. Traffic Lights (Mac-like window controls)
-            const startX = -width / 2 + 12;
-            const startY = -height / 2 + 12;
-            const gap = 14;
-            
-            group.addShape('circle', { attrs: { x: startX, y: startY, r: 4, fill: '#FF5F56' }, name: 'red-dot' });
-            group.addShape('circle', { attrs: { x: startX + gap, y: startY, r: 4, fill: '#FFBD2E' }, name: 'yellow-dot' });
-            group.addShape('circle', { attrs: { x: startX + gap * 2, y: startY, r: 4, fill: '#27C93F' }, name: 'green-dot' });
-
-            // 3. Label (Title)
-            const labelStr = cfg.label || '';
-            group.addShape('text', {
-                attrs: {
-                    x: 0,
-                    y: -height / 2 + 35, 
-                    textAlign: 'center',
-                    textBaseline: 'middle',
-                    text: labelStr.length > 18 ? labelStr.substring(0, 16) + '...' : labelStr,
-                    fill: '#1E293B', // text-color (Slate-800)
-                    fontSize: 13,
-                    fontWeight: 600,
-                    fontFamily: 'Inter, sans-serif'
-                },
-                name: 'label-text',
-                draggable: true 
-            });
-            
-            // 4. Metadata (Links Count)
-            if (cfg.data && cfg.data.degree !== undefined) {
-                 group.addShape('text', {
-                    attrs: {
-                        x: 0,
-                        y: height / 2 - 14,
-                        textAlign: 'center',
-                        textBaseline: 'middle',
-                        text: `Connections: ${cfg.data.degree}`,
-                        fill: '#64748B', // subtext-color (Slate-500)
-                        fontSize: 10,
-                        fontFamily: 'JetBrains Mono, monospace',
-                        opacity: 0.9
-                    },
-                    name: 'sub-text',
-                    draggable: true
-                });
-            }
-
-            return shape;
-        },
-        setState(name, value, item) {
-             const group = item.getContainer();
-             const shape = group.get('children')[0]; // Main box
-             if(name === 'active' || name === 'selected') {
-                 if(value) {
-                     shape.attr('stroke', '#F97316'); // Primary Orange
-                     shape.attr('lineWidth', 2);
-                     shape.attr('shadowColor', 'rgba(249, 115, 22, 0.2)');
-                     shape.attr('shadowBlur', 20);
-                 } else {
-                     shape.attr('stroke', '#E2E8F0');
-                     shape.attr('lineWidth', 1);
-                     shape.attr('shadowColor', 'rgba(0, 0, 0, 0.05)');
-                     shape.attr('shadowBlur', 10);
-                 }
-             }
-        }
-    });
-}
+// --- G6 v5 Rendering ---
 
 const renderGraph = () => {
     if(!container.value || !wrapper.value) return;
@@ -315,86 +219,99 @@ const renderGraph = () => {
     const width = wrapper.value.offsetWidth;
     const height = wrapper.value.offsetHeight;
 
-    registerCustomNode();
-
     graphInstance = new Graph({
         container: container.value,
         width,
         height,
         autoFit: 'view',
+        data: getGraphData(),
         layout: {
             type: 'd3-force',
             preventOverlap: true,
-            nodeSize: [180, 80], // Consistent with draw method
+            nodeSize: [160, 60],
             linkDistance: 150,
             collide: { strength: 0.8 },
-            alphaDecay: 0.03 // Slower decay for better settling
+            alphaDecay: 0.03
         },
-        defaultNode: {
-            type: 'window-node',
+        node: {
+            type: 'rect',
+            style: {
+                size: [160, 60],
+                radius: 12,
+                fill: '#FFFFFF',
+                stroke: '#E2E8F0',
+                lineWidth: 1,
+                shadowColor: 'rgba(0, 0, 0, 0.05)',
+                shadowBlur: 10,
+                cursor: 'pointer',
+                labelText: (d) => {
+                    const label = d.data?.label || '';
+                    return label.length > 18 ? label.substring(0, 16) + '...' : label;
+                },
+                labelFill: '#1E293B',
+                labelFontSize: 13,
+                labelFontWeight: 600,
+                labelFontFamily: 'Inter, sans-serif',
+            },
+            state: {
+                selected: {
+                    stroke: '#F97316',
+                    lineWidth: 2,
+                    shadowColor: 'rgba(249, 115, 22, 0.2)',
+                    shadowBlur: 20,
+                },
+                active: {
+                    stroke: '#F97316',
+                    lineWidth: 2,
+                },
+            },
         },
-        defaultEdge: {
+        edge: {
             type: 'cubic-horizontal',
             style: {
-                stroke: '#CBD5E1', // Slate-300
-                endArrow: {
-                    path: G6.Arrow.triangle(6, 8, 0),
-                    fill: '#CBD5E1',
-                    d: 0 
-                },
-                lineWidth: 1.5
+                stroke: '#CBD5E1',
+                lineWidth: 1.5,
+                endArrow: true,
+                endArrowType: 'vee',
+                endArrowFill: '#CBD5E1',
+                labelText: (d) => d.data?.label || '',
+                labelFill: '#64748B',
+                labelFontSize: 11,
+                labelBackground: true,
+                labelBackgroundFill: '#F1F5F9',
+                labelBackgroundRadius: 4,
             },
-            labelCfg: {
-                autoRotate: true,
-                style: {
-                    fill: '#64748B',
-                    fontSize: 11,
-                    background: {
-                        fill: '#F1F5F9', // Slate-100
-                        padding: [2, 6],
-                        radius: 4,
-                    },
-                }
-            }
+            state: {
+                active: {
+                    stroke: '#F97316',
+                    lineWidth: 2,
+                    endArrowFill: '#F97316',
+                },
+            },
         },
-        edgeStateStyles: {
-             active: {
-                stroke: '#F97316',
-                lineWidth: 2,
-                endArrow: {
-                    path: G6.Arrow.triangle(6, 8, 0),
-                    fill: '#F97316',
-                }
-            }
-        },
-        modes: {
-            default: ['drag-canvas', 'zoom-canvas', 'drag-node', 'activate-relations'],
-        },
+        behaviors: ['drag-canvas', 'zoom-canvas', 'drag-element', 'hover-activate'],
     });
 
-    graphInstance.data(getGraphData());
     graphInstance.render();
     
-    // Interactions
+    // Interactions - G6 v5 event API
     graphInstance.on('node:click', (e) => {
-        const model = e.item.getModel();
-        // Reset previous selection if needed
-        const nodes = graphInstance.getNodes();
-        nodes.forEach(n => graphInstance.setItemState(n, 'selected', false));
+        const nodeId = e.target.id;
+        const nodeData = graphInstance.getNodeData(nodeId);
         
-        graphInstance.setItemState(e.item, 'selected', true);
-        
-        if(model) {
-            detailState.item = model;
+        if(nodeData) {
+            detailState.item = nodeData;
             detailState.type = 'node';
             detailState.visible = true;
         }
     });
 
     graphInstance.on('edge:click', (e) => {
-         const model = e.item.getModel();
-         if(model) {
-            detailState.item = model;
+        const edgeId = e.target.id;
+        const edgeData = graphInstance.getEdgeData(edgeId);
+        
+        if(edgeData) {
+            detailState.item = edgeData;
             detailState.type = 'edge';
             detailState.visible = true;
         }
@@ -402,9 +319,6 @@ const renderGraph = () => {
     
     graphInstance.on('canvas:click', () => {
         closeDetail();
-        // Clear selection
-         const nodes = graphInstance.getNodes();
-         nodes.forEach(n => graphInstance.setItemState(n, 'selected', false));
     });
 }
 
