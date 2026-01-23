@@ -8,6 +8,7 @@
     "server:prod": "vite serve --host --port 8080",
     "build": "vite build",
     "preview": "vite preview",
+    "start": "vite preview",
     "lint": "eslint . --ext .vue,.js,.jsx,.cjs,.mjs --fix --ignore-path .gitignore",
     "format": "prettier --write src/"
   },

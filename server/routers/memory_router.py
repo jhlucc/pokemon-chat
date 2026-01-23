@@ -12,9 +12,9 @@ logger = logging.getLogger(__name__)
 
 # Initialize Mem0
 # Using basic config for now. For production, should use Qdrant/Milvus properly configured.
-os.environ["OPENAI_API_KEY"] = settings.openai_api_key or ""
-if settings.openai_api_base:
-    os.environ["OPENAI_BASE_URL"] = settings.openai_api_base
+os.environ["OPENAI_API_KEY"] = settings.get_api_key("openai") or ""
+if settings.llm.api_base:
+    os.environ["OPENAI_BASE_URL"] = settings.llm.api_base
 
 # Initialize with a local user_id basic config
 memory_client = Memory()

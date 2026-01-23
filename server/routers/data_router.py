@@ -7,7 +7,7 @@ from typing import List, Optional, Dict, Any
 from fastapi import APIRouter, File, UploadFile, HTTPException, Body, Query, Form
 from fastapi.responses import JSONResponse
 from src.utils.logger import LogManager
-from src import config
+from src.core.settings import settings
 from src.utils import hashstr
 from pydantic import BaseModel
 from src.runtime import get_kb, get_graph_db
@@ -228,7 +228,7 @@ async def delete_document(db_id: str = Body(...), file_id: str = Body(...)):
             kb.add_collection(db_id, dim)
 
         # ✅ 手动建立连接
-        connections.connect(alias="default", uri=config.get("milvus_uri", "http://localhost:19530"))
+        connections.connect(alias="default", uri=settings.database.milvus_uri)
         collection = Collection(db_id)
 
         try:

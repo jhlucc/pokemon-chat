@@ -9,7 +9,8 @@ from typing import List, Dict, Any, Optional
 from fastapi import APIRouter, Body, HTTPException
 from fastapi.responses import StreamingResponse
 from fastapi import UploadFile, File
-from src import executor, config
+from src import executor
+from src.core.settings import settings
 from src.utils.logger import LogManager
 from src.runtime import get_retriever, get_asr_client
 logger = LogManager()
@@ -275,8 +276,8 @@ async def call_lite(query: str = Body(...), meta: Dict[str, Any] = Body({})):
     from src.models import select_model
 
     async def _predict_async(q):
-        model_provider = meta.get("model_provider", config.model_provider_lite)
-        model_name = meta.get("model_name", config.model_name_lite)
+        model_provider = meta.get("model_provider", "siliconflow")
+        model_name = meta.get("model_name", settings.llm.model_name)
         model = select_model(model_provider=model_provider, model_name=model_name)
         if model is None:
             raise HTTPException(status_code=500, detail="Lite 模型不可用")
@@ -341,9 +342,7 @@ async def chat_agent(
         msg_id: str,
         error: str | None = None,
         history_resp=None,
-        msg_id: str,
-        error: str | None = None,
-        history_resp=None,
+
         refs=None,
         data: Dict[str, Any] | None = None
     ):
@@ -377,28 +376,28 @@ async def chat_agent(
         # ① init
         yield make_agent_chunk(status="init", msg_id=cur_msg_id)
 
-            # ② token-by-token
-            final_answer = ""
-            try:
-                async for part in agent.query(query, meta=meta, history=history):
-                    if isinstance(part, str):
-                        # Token
-                        final_answer += part
-                        yield make_agent_chunk(
-                            content=part,
-                            status="loading",
-                            msg_id=cur_msg_id
-                        )
-                    elif isinstance(part, dict):
-                         # Structured Metadata (e.g. status update)
-                         if "status" in part:
-                             yield make_agent_chunk(
-                                 status=part.get("status_text", "thinking"),
-                                 msg_id=cur_msg_id,
-                                 data=part
-                             )
+        # ② token-by-token
+        final_answer = ""
+        try:
+            async for part in agent.query(query, meta=meta, history=history):
+                if isinstance(part, str):
+                    # Token
+                    final_answer += part
+                    yield make_agent_chunk(
+                        content=part,
+                        status="loading",
+                        msg_id=cur_msg_id
+                    )
+                elif isinstance(part, dict):
+                     # Structured Metadata (e.g. status update)
+                     if "status" in part:
+                         yield make_agent_chunk(
+                             status=part.get("status_text", "thinking"),
+                             msg_id=cur_msg_id,
+                             data=part
+                         )
 
-            # ③ finished
+        # ③ finished
             updated           = history_mgr.update_ai(final_answer)
             history_serializ  = convert_messages_to_dicts(updated)
 
@@ -451,9 +450,10 @@ async def get_chat_models(model_provider: str):
 
 @chat.post("/models/update")
 async def update_chat_models(model_provider: str, model_names: List[str]):
-    config.model_names[model_provider]["models"] = model_names
-    config._save_models_to_file()
-    return {"models": config.model_names[model_provider]["models"]}
+    # config.model_names[model_provider]["models"] = model_names
+    # config._save_models_to_file()
+    # return {"models": config.model_names[model_provider]["models"]}
+    raise HTTPException(status_code=501, detail="Configuration update not supported in this version")
 
 import os
 @chat.post("/asr/")
