@@ -98,7 +98,8 @@ class TestSelectModel:
         mock_openai.return_value = MagicMock()
         
         from src.models import select_model
-        
-        # This should not raise
-        model = select_model(model_provider="siliconflow", model_name="test-model")
-        assert model is not None
+
+        # Provide a dummy key so selection does not depend on local `.env`.
+        with patch.dict("os.environ", {"SILICONFLOW_API_KEY": "test"}):
+            model = select_model(model_provider="siliconflow", model_name="test-model")
+            assert model is not None

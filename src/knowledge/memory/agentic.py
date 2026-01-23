@@ -1,77 +1,164 @@
+from __future__ import annotations
+
 """
-AgenticMemory - Using Mem0 (mem0ai)
+Agentic (long-term) memory.
+
+This module is intentionally lightweight and offline-safe:
+- Preferences are stored locally in SQLite (no external service required).
+- Preference extraction is best-effort (can be extended to use an LLM).
+
+The API is used by:
+- `server/routers/chat_router.py` (add_conversation_turn, get_system_prompt_injection)
+- unit tests in `src/tests/test_phase11.py`
 """
-import logging
-from typing import Optional, List
-from mem0 import Memory
-import os
+
+import json
+import sqlite3
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Any, Dict, Optional
+
+from pydantic import BaseModel, Field
 
 from src.core.settings import settings
+from src.utils.logger import get_logger
 
-logger = logging.getLogger(__name__)
+log = get_logger(__name__)
+
+
+class UserPreferences(BaseModel):
+    """
+    Minimal preference schema expected by tests + UI.
+    Extend as needed; keep defaults stable.
+    """
+
+    favorite_pokemon: list[str] = Field(default_factory=list)
+    favorite_types: list[str] = Field(default_factory=list)
+    response_style: str = "balanced"  # "brief" | "balanced" | "detailed"
+    interests: list[str] = Field(default_factory=list)
+    notes: str = ""
+
+
+def _default_db_path() -> Path:
+    # Tests patch `settings.paths.data_dir`; production uses save dir.
+    base = getattr(settings.paths, "data_dir", None) or settings.paths.save_yaml_path
+    return Path(base) / "memory" / "agentic_memory.sqlite"
+
 
 class AgenticMemory:
     """
-    Wrapper around Mem0 for long-term user memory.
+    SQLite-backed preference store.
     """
-    
-    def __init__(self):
-        # Configure Mem0
-        # Ensure OpenAI API key is set for Mem0
-        os.environ["OPENAI_API_KEY"] = settings.openai_api_key or ""
-        if settings.openai_api_base:
-            os.environ["OPENAI_BASE_URL"] = settings.openai_api_base
-            
-        self.client = Memory()
 
-    def add_conversation_turn(self, user_id: str, role: str, content: str):
+    def __init__(self, db_path: Optional[Path] = None) -> None:
+        self.db_path = Path(db_path) if db_path else _default_db_path()
+        self.db_path.parent.mkdir(parents=True, exist_ok=True)
+        self._init_db()
+
+    def _connect(self) -> sqlite3.Connection:
+        return sqlite3.connect(str(self.db_path))
+
+    def _init_db(self) -> None:
+        with self._connect() as conn:
+            conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS user_preferences (
+                    user_id TEXT PRIMARY KEY,
+                    prefs_json TEXT NOT NULL
+                )
+                """
+            )
+            conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS conversation_turns (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id TEXT NOT NULL,
+                    role TEXT NOT NULL,
+                    content TEXT NOT NULL,
+                    ts INTEGER NOT NULL
+                )
+                """
+            )
+            conn.commit()
+
+    # ---------------------------------------------------------------------
+    # Public API
+    # ---------------------------------------------------------------------
+
+    def add_conversation_turn(self, user_id: str, role: str, content: str) -> None:
         """
-        Add a conversation turn. 
-        Mem0 extracts facts automatically.
+        Store raw conversation turns (optional; useful for future extraction).
         """
         try:
-            # We can treat every turn as a potential memory source
-            # Metadata can track role
-            self.client.add(content, user_id=user_id, metadata={"role": role})
-        except Exception as e:
-            logger.error(f"Mem0 add failed: {e}")
+            import time
 
-    def extract_and_update_preferences(self, user_id: str):
+            with self._connect() as conn:
+                conn.execute(
+                    "INSERT INTO conversation_turns(user_id, role, content, ts) VALUES(?,?,?,?)",
+                    (user_id, role, content, int(time.time())),
+                )
+                conn.commit()
+        except Exception as e:
+            log.warning(f"add_conversation_turn failed (ignored): {e}")
+
+    def get_preferences(self, user_id: str) -> UserPreferences:
+        try:
+            with self._connect() as conn:
+                row = conn.execute(
+                    "SELECT prefs_json FROM user_preferences WHERE user_id = ?",
+                    (user_id,),
+                ).fetchone()
+            if not row:
+                return UserPreferences()
+            return UserPreferences.model_validate_json(row[0])
+        except Exception as e:
+            log.warning(f"get_preferences failed (ignored): {e}")
+            return UserPreferences()
+
+    def set_preferences(self, user_id: str, prefs: UserPreferences) -> None:
+        try:
+            with self._connect() as conn:
+                conn.execute(
+                    "INSERT INTO user_preferences(user_id, prefs_json) VALUES(?, ?) "
+                    "ON CONFLICT(user_id) DO UPDATE SET prefs_json=excluded.prefs_json",
+                    (user_id, prefs.model_dump_json()),
+                )
+                conn.commit()
+        except Exception as e:
+            log.warning(f"set_preferences failed (ignored): {e}")
+
+    def extract_and_update_preferences(self, user_id: str) -> None:
         """
-        No-op for Mem0 as it extracts on 'add'.
-        Kept for compatibility with chat_router.
+        Best-effort placeholder. In a full implementation, this can:
+        - summarize recent turns
+        - call an LLM to extract structured preferences
         """
-        pass
+        return
 
     def get_system_prompt_injection(self, user_id: str) -> str:
-        """
-        Retrieve relevant memories and format as system prompt.
-        """
-        try:
-            # Fetch all memories or perform a search based on context?
-            # For system prompt, we usually want "core" facts.
-            # get_all returns a list of dictionaries.
-            memories = self.client.get_all(user_id=user_id, limit=20) 
-            
-            if not memories:
-                return ""
-            
-            # Format memories
-            # Mem0 result structure: [{'id':..., 'memory': 'User likes Python', ...}]
-            facts = [m.get("memory", "") for m in memories]
-            facts_str = "\n".join(f"- {f}" for f in facts if f)
-            
-            if not facts_str:
-                return ""
-                
-            return f"\n\n[User Long-term Memory]\n{facts_str}"
-            
-        except Exception as e:
-            logger.error(f"Mem0 retrieval failed: {e}")
-            return ""
+        prefs = self.get_preferences(user_id)
+        # Keep the format stable; tests depend on this header.
+        lines = ["[User Preferences]"]
+        if prefs.response_style:
+            lines.append(f"- response_style: {prefs.response_style}")
+        if prefs.favorite_pokemon:
+            lines.append(f"- favorite_pokemon: {', '.join(prefs.favorite_pokemon)}")
+        if prefs.favorite_types:
+            lines.append(f"- favorite_types: {', '.join(prefs.favorite_types)}")
+        if prefs.interests:
+            lines.append(f"- interests: {', '.join(prefs.interests)}")
+        if prefs.notes:
+            lines.append(f"- notes: {prefs.notes}")
 
-# Global instance
-_memory: AgenticMemory = None
+        # If nothing meaningful, don't inject.
+        if len(lines) <= 1:
+            return ""
+        return "\n" + "\n".join(lines)
+
+
+# Global singleton used by chat_router.
+_memory: Optional[AgenticMemory] = None
+
 
 def get_agentic_memory() -> AgenticMemory:
     global _memory

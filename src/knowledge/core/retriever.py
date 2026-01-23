@@ -8,6 +8,7 @@ from src.runtime import get_kb, get_kg_agent, get_mcp_client
 import asyncio
 import json
 import threading
+from src.utils.http_client import get_safe_httpx_client
 
 _log = get_logger(__name__)
 
@@ -36,7 +37,9 @@ class Retriever:
             api_key=settings.llm.api_key,
             base_url=settings.llm.api_base,
             temperature=settings.llm.temperature,
-            max_tokens=settings.llm.max_tokens
+            max_tokens=settings.llm.max_tokens,
+            openai_proxy=None,
+            http_client=get_safe_httpx_client(),
         )
 
     def _load_models(self):

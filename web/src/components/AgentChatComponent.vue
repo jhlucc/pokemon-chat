@@ -345,7 +345,7 @@ const sendMessageWithText = async (text) => {
     const requestData = {
       query: userMessage,
       history: history.slice(0, -1), // 去掉最后一条刚添加的用户消息
-      config: {
+      cfg: {
         ...props.config
       },
       meta: {

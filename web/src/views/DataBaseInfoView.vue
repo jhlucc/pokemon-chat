@@ -14,11 +14,18 @@
       <a-button type="primary" @click="backToDatabase">
         <LeftOutlined /> 返回
       </a-button>
-      <a-button type="primary" danger @click="deleteDatabse">
+      <a-button type="primary" danger :disabled="!canUseKb" @click="deleteDatabse">
         <DeleteOutlined /> 删除数据库
       </a-button>
     </template>
   </HeaderComponent>
+  <a-alert
+    v-if="!canUseKb"
+    type="warning"
+    show-icon
+    :message="configStore.config.backend?.online ? '后端未启用知识库功能（enable_knowledge_base=false）' : '后端未启动/不可用（离线模式）'"
+    style="margin: 10px 20px;"
+  />
 <!--  <a-alert v-if="configStore.config.embed_model &&database.embed_model != configStore.config.embed_model" message="向量模型不匹配，请重新选择" type="warning" style="margin: 10px 20px;" />-->
   <div class="db-main-container">
     <a-tabs v-model:activeKey="state.curPage" class="atab-container" type="card">
@@ -52,7 +59,7 @@
               <template v-else-if="column.key === 'action'">
                 <a-button class="del-btn" type="link"
                   @click="deleteFile(text)"
-                  :disabled="state.lock || record.status === 'processing' || record.status === 'waiting' "
+                  :disabled="!canUseKb || state.lock || record.status === 'processing' || record.status === 'waiting' "
                   >删除
                 </a-button>
               </template>
@@ -113,7 +120,7 @@
                   v-model:fileList="fileList"
                   name="file"
                   :multiple="true"
-                  :disabled="state.loading"
+                  :disabled="state.loading || !canUseKb"
                   :action="'/api/data/upload?db_id=' + databaseId"
                   @change="handleFileUpload"
                   @drop="handleDrop"
@@ -286,6 +293,7 @@ import { onMounted, reactive, ref, watch, toRaw, onUnmounted, computed } from 'v
 import { message, Modal } from 'ant-design-vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useConfigStore } from '@/stores/config'
+import { apiFetch } from '@/api/http'
 import HeaderComponent from '@/components/HeaderComponent.vue';
 import {
   ReadOutlined,
@@ -315,6 +323,7 @@ const queryText = ref('');
 const queryResult = ref(null)
 const filteredResults = ref([])
 const configStore = useConfigStore()
+const canUseKb = computed(() => Boolean(configStore.config.backend?.online) && Boolean(configStore.config.enable_knowledge_base))
 
 const state = reactive({
   loading: false,
@@ -535,12 +544,13 @@ const getDatabaseInfo = () => {
   if (!db_id) {
     return
   }
+  if (!canUseKb.value) {
+    database.value = { db_id, name: '离线模式', files: {} }
+    return Promise.resolve(database.value)
+  }
   state.lock = true
   return new Promise((resolve, reject) => {
-    fetch(`/api/data/info?db_id=${db_id}`, {
-      method: "GET",
-    })
-      .then(response => response.json())
+    apiFetch(`/api/data/info`, { method: "GET", query: { db_id } })
       .then(data => {
         database.value = data
         resolve(data)
@@ -1291,4 +1301,3 @@ onUnmounted(() => {
 
 
 </style>
-

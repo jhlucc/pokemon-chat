@@ -6,6 +6,7 @@ from src.core.settings import settings
 from src.graph.state import AgentState
 from src.knowledge.store.graph import GraphStore
 from src.utils.logger import get_logger
+from src.utils.http_client import get_safe_httpx_client
 
 logger = get_logger(__name__)
 
@@ -36,7 +37,9 @@ class GraphWorker:
             model=settings.llm.model_name,
             api_key=settings.llm.api_key,
             base_url=settings.llm.api_base,
-            temperature=0
+            temperature=0,
+            openai_proxy=None,
+            http_client=get_safe_httpx_client(),
         )
         
         if self.graph_store.graph:

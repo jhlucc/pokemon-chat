@@ -434,7 +434,13 @@ const simpleCall = (msg) => {
   return new Promise((resolve, reject) => {
     fetch('/api/chat/call', {
       method: 'POST',
-      body: JSON.stringify({query: msg,}),
+      body: JSON.stringify({
+        query: msg,
+        meta: {
+          model_provider: configStore.config?.model_provider,
+          model_name: configStore.config?.model_name,
+        },
+      }),
       headers: {'Content-Type': 'application/json'}
     })
         .then((response) => response.json())
@@ -574,6 +580,8 @@ const sendMessage = () => {
     conv.value.inputText = '';
     meta.db_id = dbID;
     meta.mcp_id = meta.use_mcp ? 'default' : null
+    meta.model_provider = configStore.config?.model_provider
+    meta.model_name = configStore.config?.model_name
     fetchChatResponse(user_input, cur_res_id)
   } else {
     console.log('请输入消息');
@@ -683,13 +691,12 @@ const retryStoppedMessage = (id) => {
   }
 }
 
-const modelNames = computed(() => configStore.config?.model_names)
-const modelStatus = computed(() => configStore.config?.model_provider_status)
+const modelNames = computed(() => configStore.config?.model_names || {})
 const customModels = computed(() => configStore.config?.custom_models || [])
 
 // 筛选 modelStatus 中为真的key
 const modelKeys = computed(() => {
-  return Object.keys(modelStatus.value || {}).filter(key => modelStatus.value?.[key])
+  return Object.keys(modelNames.value || {}).filter((k) => k !== 'custom')
 })
 
 // 选择模型的方法
@@ -1283,4 +1290,3 @@ const selectModel = (provider, name) => {
   }
 }
 </style>
-

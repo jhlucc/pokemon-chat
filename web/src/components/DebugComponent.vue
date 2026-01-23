@@ -82,6 +82,7 @@ import {
   SyncOutlined
 } from '@ant-design/icons-vue';
 import dayjs from 'dayjs';
+import { apiFetch } from '@/api/http'
 
 const configStore = useConfigStore()
 const config = configStore.config;
@@ -113,16 +114,30 @@ let autoRefreshInterval = null;
 
 // 解析日志行
 const parseLogLine = (line) => {
-  const match = line.match(/^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2},\d{3}) - (\w+) - ([^-]+) - (.+)$/);
-  if (match) {
+  // Format A (legacy):
+  // 2025-03-10 08:26:37,269 - INFO - module - message
+  const m1 = line.match(/^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2},\d{3}) - (\w+) - ([^-]+) - (.+)$/);
+  if (m1) {
     return {
-      timestamp: match[1],
-      level: match[2],
-      module: match[3].trim(),
-      message: match[4].trim(),
+      timestamp: m1[1],
+      level: m1[2],
+      module: m1[3].trim(),
+      message: m1[4].trim(),
       raw: line
     };
   }
+
+  // Format B (current backend logger):
+  // [2026-01-23 16:25] [vector.py|insert] [line:165] INFO    : message
+  const m2 = line.match(/^\[(\d{4}-\d{2}-\d{2} \d{2}:\d{2})\] \[([^\]]+)\] \[line:(\d+)\] (\w+)\s*: (.*)$/);
+  if (m2) {
+    const timestamp = m2[1];
+    const module = `${m2[2]}:${m2[3]}`;
+    const level = m2[4];
+    const message = m2[5];
+    return { timestamp, level, module, message, raw: line };
+  }
+
   return null;
 };
 
@@ -156,13 +171,8 @@ const fetchLogs = async () => {
   state.fetching = true;
   try {
     error.value = '';
-    const response = await fetch('/api/log');
-    if (!response.ok) {
-      throw new Error('获取日志失败');
-    }
-
-    const data = await response.json();
-    state.rawLogs = data.log.split('\n').filter(line => line.trim());
+    const data = await apiFetch('/api/log', { method: 'GET', query: { lines: 800 }, timeoutMs: 5000 });
+    state.rawLogs = String(data?.log || '').split('\n').filter(line => line.trim());
 
     await nextTick();
     const scrollToBottom = useThrottleFn(() => {
@@ -172,7 +182,7 @@ const fetchLogs = async () => {
     }, 100);
     scrollToBottom();
   } catch (err) {
-    error.value = `错误: ${err.message}`;
+    error.value = `错误: ${err?.message || '后端未启动或不可用'}`;
   } finally {
     state.fetching = false;
   }

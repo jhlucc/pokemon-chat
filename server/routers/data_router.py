@@ -194,6 +194,52 @@ async def search_kb(
         logger.error(f"search_kb failed: {e}\n{traceback.format_exc()}")
         raise HTTPException(500, str(e))
 
+
+class QueryTestPayload(BaseModel):
+    query: str
+    meta: Dict[str, Any] = {}
+
+
+@data.post("/query-test")
+async def query_test(payload: QueryTestPayload):
+    """
+    Frontend debug endpoint for KB search tuning.
+    Expected by `DataBaseInfoView.vue`.
+    """
+    try:
+        meta = payload.meta or {}
+        db_id = meta.get("db_id")
+        if not db_id:
+            raise HTTPException(400, "Missing meta.db_id")
+
+        res = kb.search(
+            query=payload.query,
+            db_id=db_id,
+            distance_threshold=meta.get("distanceThreshold"),
+            rerank=bool(meta.get("rerank", True)),
+            top_k=meta.get("topK"),
+        )
+
+        # Attach file info for UI rendering convenience.
+        def _attach_file_info(item: Dict[str, Any]) -> Dict[str, Any]:
+            try:
+                file_id = (item.get("entity") or {}).get("file_id")
+                file_info = kb.db_manager.get_file_by_id(file_id) if file_id else None
+                item["file"] = file_info or {"file_id": file_id, "filename": ""}
+            except Exception:
+                item["file"] = {"file_id": (item.get("entity") or {}).get("file_id"), "filename": ""}
+            return item
+
+        res["results"] = [_attach_file_info(r) for r in (res.get("results") or [])]
+        res["all_results"] = [_attach_file_info(r) for r in (res.get("all_results") or [])]
+        res.setdefault("rw_query", payload.query)
+        return res
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"query-test failed: {e}\n{traceback.format_exc()}")
+        raise HTTPException(500, str(e))
+
 @data.post("/upload")
 async def upload_file(
     file: UploadFile = File(...),
@@ -342,4 +388,3 @@ async def query_graph_node(entity_name: str = Query(...)):
     except Exception as e:
         logger.error(f"query_graph_node failed: {e}\n{traceback.format_exc()}")
         raise HTTPException(500, str(e))
-

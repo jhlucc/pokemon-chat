@@ -23,6 +23,7 @@ import { onMounted, reactive, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { CalculatorOutlined, FileSearchOutlined, TranslationOutlined } from '@ant-design/icons-vue';
 import HeaderComponent from '@/components/HeaderComponent.vue';
+import { apiFetch } from '@/api/http'
 
 const router = useRouter();
 const tools = ref([]);
@@ -36,16 +37,21 @@ const state = reactive({
 
 const getTools = () => {
   state.loadingTools = true
-  fetch('/api/tools/')
-    .then(response => response.json())
-    .then(data => {
-      tools.value = data;
-      state.loadingTools = false;
+  apiFetch('/api/tools/', { method: 'GET', timeoutMs: 5000 })
+    .then((data) => {
+      tools.value = Array.isArray(data) ? data : []
     })
-    .catch(error => {
-      console.error('Error fetching tools:', error);
-      state.loadingTools = false;
-    });
+    .catch(() => {
+      // Offline fallback so the page still renders.
+      tools.value = [
+        { name: 'file-chunking', title: '文件分块', description: '离线模式：仅展示', url: '/tools/file-chunking' },
+        { name: 'pdf2txt', title: 'PDF 转文本', description: '离线模式：仅展示', url: '/tools/pdf2txt' },
+        { name: 'agent', title: '智能体', description: '离线模式：仅展示', url: '/tools/agent' },
+      ]
+    })
+    .finally(() => {
+      state.loadingTools = false
+    })
 };
 
 const navigateToTool = (toolUrl) => {

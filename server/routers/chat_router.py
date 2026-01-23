@@ -99,11 +99,22 @@ async def chat_post(
     from src.models import select_model
     from src.knowledge.core.history_chat import HistoryManager
 
-    model = select_model()
+    # Model selection:
+    # - Prefer request meta (frontend-selected)
+    # - Fallback to persisted UI overrides
+    # - Finally fallback to env defaults
+    from server.runtime_config import load_ui_overrides
+    overrides = load_ui_overrides()
+    model_provider = (meta or {}).get("model_provider") or overrides.get("model_provider") or "siliconflow"
+    model_name = (meta or {}).get("model_name") or overrides.get("model_name") or settings.llm.model_name
+
+    model = select_model(model_provider=model_provider, model_name=model_name)
     if model is None:
         raise HTTPException(status_code=500, detail="没有可用的模型，请检查模型配置")
 
     meta["server_model_name"] = model.model_name
+    meta["model_provider"] = model_provider
+    meta["model_name"] = model_name
     
     # Get user preferences and inject into system prompt
     user_id = thread_id or "default_user"

@@ -3,6 +3,7 @@ Pokemon-Chat 统一配置
 使用 Pydantic v2 BaseSettings 管理所有配置
 """
 import os
+import sys
 from functools import lru_cache
 from pathlib import Path
 from typing import Tuple
@@ -268,6 +269,9 @@ class Settings(BaseSettings):
 @lru_cache
 def get_settings() -> Settings:
     """获取全局配置单例"""
+    # Keep tests deterministic/offline-safe: do not implicitly load `.env`.
+    if "pytest" in sys.modules:
+        return Settings(_env_file=None)
     return Settings()
 
 
@@ -283,4 +287,3 @@ if __name__ == "__main__":
     print(f"Neo4j URI: {settings.database.neo4j_uri}")
     print(f"Log Dir: {settings.paths.log_dir}")
     print(f"LLM Model: {settings.llm.model_name}")
-

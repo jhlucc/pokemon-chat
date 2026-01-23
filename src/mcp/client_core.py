@@ -10,6 +10,7 @@ from mcp.client.sse import sse_client
 from openai import OpenAI
 
 from src.core.settings import settings
+from src.utils.http_client import get_safe_httpx_client
 
 
 class MCPClient:
@@ -44,7 +45,7 @@ class MCPClient:
             or os.getenv("MCP_LLM_API_KEY")
             or os.getenv("mcp_llm_api_key")
             or os.getenv("DEEPSEEK_API_KEY")
-            or settings.llm.api_key
+            or (settings.llm.api_key if settings.features.enable_mcp else None)
         )
         self.llm_base_url = (
             llm_base_url
@@ -58,7 +59,11 @@ class MCPClient:
         # OpenAI client is cheap; if the key is missing we delay the error to ask().
         self._client: Optional[OpenAI] = None
         if self.llm_api_key:
-            self._client = OpenAI(api_key=self.llm_api_key, base_url=self.llm_base_url)
+            self._client = OpenAI(
+                api_key=self.llm_api_key,
+                base_url=self.llm_base_url,
+                http_client=get_safe_httpx_client(),
+            )
 
     async def aclose(self) -> None:
         # Kept for router compatibility; OpenAI client doesn't need explicit close.
@@ -170,4 +175,3 @@ if __name__ == "__main__":
             await client.aclose()
 
     asyncio.run(_test())
-

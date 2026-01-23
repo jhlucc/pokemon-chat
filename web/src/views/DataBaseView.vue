@@ -1,11 +1,18 @@
 <template>
-  <div class="database-container layout-container" v-if="configStore.config.enable_knowledge_base">
+  <div class="database-container layout-container">
+    <a-alert
+      v-if="!canUseKb"
+      type="warning"
+      show-icon
+      :message="configStore.config.backend?.online ? '后端未启用知识库功能（enable_knowledge_base=false）' : '后端未启动/不可用（离线模式）'"
+      style="margin-bottom: 16px;"
+    />
     <HeaderComponent
       title="文档知识库"
       description="知识型数据库，主要是非结构化的文本组成，使用向量检索使用。如果出现问题，可以检查 saves/data/database.json 查看配置。"
     >
       <template #actions>
-        <a-button type="primary" @click="newDatabase.open=true">新建知识库</a-button>
+        <a-button type="primary" :disabled="!canUseKb" @click="newDatabase.open=true">新建知识库</a-button>
       </template>
     </HeaderComponent>
 
@@ -28,7 +35,7 @@
       </template>
     </a-modal>
     <div class="databases">
-      <div class="new-database dbcard" @click="newDatabase.open=true">
+      <div class="new-database dbcard" @click="canUseKb && (newDatabase.open=true)">
         <div class="top">
           <div class="icon"><PlusOutlined /></div>
           <div class="info">
@@ -75,24 +82,16 @@
       </div>
     </div> -->
   </div>
-  <div class="database-empty" v-else>
-    <a-empty>
-      <template #description>
-        <span>
-          前往 <router-link to="/setting" style="color: var(--main-color); font-weight: bold;">设置</router-link> 页面配置知识库。
-        </span>
-      </template>
-    </a-empty>
-  </div>
 </template>
 
 <script setup>
-import { ref, onMounted, reactive, watch, h } from 'vue'
+import { ref, onMounted, reactive, watch, h, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router';
 import { message, Button } from 'ant-design-vue'
 import { ReadFilled, PlusOutlined, AppstoreFilled, LoadingOutlined } from '@ant-design/icons-vue'
 import { useConfigStore } from '@/stores/config';
 import HeaderComponent from '@/components/HeaderComponent.vue';
+import { apiFetch } from '@/api/http'
 
 const route = useRoute()
 const router = useRouter()
@@ -102,6 +101,7 @@ const graphloading = ref(false)
 
 const indicator = h(LoadingOutlined, {spin: true});
 const configStore = useConfigStore()
+const canUseKb = computed(() => Boolean(configStore.config.backend?.online) && Boolean(configStore.config.enable_knowledge_base))
 
 const newDatabase = reactive({
   name: '',
@@ -111,16 +111,18 @@ const newDatabase = reactive({
 })
 
 const loadDatabases = () => {
-  // loadGraph()
-  fetch('/api/data/', {
-    method: "GET",
-  })
-    .then(response => response.json())
-    .then(data => {
-      console.log(data)
-      databases.value = data.databases
-    }
-  )
+  if (!canUseKb.value) {
+    databases.value = []
+    return
+  }
+  apiFetch('/api/data/', { method: "GET" })
+    .then((data) => {
+      databases.value = data?.databases || []
+    })
+    .catch((err) => {
+      databases.value = []
+      message.error(err?.message || '获取知识库列表失败')
+    })
 }
 
 const createDatabase = () => {
@@ -131,20 +133,15 @@ const createDatabase = () => {
     newDatabase.loading = false
     return
   }
-  fetch('/api/data/', {
+  apiFetch('/api/data/', {
     method: "POST",
-    headers: {
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({
+    body: {
       database_name: newDatabase.name,
       description: newDatabase.description,
       dimension: newDatabase.dimension ? parseInt(newDatabase.dimension) : null,
-    })
+    }
   })
-  .then(response => response.json())
-  .then(data => {
-    console.log(data)
+  .then(() => {
     loadDatabases()
     newDatabase.open = false
     newDatabase.name = ''

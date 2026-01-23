@@ -8,9 +8,12 @@ from __future__ import annotations
 
 from dotenv import load_dotenv
 from pathlib import Path
+import sys
 
 # Best-effort load of the project root `.env` (server/main.py also loads it).
-load_dotenv(Path(__file__).resolve().parent.parent / ".env")
+# During pytest runs we avoid loading `.env` to keep tests deterministic/offline-safe.
+if "pytest" not in sys.modules:
+    load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 
 from concurrent.futures import ThreadPoolExecutor
 executor = ThreadPoolExecutor()
@@ -55,4 +58,3 @@ def get_retriever():
     """Get the global Retriever singleton."""
     from src.runtime import get_retriever as _get_retriever
     return _get_retriever()
-

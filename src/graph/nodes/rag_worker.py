@@ -11,6 +11,7 @@ from src.graph.nodes.crag import get_crag_evaluator
 from src.knowledge.core.query_decomposer import get_query_decomposer
 from src.knowledge.core.self_rag import get_self_rag
 from src.utils.logger import get_logger
+from src.utils.http_client import get_safe_httpx_client
 
 logger = get_logger(__name__)
 
@@ -21,7 +22,9 @@ class RagWorker:
             model=settings.llm.model_name,
             api_key=settings.llm.api_key,
             base_url=settings.llm.api_base,
-            temperature=0.3
+            temperature=0.3,
+            openai_proxy=None,
+            http_client=get_safe_httpx_client(),
         )
         # Initialize Vector Store (Lazy load possible, but init here for now)
         self.vector_store = VectorStore(
@@ -128,20 +131,23 @@ class RagWorker:
         last_message = messages[-1]
         query = last_message.content
         
-        # -1. Self-RAG: Decide if retrieval is needed
-        self_rag = get_self_rag()
-        retrieval_decision = self_rag.should_retrieve(query)
-        
-        if not retrieval_decision.should_retrieve:
-            # Skip retrieval, generate directly from LLM knowledge
-            logger.info(f"Self-RAG: Skipping retrieval ({retrieval_decision.reason})")
-            prompt = ChatPromptTemplate.from_messages([
-                ("system", "You are a helpful Pokemon assistant. Answer based on your knowledge."),
-                ("user", "{query}")
-            ])
-            chain = prompt | self.llm
-            response = chain.invoke({"query": query})
-            return {"messages": [response]}
+        # -1. Self-RAG (optional): Decide if retrieval is needed.
+        # Keep this OFF by default to make the worker deterministic/offline-safe in tests.
+        use_self_rag = bool(getattr(settings.features, "enable_self_rag", False))
+        if use_self_rag:
+            self_rag = get_self_rag()
+            retrieval_decision = self_rag.should_retrieve(query)
+
+            if not retrieval_decision.should_retrieve:
+                # Skip retrieval, generate directly from LLM knowledge
+                logger.info(f"Self-RAG: Skipping retrieval ({retrieval_decision.reason})")
+                prompt = ChatPromptTemplate.from_messages([
+                    ("system", "You are a helpful Pokemon assistant. Answer based on your knowledge."),
+                    ("user", "{query}")
+                ])
+                chain = prompt | self.llm
+                response = chain.invoke({"query": query})
+                return {"messages": [response]}
         
         # 0. Query Decomposition for complex questions
         decomposer = get_query_decomposer()
@@ -177,9 +183,9 @@ class RagWorker:
         all_contexts = []
         for sq in sub_queries:
             if settings.features.enable_web_search:
-                ctx = self.retrieve_with_crag(sq if sq == query else sq)  # Use original hyde_query for main
+                ctx = self.retrieve_with_crag(hyde_query if sq == query else sq)  # Use HyDE for main query
             else:
-                ctx = self.retrieve(sq if sq == query else sq)
+                ctx = self.retrieve(hyde_query if sq == query else sq)
             if ctx:
                 all_contexts.append(f"[Sub-Q: {sq[:50]}...]\n{ctx}")
         
