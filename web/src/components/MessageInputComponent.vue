@@ -209,60 +209,49 @@ const handleSendOrStop = () => {
   width: 100%;
   height: auto;
   margin: 0 auto;
-  /* Terminal Window Style */
-  background: var(--surface-card);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-lg);
-  padding: 12px 16px;
+  padding: 0.4rem 0.75rem;
+  border: 2px solid var(--gray-200);
+  border-radius: 0.8rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
   transition: all 0.3s ease;
 
   &:focus-within {
-    border-color: var(--primary-color);
-    box-shadow: 0 0 0 2px var(--primary-bg-light), var(--shadow-lg);
+    border-color: var(--main-500);
+    background: white;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
   }
 
   .input-area {
     display: flex;
-    align-items: flex-start;
+    align-items: flex-end;
     gap: 8px;
     margin-bottom: 4px;
-    
-    /* Terminal Prompt Symbol */
-    &:before {
-        content: '$';
-        font-family: var(--font-mono);
-        color: var(--primary-color);
-        font-weight: bold;
-        margin-top: 10px; /* Align with first line of text */
-        font-size: 15px;
-    }
   }
 
   .user-input {
     flex: 1;
-    min-height: 24px;
+    min-height: 44px;
     padding: 0.5rem 0;
-    /* Transparent bg for terminal feel */
     background-color: transparent;
     border: none;
     margin: 0;
-    color: var(--text-color);
-    font-family: var(--font-mono); /* Monospace input */
-    font-size: 15px;
+    color: #222222;
+    font-size: 14px;
     outline: none;
     resize: none;
     line-height: 1.6;
 
-    &::placeholder {
-      color: var(--subtext-color);
-      opacity: 0.6;
+    &:focus {
+      outline: none;
+      box-shadow: none;
     }
-    
-    &:disabled {
-        color: var(--subtext-color);
-        background-color: transparent;
-        cursor: not-allowed;
+
+    &:active {
+      outline: none;
+    }
+
+    &::placeholder {
+      color: #888888;
     }
   }
 
@@ -270,7 +259,7 @@ const handleSendOrStop = () => {
     display: flex;
     padding: 8px 0 0;
     margin-top: 6px;
-    border-top: 1px solid var(--border-color);
+    border-top: 1px solid var(--gray-100);
 
     .options__left,
     .options__right {
@@ -287,25 +276,23 @@ const handleSendOrStop = () => {
       flex: 1;
 
       :deep(.opt-item) {
-        border-radius: var(--radius-sm); /* Squarer tech look */
-        border: 1px solid transparent;
-        padding: 4px 8px;
+        border-radius: 12px;
+        border: 1px solid var(--gray-300);
+        padding: 5px 10px;
         cursor: pointer;
         font-size: 12px;
-        font-family: var(--font-mono);
-        color: var(--subtext-color);
+        color: var(--gray-700);
         transition: all 0.2s ease;
-        background: var(--surface-secondary);
 
         &:hover {
-          background-color: var(--gray-200); /* Slightly darker */
-          color: var(--text-color);
+          background-color: var(--main-10);
+          color: var(--main-600);
         }
 
         &.active {
-          color: var(--primary-color);
-          background-color: var(--primary-bg-light);
-          border-color: var(--primary-light-color);
+          color: var(--main-600);
+          border: 1px solid var(--main-500);
+          background-color: var(--main-10);
         }
       }
     }
@@ -313,34 +300,44 @@ const handleSendOrStop = () => {
 }
 
 button.ant-btn-icon-only {
-  /* Clean tech button */
   height: 32px;
   width: 32px;
-  background-color: transparent;
-  color: var(--subtext-color);
-  border-radius: var(--radius-sm);
-  border: 1px solid transparent;
-  box-shadow: none;
-  
+  cursor: pointer;
+  background-color: var(--main-500);
+  border-radius: 50%;
+  border: none;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+  color: white;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+
   &:hover {
-    color: var(--primary-color);
-    background-color: var(--primary-bg-light);
+    background-color: var(--main-600);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+    color: white;
   }
-  
-  &.send-btn {
-      color: var(--primary-color);
+
+  &:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   }
 
   &:disabled {
-    color: var(--gray-300);
-    background: transparent;
+    background-color: var(--gray-400);
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
   }
 }
 
 @media (max-width: 520px) {
   .input-box {
-    border-radius: var(--radius-lg);
-    padding: 10px 12px;
+    border-radius: 15px;
+    padding: 0.625rem 0.875rem;
   }
 }
 </style>

@@ -144,8 +144,8 @@ onUnmounted(() => {
 .graph-container {
   width: 100%;
   height: 400px;
-  background: var(--surface-card);
-  border-radius: var(--radius-lg);
-  border: 1px solid var(--border-color);
+  background: #f9f9f9;
+  border-radius: 8px;
+  border: 1px solid #eee;
 }
 </style>

@@ -748,8 +748,6 @@ const selectModel = (provider, name) => {
 </script>
 
 <style lang="less" scoped>
-@import '@/assets/main.css';
-
 .chat {
   position: relative;
   width: 100%;
@@ -762,22 +760,20 @@ const selectModel = (provider, name) => {
   box-sizing: border-box;
   flex: 5 5 200px;
   overflow-y: scroll;
-  color: var(--text-color);
 
   .chat-header {
     user-select: none;
     position: sticky;
     top: 0;
     z-index: 10;
-    background-color: var(--surface-overlay);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    height: var(--header-height);
+    background-color: rgba(255, 255, 255, 0.85); /* Slightly more opaque */
+    backdrop-filter: blur(16px);
+    height: 64px; /* Consistent height */
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 1rem;
-    border-bottom: 1px solid var(--border-color);
+    padding: 0 24px;
+    border-bottom: 1px solid var(--border-color); /* Subtle separator */
 
     .header__left, .header__right {
       display: flex;
@@ -789,11 +785,11 @@ const selectModel = (provider, name) => {
       .close {
         margin-right: 0;
         padding: 8px;
-        border-radius: var(--radius-md);
+        border-radius: 8px;
         transition: background-color 0.2s;
         
         &:hover {
-            background-color: var(--surface-secondary);
+            background-color: var(--gray-100);
         }
       }
     }
@@ -805,7 +801,7 @@ const selectModel = (provider, name) => {
     display: flex;
     justify-content: center;
     align-items: center;
-    border-radius: var(--radius-md);
+    border-radius: 8px;
     color: var(--text-color);
     cursor: pointer;
     padding: 0 12px;
@@ -819,9 +815,8 @@ const selectModel = (provider, name) => {
     }
 
     &:hover {
-      background-color: var(--surface-secondary);
-      border-color: transparent;
-      color: var(--primary-color);
+      background-color: var(--gray-100);
+      border-color: var(--gray-200);
     }
     
     &.active {
@@ -830,17 +825,19 @@ const selectModel = (provider, name) => {
     }
   }
 
-
+  .model-select {
+    // handled below in .model-select class
+  }
 }
 
 /* Settings Panel */
 .my-panal {
   position: absolute;
   margin-top: 8px;
-  background-color: var(--surface-card);
+  background-color: var(--background-color);
   border: 1px solid var(--border-color);
-  box-shadow: var(--shadow-xl);
-  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  border-radius: 12px;
   padding: 16px;
   z-index: 100;
   width: 280px;
@@ -853,14 +850,13 @@ const selectModel = (provider, name) => {
     align-items: center;
     gap: 12px;
     padding: 10px 12px;
-    border-radius: var(--radius-md);
+    border-radius: 8px;
     transition: background-color 0.2s;
     cursor: pointer;
     font-size: 14px;
-    color: var(--text-color);
     
     &:hover {
-        background-color: var(--surface-secondary);
+        background-color: var(--gray-100);
     }
 
     .ant-switch {
@@ -891,9 +887,8 @@ const selectModel = (provider, name) => {
     font-size: 24px;
     font-weight: 600;
     color: var(--text-color);
-    background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-light-color) 100%);
+    background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
     -webkit-background-clip: text;
-    background-clip: text;
     -webkit-text-fill-color: transparent;
     display: inline-block;
   }
@@ -911,7 +906,7 @@ const selectModel = (provider, name) => {
   position: relative;
   width: 180px;
   height: 120px; /* Shorter cards */
-  border-radius: var(--radius-lg);
+  border-radius: 16px;
   overflow: hidden;
   display: flex;
   align-items: center;
@@ -919,7 +914,7 @@ const selectModel = (provider, name) => {
   box-shadow: var(--shadow-md);
   cursor: pointer;
   transition: all 0.3s ease;
-  background-color: var(--surface-card);
+  background-color: white;
   border: 1px solid var(--border-color);
   
   &:hover {
@@ -940,7 +935,7 @@ const selectModel = (provider, name) => {
   left: 0;
   width: 100%;
   height: 100%;
-  background: var(--surface-card);
+  background: var(--input-background-color);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -960,7 +955,7 @@ const selectModel = (provider, name) => {
 /* Chat Box Area */
 .chat-box {
   width: 100%;
-  max-width: 900px;
+  max-width: 800px;
   margin: 0 auto;
   flex-grow: 1;
   padding: 24px;
@@ -996,7 +991,7 @@ const selectModel = (provider, name) => {
 
   .message-input-wrapper {
     width: 100%;
-    max-width: 900px;
+    max-width: 800px;
     margin: 0 auto;
     background-color: var(--input-background-color);
     box-shadow: var(--shadow-lg); /* Floating effect */
@@ -1028,17 +1023,6 @@ const selectModel = (provider, name) => {
   }
 }
 
-// Dark mode adjustment for bottom gradient
-@media (prefers-color-scheme: dark) {
-  .bottom {
-     background: linear-gradient(to top, var(--background-color) 80%, rgba(15, 23, 42, 0));
-  }
-}
-[data-theme='dark'] .bottom {
-     background: linear-gradient(to top, var(--background-color) 80%, rgba(15, 23, 42, 0));
-}
-
-
 .ant-dropdown-link {
   color: var(--text-color);
   cursor: pointer;
@@ -1055,7 +1039,7 @@ const selectModel = (provider, name) => {
   color: #FFFFFF;
   background-color: var(--primary-color);
   border: none;
-  border-radius: var(--radius-md);
+  border-radius: 8px;
   cursor: pointer;
   transition: all 0.2s ease;
   box-shadow: var(--shadow-sm);
@@ -1086,9 +1070,9 @@ const selectModel = (provider, name) => {
   align-items: center;
   gap: 8px;
   padding: 8px 12px;
-  background-color: var(--surface-card);
+  background-color: var(--input-background-color);
   border: 1px solid var(--border-color);
-  border-radius: var(--radius-md);
+  border-radius: 8px;
   cursor: pointer;
   font-size: 14px;
   transition: all 0.2s ease;
@@ -1114,35 +1098,22 @@ const selectModel = (provider, name) => {
 }
 
 /* Scrollbars */
-.chat::-webkit-scrollbar,
-.scrollable-menu::-webkit-scrollbar {
+.chat::-webkit-scrollbar {
+  position: absolute;
   width: 6px;
 }
 
-.chat::-webkit-scrollbar-track,
-.scrollable-menu::-webkit-scrollbar-track {
+.chat::-webkit-scrollbar-track {
   background: transparent;
 }
 
-.chat::-webkit-scrollbar-thumb,
-.scrollable-menu::-webkit-scrollbar-thumb {
-  background: var(--slate-300);
+.chat::-webkit-scrollbar-thumb {
+  background: var(--gray-300);
   border-radius: 3px;
 }
 
-[data-theme='dark'] .chat::-webkit-scrollbar-thumb,
-[data-theme='dark'] .scrollable-menu::-webkit-scrollbar-thumb {
-  background: var(--slate-700);
-}
-
-.chat::-webkit-scrollbar-thumb:hover,
-.scrollable-menu::-webkit-scrollbar-thumb:hover {
-  background: var(--slate-400);
-}
-
-[data-theme='dark'] .chat::-webkit-scrollbar-thumb:hover,
-[data-theme='dark'] .scrollable-menu::-webkit-scrollbar-thumb:hover {
-  background: var(--slate-600);
+.chat::-webkit-scrollbar-thumb:hover {
+  background: var(--gray-400);
 }
 
 /* Loading Dots */
@@ -1182,7 +1153,7 @@ const selectModel = (provider, name) => {
   }
 
   .chat-container .chat .chat-header {
-    background: var(--surface-overlay);
+    background: var(--background-color);
 
     .header__left, .header__right {
       gap: 12px;
@@ -1208,17 +1179,19 @@ const selectModel = (provider, name) => {
 .scrollable-menu {
   max-height: 300px;
   overflow-y: auto;
+
+  &::-webkit-scrollbar { width: 6px; }
+  &::-webkit-scrollbar-track { background: transparent; }
+  &::-webkit-scrollbar-thumb { background: var(--gray-300); border-radius: 3px; }
 }
 </style>
 
 <style lang="less">
 // Global styles for dropdown
 .ant-dropdown-menu {
-  border-radius: var(--radius-lg) !important;
+  border-radius: 12px !important;
   box-shadow: var(--shadow-lg) !important;
   padding: 8px !important;
-  background-color: var(--surface-card) !important;
-  border: 1px solid var(--border-color) !important;
   
   &.scrollable-menu {
     max-height: 300px;
@@ -1226,19 +1199,18 @@ const selectModel = (provider, name) => {
   }
   
   .ant-dropdown-menu-item {
-      border-radius: var(--radius-md) !important;
+      border-radius: 8px !important;
       padding: 8px 12px !important;
-      color: var(--text-color) !important;
       
       &:hover {
-          background-color: var(--surface-secondary) !important;
+          background-color: var(--gray-100) !important;
           color: var(--primary-color) !important;
       }
   }
   
   .ant-dropdown-menu-item-group-title {
       font-size: 12px;
-      color: var(--subtext-color) !important;
+      color: var(--subtext-color);
   }
 }
 </style>

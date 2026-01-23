@@ -1,168 +1,213 @@
-/* === ThinkFlowAI Theme (Terminal/Blueprint Aesthetic) === */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
-
+/* === Premium Light Mode (Default) === */
 :root {
-  /* === Color Palette === */
-
-  /* Primary Accents (Warm Orange/Peach) */
-  --primary-color: #F97316;
-  /* Orange 500 */
-  --primary-light-color: #FB923C;
-  /* Orange 400 */
-  --primary-hover-color: #EA580C;
-  /* Orange 600 */
-  --primary-bg-light: #FFF7ED;
-  /* Orange 50 */
-
-  /* Neutral Scale (Slate) */
-  --slate-50: #F8FAFC;
-  --slate-100: #F1F5F9;
-  --slate-200: #E2E8F0;
-  --slate-300: #CBD5E1;
-  --slate-400: #94A3B8;
-  --slate-500: #64748B;
-  --slate-600: #475569;
-  --slate-700: #334155;
-  --slate-800: #1E293B;
-  --slate-900: #0F172A;
-
-  /* Surfaces */
-  --background-color: #FFFFFF;
-  --surface-ground: #FFFFFF;
+  /* Main Background, Text, Borders */
+  --background-color: #F8FAFC;
+  /* Slate 50 - Cleaner & cooler white */
+  --surface-ground: #F8FAFC;
   --surface-card: #FFFFFF;
-  --surface-secondary: var(--slate-100);
-  --surface-overlay: rgba(255, 255, 255, 0.9);
+  --surface-overlay: rgba(255, 255, 255, 0.85);
 
-  /* Text */
-  --text-color: var(--slate-800);
-  --subtext-color: var(--slate-500);
-
-  /* Borders */
-  --border-color: var(--slate-200);
-
-  /* Inputs */
+  --text-color: #0F172A;
+  /* Slate 900 - Sharp, deep black/blue */
+  --subtext-color: #64748B;
+  /* Slate 500 - Sophisticated gray */
+  --border-color: #E2E8F0;
+  /* Slate 200 */
   --input-background-color: #FFFFFF;
 
-  /* State Colors */
+  /* Primary Color Palette - Indigo/Violet Theme (More vibrant but refined) */
+  --primary-color: #4F46E5;
+  /* Indigo 600 */
+  --primary-light-color: #6366F1;
+  /* Indigo 500 */
+  --primary-hover-color: #4338CA;
+  /* Indigo 700 */
+  --primary-bg-light: #EEF2FF;
+  /* Indigo 50 */
+
+  --secondary-color: #0EA5E9;
+  /* Sky 500 */
+
+  --error-color: #EF4444;
   --success-color: #10B981;
   --warning-color: #F59E0B;
-  --error-color: #EF4444;
 
-  /* === Typography === */
-  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  --font-mono: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace;
-
-  /* === Shapes & Depth === */
-  --radius-sm: 4px;
-  --radius-md: 6px;
-  --radius-lg: 8px;
-  --radius-xl: 12px;
-  --radius-2xl: 16px;
-
-  /* Soft, floating shadows */
-  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
-  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -2px rgba(0, 0, 0, 0.02);
-  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.05), 0 10px 10px -5px rgba(0, 0, 0, 0.02);
+  /* Grayscale - Slate Scale */
+  --gray-0: #FFFFFF;
+  --gray-50: #F8FAFC;
+  --gray-100: #F1F5F9;
+  --gray-200: #E2E8F0;
+  --gray-300: #CBD5E1;
+  --gray-400: #94A3B8;
+  --gray-500: #64748B;
+  --gray-600: #475569;
+  --gray-700: #334155;
+  --gray-800: #1E293B;
+  --gray-900: #0F172A;
 
   /* Special Areas */
-  --chat-background-color: transparent;
-  /* Let grid show through */
-  --sidebar-background-color: #FFFFFF;
+  --chat-background-color: #FFFFFF;
+  --sidebar-background-color: #F8FAFC;
+  /* Matches ground for cleaner look */
+
+  /* Shadows - Layered & Soft */
+  --shadow-sm: 0 1px 2px 0 rgba(15, 23, 42, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(15, 23, 42, 0.08), 0 2px 4px -1px rgba(15, 23, 42, 0.04);
+  --shadow-lg: 0 10px 15px -3px rgba(15, 23, 42, 0.08), 0 4px 6px -2px rgba(15, 23, 42, 0.04);
+  --shadow-xl: 0 20px 25px -5px rgba(15, 23, 42, 0.08), 0 10px 10px -5px rgba(15, 23, 42, 0.04);
+
+  /* Radius */
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-2xl: 24px;
 }
 
-/* === Dark Mode (Geek/Hacker) === */
+/* === Premium Dark Mode === */
 :root[data-theme='dark'] {
-  /* Surfaces */
+  /* Main Background, Text, Borders */
   --background-color: #0F172A;
-  /* Slate 900 */
+  /* Slate 900 - Rich dark */
   --surface-ground: #0F172A;
   --surface-card: #1E293B;
   /* Slate 800 */
-  --surface-secondary: #020617;
-  /* Slate 950 */
-  --surface-overlay: rgba(15, 23, 42, 0.9);
+  --surface-overlay: rgba(30, 41, 59, 0.85);
 
-  /* Text */
-  --text-color: #F8FAFC;
-  /* Slate 50 */
+  --input-background-color: #1E293B;
+  --border-color: #334155;
+  /* Slate 700 */
+  --text-color: #F1F5F9;
+  /* Slate 100 */
   --subtext-color: #94A3B8;
   /* Slate 400 */
 
-  /* Borders */
-  --border-color: #334155;
-  /* Slate 700 */
+  /* Primary Color Palette - Adjusted for Dark Mode */
+  --primary-color: #818CF8;
+  /* Indigo 400 - Lighter for dark mode */
+  --primary-light-color: #A5B4FC;
+  /* Indigo 300 */
+  --primary-hover-color: #6366F1;
+  /* Indigo 500 */
+  --primary-bg-light: rgba(99, 102, 241, 0.15);
+  /* Low opacity indigo */
 
-  /* Inputs */
-  --input-background-color: #1E293B;
+  --error-color: #F87171;
 
-  /* Primary (Keep Orange or shift slightly) */
-  --primary-color: #FB923C;
-  /* Orange 400 */
-  --primary-light-color: #FDBA74;
-  --primary-hover-color: #F97316;
-  --primary-bg-light: rgba(251, 146, 60, 0.1);
+  /* Grayscale - Inverted/Adjusted */
+  --gray-0: #0F172A;
+  --gray-50: #111827;
+  --gray-100: #1E293B;
+  --gray-200: #334155;
+  --gray-300: #475569;
+  --gray-400: #64748B;
+  --gray-500: #94A3B8;
+  --gray-600: #CBD5E1;
+  --gray-700: #E2E8F0;
+  --gray-800: #F1F5F9;
+  --gray-900: #F8FAFC;
 
-  /* Shadows (More intense for dark mode depth) */
+  /* Special Areas */
+  --chat-background-color: #0F172A;
+  --sidebar-background-color: #0F172A;
+  /* Matches ground */
+
+  /* Shadows */
   --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
   --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -1px rgba(0, 0, 0, 0.2);
   --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.4), 0 4px 6px -2px rgba(0, 0, 0, 0.2);
   --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.4), 0 10px 10px -5px rgba(0, 0, 0, 0.2);
-
-  --sidebar-background-color: #0F172A;
 }
 
-/* === Global Typography Base === */
+/* === Global Reset & Typography === */
 *,
 *::before,
 *::after {
   box-sizing: border-box;
+  margin: 0;
+  padding: 0;
 }
 
 body {
-  font-family: var(--font-sans);
+  min-height: 100vh;
   background-color: var(--background-color);
   color: var(--text-color);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  font-size: 15px;
+  /* Slightly larger for readability */
+  line-height: 1.6;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
-/* Monospace for specific UI elements */
-code,
-pre,
-.mono-font,
-.input-box,
-.terminal-text {
-  font-family: var(--font-mono) !important;
-}
-
-/* === Common Mixins/Classes === */
-.window-card {
-  background: var(--surface-card);
+/* === Common Components === */
+.input-box {
+  background-color: var(--input-background-color);
+  color: var(--text-color);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-lg);
+  padding: 12px 16px;
+  transition: all 0.2s ease;
+  box-shadow: var(--shadow-sm);
+}
+
+.input-box:focus-within {
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px var(--primary-bg-light);
+}
+
+.input-box textarea {
+  background-color: transparent;
+  color: var(--text-color);
+  border: none;
+  outline: none;
+  width: 100%;
+  resize: none;
+  font-family: inherit;
+  font-size: 15px;
+}
+
+button {
+  background-color: var(--primary-color);
+  color: #FFFFFF;
+  border: none;
+  border-radius: var(--radius-md);
+  padding: 8px 20px;
+  cursor: pointer;
+  font-weight: 500;
+  font-size: 14px;
+  transition: all 0.2s ease;
+  box-shadow: var(--shadow-sm);
+}
+
+button:hover {
+  background-color: var(--primary-hover-color);
   box-shadow: var(--shadow-md);
+  transform: translateY(-1px);
 }
 
-.traffic-lights {
-  display: flex;
-  gap: 6px;
-  padding: 0 4px;
+button:active {
+  transform: translateY(0);
 }
 
-.traffic-light {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
+/* === Layout Containers === */
+header,
+footer,
+aside {
+  background-color: var(--background-color);
+  color: var(--text-color);
+  transition: all 0.3s ease;
 }
 
-.traffic-light.red {
-  background-color: #EF4444;
+/* === Chat Area === */
+.chat-area {
+  background-color: var(--chat-background-color);
+  transition: background-color 0.3s ease;
 }
 
-.traffic-light.yellow {
-  background-color: #F59E0B;
-}
-
-.traffic-light.green {
-  background-color: #10B981;
+/* === Sidebar === */
+.sidebar {
+  background-color: var(--sidebar-background-color);
+  border-right: 1px solid var(--border-color);
+  transition: all 0.3s ease;
 }

@@ -168,37 +168,34 @@ const contentParts = computed(() => {
 .message-wrapper {
   display: flex;
   align-items: flex-start;
-  margin-bottom: 24px;
+  margin-bottom: 24px; /* More breathing room */
 
   &.from-user {
     flex-direction: row-reverse;
     .message-box { 
-        /* User: Clean block, faint background or just text */
-        background: var(--surface-card);
+        background: var(--primary-bg-light); 
         color: var(--text-color);
-        border: 1px solid var(--border-color);
-        border-radius: var(--radius-lg) 0 var(--radius-lg) var(--radius-lg);
-        box-shadow: var(--shadow-sm);
+        border-radius: 20px 20px 4px 20px; /* Modern shape */
+        border: 1px solid rgba(79, 70, 229, 0.1); 
     }
   }
   &.from-ai   {
     flex-direction: row;
     .message-box { 
-        /* AI: Transparent or minimal */
-        background: transparent;
+        background: transparent;  /* Transparent for cleaner look, text sits on page */
         color: var(--text-color);
+        border-radius: 4px 20px 20px 20px;
         border: none;
-        padding-left: 0;
+        padding-left: 0; /* Align with avatar */
     }
   }
   .avatar{
-    width: 32px;
-    height: 32px;
-    border-radius: 4px; /* Tech square */
-    margin: 0 16px;
+    width: 36px;
+    height: 36px;
+    border-radius: 8px; /* Slightly squarer */
+    margin: 0 16px; /* More gap */
     object-fit: cover;
     box-shadow: var(--shadow-sm);
-    border: 1px solid var(--border-color);
   }
 }
 
@@ -208,7 +205,7 @@ const contentParts = computed(() => {
 .ant-btn-icon-only:has(.anticon-stop){background: var(--error-color) !important;&:hover{background: #d32f2f !important;}}
 
 .loading-dots{display:inline-flex;align-items:center;justify-content:center;
-  div{width:4px;height:4px;margin:0 4px;background:var(--primary-color);border-radius:0; /* Square dots */ opacity:.5;animation:pulse .5s infinite both;
+  div{width:6px;height:6px;margin:0 4px;background:var(--subtext-color);border-radius:50%;opacity:.5;animation:pulse .5s infinite both;
     &:nth-child(1){animation-delay:-.32s} &:nth-child(2){animation-delay:-.16s}}
 }
 @keyframes pulse{0%,80%,100%{transform:scale(.8);opacity:.5}40%{transform:scale(1);opacity:1}}
@@ -228,21 +225,21 @@ const contentParts = computed(() => {
       width:100%;
       text-align:left;
       margin:0;
-      padding-top: 4px;
+      padding-top: 4px; /* Align text top with avatar */
   }
   
-  .err-msg{color: var(--error-color); border:1px solid var(--error-color); padding:.5rem 1rem; border-radius:4px; background: rgba(239, 68, 68, 0.05); margin-bottom:10px; cursor:pointer;}
-  .searching-msg{color:var(--subtext-color); font-size: 13px; font-family: var(--font-mono);}
+  .err-msg{color: var(--error-color); border:1px solid var(--error-color); padding:.5rem 1rem; border-radius:8px; background: rgba(239, 68, 68, 0.05); margin-bottom:10px; cursor:pointer;}
+  .searching-msg{color:var(--subtext-color); font-size: 13px; animation:colorPulse 2s infinite ease-in-out;}
   
   .reasoning-box{
       margin: 8px 0 16px;
-      border-left: 2px solid var(--primary-light-color);
-      background-color: var(--surface-secondary); /* Contrast */
-      border-radius: 0 4px 4px 0; 
-      padding: 8px 16px;
+      border-left: 3px solid var(--primary-light-color); /* Cleaner look */
+      background-color: var(--gray-50);
+      border-radius: 4px; 
+      padding: 12px 16px;
     
-    .reasoning-content{font-size:13px;color:var(--subtext-color); font-family: var(--font-mono); white-space:pre-wrap;margin:0}
-    .reasoning-header { font-size: 12px; font-weight: 600; color: var(--text-color); margin-bottom: 4px; text-transform:uppercase; letter-spacing:0.05em;}
+    .reasoning-content{font-size:13px;color:var(--subtext-color);white-space:pre-wrap;margin:0}
+    .reasoning-header { font-size: 13px; font-weight: 600; color: var(--subtext-color); margin-bottom: 4px;}
   }
   
   :deep(.tool-calls-container){
@@ -255,8 +252,9 @@ const contentParts = computed(() => {
       border:none !important;
   }
 }
+@keyframes colorPulse{0%{color:var(--gray-400)}50%{color:var(--primary-color)}100%{color:var(--gray-400)}}
 
-/* ============ Tool Call Pills ============ */
+/* ============ 关键修改：deepseek 胶囊自适应宽度 ============ */
 :deep(.tool-call-container){
   display:inline-block!important;
   width:auto!important;
@@ -270,18 +268,16 @@ const contentParts = computed(() => {
   flex: 0 0 auto !important;
   align-items:center;
   gap:6px;
-  padding:4px 10px;
+  padding:6px 14px;
   width:auto!important;
   max-width:max-content!important;
   background:var(--surface-card);
   border:1px solid var(--border-color);
-  border-radius:4px; /* Tech pill */
+  border-radius:20px; /* Pill shape */
   box-shadow: var(--shadow-sm);
-  font-family: var(--font-mono);
-  font-size: 12px;
 
   .tool-header{background:transparent;border:none;padding:0;margin:0;gap:6px;}
-  .anticon{color:var(--primary-color);}
+  .anticon{color:var(--subtext-color);cursor:pointer;&:hover{color:var(--primary-color)}}
 }
 
 :deep(.tool-call-display>.tool-content){
