@@ -86,10 +86,11 @@ watch(() => props.graphData, renderGraph, { deep: true });
 
 <style scoped>
 .graph-container {
-  background: #F7F7F7;
-  border-radius: 16px;
+  background: var(--surface-card);
+  border-radius: var(--radius-lg);
   width: 100%;
   height: 600px;
   overflow: hidden;
+  border: 1px solid var(--border-color);
 }
 </style>

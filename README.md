@@ -61,16 +61,16 @@
 
 在此基础上，我们融合了 **LangGraph 推理流程编排**、 **GraphRAG 检索增强技术**，以及**知识图谱可视化探索能力**，使用户不仅可以通过自然语言提问获得精确答案，还能以图谱形式直观探索宝可梦世界。同时支持基于地理位置的地图定位功能，将宝可梦世界与真实世界坐标一一映射，实现 **宝可梦地点知识的空间可视化** :earth_asia: 。
 
-​        本项目致力于打造一个可迁移、可扩展、面向爱好者的**专域智能助手模板系统**，你可以轻松将其迁移至其他角色（如「苏轼」、「金融」、「 政务服务」等）中打造专域的智能助手，仅需更换知识源与图谱结构，即可实现高质量的语义问答与可视化知识探索体验。
+​        本项目致力于打造一个可迁移、可扩展、面向爱好者的**专域智能助手模板系统**，你可以轻松将其迁移至其他角色中打造专域的智能助手，仅需更换知识源与图谱结构，即可实现高质量的语义问答与可视化知识探索体验。
 
 ---
 
 ## 🚀 新增特性 (New Features)
 
-- **LangChain & LangGraph**: 支持 LangChain 1.x 与 LangGraph 1.0 多智能体编排
-- **LightRAG Integration**: 支持 HKU-DS LightRAG 高效检索框架
-- **Advanced RAG**: 集成 Self-RAG、CRAG、HyDE 与 Query Decomposition
-- **Agentic Memory**: 具备用户偏好自适应的长时记忆能力
+- **LangChain & LangGraph**: 重构为LangChain 1.x 与 LangGraph 1.0 多智能体编排对话助手
+- **LightRAG Integration**: 支持 LightRAG 高效检索图谱构建
+- **Advanced RAG**: 集成 Self-RAG、CRAG、HyDE 与 Query Decomposition 高级rag
+- **Agentic Memory**: 具备用户偏好自适应的长时记忆能力与时间规划
 - **MCP Service**: 支持 Model Context Protocol 连接真实世界地理数据
 - **Performance**: 内置 Semantic Cache 与 Speculative RAG 加速生成
 
@@ -82,7 +82,7 @@
 
 架构核心：
 - **混合检索**: 向量检索 (Milvus) + 图谱检索 (Neo4j) + 关键词检索 (BM25)
-- **智能体编排**: LangGraph 状态机管理复杂任务流
+- **智能体编排**: LangGraph1.x 状态机管理复杂任务流
 - **知识增强**: GraphRAG 提取实体关系
 
 以下是本项目的核心技术架构图：
@@ -95,9 +95,9 @@
 2. 基于爬取数据构建了宝可梦知识图谱（维基百科）。
 3. 自动化标注训练NER数据，使用roberta+TF-IDF+规则匹配来命中图谱中的实体与属性。
 4. 使用whisper来实现ASR功能。
-5. **[NEW]** 实现 **MCP 服务**，支持宝可梦世界与真实世界地理坐标的映射查询。
+5. 实现 MCP 服务，支持宝可梦世界与真实世界地理坐标的映射查询。
 6. 抽取RAGflow中的deepdoc来强化知识库的解析和抽取能力。
-7. **[NEW]** 使用 **LangGraph** 实现多智能体协同（RAG + Search + Graph + MCP）。
+7. 使用LangGraph实现多智能体协同（RAG + Search + Graph + MCP）。
 8. 封装agent 基类实现多智能体功能。
 9. 支持知识图谱搜索、网络搜索、知识库搜索、MCP搜索、语音搜索，可以同时集成也可以任选其一。
 

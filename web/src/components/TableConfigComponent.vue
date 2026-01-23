@@ -151,19 +151,19 @@ watch(addConfigModalVisible, (newValue) => {
 
 <style scoped>
 .config-card {
-  background-color: var(--gray-10);
-  border-radius: 8px;
-  border: 1px solid var(--gray-300);
+  background-color: var(--surface-card);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-color);
 }
 
 .config-item {
-  border-bottom: 1px solid #f0f0f0;
+  border-bottom: 1px solid var(--border-color);
   padding: 12px 0;
   transition: background-color 0.3s ease;
 }
 
 .config-item:hover {
-  background-color: #fafafa;
+  background-color: var(--surface-secondary);
 }
 
 .config-item:last-child {
@@ -171,8 +171,19 @@ watch(addConfigModalVisible, (newValue) => {
 }
 
 .key-input {
-  background-color: #f8f8f8;
-  border-color: #e8e8e8;
+  background-color: var(--surface-secondary);
+  border-color: var(--border-color);
+  color: var(--text-color);
+}
+
+.value-input {
+    background-color: var(--input-background-color);
+    border-color: var(--border-color);
+    color: var(--text-color);
+}
+
+.value-input:hover, .value-input:focus {
+    border-color: var(--primary-color);
 }
 
 .delete-btn-col {
@@ -199,10 +210,27 @@ watch(addConfigModalVisible, (newValue) => {
 
 .modal-input {
   margin-bottom: 8px;
+  background-color: var(--input-background-color);
+  border-color: var(--border-color);
+  color: var(--text-color);
 }
 
 :deep(.ant-modal-content) {
-  border-radius: 8px;
+  border-radius: var(--radius-lg);
+  background-color: var(--surface-card);
+}
+
+:deep(.ant-modal-header) {
+    background-color: var(--surface-card);
+    border-bottom: 1px solid var(--border-color);
+}
+
+:deep(.ant-modal-title) {
+    color: var(--text-color);
+}
+
+:deep(.ant-modal-close) {
+    color: var(--subtext-color);
 }
 
 :deep(.ant-card-body) {

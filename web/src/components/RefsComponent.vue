@@ -188,16 +188,15 @@ const getPercent = (value) =>
 .refs {
   display: flex;
   margin-bottom: 20px;
-  //color: var(--gray-500);
-   background: var(--chat-background-color); // ✅ 跟聊天区域背景保持一致
+  background: transparent;
   font-size: 13px;
   gap: 10px;
 
   .item {
-    color: #555;
-    background: transparent; // ✅ 不要小气泡背景
+    color: var(--subtext-color);
+    background: transparent;
     padding: 2px 8px;
-    border-radius: 8px;
+    border-radius: var(--radius-md);
     font-size: 13px;
 
     user-select: none;
@@ -205,11 +204,11 @@ const getPercent = (value) =>
     &.btn {
       cursor: pointer;
       &:hover {
-        background: var(--gray-200);
-        color: #444;
+        background: var(--surface-secondary);
+        color: var(--primary-color);
       }
       &:active {
-        background: var(--gray-300);
+        background: var(--gray-300); // Or a darker shade of surface-secondary
       }
     }
   }
@@ -232,13 +231,13 @@ const getPercent = (value) =>
     display: flex;
     justify-content: space-between;
     padding: 12px 16px;
-    background-color: #f5f5f5;
-    border-radius: 4px;
+    background-color: var(--surface-secondary);
+    border-radius: var(--radius-md);
     margin-bottom: 16px;
 
     p {
       margin: 0;
-      color: #666;
+      color: var(--text-color);
     }
   }
 
@@ -255,7 +254,7 @@ const getPercent = (value) =>
       strong {
         margin-right: 8px;
         white-space: nowrap;
-        color: #666;
+        color: var(--subtext-color);
       }
 
       .ant-progress {
@@ -263,8 +262,8 @@ const getPercent = (value) =>
         margin-bottom: 0;
         margin-inline: 10px;
 
-        .ant-progress-bg {
-          background-color: #666;
+        :deep(.ant-progress-bg) {
+          background-color: var(--primary-color) !important;
         }
       }
     }
@@ -272,7 +271,7 @@ const getPercent = (value) =>
 
   .result-id {
     font-size: 12px;
-    color: #999;
+    color: var(--subtext-color);
     margin-bottom: 8px;
   }
 
@@ -281,16 +280,17 @@ const getPercent = (value) =>
     line-height: 1.6;
     white-space: pre-wrap;
     word-break: break-word;
-    background-color: #f9f9f9;
+    background-color: var(--surface-secondary);
     padding: 12px;
-    border-radius: 4px;
-    border: 1px solid #e8e8e8;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-color);
+    color: var(--text-color);
   }
 }
 
 .results-list {
   .result-item {
-    border-bottom: 1px solid #f0f0f0;
+    border-bottom: 1px solid var(--border-color);
     padding: 16px 0;
 
     &:last-child {
@@ -306,7 +306,7 @@ const getPercent = (value) =>
 .web-result-detail {
   .results-list {
     .result-item {
-      border-bottom: 1px solid #f0f0f0;
+      border-bottom: 1px solid var(--border-color);
       padding: 16px 0;
 
       &:last-child {
@@ -330,7 +330,7 @@ const getPercent = (value) =>
           strong {
             margin-right: 8px;
             white-space: nowrap;
-            color: #666;
+            color: var(--subtext-color);
           }
 
           .ant-progress {
@@ -338,8 +338,8 @@ const getPercent = (value) =>
             margin-bottom: 0;
             margin-inline: 10px;
 
-            .ant-progress-bg {
-              background-color: #666;
+            :deep(.ant-progress-bg) {
+              background-color: var(--primary-color) !important;
             }
           }
         }
@@ -347,7 +347,7 @@ const getPercent = (value) =>
 
       .result-url {
         font-size: 12px;
-        color: #1677FF;
+        color: var(--primary-color);
         margin-bottom: 8px;
         word-break: break-all;
       }
@@ -358,7 +358,7 @@ const getPercent = (value) =>
         font-size: 16px;
         font-weight: bold;
         margin-bottom: 8px;
-        color: #333;
+        color: var(--text-color);
       }
 
       .result-text {
@@ -366,10 +366,11 @@ const getPercent = (value) =>
         line-height: 1.6;
         white-space: pre-wrap;
         word-break: break-word;
-        background-color: #f9f9f9;
+        background-color: var(--surface-secondary);
         padding: 12px;
-        border-radius: 4px;
-        border: 1px solid #e8e8e8;
+        border-radius: var(--radius-md);
+        border: 1px solid var(--border-color);
+        color: var(--text-color);
       }
     }
   }

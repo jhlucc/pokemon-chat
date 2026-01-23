@@ -94,11 +94,11 @@ defineEmits(['toggle', 'new-chat', 'select', 'delete'])
         align-items: center;
         justify-content: center;
         gap: 8px;
-        height: 44px;
-        background-color: var(--surface-card);
-        border: 1px solid var(--border-color);
-        border-radius: var(--radius-lg);
-        color: var(--text-color);
+        height: 40px;
+        background-color: var(--primary-color);
+        border: 1px solid transparent;
+        border-radius: var(--radius-md);
+        color: #FFFFFF;
         font-weight: 500;
         font-size: 14px;
         box-shadow: var(--shadow-sm);
@@ -106,10 +106,13 @@ defineEmits(['toggle', 'new-chat', 'select', 'delete'])
         cursor: pointer;
         
         &:hover {
-            border-color: var(--primary-color);
-            color: var(--primary-color);
-            background-color: var(--surface-card);
+            background-color: var(--primary-hover-color);
             box-shadow: var(--shadow-md);
+            transform: translateY(-1px);
+        }
+        
+        &:active {
+            transform: translateY(0);
         }
     }
     
@@ -125,7 +128,7 @@ defineEmits(['toggle', 'new-chat', 'select', 'delete'])
         transition: all 0.2s ease;
         
         &:hover {
-            background-color: var(--gray-200);
+            background-color: var(--surface-secondary);
             color: var(--text-color);
         }
     }
@@ -184,6 +187,7 @@ defineEmits(['toggle', 'new-chat', 'select', 'delete'])
       overflow: hidden;
       text-overflow: ellipsis;
       font-weight: 400;
+      color: var(--text-color);
     }
 
     &__delete {
@@ -200,14 +204,14 @@ defineEmits(['toggle', 'new-chat', 'select', 'delete'])
 
       &:hover {
         color: var(--error-color);
+        background-color: var(--surface-secondary);
       }
     }
 
     /* Active State */
     &.active {
-      background-color: var(--surface-card);
-      box-shadow: var(--shadow-sm);
-      border-color: var(--border-color);
+      background-color: var(--surface-secondary);
+      color: var(--primary-color);
 
       .conversation__title {
         color: var(--primary-color);
@@ -222,7 +226,7 @@ defineEmits(['toggle', 'new-chat', 'select', 'delete'])
     
     /* Hover State */
     &:hover:not(.active) {
-      background-color: var(--gray-100);
+      background-color: var(--surface-secondary);
       
       & .conversation__delete {
         display: block;
@@ -246,7 +250,7 @@ defineEmits(['toggle', 'new-chat', 'select', 'delete'])
 }
 
 .conversation-list:hover::-webkit-scrollbar-thumb {
-    background: var(--gray-300);
+    background: var(--slate-300);
 }
 
 @media (max-width: 520px) {

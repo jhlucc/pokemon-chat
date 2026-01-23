@@ -258,13 +258,19 @@ const handleSendOrStop = () => {
       color: var(--subtext-color);
       opacity: 0.6;
     }
+    
+    &:disabled {
+        color: var(--subtext-color);
+        background-color: transparent;
+        cursor: not-allowed;
+    }
   }
 
   .input-options {
     display: flex;
     padding: 8px 0 0;
     margin-top: 6px;
-    border-top: 1px solid var(--gray-100);
+    border-top: 1px solid var(--border-color);
 
     .options__left,
     .options__right {
@@ -281,7 +287,7 @@ const handleSendOrStop = () => {
       flex: 1;
 
       :deep(.opt-item) {
-        border-radius: 4px; /* Squarer tech look */
+        border-radius: var(--radius-sm); /* Squarer tech look */
         border: 1px solid transparent;
         padding: 4px 8px;
         cursor: pointer;
@@ -289,10 +295,10 @@ const handleSendOrStop = () => {
         font-family: var(--font-mono);
         color: var(--subtext-color);
         transition: all 0.2s ease;
-        background: var(--gray-50);
+        background: var(--surface-secondary);
 
         &:hover {
-          background-color: var(--gray-100);
+          background-color: var(--gray-200); /* Slightly darker */
           color: var(--text-color);
         }
 
@@ -312,7 +318,7 @@ button.ant-btn-icon-only {
   width: 32px;
   background-color: transparent;
   color: var(--subtext-color);
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   border: 1px solid transparent;
   box-shadow: none;
   
@@ -333,7 +339,7 @@ button.ant-btn-icon-only {
 
 @media (max-width: 520px) {
   .input-box {
-    border-radius: 12px;
+    border-radius: var(--radius-lg);
     padding: 10px 12px;
   }
 }

@@ -273,7 +273,7 @@ const printConfig = () => {
 
 <style scoped>
 .log-viewer {
-  background: white;
+  background: var(--background-color);
   height: 100%;
 }
 
@@ -310,11 +310,12 @@ const printConfig = () => {
 .log-container {
   height: calc(100vh - 200px);
   overflow-y: auto;
-  background: #0C0C0C;
+  background: #1e1e1e; /* Always dark for terminal feel */
   color: #D1D1D1;
-  border-radius: 5px;
-  font-family: 'Consolas', 'Monaco', monospace;
+  border-radius: var(--radius-md);
+  font-family: var(--font-mono);
   font-size: 13px;
+  border: 1px solid var(--border-color);
 }
 
 .log-lines {
@@ -372,14 +373,27 @@ const printConfig = () => {
 .empty-logs {
   padding: 16px;
   text-align: center;
-  color: #666;
+  color: var(--subtext-color);
 }
 
-@media (prefers-color-scheme: dark) {
-  .log-container {
-    background: #1E1E1E;
-  }
+/* Scrollbar for log container */
+.log-container::-webkit-scrollbar {
+  width: 8px;
 }
+
+.log-container::-webkit-scrollbar-track {
+  background: #1e1e1e;
+}
+
+.log-container::-webkit-scrollbar-thumb {
+  background: #424242;
+  border-radius: 4px;
+}
+
+.log-container::-webkit-scrollbar-thumb:hover {
+  background: #505050;
+}
+
 
 :fullscreen .log-container {
   height: calc(100vh - 120px);
@@ -392,5 +406,4 @@ const printConfig = () => {
 :-ms-fullscreen .log-container {
   height: calc(100vh - 120px);
 }
-
 </style>
