@@ -283,7 +283,7 @@ const printConfig = () => {
 
 <style scoped>
 .log-viewer {
-  background: white;
+  background: var(--background-color);
   height: 100%;
 }
 

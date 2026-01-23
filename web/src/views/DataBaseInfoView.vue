@@ -955,7 +955,7 @@ onUnmounted(() => {
     gap: 20px;
 
     .results-overview {
-      background-color: #fff;
+      background-color: var(--surface-color);
       border-radius: 8px;
       padding: 16px;
       border: 1px solid var(--main-light-3);
@@ -995,7 +995,7 @@ onUnmounted(() => {
     .query-result-card {
       padding: 20px;
       border-radius: 8px;
-      background: #fff;
+      background: var(--surface-color);
       border: 1px solid var(--main-light-3);
       transition: box-shadow 0.3s ease;
 

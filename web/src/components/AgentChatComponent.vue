@@ -991,7 +991,7 @@ watch([currentAgent, messages, currentRunId], () => {
   display: flex;
   flex-direction: column;
   overflow-x: hidden;
-  background: white;
+  background: var(--layout-bg-color);
   position: relative;
   box-sizing: border-box;
   overflow-y: scroll;
@@ -1001,7 +1001,7 @@ watch([currentAgent, messages, currentRunId], () => {
     position: sticky;
     top: 0;
     z-index: 10;
-    background-color: white;
+    background-color: var(--header-bg-color);
     height: var(--header-height);
     display: flex;
     justify-content: space-between;
@@ -1110,7 +1110,7 @@ watch([currentAgent, messages, currentRunId], () => {
   width: 100%;
   margin: 0 auto;
   padding: 4px 2rem 0 2rem;
-  background: white;
+  background: var(--layout-bg-color);
 
   .message-input-wrapper {
     width: 100%;
@@ -1125,7 +1125,7 @@ watch([currentAgent, messages, currentRunId], () => {
 
     .note {
       font-size: small;
-      color: #ccc;
+      color: var(--gray-600);
       margin: 4px 0;
       user-select: none;
     }

@@ -184,14 +184,14 @@ onMounted(() => {
   gap: 16px;
 
   .new-database {
-    background-color: #F0F3F4;
+    background-color: var(--gray-200);
   }
 }
 
 .database, .graphbase {
-  background-color: white;
+  background-color: var(--surface-color);
   box-shadow: 0px 1px 2px 0px rgba(16,24,40,.06),0px 1px 3px 0px rgba(16,24,40,.1);
-  border: 2px solid white;
+  border: 2px solid var(--surface-color);
   transition: box-shadow 0.2s ease-in-out;
 
   &:hover {
@@ -221,16 +221,16 @@ onMounted(() => {
       display: flex;
       justify-content: center;
       align-items: center;
-      background-color: #F5F8FF;
+      background-color: var(--main-10);
       border-radius: 8px;
-      border: 1px solid #E0EAFF;
+      border: 1px solid var(--main-10);
       color: var(--main-color);
     }
 
     .info {
       h3, p {
         margin: 0;
-        color: black;
+        color: var(--text-color);
       }
 
       h3 {

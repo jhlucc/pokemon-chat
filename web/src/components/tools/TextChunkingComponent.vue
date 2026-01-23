@@ -202,7 +202,7 @@ const chunkText = async () => {
           transition: background-color 0.3s;
 
           &.active {
-            background-color: white;
+            background-color: var(--surface-color);
             box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.03),0 1px 6px -1px rgba(0, 0, 0, 0.02),0 2px 4px 0 rgba(0, 0, 0, 0.02)
           }
         }
