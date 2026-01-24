@@ -1,6 +1,6 @@
 <template>
   <div class="chat-container">
-    <div class="chat">
+    <div class="chat" ref="chatScrollContainer">
       <div class="chat-header">
         <div class="header__left">
           <slot name="header-left" class="nav-btn"></slot>
@@ -26,7 +26,7 @@
         <p>{{ currentAgent ? currentAgent.description : '不同的智能体有不同的专长和能力' }}</p>
       </div>
 
-      <div class="chat-box" ref="messagesContainer" :class="{ 'is-debug': state.debug_mode }">
+      <div class="chat-box" :class="{ 'is-debug': state.debug_mode }">
         <MessageComponent
           v-for="(message, index) in messages"
           :message="message"
@@ -80,6 +80,18 @@
         </MessageComponent>
       </div>
 
+      <a-float-button
+        v-if="showScrollToBottom"
+        class="scroll-to-bottom"
+        :style="{ right: '20px', bottom: '96px' }"
+        @click="jumpToBottom"
+        tooltip="回到底部"
+      >
+        <template #icon>
+          <DownOutlined />
+        </template>
+      </a-float-button>
+
       <div class="bottom">
         <div class="message-input-wrapper">
           <MessageInputComponent
@@ -101,12 +113,13 @@
 </template>
 
 <script setup>
-import { ref, onMounted, watch, nextTick } from 'vue';
+import { ref, onMounted, onUnmounted, watch, nextTick, computed } from 'vue';
 import { useDebounceFn } from '@vueuse/core';
 import {
   RobotOutlined, LoadingOutlined,
   ThunderboltOutlined,
-  PlusCircleOutlined
+  PlusCircleOutlined,
+  DownOutlined,
 } from '@ant-design/icons-vue';
 import { message } from 'ant-design-vue';
 import MessageInputComponent from '@/components/MessageInputComponent.vue'
@@ -145,8 +158,7 @@ const showMsgRefs = (msg) => {
 }
 
 // DOM引用
-const messagesContainer = ref(null);
-
+const chatScrollContainer = ref(null);
 // 数据状态
 const agents = ref({});                // 智能体列表
 const currentAgent = ref(null);        // 当前选中的智能体
@@ -155,6 +167,32 @@ const messages = ref([]);              // 消息列表
 const isProcessing = ref(false);       // 是否正在处理请求
 const activeStreamId = ref(0);
 const activeAbortController = ref(null);
+
+// Scroll state: stop auto-scroll when user scrolls up, show a "jump to bottom" affordance.
+const userIsScrolling = ref(false);
+const shouldAutoScroll = ref(true);
+const showScrollToBottom = computed(() => !shouldAutoScroll.value && (messages.value?.length || 0) > 0);
+
+const handleUserScroll = () => {
+  const el = chatScrollContainer.value;
+  if (!el) return;
+  const isNearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 20;
+  userIsScrolling.value = !isNearBottom;
+  shouldAutoScroll.value = isNearBottom;
+};
+
+const forceScrollToBottom = async () => {
+  await nextTick();
+  const el = chatScrollContainer.value;
+  if (!el) return;
+  shouldAutoScroll.value = true;
+  userIsScrolling.value = false;
+  el.scrollTop = el.scrollHeight - el.clientHeight;
+};
+
+const jumpToBottom = () => {
+  forceScrollToBottom();
+};
 
 // ==================== 工具调用相关 ====================
 
@@ -175,22 +213,11 @@ const ensureLocalId = (msg) => {
 };
 
 
-// 滚动到底部 TODO: 需要优化当用户向上滚动的时候，停止滚动，当用户点击回到底部或者滚动到最底部的时候，再滚动到底部
 const scrollToBottom = async () => {
   await nextTick();
-  if (!messagesContainer.value) return;
-
-  // 找到真正需要滚动的容器元素
-  const container = document.querySelector('.chat');
-  if (!container) return;
-
-  const scrollOptions = { top: container.scrollHeight, behavior: 'smooth' };
-
-  // 多次尝试滚动以确保成功
-  container.scrollTo(scrollOptions);
-  setTimeout(() => container.scrollTo(scrollOptions), 50);
-  setTimeout(() => container.scrollTo(scrollOptions), 150);
-  setTimeout(() => container.scrollTo({ top: container.scrollHeight, behavior: 'auto' }), 300);
+  const el = chatScrollContainer.value;
+  if (!el || !shouldAutoScroll.value) return;
+  el.scrollTop = el.scrollHeight - el.clientHeight;
 };
 
 // ==================== 状态管理函数 ====================
@@ -726,6 +753,10 @@ watch(messages, () => {
 onMounted(async () => {
   try {
     // console.log("组件挂载");
+    if (chatScrollContainer.value) {
+      chatScrollContainer.value.addEventListener('scroll', handleUserScroll);
+    }
+
     // 获取智能体列表
     await fetchAgents();
 
@@ -741,6 +772,14 @@ onMounted(async () => {
     }, 10);
   } catch (error) {
     console.error("组件挂载出错:", error);
+  }
+});
+
+onUnmounted(() => {
+  activeStreamId.value += 1;
+  activeAbortController.value?.abort?.();
+  if (chatScrollContainer.value) {
+    chatScrollContainer.value.removeEventListener('scroll', handleUserScroll);
   }
 });
 
@@ -984,6 +1023,10 @@ watch([currentAgent, messages, currentRunId], () => {
       height: 1.5rem;
     }
   }
+}
+
+.scroll-to-bottom {
+  z-index: 12;
 }
 
 .chat-examples {

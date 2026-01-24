@@ -3,18 +3,25 @@
     <HeaderComponent title="知识图谱" :description="graphDescription">
       <template #actions>
         <div class="status-line">
-          <a-tag :color="backendOnline ? 'green' : 'red'">
-            {{ backendOnline ? 'Backend Online' : 'Offline' }}
+          <a-tag :color="backendStatus.color">
+            {{ backendStatus.label }}
           </a-tag>
-          <a-tag :color="canUseGraph ? 'green' : 'orange'">
-            {{ canUseGraph ? 'KG Enabled' : 'KG Disabled' }}
+          <a-tag :color="kgStatus.color">
+            {{ kgStatus.label }}
           </a-tag>
         </div>
       </template>
     </HeaderComponent>
 
     <a-alert
-      v-if="!canUseGraph"
+      v-if="backendMock"
+      type="info"
+      show-icon
+      message="当前为 Mock 演示图谱：数据来自本地 Demo / Mock API。"
+      style="margin: 0 24px 16px;"
+    />
+    <a-alert
+      v-else-if="!canUseGraph"
       type="warning"
       show-icon
       :message="backendOnline ? '后端未启用知识图谱（enable_knowledge_graph=false）' : '后端未启动/不可用：已切换为离线 Demo 图谱'"
@@ -117,7 +124,21 @@ const cssVar = (name, fallback) => {
 };
 
 const backendOnline = computed(() => Boolean(configStore.config.backend?.online));
-const canUseGraph = computed(() => backendOnline.value && Boolean(configStore.config.enable_knowledge_graph));
+const backendMock = computed(() => Boolean(configStore.config.backend?.mock));
+const canUseGraph = computed(() => (backendOnline.value && Boolean(configStore.config.enable_knowledge_graph)) || backendMock.value);
+
+const backendStatus = computed(() => {
+  if (backendMock.value) return { color: 'blue', label: 'Mock' };
+  if (backendOnline.value) return { color: 'green', label: 'Backend Online' };
+  return { color: 'red', label: 'Offline' };
+});
+
+const kgStatus = computed(() => {
+  if (backendMock.value) return { color: 'blue', label: 'Demo' };
+  if (backendOnline.value && Boolean(configStore.config.enable_knowledge_graph)) return { color: 'green', label: 'KG Enabled' };
+  if (backendOnline.value) return { color: 'orange', label: 'KG Disabled' };
+  return { color: 'orange', label: 'KG Offline' };
+});
 
 const graphInfo = ref({});
 

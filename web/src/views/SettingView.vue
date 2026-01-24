@@ -6,7 +6,7 @@
           <a-button @click="refreshAll" :loading="state.refreshing">
             刷新状态
           </a-button>
-          <a-button type="primary" :disabled="!backendOnline" @click="restartBackend">
+          <a-button type="primary" :disabled="!backendRealOnline" @click="restartBackend">
             重新加载后端
           </a-button>
         </a-space>
@@ -20,7 +20,7 @@
             <div class="kv">
               <span class="k">Backend</span>
               <span class="v">
-                <a-tag :color="backendOnline ? 'green' : 'red'">{{ backendOnline ? 'Online' : 'Offline' }}</a-tag>
+                <a-tag :color="backendStatus.color">{{ backendStatus.label }}</a-tag>
                 <a-tag :color="backendReady ? 'green' : 'orange'">{{ backendReady ? 'Ready' : 'Not Ready' }}</a-tag>
               </span>
             </div>
@@ -180,7 +180,15 @@ import { computed, reactive, ref, watch } from 'vue';
 });
 
 const backendOnline = computed(() => Boolean(configStore.config.backend?.online));
+const backendMock = computed(() => Boolean(configStore.config.backend?.mock));
 const backendReady = computed(() => Boolean(configStore.config.backend?.ready));
+const backendRealOnline = computed(() => backendOnline.value && !backendMock.value);
+
+const backendStatus = computed(() => {
+  if (backendMock.value) return { color: 'blue', label: 'Mock' };
+  if (backendOnline.value) return { color: 'green', label: 'Online' };
+  return { color: 'red', label: 'Offline' };
+});
 	const offlineMode = ref(getOfflineMode());
 	const MOCK_CONFIG_KEY = 'pokemon_chat_mock_config_v1';
 	const MOCK_STATE_KEY = 'pokemon_chat_mock_state_v1';
@@ -236,7 +244,7 @@ const refreshAll = async () => {
 };
 
 const restartBackend = async () => {
-  if (!backendOnline.value) return;
+  if (!backendRealOnline.value) return;
   try {
     await apiFetch('/restart', { method: 'POST', timeoutMs: 10000 });
     message.success('已触发后端重启/刷新（best-effort）');
