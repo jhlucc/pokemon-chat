@@ -26,33 +26,48 @@ class PathSettings(BaseSettings):
 
     @computed_field
     @property
+    def resources_dir(self) -> Path:
+        return _BASE_DIR_PATH / "resources"
+
+    @computed_field
+    @property
+    def data_dir(self) -> Path:
+        return self.resources_dir / "data"
+
+    @computed_field
+    @property
+    def cache_dir(self) -> Path:
+        return self.resources_dir / "cache"
+
+    @computed_field
+    @property
     def model_reranker_path(self) -> Path:
-        return _BASE_DIR_PATH / "resources" / "models" / "bge-reranker-v2-m3"
+        return self.resources_dir / "models" / "bge-reranker-v2-m3"
 
     @computed_field
     @property
     def model_roberta_path(self) -> Path:
-        return _BASE_DIR_PATH / "resources" / "models" / "chinese-roberta-wwm-ext"
+        return self.resources_dir / "models" / "chinese-roberta-wwm-ext"
 
     @computed_field
     @property
     def model_embedding_path(self) -> Path:
-        return _BASE_DIR_PATH / "resources" / "models" / "bge-large-zh-v1.5"
+        return self.resources_dir / "models" / "bge-large-zh-v1.5"
 
     @computed_field
     @property
     def model_ocr_path(self) -> Path:
-        return _BASE_DIR_PATH / "resources" / "models" / "ocr"
+        return self.resources_dir / "models" / "ocr"
 
     @computed_field
     @property
     def cache_berta_model(self) -> Path:
-        return _BASE_DIR_PATH / "resources" / "cache" / "roberta" / "best_roberta.pt"
+        return self.cache_dir / "roberta" / "best_roberta.pt"
 
     @computed_field
     @property
     def ner_tag_path(self) -> Path:
-        return _BASE_DIR_PATH / "resources" / "data" / "ner_data" / "tag2idx.npy"
+        return self.data_dir / "ner_data" / "tag2idx.npy"
 
     @computed_field
     @property
@@ -62,38 +77,38 @@ class PathSettings(BaseSettings):
     @computed_field
     @property
     def save_yaml_path(self) -> Path:
-        return _BASE_DIR_PATH / "resources" / "save"
+        return self.resources_dir / "save"
 
     # Data paths
     @computed_field
     @property
     def json_data(self) -> Path:
-        return _BASE_DIR_PATH / "resources" / "data" / "json_data"
+        return self.data_dir / "json_data"
 
     @computed_field
     @property
     def entity_data(self) -> Path:
-        return _BASE_DIR_PATH / "resources" / "data" / "entity_data"
+        return self.data_dir / "entity_data"
 
     @computed_field
     @property
     def ner_data(self) -> Path:
-        return _BASE_DIR_PATH / "resources" / "data" / "ner_data"
+        return self.data_dir / "ner_data"
 
     @computed_field
     @property
     def raw_data(self) -> Path:
-        return _BASE_DIR_PATH / "resources" / "data" / "raw_data"
+        return self.data_dir / "raw_data"
 
     @computed_field
     @property
     def relations_data(self) -> Path:
-        return _BASE_DIR_PATH / "resources" / "data" / "relations_data"
+        return self.data_dir / "relations_data"
 
     @computed_field
     @property
     def graphrag_raw_data(self) -> Path:
-        return _BASE_DIR_PATH / "resources" / "data" / "graph_data" / "精灵之沙暴天王.txt"
+        return self.data_dir / "graph_data" / "精灵之沙暴天王.txt"
 
     @computed_field
     @property
@@ -136,6 +151,21 @@ class TavilySettings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="tavily_", extra="ignore")
 
     api_key: str = ""
+
+
+class CorsSettings(BaseSettings):
+    """CORS 配置"""
+    model_config = SettingsConfigDict(env_prefix="", extra="ignore")
+
+    # Comma-separated list, or "*" (default).
+    allow_origins: str = Field(
+        default="*",
+        validation_alias=AliasChoices("cors_allow_origins", "CORS_ALLOW_ORIGINS"),
+    )
+    allow_credentials: bool = Field(
+        default=True,
+        validation_alias=AliasChoices("cors_allow_credentials", "CORS_ALLOW_CREDENTIALS"),
+    )
 
 
 class ToolSettings(BaseSettings):
@@ -189,12 +219,45 @@ class FeatureSettings(BaseSettings):
     """功能开关"""
     model_config = SettingsConfigDict(extra="ignore")
 
-    enable_knowledge_base: bool = Field(default=False, alias="ENABLE_KNOWLEDGE_BASE")
-    enable_knowledge_graph: bool = Field(default=False, alias="ENABLE_KNOWLEDGE_GRAPH")
-    enable_web_search: bool = Field(default=False, alias="ENABLE_WEB_SEARCH")
-    enable_mcp: bool = Field(default=False, alias="ENABLE_MCP")
-    enable_reranker: bool = Field(default=True, alias="ENABLE_RERANKER")
-    enable_ner_bert: bool = Field(default=False, alias="ENABLE_NER_BERT")
+    # Accept both lower-case (docker/.env, .env.template) and legacy UPPER_SNAKE_CASE keys.
+    enable_knowledge_base: bool = Field(
+        default=False,
+        validation_alias=AliasChoices("enable_knowledge_base", "ENABLE_KNOWLEDGE_BASE"),
+    )
+    enable_knowledge_graph: bool = Field(
+        default=False,
+        validation_alias=AliasChoices("enable_knowledge_graph", "ENABLE_KNOWLEDGE_GRAPH"),
+    )
+    enable_web_search: bool = Field(
+        default=False,
+        validation_alias=AliasChoices("enable_web_search", "ENABLE_WEB_SEARCH"),
+    )
+    enable_mcp: bool = Field(
+        default=False,
+        validation_alias=AliasChoices("enable_mcp", "ENABLE_MCP"),
+    )
+    enable_reranker: bool = Field(
+        default=True,
+        validation_alias=AliasChoices("enable_reranker", "ENABLE_RERANKER"),
+    )
+    enable_ner_bert: bool = Field(
+        default=False,
+        validation_alias=AliasChoices("enable_ner_bert", "ENABLE_NER_BERT"),
+    )
+    enable_asr: bool = Field(
+        default=False,
+        validation_alias=AliasChoices("enable_asr", "ENABLE_ASR"),
+    )
+
+
+class AsrSettings(BaseSettings):
+    """ASR 配置"""
+    model_config = SettingsConfigDict(env_prefix="", extra="ignore")
+
+    funasr_url: str = Field(
+        default="ws://localhost:10095",
+        validation_alias=AliasChoices("funasr_url", "FUNASR_URL"),
+    )
 
 
 class AgentSettings(BaseSettings):
@@ -202,13 +265,25 @@ class AgentSettings(BaseSettings):
     model_config = SettingsConfigDict(extra="ignore")
 
     # Checkpointer 类型: memory, sqlite
-    checkpointer_type: str = Field(default="memory", alias="CHECKPOINTER_TYPE")
+    checkpointer_type: str = Field(
+        default="memory",
+        validation_alias=AliasChoices("checkpointer_type", "CHECKPOINTER_TYPE"),
+    )
     # 对话最大消息数
-    conversation_max_messages: int = Field(default=50, alias="CONVERSATION_MAX_MESSAGES")
+    conversation_max_messages: int = Field(
+        default=50,
+        validation_alias=AliasChoices("conversation_max_messages", "CONVERSATION_MAX_MESSAGES"),
+    )
     # 时间旅行功能
-    enable_time_travel: bool = Field(default=False, alias="ENABLE_TIME_TRAVEL")
+    enable_time_travel: bool = Field(
+        default=False,
+        validation_alias=AliasChoices("enable_time_travel", "ENABLE_TIME_TRAVEL"),
+    )
     # 中断/审批功能
-    enable_interrupts: bool = Field(default=False, alias="ENABLE_INTERRUPTS")
+    enable_interrupts: bool = Field(
+        default=False,
+        validation_alias=AliasChoices("enable_interrupts", "ENABLE_INTERRUPTS"),
+    )
 
 
 class KnowledgeBaseConfig(BaseSettings):
@@ -229,6 +304,7 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
+        case_sensitive=False,
         extra="ignore",
     )
 
@@ -243,6 +319,8 @@ class Settings(BaseSettings):
     agent: AgentSettings = Field(default_factory=AgentSettings)
     tools: ToolSettings = Field(default_factory=ToolSettings)
     kb_config: KnowledgeBaseConfig = Field(default_factory=KnowledgeBaseConfig)
+    cors: CorsSettings = Field(default_factory=CorsSettings)
+    asr: AsrSettings = Field(default_factory=AsrSettings)
 
     def get_api_key(self, provider: str) -> str:
         """根据 provider 获取 API Key"""

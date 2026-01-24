@@ -6,14 +6,22 @@
     >
     </HeaderComponent>
     <div class="tools-grid">
-      <div v-for="tool in tools" :key="tool.name" class="tool-card" @click="navigateToTool(tool.url)">
-        <div class="tool-header">
-          <h3>{{ tool.title }}</h3>
+      <template v-if="state.loadingTools">
+        <div v-for="n in 6" :key="n" class="tool-card ui-card tool-card--skeleton">
+          <a-skeleton active :title="false" :paragraph="{ rows: 3 }" />
         </div>
-        <div class="tool-info">
-          <p>{{ tool.description }}</p>
+      </template>
+      <template v-else>
+        <div v-if="tools.length === 0" class="tools-empty ui-muted">暂无工具</div>
+        <div v-for="tool in tools" :key="tool.name" class="tool-card ui-card" @click="navigateToTool(tool.url)">
+          <div class="tool-header">
+            <h3>{{ tool.title }}</h3>
+          </div>
+          <div class="tool-info">
+            <p>{{ tool.description }}</p>
+          </div>
         </div>
-      </div>
+      </template>
     </div>
   </div>
 </template>
@@ -21,15 +29,11 @@
 <script setup>
 import { onMounted, reactive, ref } from 'vue';
 import { useRouter } from 'vue-router';
-import { CalculatorOutlined, FileSearchOutlined, TranslationOutlined } from '@ant-design/icons-vue';
 import HeaderComponent from '@/components/HeaderComponent.vue';
 import { apiFetch } from '@/api/http'
 
 const router = useRouter();
 const tools = ref([]);
-const iconMap = ref({
-  "text-chunking": FileSearchOutlined
-})
 
 const state = reactive({
   loadingTools: true,
@@ -37,9 +41,9 @@ const state = reactive({
 
 const getTools = () => {
   state.loadingTools = true
-  apiFetch('/api/tools/', { method: 'GET', timeoutMs: 5000 })
+  apiFetch('/tools/', { method: 'GET', timeoutMs: 5000 })
     .then((data) => {
-      tools.value = Array.isArray(data) ? data : []
+      tools.value = Array.isArray(data) ? data : (data?.tools || [])
     })
     .catch(() => {
       // Offline fallback so the page still renders.
@@ -77,16 +81,11 @@ onMounted(() => {
   .tool-card {
     display: flex;
     flex-direction: column;
-    background-color: var(--surface-color);
-    border: 1px solid var(--gray-300);
-    border-radius: 8px;
     padding: 20px;
-    transition: transform 0.1s ease, box-shadow 0.1s ease;
     cursor: pointer;
 
     &:hover {
-      // transform: translateY(-1px);
-      box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+      // ui-card handles hover
     }
 
     .tool-header {
@@ -109,9 +108,17 @@ onMounted(() => {
 
       p {
         margin: 0;
-        color: var(--gray-800);
+        color: var(--gray-700);
       }
     }
   }
+
+  .tool-card--skeleton {
+    cursor: default;
+  }
+}
+
+.tools-empty {
+  padding: 8px;
 }
 </style>

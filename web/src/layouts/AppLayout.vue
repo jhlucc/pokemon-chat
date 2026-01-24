@@ -1,5 +1,5 @@
 <script setup>
-import { reactive, onMounted, computed, ref, watch } from 'vue'
+import { reactive, onMounted, onUnmounted, computed, ref, watch } from 'vue'
 import { RouterLink, RouterView, useRoute } from 'vue-router'
 import { usePreferredDark } from '@vueuse/core'
 import {
@@ -16,7 +16,7 @@ import {
   ProjectOutlined,
   RedoOutlined,
   ApiOutlined,
-  MoonOutlined,
+  BulbFilled,
   DesktopOutlined,
 } from '@ant-design/icons-vue'
 import { theme as antdTheme } from 'ant-design-vue'
@@ -24,10 +24,16 @@ import { applyTheme, getSavedThemeMode, setThemeMode, themeConfig } from '@/asse
 import { useConfigStore } from '@/stores/config'
 import { useDatabaseStore } from '@/stores/database'
 import DebugComponent from '@/components/DebugComponent.vue'
+import { getOfflineMode } from '@/utils/offlineMode'
 
 const configStore = useConfigStore()
 const databaseStore = useDatabaseStore()
 const preferredDark = usePreferredDark()
+
+const offlineMode = ref(getOfflineMode())
+const onOfflineModeChanged = () => {
+  offlineMode.value = getOfflineMode()
+}
 
 const layoutSettings = reactive({
   showDebug: false,
@@ -60,6 +66,13 @@ const toggleThemeMode = () => {
   themeMode.value = themeMode.value === 'dark' ? 'system' : 'dark'
 }
 
+const onThemeToggleKeydown = (e) => {
+  if (e.key === 'Enter' || e.key === ' ') {
+    e.preventDefault()
+    toggleThemeMode()
+  }
+}
+
 const antdThemeConfig = computed(() => ({
   ...themeConfig,
   ...(appliedIsDark.value ? { algorithm: antdTheme.darkAlgorithm } : {}),
@@ -83,15 +96,28 @@ onMounted(() => {
   getRemoteConfig()
   getRemoteDatabase()
 
+  window.addEventListener('offline-mode-changed', onOfflineModeChanged)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('offline-mode-changed', onOfflineModeChanged)
 })
 
 // 打印当前页面的路由信息，使用vue3的setup composition API
 const route = useRoute()
-console.log(route)
 
 const apiDocsUrl = computed(() => {
-  // return `${import.meta.env.VITE_API_URL || `http://${window.location.hostname}:${window.location.port}`}/docs`
-  return `http://localhost:5050/docs`
+  // Works both in dev (Vite proxy) and prod (Nginx /api reverse proxy).
+  return `${window.location.origin}/api/docs`
+})
+
+const backendMode = computed(() => {
+  const backend = configStore.config?.backend || {}
+  const isMock = Boolean(backend.mock) || offlineMode.value === 'on'
+  const isOnline = Boolean(backend.online)
+  if (isMock) return { key: 'mock', short: 'MOCK', label: 'Mock（离线演示）' }
+  if (isOnline) return { key: 'online', short: 'API', label: 'Backend Online' }
+  return { key: 'offline', short: 'OFF', label: 'Backend Offline' }
 })
 
 
@@ -154,11 +180,11 @@ const mainList = [{
     </div>
     <div class="header" :class="{ 'top-bar': layoutSettings.useTopBar }">
       <div class="logo circle">
-        <router-link to="/">
-          <img src="/avatar.jpg">
-          <span class="logo-text">可萌</span>
-        </router-link>
-      </div>
+	        <router-link to="/">
+	          <img src="/avatar.jpg" alt="Logo">
+	          <span class="logo-text">可萌</span>
+	        </router-link>
+	      </div>
       <div class="nav">
         <!-- 使用mainList渲染导航项 -->
         <RouterLink
@@ -174,18 +200,39 @@ const mainList = [{
       </div>
       <div class="fill" style="flex-grow: 1;"></div>
 
-      <div class="nav-item api-docs">
+      <div class="nav-item mode-indicator" aria-label="运行模式">
         <a-tooltip placement="right">
-          <template #title>接口文档 {{ apiDocsUrl }}</template>
-          <a :href="apiDocsUrl" target="_blank" class="github-link">
-            <ApiOutlined class="icon" />
-          </a>
+          <template #title>
+            <div>{{ backendMode.label }}</div>
+            <div>离线模式：{{ offlineMode }}</div>
+          </template>
+          <span class="mode-pill" :class="backendMode.key">{{ backendMode.short }}</span>
         </a-tooltip>
       </div>
-      <div class="nav-item theme-toggle" @click="toggleThemeMode" role="button" tabindex="0">
+
+	      <div class="nav-item api-docs">
+	        <a-tooltip placement="right">
+	          <template #title>接口文档 {{ apiDocsUrl }}</template>
+	          <a :href="apiDocsUrl" target="_blank" rel="noopener noreferrer" aria-label="接口文档" class="github-link">
+	            <ApiOutlined class="icon" />
+	          </a>
+	        </a-tooltip>
+	      </div>
+      <div
+        class="nav-item theme-toggle"
+        @click="toggleThemeMode"
+        @keydown="onThemeToggleKeydown"
+        role="button"
+        tabindex="0"
+        aria-label="切换主题"
+      >
         <a-tooltip placement="right">
           <template #title>主题：{{ themeLabel }}（当前：{{ appliedLabel }}）</template>
-          <component class="icon" :is="themeMode === 'dark' ? MoonOutlined : DesktopOutlined" />
+          <component
+            class="icon"
+            :is="themeMode === 'dark' ? BulbFilled : DesktopOutlined"
+            aria-hidden="true"
+          />
         </a-tooltip>
       </div>
       <RouterLink class="nav-item setting" to="/setting" active-class="active">
@@ -195,11 +242,21 @@ const mainList = [{
         </a-tooltip>
       </RouterLink>
     </div>
-    <div class="header-mobile">
-      <RouterLink to="/chat" class="nav-item" active-class="active">对话</RouterLink>
-      <RouterLink to="/database" class="nav-item" active-class="active">知识</RouterLink>
-      <RouterLink to="/setting" class="nav-item" active-class="active">设置</RouterLink>
-    </div>
+	    <div class="header-mobile">
+	      <RouterLink to="/chat" class="nav-item" active-class="active" aria-label="对话">
+	        <MessageOutlined class="icon" aria-hidden="true" />
+	        <span class="label">对话</span>
+	      </RouterLink>
+	      <RouterLink to="/database" class="nav-item" active-class="active" aria-label="知识库">
+	        <BookOutlined class="icon" aria-hidden="true" />
+	        <span class="label">知识</span>
+	      </RouterLink>
+	      <RouterLink to="/setting" class="nav-item" active-class="active" aria-label="设置">
+	        <SettingOutlined class="icon" aria-hidden="true" />
+	        <span class="label">设置</span>
+	        <span class="mode-badge" :class="backendMode.key" aria-hidden="true">{{ backendMode.short }}</span>
+	      </RouterLink>
+	    </div>
     <a-config-provider :theme="antdThemeConfig">
     <router-view v-slot="{ Component, route }" id="app-router-view">
       <keep-alive v-if="route.meta.keepAlive !== false">
@@ -212,8 +269,6 @@ const mainList = [{
 </template>
 
 <style lang="less" scoped>
-@import '@/assets/main.css';
-
 .app-layout {
   display: flex;
   flex-direction: row;
@@ -252,10 +307,10 @@ div.header, #app-router-view {
   flex: 0 0 70px;
   justify-content: flex-start;
   align-items: center;
-  background-color: var(--gray-100);
+  background-color: var(--bg-sider);
   height: 100%;
   width: 74px;
-  border-right: 1px solid var(--gray-300);
+  border-right: 1px solid var(--border-color);
 
   .logo {
     width: 40px;
@@ -281,6 +336,7 @@ div.header, #app-router-view {
   }
 
   .nav-item {
+    position: relative;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -289,7 +345,7 @@ div.header, #app-router-view {
     padding: 4px;
     padding-top: 10px;
     border: 1px solid transparent;
-    border-radius: 8px;
+    border-radius: var(--radius-md);
     background-color: transparent;
     color: var(--text-color);
     font-size: 20px;
@@ -319,7 +375,7 @@ div.header, #app-router-view {
         margin-top: 4px;
 
         .star-icon {
-          color: #f0a742;
+          color: var(--warning-color);
           font-size: 12px;
           margin-right: 2px;
         }
@@ -330,20 +386,36 @@ div.header, #app-router-view {
       }
     }
 
-    &.api-docs {
-      padding: 10px 12px;
-    }
+	    &.api-docs {
+	      padding: 10px 12px;
+	    }
 
-    &.setting {
-      padding: 16px 12px;
-      width: 56px;
-    }
+	    &.mode-indicator {
+	      padding: 10px 0;
+	    }
+
+	    &.setting {
+	      padding: 16px 12px;
+	      width: 56px;
+	    }
 
     &.active {
       font-weight: bold;
       color: var(--main-600);
       background-color: var(--surface-color);
-      border: 1px solid var(--surface-color);
+      border: 1px solid var(--border-color);
+
+      &::before {
+        content: '';
+        position: absolute;
+        left: -10px;
+        top: 50%;
+        width: 3px;
+        height: 22px;
+        border-radius: 3px;
+        background: var(--main-500);
+        transform: translateY(-50%);
+      }
     }
 
     &.warning {
@@ -354,15 +426,49 @@ div.header, #app-router-view {
       background-color: var(--hover-bg);
     }
 
-    .text {
-      font-size: 12px;
-      margin-top: 4px;
-      text-align: center;
-    }
-  }
+	    .text {
+	      font-size: 12px;
+	      margin-top: 4px;
+	      text-align: center;
+	    }
 
-  .setting {
-    width: auto;
+	    .mode-pill {
+	      display: inline-flex;
+	      align-items: center;
+	      justify-content: center;
+	      min-width: 44px;
+	      padding: 4px 8px;
+	      border-radius: 999px;
+	      border: 1px solid var(--border-color);
+	      background: var(--surface-color);
+	      color: var(--gray-700);
+	      font-size: 11px;
+	      font-weight: 700;
+	      letter-spacing: 0.4px;
+	      user-select: none;
+	    }
+
+	    .mode-pill.mock {
+	      color: var(--main-600);
+	      border-color: color-mix(in srgb, var(--main-500) 35%, var(--border-color));
+	      background: color-mix(in srgb, var(--main-500) 14%, var(--surface-color));
+	    }
+
+	    .mode-pill.online {
+	      color: var(--success-color);
+	      border-color: color-mix(in srgb, var(--success-color) 35%, var(--border-color));
+	      background: color-mix(in srgb, var(--success-color) 12%, var(--surface-color));
+	    }
+
+	    .mode-pill.offline {
+	      color: var(--danger-600);
+	      border-color: color-mix(in srgb, var(--danger-600) 35%, var(--border-color));
+	      background: color-mix(in srgb, var(--danger-600) 10%, var(--surface-color));
+	    }
+	  }
+
+	  .setting {
+	    width: auto;
     font-size: 20px;
     color: var(--text-color);
     margin-bottom: 20px;
@@ -377,11 +483,11 @@ div.header, #app-router-view {
 .header .nav {
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
+  justify-content: flex-start;
   align-items: center;
   position: relative;
-  height: 45px;
-  gap: 16px;
+  padding: 6px 0;
+  gap: 12px;
 }
 
 @media (max-width: 520px) {
@@ -406,22 +512,74 @@ div.header, #app-router-view {
     align-items: center;
     flex: 0 0 60px;
     border-right: none;
-    height: 40px;
+    height: 60px;
+    background-color: var(--bg-sider);
+    border-top: 1px solid var(--border-color);
 
-    .nav-item {
-      text-decoration: none;
-      width: 40px;
-      color: var(--gray-900);
-      font-size: 1rem;
-      font-weight: bold;
-      transition: color 0.1s ease-in-out, font-size 0.1s ease-in-out;
+	    .nav-item {
+	      position: relative;
+	      text-decoration: none;
+	      width: auto;
+	      min-width: 52px;
+	      color: var(--gray-700);
+      font-size: 12px;
+      font-weight: 600;
+      transition: color 0.12s ease-in-out, transform 0.12s ease-in-out, background-color 0.12s ease-in-out;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      padding: 6px 10px;
+      border-radius: 12px;
 
-      &.active {
-        color: var(--text-color);
-        font-size: 1.1rem;
+      .icon {
+        font-size: 18px;
       }
-    }
-  }
+
+	      &.active {
+	        color: var(--main-600);
+	        background-color: var(--surface-color);
+	      }
+
+	      .mode-badge {
+	        position: absolute;
+	        top: 6px;
+	        right: 6px;
+	        display: inline-flex;
+	        align-items: center;
+	        justify-content: center;
+	        min-width: 34px;
+	        padding: 2px 6px;
+	        border-radius: 999px;
+	        border: 1px solid var(--border-color);
+	        background: var(--surface-color);
+	        font-size: 10px;
+	        font-weight: 800;
+	        letter-spacing: 0.3px;
+	        color: var(--gray-700);
+	        pointer-events: none;
+	      }
+
+	      .mode-badge.mock {
+	        color: var(--main-600);
+	        border-color: color-mix(in srgb, var(--main-500) 35%, var(--border-color));
+	        background: color-mix(in srgb, var(--main-500) 14%, var(--surface-color));
+	      }
+
+	      .mode-badge.online {
+	        color: var(--success-color);
+	        border-color: color-mix(in srgb, var(--success-color) 35%, var(--border-color));
+	        background: color-mix(in srgb, var(--success-color) 12%, var(--surface-color));
+	      }
+
+	      .mode-badge.offline {
+	        color: var(--danger-600);
+	        border-color: color-mix(in srgb, var(--danger-600) 35%, var(--border-color));
+	        background: color-mix(in srgb, var(--danger-600) 10%, var(--surface-color));
+	      }
+	    }
+	  }
   .app-layout .chat-box::webkit-scrollbar {
     width: 0;
   }
@@ -437,8 +595,8 @@ div.header, #app-router-view {
   width: 100%;
   height: 50px;
   border-right: none;
-  border-bottom: 1px solid var(--main-light-2);
-  background-color: var(--main-light-3);
+  border-bottom: 1px solid var(--border-color);
+  background-color: var(--bg-sider);
   padding: 0 20px;
   gap: 24px;
 
@@ -519,12 +677,27 @@ div.header, #app-router-view {
         margin-left: 6px;
 
         .star-icon {
-          color: #f0a742;
+          color: var(--warning-color);
           font-size: 14px;
           margin-right: 2px;
         }
       }
     }
+  }
+
+  .nav-item.active::before {
+    display: none;
+  }
+
+  .nav-item.active::after {
+    content: '';
+    position: absolute;
+    left: 12px;
+    right: 12px;
+    bottom: -6px;
+    height: 2px;
+    border-radius: 2px;
+    background: var(--main-500);
   }
 }
 </style>

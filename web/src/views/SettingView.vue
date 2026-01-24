@@ -77,15 +77,45 @@
         </a-col>
 
         <a-col :xs="24" :md="24">
-          <a-card title="本地配置" :bordered="false">
-            <a-space wrap>
-              <a-button danger @click="resetLocalConfig">
-                重置本地配置
-              </a-button>
-            </a-space>
-            <div class="muted" style="margin-top: 10px;">
-              本地配置存储在浏览器 localStorage（用于离线可用/页面正常显示）。
-            </div>
+	          <a-card title="本地配置" :bordered="false">
+	            <a-space wrap>
+	              <a-space>
+	                <span class="muted">离线演示模式</span>
+	                <a-select v-model:value="offlineMode" style="width: 180px" @change="onOfflineModeChange">
+	                  <a-select-option value="auto">自动（失败回退 Mock）</a-select-option>
+	                  <a-select-option value="on">强制 Mock（无需后端）</a-select-option>
+	                  <a-select-option value="off">强制后端（不回退）</a-select-option>
+	                </a-select>
+	              </a-space>
+	              <a-button danger @click="resetLocalConfig">
+	                重置本地配置
+	              </a-button>
+	              <a-button danger @click="resetMockData">
+	                清空 Mock 数据
+	              </a-button>
+	              <a-button @click="exportMockData">
+	                导出 Mock 数据
+	              </a-button>
+	              <a-upload
+	                :show-upload-list="false"
+	                :customRequest="importMockData"
+	                accept="application/json"
+	              >
+	                <a-button>
+	                  导入 Mock 数据
+	                </a-button>
+	              </a-upload>
+	            </a-space>
+	            <div class="muted" style="margin-top: 10px;">
+	              本地配置存储在浏览器 localStorage（用于离线可用/页面正常显示）。清空/导入 Mock 数据仅影响本机浏览器，不会影响后端。
+	            </div>
+	            <a-alert
+	              style="margin-top: 12px"
+	              show-icon
+              type="info"
+              message="离线模式说明"
+              description="开启 Mock 后，前端会用本地数据模拟后端接口以便完整展示功能（对话/工具/知识库/智能体等）。真实功能仍需要后端在线。"
+            />
           </a-card>
         </a-col>
       </a-row>
@@ -95,19 +125,25 @@
 
 <script setup>
 import { computed, reactive, ref, watch } from 'vue';
-import { message } from 'ant-design-vue';
-import HeaderComponent from '@/components/HeaderComponent.vue';
-import { useConfigStore } from '@/stores/config';
-import { apiFetch } from '@/api/http';
+	import { message } from 'ant-design-vue';
+	import HeaderComponent from '@/components/HeaderComponent.vue';
+	import { useConfigStore } from '@/stores/config';
+		import { apiFetch } from '@/api/http';
+		import { getOfflineMode, setOfflineMode } from '@/utils/offlineMode';
+		import { safeJsonParse } from '@/utils/storage';
+		import { downloadJson } from '@/utils/download';
 
-const configStore = useConfigStore();
+	const configStore = useConfigStore();
 
-const state = reactive({
+	const state = reactive({
   refreshing: false,
 });
 
 const backendOnline = computed(() => Boolean(configStore.config.backend?.online));
 const backendReady = computed(() => Boolean(configStore.config.backend?.ready));
+	const offlineMode = ref(getOfflineMode());
+	const MOCK_CONFIG_KEY = 'pokemon_chat_mock_config_v1';
+	const MOCK_STATE_KEY = 'pokemon_chat_mock_state_v1';
 
 const modelCatalog = computed(() => configStore.config.model_names || {});
 const providerKeys = computed(() => Object.keys(modelCatalog.value || {}).filter((k) => k !== 'custom'));
@@ -127,9 +163,8 @@ watch(
 const providerModels = computed(() => modelCatalog.value?.[modelProvider.value]?.models || []);
 
 const onProviderChange = async (p) => {
-  await configStore.setConfigValue('model_provider', p);
   const def = modelCatalog.value?.[p]?.default || providerModels.value?.[0] || '';
-  if (def) await configStore.setConfigValue('model_name', def);
+  await configStore.setConfigValues({ model_provider: p, ...(def ? { model_name: def } : {}) });
 };
 
 const onModelChange = async (m) => {
@@ -148,7 +183,7 @@ const refreshAll = async () => {
 const restartBackend = async () => {
   if (!backendOnline.value) return;
   try {
-    await apiFetch('/api/restart', { method: 'POST', timeoutMs: 10000 });
+    await apiFetch('/restart', { method: 'POST', timeoutMs: 10000 });
     message.success('已触发后端重启/刷新（best-effort）');
     await refreshAll();
   } catch (e) {
@@ -156,15 +191,68 @@ const restartBackend = async () => {
   }
 };
 
-const resetLocalConfig = () => {
-  try {
-    localStorage.removeItem('pokemon_chat_config_v1');
-    message.success('已重置本地配置，刷新页面生效');
-  } catch (e) {
-    message.error('重置失败');
-  }
-};
-</script>
+	const resetLocalConfig = () => {
+	  try {
+	    localStorage.removeItem('pokemon_chat_config_v1');
+	    message.success('已重置本地配置，刷新页面生效');
+	  } catch {
+	    message.error('重置失败');
+	  }
+	};
+
+	const resetMockData = async () => {
+	  try {
+	    localStorage.removeItem(MOCK_CONFIG_KEY);
+	    localStorage.removeItem(MOCK_STATE_KEY);
+	    message.success('已清空 Mock 数据');
+	    await refreshAll();
+	  } catch {
+	    message.error('清空失败');
+	  }
+	};
+
+		const exportMockData = () => {
+		  const exportedAt = new Date().toISOString();
+		  const payload = {
+		    version: 1,
+		    exported_at: exportedAt,
+		    mock_config: safeJsonParse(localStorage.getItem(MOCK_CONFIG_KEY), null),
+		    mock_state: safeJsonParse(localStorage.getItem(MOCK_STATE_KEY), null),
+		  };
+		  const safeTs = exportedAt.replace(/[:.]/g, '-');
+		  const ok = downloadJson(`pokemon-chat-mock-${safeTs}.json`, payload);
+		  if (ok) message.success('已导出 Mock 数据');
+		  else message.error('导出失败');
+		};
+
+	const importMockData = async ({ file, onSuccess, onError }) => {
+	  try {
+	    const text = await file.text();
+	    const parsed = safeJsonParse(text, null);
+	    if (!parsed || typeof parsed !== 'object') throw new Error('JSON 格式不正确');
+
+	    const cfg = parsed.mock_config ?? parsed.config ?? null;
+	    const st = parsed.mock_state ?? parsed.state ?? null;
+	    if (!cfg || typeof cfg !== 'object') throw new Error('缺少 mock_config');
+	    if (!st || typeof st !== 'object') throw new Error('缺少 mock_state');
+
+	    localStorage.setItem(MOCK_CONFIG_KEY, JSON.stringify(cfg));
+	    localStorage.setItem(MOCK_STATE_KEY, JSON.stringify(st));
+	    message.success('已导入 Mock 数据');
+	    await refreshAll();
+	    onSuccess?.({}, file);
+	  } catch (e) {
+	    message.error(e?.message || '导入失败');
+	    onError?.(e);
+	  }
+	};
+
+	const onOfflineModeChange = async (v) => {
+	  offlineMode.value = setOfflineMode(v);
+	  message.success(`已切换离线模式：${offlineMode.value}`);
+	  await refreshAll();
+	};
+	</script>
 
 <style scoped>
 .kv {

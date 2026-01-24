@@ -11,6 +11,18 @@ export const DEFAULT_CONFIG = {
     checks: null,
   },
 
+  // --- UI feature visibility (frontend-controlled) ---
+  // These control what the frontend *shows*. Backend capability flags below only control
+  // whether actions call the real backend or are disabled / mocked.
+  ui: {
+    show_knowledge_base: true,
+    show_knowledge_graph: true,
+    show_web_search: true,
+    show_mcp: true,
+    show_tools: true,
+    show_agents: true,
+  },
+
   // --- model selection (frontend-controlled; sent with requests) ---
   model_provider: DEFAULT_PROVIDER,
   model_name: MODEL_CATALOG[DEFAULT_PROVIDER]?.default || 'Qwen/Qwen2.5-7B-Instruct',
@@ -32,4 +44,3 @@ export const DEFAULT_CONFIG = {
 };
 
 export const LOCAL_CONFIG_KEY = 'pokemon_chat_config_v1';
-

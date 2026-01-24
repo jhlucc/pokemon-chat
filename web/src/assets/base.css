@@ -11,12 +11,47 @@
   --primary-color: #2C86A8;
   --primary-light-color: #8CC6E1;
   --error-color: #ba1a1a;
+  --success-color: #52c41a;
+  --warning-color: #faad14;
+
+  /* 语义色（用于 hover/边框/文本） */
+  --danger-500: #ff4d4f;
+  --danger-600: #d9363e;
+
+  /* 徽章色（文件类型等小标签） */
+  --badge-file-pdf: #005F77;
+  --badge-file-txt: #068033;
+  --badge-file-doc: #2C59B7;
+  --badge-file-md: #020817;
 
   /* 通用表面色/交互色（用于自定义组件的暗色适配） */
   --surface-color: #ffffff;
   --surface-color-2: #fafafa;
+  --bg-sider: var(--gray-50);
   --hover-bg: rgba(0, 0, 0, 0.04);
   --min-width: 360px;
+
+  /* 尺寸/阴影（统一 UI 观感） */
+  --radius-xs: 6px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow-sm: 0 6px 18px rgba(0, 0, 0, 0.08);
+  --shadow-md: 0 12px 30px rgba(0, 0, 0, 0.12);
+
+  --focus-ring: 0 0 0 3px rgba(44, 134, 168, 0.25);
+
+  /* 间距（用于统一留白，尽量用这些而不是散落的 magic number） */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
 
   /* 兼容旧样式变量（项目内大量使用 --main-* / --main-light-*） */
   --main-color: var(--primary-color);
@@ -52,6 +87,12 @@
 
   /* 特殊：聊天区域 */
   --chat-background-color: #ffffff;
+
+  /* 聊天：消息气泡/辅助色（用于 MessageComponent 等） */
+  --chat-user-bubble-bg: rgba(44, 134, 168, 0.12);
+  --chat-user-bubble-text: var(--gray-900);
+  --chat-assistant-text: var(--gray-900);
+  --chat-muted-text: var(--gray-600);
 }
 
 /* === 暗黑模式 === */
@@ -65,6 +106,16 @@
   --primary-color: #2C86A8;
   --primary-light-color: #4e99b9;
   --error-color: #ba1a1a;
+  --success-color: #52c41a;
+  --warning-color: #faad14;
+
+  --danger-500: #ff7875;
+  --danger-600: #ff4d4f;
+
+  --badge-file-pdf: #005F77;
+  --badge-file-txt: #068033;
+  --badge-file-doc: #2C59B7;
+  --badge-file-md: #020817;
 
   /* 灰阶色（重新定义深色环境下的灰度层次） */
   --gray-0: #121212;
@@ -84,10 +135,23 @@
   /* 特殊：聊天区域 */
   --chat-background-color: #181818;
 
+  --chat-user-bubble-bg: rgba(44, 134, 168, 0.22);
+  --chat-user-bubble-text: var(--gray-900);
+  --chat-assistant-text: var(--gray-900);
+  --chat-muted-text: var(--gray-600);
+
   /* 通用表面色/交互色 */
   --surface-color: #1e1e1e;
   --surface-color-2: #121212;
+  --bg-sider: var(--gray-50);
   --hover-bg: rgba(255, 255, 255, 0.06);
+
+  /* 尺寸/阴影（暗色下更克制） */
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.5);
+  --shadow-sm: 0 10px 22px rgba(0, 0, 0, 0.55);
+  --shadow-md: 0 18px 36px rgba(0, 0, 0, 0.6);
+
+  --focus-ring: 0 0 0 3px rgba(44, 134, 168, 0.35);
 
   /* 暗色下的主色调微调（用于 hover/弱背景） */
   --main-10: rgba(44, 134, 168, 0.18);
@@ -118,7 +182,52 @@ body {
   font-family: -apple-system, BlinkMacSystemFont, 'Noto Sans SC', 'Roboto', 'HarmonyOS Sans SC', 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
   font-size: 15px;
   line-height: 1.6;
-  transition: all 0.3s ease; /* 主题切换平滑过渡 */
+  transition: background-color 0.25s ease, color 0.25s ease; /* 主题切换平滑过渡 */
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* 主题下的图片图标（如 svg <img>）适配：仅对明确标记的图标生效 */
+:root[data-theme='dark'] .sidebar-icon {
+  filter: invert(1);
+  opacity: 0.9;
+}
+
+/* 清晰的键盘焦点（避免“点哪都不知道”） */
+:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* === Scrollbar (WebKit) === */
+*::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--text-color) 18%, transparent);
+  border-radius: 999px;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in srgb, var(--text-color) 28%, transparent);
 }
 
 /* === 通用组件 === */

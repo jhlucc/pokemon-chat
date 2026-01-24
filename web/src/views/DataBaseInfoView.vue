@@ -14,7 +14,7 @@
       <a-button type="primary" @click="backToDatabase">
         <LeftOutlined /> 返回
       </a-button>
-      <a-button type="primary" danger :disabled="!canUseKb" @click="deleteDatabse">
+      <a-button type="primary" danger @click="deleteDatabse">
         <DeleteOutlined /> 删除数据库
       </a-button>
     </template>
@@ -45,21 +45,21 @@
                 <span :class="['span-type', text]">{{ text?.toUpperCase() }}</span>
               </template>
               <template v-else-if="column.key === 'status' && text === 'done'">
-                <CheckCircleFilled style="color: #41A317;"/>
+                <CheckCircleFilled style="color: var(--success-color);"/>
               </template>
               <template v-else-if="column.key === 'status' && text === 'failed'">
-                <CloseCircleFilled style="color: #FF4D4F ;"/>
+                <CloseCircleFilled style="color: var(--danger-500);"/>
               </template>
               <template v-else-if="column.key === 'status' && text === 'processing'">
-                <HourglassFilled style="color: #1677FF;"/>
+                <HourglassFilled style="color: var(--primary-color);"/>
               </template>
               <template v-else-if="column.key === 'status' && text === 'waiting'">
-                <ClockCircleFilled style="color: #FFCD43;"/>
+                <ClockCircleFilled style="color: var(--warning-color);"/>
               </template>
               <template v-else-if="column.key === 'action'">
                 <a-button class="del-btn" type="link"
                   @click="deleteFile(text)"
-                  :disabled="!canUseKb || state.lock || record.status === 'processing' || record.status === 'waiting' "
+                  :disabled="state.lock || record.status === 'processing' || record.status === 'waiting' "
                   >删除
                 </a-button>
               </template>
@@ -120,8 +120,8 @@
                   v-model:fileList="fileList"
                   name="file"
                   :multiple="true"
-                  :disabled="state.loading || !canUseKb"
-                  :action="'/api/data/upload?db_id=' + databaseId"
+                  :disabled="state.loading"
+                  :customRequest="customUpload"
                   @change="handleFileUpload"
                   @drop="handleDrop"
                 >
@@ -289,11 +289,13 @@
 </template>
 
 <script setup>
-import { onMounted, reactive, ref, watch, toRaw, onUnmounted, computed } from 'vue';
+import { onMounted, reactive, ref, watch, onUnmounted, computed } from 'vue';
 import { message, Modal } from 'ant-design-vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useConfigStore } from '@/stores/config'
 import { apiFetch } from '@/api/http'
+import { getOfflineMode } from '@/utils/offlineMode'
+import { chunkPlainText } from '@/utils/chunking'
 import HeaderComponent from '@/components/HeaderComponent.vue';
 import {
   ReadOutlined,
@@ -303,10 +305,7 @@ import {
   CloseCircleFilled,
   ClockCircleFilled,
   DeleteOutlined,
-  CloudUploadOutlined,
-  SearchOutlined,
-  LoadingOutlined,
-  CaretUpOutlined
+  CloudUploadOutlined
 } from '@ant-design/icons-vue'
 
 
@@ -318,10 +317,6 @@ const database = ref({});
 const fileList = ref([]);
 const selectedFile = ref(null);
 
-// 查询测试
-const queryText = ref('');
-const queryResult = ref(null)
-const filteredResults = ref([])
 const configStore = useConfigStore()
 const canUseKb = computed(() => Boolean(configStore.config.backend?.online) && Boolean(configStore.config.enable_knowledge_base))
 
@@ -336,107 +331,50 @@ const state = reactive({
   curPage: "files",
 });
 
-const meta = reactive({
-  mode: 'search',
-  maxQueryCount: 30,
-  filter: true,
-  use_rewrite_query: 'off',
-  rerankThreshold: 0.1,
-  distanceThreshold: 0.3,
-  topK: 10,
-  sortBy: 'rerank_score',
-});
-
-const use_rewrite_queryOptions = ref([
-  { value: 'off', payload: { title: 'off', subTitle: '不启用' } },
-  { value: 'on', payload: { title: 'on', subTitle: '启用重写' } },
-  { value: 'hyde', payload: { title: 'hyde', subTitle: '伪文档生成' } },
-])
-
-const filterQueryResults = () => {
-  if (!queryResult.value || !queryResult.value.all_results) {
-    return;
-  }
-
-  let results = toRaw(queryResult.value.all_results);
-  console.log("results", results);
-
-  if (meta.filter) {
-    results = results.filter(r => r.distance >= meta.distanceThreshold);
-    console.log("before", results);
-
-    // 根据排序方式决定排序逻辑
-    if (configStore.config.enable_reranker) {
-      // 先过滤掉低于阈值的结果
-      results = results.filter(r => r.rerank_score >= meta.rerankThreshold);
-
-      // 根据选择的排序方式进行排序
-      if (meta.sortBy === 'rerank_score') {
-        results = results.sort((a, b) => b.rerank_score - a.rerank_score);
-      } else {
-        // 按距离排序 (数值越大表示越相似)
-        results = results.sort((a, b) => b.distance - a.distance);
-      }
-    } else {
-      // 没有启用重排序时，默认按距离排序
-      results = results.sort((a, b) => b.distance - a.distance);
-    }
-
-    console.log("after", results);
-
-    results = results.slice(0, meta.topK);
-  }
-
-  filteredResults.value = results;
-}
-
-const onQuery = () => {
-  if (database.value.embed_model != configStore.config.embed_model) {
-    message.error('向量模型不匹配，请重新选择')
-    return
-  }
-
-  console.log(queryText.value)
-  state.searchLoading = true
-  if (!queryText.value.trim()) {
-    message.error('请输入查询内容')
-    state.searchLoading = false
-    return
-  }
-  meta.db_id = database.value.db_id
-  fetch('/api/data/query-test', {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json"  // 添加 Content-Type 头
-    },
-    body: JSON.stringify({
-      query: queryText.value.trim(),
-      meta: meta
-    }),
-  })
-  .then(response => response.json())
-  .then(data => {
-    console.log(data)
-    queryResult.value = data
-    filterQueryResults()
-  })
-  .catch(error => {
-    console.error(error)
-    message.error(error.message)
-  })
-  .finally(() => {
-    state.searchLoading = false
-  })
-}
-
 const handleFileUpload = (event) => {
-  console.log(event)
-  console.log(fileList.value)
+  void event
 }
 
 const handleDrop = (event) => {
-  console.log(event)
-  console.log(fileList.value)
+  void event
+}
+
+const customUpload = async ({ file, onSuccess, onError }) => {
+  try {
+    const mode = getOfflineMode()
+    const tryRemote = mode !== 'on'
+
+    const readAsText = async () => {
+      try {
+        return await file.text()
+      } catch {
+        return ''
+      }
+    }
+
+    if (tryRemote) {
+      try {
+        const formData = new FormData()
+        formData.append('file', file)
+        // db_id is optional for backend; keep it for compatibility.
+        const data = await apiFetch('/data/upload', {
+          method: 'POST',
+          query: { db_id: databaseId.value },
+          body: formData,
+          timeoutMs: 60000,
+        })
+        onSuccess?.(data, file)
+        return
+      } catch {
+        // fall through to local
+      }
+    }
+
+    const content = await readAsText()
+    onSuccess?.({ file_path: file.name, file_content: content }, file)
+  } catch (e) {
+    onError?.(e)
+  }
 }
 
 const afterOpenChange = (visible) => {
@@ -451,10 +389,14 @@ const backToDatabase = () => {
 
 const handleRefresh = () => {
   state.refrashing = true
-  getDatabaseInfo().then(() => {
+  const p = getDatabaseInfo()
+  if (p && typeof p.finally === 'function') {
+    p.finally(() => {
+      state.refrashing = false
+    })
+  } else {
     state.refrashing = false
-    console.log(database.value)
-  })
+  }
 }
 
 const deleteDatabse = () => {
@@ -466,45 +408,38 @@ const deleteDatabse = () => {
     cancelText: '取消',
     onOk: () => {
       state.lock = true
-      fetch(`/api/data/?db_id=${databaseId.value}`, {
+      apiFetch('/data/', {
         method: "DELETE",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          db_id: databaseId.value
-        }),
+        query: { db_id: databaseId.value },
+        body: { db_id: databaseId.value },
+        timeoutMs: 20000,
       })
-      .then(response => response.json())
-      .then(data => {
-        console.log(data)
-        message.success(data.message)
-        router.push('/database')
-      })
-      .catch(error => {
-        console.error(error)
-        message.error(error.message)
-      })
-      .finally(() => {
-        state.lock = false
-      })
+        .then((data) => {
+          message.success(data?.message || '已删除')
+          router.push('/database')
+        })
+        .catch((error) => {
+          console.error(error)
+          message.error(error?.message || '删除失败')
+        })
+        .finally(() => {
+          state.lock = false
+        })
     },
-    onCancel: () => {
-      console.log('Cancel');
-    },
+    onCancel: () => {},
   });
 }
 
 const openFileDetail = (record) => {
   state.lock = true
-  fetch(`/api/data/document?db_id=${databaseId.value}&file_id=${record.file_id}`, {
+  apiFetch(`/data/document`, {
     method: "GET",
+    query: { db_id: databaseId.value, file_id: record.file_id },
+    timeoutMs: 20000,
   })
-    .then(response => response.json())
-    .then(data => {
-      console.log(data)
-      if (data.status == "failed") {
-        message.error(data.message)
+    .then((data) => {
+      if (data?.status === "failed") {
+        message.error(data?.message || '获取失败')
         return
       }
       state.lock = false
@@ -514,9 +449,9 @@ const openFileDetail = (record) => {
       }
       state.drawer = true
     })
-    .catch(error => {
+    .catch((error) => {
       console.error(error)
-      message.error(error.message)
+      message.error(error?.message || '获取失败')
     })
 }
 
@@ -544,13 +479,9 @@ const getDatabaseInfo = () => {
   if (!db_id) {
     return
   }
-  if (!canUseKb.value) {
-    database.value = { db_id, name: '离线模式', files: {} }
-    return Promise.resolve(database.value)
-  }
   state.lock = true
   return new Promise((resolve, reject) => {
-    apiFetch(`/api/data/info`, { method: "GET", query: { db_id } })
+    apiFetch(`/data/info`, { method: "GET", query: { db_id } })
       .then(data => {
         database.value = data
         resolve(data)
@@ -567,7 +498,6 @@ const getDatabaseInfo = () => {
 }
 
 const deleteFile = (fileId) => {
-  console.log(fileId)
   //删除提示
   Modal.confirm({
     title: '删除文件',
@@ -576,35 +506,29 @@ const deleteFile = (fileId) => {
     cancelText: '取消',
     onOk: () => {
         state.lock = true
-        fetch('/api/data/document', {
+        apiFetch('/data/document', {
           method: "DELETE",
-          headers: {
-            "Content-Type": "application/json"  // 添加 Content-Type 头
-          },
-          body: JSON.stringify({
+          body: {
             db_id: databaseId.value,
             file_id: fileId
-          }),
+          },
+          timeoutMs: 20000,
         })
-          .then(response => response.json())
-          .then(data => {
-            console.log(data)
-            message.success(data.message)
+          .then((data) => {
+            message.success(data?.message || '已删除')
             getDatabaseInfo()
           })
-          .catch(error => {
+          .catch((error) => {
             console.error(error)
-              message.error(error.message)
-            })
-            .finally(() => {
-              state.lock = false
-            })
-    },
-    onCancel: () => {
-      console.log('Cancel');
-    },
-  });
-}
+            message.error(error?.message || '删除失败')
+          })
+          .finally(() => {
+            state.lock = false
+          })
+	    },
+	    onCancel: () => {},
+	  });
+	}
 
 const chunkParams = ref({
   chunk_size: 1000,
@@ -622,36 +546,50 @@ const getTotalChunks = () => {
 
 // 分块预览
  const chunkFiles = () => {
-  const files = fileList.value.filter(file => file.status === 'done').map(file => file.response.file_path);
+  const files = fileList.value
+    .filter((file) => file.status === 'done')
+    .map((file) => ({
+      name: file.name,
+      file_path: file?.response?.file_path || file.name,
+      file_content: file?.response?.file_content || '',
+    }));
 
   if (files.length === 0) {
     message.error('请先上传文件');
     return;
   }
 
-  state.loading = true;
+ state.loading = true;
   chunkResults.value = [];
 
   Promise.all(
-    files.map(file =>
-      fetch('/api/data/file-to-chunk', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          file: file,
-          chunk_size: chunkParams.value.chunk_size,
-          chunk_overlap: chunkParams.value.chunk_overlap
+    files.map(async (file) => {
+      let nodes = [];
+      // Offline-friendly: if we already have local file content, chunk in-browser.
+      if (file.file_content) {
+        nodes = chunkPlainText(file.file_content, {
+          chunkSize: chunkParams.value.chunk_size,
+          chunkOverlap: chunkParams.value.chunk_overlap,
+        }).map((c) => ({ text: c.text, meta: c.meta }));
+      } else {
+        const data = await apiFetch('/data/file-to-chunk', {
+          method: 'POST',
+          body: {
+            file: file.file_path,
+            chunk_size: chunkParams.value.chunk_size,
+            chunk_overlap: chunkParams.value.chunk_overlap,
+          },
+          timeoutMs: 60000,
         })
-      })
-        .then(res => res.json())
-        .then(data => ({
-          filename: file.split('/').pop(),
-          file_id: file.split('/').pop(), // 临时 file_id，后面可能需要 hash
-          nodes: data.chunks || []
-        }))
-    )
+        nodes = data?.chunks || [];
+      }
+
+      return {
+        filename: file.name,
+        file_id: file.name, // demo: use filename as id
+        nodes,
+      }
+    })
   )
     .then(results => {
       chunkResults.value = results;
@@ -680,47 +618,37 @@ const addToDatabase = () => {
   // 转换为API需要的格式
   const fileChunks = {};
   chunkResults.value.forEach(file => {
-    fileChunks[file.file_id] = file;
+  fileChunks[file.file_id] = file;
   });
 
   // 调用add-by-chunks接口将分块添加到数据库
-  fetch('/api/data/add-by-chunks', {
+  apiFetch('/data/add-by-chunks', {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({
+    body: {
       db_id: databaseId.value,
       file_chunks: fileChunks
-    }),
+    },
+    timeoutMs: 300000,
   })
-  .then(response => response.json())
-  .then(data => {
-    console.log(data)
-
-    if (data.status === 'failed') {
-      message.error(data.message)
-    } else {
-      message.success(data.message)
-      fileList.value = []
-      chunkResults.value = []
-      activeFileKeys.value = []
-    }
-  })
-  .catch(error => {
-    console.error(error)
-    message.error(error.message)
-  })
-  .finally(() => {
-    getDatabaseInfo()
-    state.adding = false
-    state.lock = false
-  })
-}
-
-const addDocumentByFile = () => {
-  // 此函数不再需要，由chunkFiles和addToDatabase替代
-  console.log('此功能已被拆分为两个步骤')
+    .then((data) => {
+      if (data?.status === 'failed') {
+        message.error(data?.message || '添加失败')
+      } else {
+        message.success(data?.message || '已添加')
+        fileList.value = []
+        chunkResults.value = []
+        activeFileKeys.value = []
+      }
+    })
+    .catch((error) => {
+      console.error(error)
+      message.error(error?.message || '添加失败')
+    })
+    .finally(() => {
+      getDatabaseInfo()
+      state.adding = false
+      state.lock = false
+    })
 }
 
 const columns = [
@@ -734,30 +662,10 @@ const columns = [
 
 watch(() => route.params.database_id, (newId) => {
     databaseId.value = newId;
-    console.log(newId)
     clearInterval(state.refreshInterval)
     getDatabaseInfo()
   }
 );
-
-// 检测到 meta 变化时重新查询
-watch(() => meta, () => {
-  filterQueryResults()
-}, { deep: true })
-
-// 添加更多示例查询
-const queryExamples = ref([
-  '贾宝玉的丫鬟有哪些？',
-  '请介绍一下红楼梦的主要人物',
-  '林黛玉是什么性格？',
-  '曹雪芹的创作背景',
-]);
-
-// 使用示例查询的方法
-const useQueryExample = (example) => {
-  queryText.value = example;
-  onQuery();
-};
 
 onMounted(() => {
   getDatabaseInfo();
@@ -1047,23 +955,23 @@ onUnmounted(() => {
     font-weight: bold;
     opacity: 0.8;
     user-select: none;
-    background: #005F77;
+    background: var(--badge-file-pdf);
   }
 
   .pdf {
-    background: #005F77;
+    background: var(--badge-file-pdf);
   }
 
   .txt {
-    background: #068033;
+    background: var(--badge-file-txt);
   }
 
   .docx, .doc {
-    background: #2C59B7;
+    background: var(--badge-file-doc);
   }
 
   .md {
-    background: #020817;
+    background: var(--badge-file-md);
   }
 
 

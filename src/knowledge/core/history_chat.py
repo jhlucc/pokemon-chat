@@ -60,12 +60,16 @@ class HistoryManager:
         :param max_rounds: 控制最多包含多少轮的历史，每轮包含一条用户消息 + 一条 AI 消息
         :return: 返回一份不影响原记录的消息列表副本
         """
+        all_messages = list(self.history.messages)
         if max_rounds is not None:
             # 每轮包含：用户消息 + AI 消息
-            # 如果max_rounds=1，则最多包含最后2条消息；max_rounds=2，则是最后4条，以此类推
-            relevant_messages = self.history.messages[-2 * max_rounds:]
+            # IMPORTANT: always keep the initial SystemMessage in the prompt.
+            system_msg = all_messages[0] if all_messages and isinstance(all_messages[0], SystemMessage) else None
+            tail = all_messages[1:] if system_msg else all_messages
+            relevant_tail = tail[-2 * max_rounds :] if max_rounds else []
+            relevant_messages = ([system_msg] if system_msg else []) + list(relevant_tail)
         else:
-            relevant_messages = list(self.history.messages)
+            relevant_messages = all_messages
 
         # 根据role创建不同类型的消息对象
         if role == "user":

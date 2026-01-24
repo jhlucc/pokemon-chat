@@ -85,7 +85,7 @@ exclude = '''
 testpaths = ["src/tests"]
 python_files = ["test_*.py"]
 asyncio_mode = "auto"
-addopts = "-v --tb=short"
+addopts = "-v --tb=short --import-mode=prepend"
 
 [tool.mypy]
 python_version = "3.10"

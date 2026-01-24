@@ -1,4 +1,4 @@
-import { ref, computed } from 'vue'
+import { ref } from 'vue'
 import { defineStore } from 'pinia'
 import { apiFetch } from '@/api/http'
 
@@ -9,7 +9,7 @@ export const useDatabaseStore = defineStore('database', () => {
   }
 
   function refreshDatabase() {
-    apiFetch('/api/data/', { method: 'GET' })
+    apiFetch('/data/', { method: 'GET' })
       .then((data) => {
         setDatabase(data?.databases || {})
       })

@@ -46,6 +46,13 @@ async def healthz():
 @health.get("/readyz")
 async def readyz():
     checks: dict = {}
+    warnings: list[str] = []
+
+    # Lightweight config warnings (no network calls).
+    if not (settings.llm.api_key or settings.get_api_key("siliconflow") or settings.get_api_key("openai")):
+        warnings.append("No LLM API key configured (llm_api_key / SILICONFLOW_API_KEY / OPENAI_API_KEY).")
+    if settings.features.enable_web_search and not (settings.tavily.api_key):
+        warnings.append("Web search is enabled but tavily_api_key is empty.")
 
     # Neo4j (bolt)
     neo4j_enabled = bool(settings.features.enable_knowledge_graph)
@@ -80,15 +87,15 @@ async def readyz():
     }
 
     # FunASR (ASR)
-    funasr_host, funasr_port = _parse_host_port("ws://localhost:10095", default_port=10095)
-    funasr_ok, funasr_err = _tcp_check(funasr_host, funasr_port)
+    funasr_enabled = bool(settings.features.enable_asr)
+    funasr_host, funasr_port = _parse_host_port(settings.asr.funasr_url, default_port=10095)
+    funasr_ok, funasr_err = _tcp_check(funasr_host, funasr_port) if funasr_enabled else (True, "")
     checks["funasr"] = {
-        "enabled": True,
+        "enabled": funasr_enabled,
         "target": f"{funasr_host}:{funasr_port}",
         "ok": funasr_ok,
         "error": funasr_err,
     }
 
     ok = all(v["ok"] for v in checks.values() if v.get("enabled"))
-    return {"status": "ok" if ok else "fail", "checks": checks}
-
+    return {"status": "ok" if ok else "fail", "checks": checks, "warnings": warnings}

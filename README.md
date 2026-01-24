@@ -116,9 +116,11 @@
 git clone https://github.com/skygazer42/pokemon-chat.git
 cd pokemon-chat
 
-# 2. 配置环境变量 
-cp .env.template .env
-# 编辑 .env 文件，填写 LLM API KEY (如 SILICONFLOW_API_KEY)
+# 2. 配置环境变量（Docker Compose 从 ./docker/.env 读取）
+cp docker/.env.example docker/.env
+# 编辑 docker/.env，填写 LLM API KEY（如 llm_api_key / SILICONFLOW_API_KEY）
+# 可选：开启语音识别（FunASR）-> enable_asr=true，funasr_url=ws://funasr:10095（Docker）
+# 可选：限制 CORS 来源（生产环境建议）-> cors_allow_origins=http://localhost:3100
 
 # 3. 启动所有服务 (API + Web + 数据库 + MCP)
 cd docker
@@ -127,7 +129,7 @@ docker compose --profile infra --profile mcp up -d --build
 
 访问：
 - **Web UI**: http://localhost:3100/
-- **API 文档**: http://localhost:5050/docs
+- **API 文档**: http://localhost:3100/api/docs（或直连 http://localhost:5050/docs）
 
 ### 📦 数据初始化（首次运行）
 
@@ -137,7 +139,8 @@ docker compose --profile infra --profile mcp up -d --build
 
 ```bash
 # 进入 API 容器
-docker exec -it pokemon-chat-api-1 bash
+cd docker
+docker compose exec api bash
 
 # 导入 Neo4j 图谱数据
 python scripts/import_graph.py
@@ -169,6 +172,9 @@ python scripts/import_pokemon_map.py
    npm install
    npm run dev
    ```
+
+> 提示：如果你只想体验/开发前端 UI（不启动后端），可以进入「设置」把“离线演示模式”切到“强制 Mock”。
+> 这样前端会用本地 Mock 数据模拟后端接口，不依赖后端的 `base.yaml` 也能完整展示各页面与功能入口。
 
 ---
 

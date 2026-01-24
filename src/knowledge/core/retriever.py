@@ -1,16 +1,24 @@
-from src.core.settings import settings
-from src.models.reranker_model import RerankerWrapper
-from src.utils.logger import get_logger
-from langchain_openai import ChatOpenAI
-from src.knowledge.core.prompts import *
-from src.knowledge.core.operators import HyDEOperator
-from src.runtime import get_kb, get_kg_agent, get_mcp_client
+from __future__ import annotations
+
 import asyncio
-import json
 import threading
+from typing import Any, Dict, List
+
+from langchain_openai import ChatOpenAI
+
+from src.core.settings import settings
+from src.knowledge.core.operators import HyDEOperator
+from src.knowledge.core.prompts import knowbase_qa_template, rewritten_query_prompt_template, keywords_prompt_template
+from src.models.reranker_model import RerankerWrapper
+from src.runtime import get_kb, get_kg_agent, get_mcp_client
 from src.utils.http_client import get_safe_httpx_client
+from src.utils.logger import get_logger
 
 _log = get_logger(__name__)
+
+
+_DEFAULT_MCP_TIMEOUT_S = 15.0
+
 
 class Retriever:
 
@@ -55,7 +63,7 @@ class Retriever:
             from src.agents.tools.websearch.websearcher import LiteBaseSearcher
             self.web_searcher = LiteBaseSearcher()
 
-    def retrieval(self, query, history, meta):
+    def retrieval(self, query: str, history: List[Dict[str, Any]], meta: Dict[str, Any]) -> Dict[str, Any]:
         refs = {"query": query, "history": history, "meta": meta}
         refs["model_name"] = settings.llm.model_name
         refs["entities"] = self.reco_entities(query, history, refs)
@@ -65,21 +73,27 @@ class Retriever:
         refs["mysql_mcp"]=self.query_mysql_mcp(query, history, refs)
         return refs
 
-    async def _call_mcp(self, query: str) -> dict:
+    async def _call_mcp(self, query: str, *, timeout_s: float) -> dict:
         client = get_mcp_client()
-        answer, _ = await client.ask(query)
-        return {"answer": answer}
+        try:
+            answer, _ = await asyncio.wait_for(client.ask(query), timeout=timeout_s)
+            return {"answer": answer}
+        except asyncio.TimeoutError:
+            _log.error(f"MCP 查询超时: {timeout_s}s")
+            return {"answer": ""}
     def restart(self):
         """所有需要重启的模型"""
         self._load_models()
 
-    def query_mysql_mcp(self, query, history, refs):
+    def query_mysql_mcp(self, query: str, history: List[Dict[str, Any]], refs: Dict[str, Any]) -> Dict[str, Any]:
         meta = refs["meta"]
         mcp_id = meta.get("mcp_id")  # 按钮亮时 = 'default'
         if not mcp_id or not settings.features.enable_mcp:
             return {"answer": "" }
 
         try:
+            timeout_s = float(meta.get("mcp_timeout_s", _DEFAULT_MCP_TIMEOUT_S))
+
             # A) 如果当前线程已有事件循环（典型：FastAPI 路由函数）
             try:
                 loop = asyncio.get_running_loop()
@@ -94,19 +108,22 @@ class Retriever:
                 def _runner():
                     nonlocal result, err
                     try:
-                        result = asyncio.run(self._call_mcp(query))
+                        result = asyncio.run(self._call_mcp(query, timeout_s=timeout_s))
                     except Exception as e:
                         err = e
 
                 t = threading.Thread(target=_runner, daemon=True)
                 t.start()
-                t.join()
+                t.join(timeout=timeout_s + 1.0)
+                if t.is_alive():
+                    _log.error(f"MCP 查询超时(线程): {timeout_s}s")
+                    return {"answer": ""}
                 if err:
                     raise err
                 return result
 
             # B) 普通同步环境：自己开一个 loop
-            return asyncio.run(self._call_mcp(query))
+            return asyncio.run(self._call_mcp(query, timeout_s=timeout_s))
 
         except Exception as e:
             _log.error(f"MCP 查询失败: {e}")

@@ -10,6 +10,10 @@
           <template #icon><ClearOutlined /></template>
           清空
         </a-button>
+        <a-button @click="downloadLogs" :disabled="state.rawLogs.length === 0">
+          <template #icon><DownloadOutlined /></template>
+          下载
+        </a-button>
         <a-button @click="printConfig">
           <template #icon><SettingOutlined /></template>
           打印配置
@@ -76,13 +80,15 @@ import { useThrottleFn } from '@vueuse/core';
 import { 
   FullscreenOutlined, 
   FullscreenExitOutlined,
-  ReloadOutlined,
-  ClearOutlined,
-  SettingOutlined,
-  SyncOutlined
-} from '@ant-design/icons-vue';
+	  ReloadOutlined,
+	  ClearOutlined,
+	  DownloadOutlined,
+	  SettingOutlined,
+	  SyncOutlined
+	} from '@ant-design/icons-vue';
 import dayjs from 'dayjs';
 import { apiFetch } from '@/api/http'
+import { downloadText } from '@/utils/download'
 
 const configStore = useConfigStore()
 const config = configStore.config;
@@ -107,7 +113,6 @@ const state = reactive({
   isFullscreen: false,
 });
 
-const logs = ref('');
 const error = ref('');
 const logContainer = ref(null);
 let autoRefreshInterval = null;
@@ -171,7 +176,13 @@ const fetchLogs = async () => {
   state.fetching = true;
   try {
     error.value = '';
-    const data = await apiFetch('/api/log', { method: 'GET', query: { lines: 800 }, timeoutMs: 5000 });
+    const levels = Array.isArray(state.selectedLevels) ? state.selectedLevels : [];
+    const levelParam = levels.length > 0 && levels.length < logLevels.length ? levels.join(',') : undefined;
+    const data = await apiFetch('/log', {
+      method: 'GET',
+      query: { lines: 800, level: levelParam, search: state.searchText || undefined },
+      timeoutMs: 5000,
+    });
     state.rawLogs = String(data?.log || '').split('\n').filter(line => line.trim());
 
     await nextTick();
@@ -185,6 +196,16 @@ const fetchLogs = async () => {
     error.value = `错误: ${err?.message || '后端未启动或不可用'}`;
   } finally {
     state.fetching = false;
+  }
+};
+
+const downloadLogs = () => {
+  try {
+    const now = new Date().toISOString().replace(/[:.]/g, '-');
+    const content = state.rawLogs.join('\n');
+    downloadText(`pokemon-chat-log-${now}.log`, content);
+  } catch (e) {
+    console.error('下载日志失败:', e);
   }
 };
 

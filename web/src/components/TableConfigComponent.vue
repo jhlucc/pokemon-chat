@@ -124,7 +124,7 @@ const deleteConfig = (index) => {
 };
 
 // 更新值
-const updateValue = (index) => {
+const updateValue = (_index) => {
   // 值的更新实时反映在 configList 中，无需额外处理
 };
 
@@ -157,13 +157,13 @@ watch(addConfigModalVisible, (newValue) => {
 }
 
 .config-item {
-  border-bottom: 1px solid #f0f0f0;
+  border-bottom: 1px solid var(--border-color);
   padding: 12px 0;
   transition: background-color 0.3s ease;
 }
 
 .config-item:hover {
-  background-color: #fafafa;
+  background-color: var(--surface-color-2);
 }
 
 .config-item:last-child {
@@ -171,8 +171,8 @@ watch(addConfigModalVisible, (newValue) => {
 }
 
 .key-input {
-  background-color: #f8f8f8;
-  border-color: #e8e8e8;
+  background-color: var(--surface-color-2);
+  border-color: var(--border-color);
 }
 
 .delete-btn-col {
@@ -209,4 +209,3 @@ watch(addConfigModalVisible, (newValue) => {
   padding: 16px;
 }
 </style>
-

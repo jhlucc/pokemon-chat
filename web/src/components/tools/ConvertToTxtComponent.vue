@@ -15,7 +15,7 @@
             name="file"
             :max-count="1"
             :disabled="state.uploading"
-            action="/api/data/upload"
+            :customRequest="customUpload"
             @change="handleFileUpload"
             @drop="handleDrop"
           >
@@ -41,6 +41,8 @@
 <script setup>
 import { reactive, ref, computed } from 'vue';
 import { message } from 'ant-design-vue';
+import { apiFetch } from '@/api/http'
+import { getOfflineMode } from '@/utils/offlineMode'
 
 const state = reactive({
   loading: false,
@@ -68,9 +70,6 @@ const estimatedTokenCount = computed(() => {
 
 const handleFileUpload = (info) => {
   const { status } = info.file;
-  if (status !== 'uploading') {
-    console.log(info.file, info.fileList);
-  }
   if (status === 'done') {
     message.success(`${info.file.name} file uploaded successfully.`);
   } else if (status === 'error') {
@@ -78,9 +77,7 @@ const handleFileUpload = (info) => {
   }
 };
 
-const handleDrop = (e) => {
-  console.log(e);
-};
+const handleDrop = () => {};
 
 const convertPdfToText = async () => {
   if (fileList.value.length === 0) {
@@ -88,29 +85,70 @@ const convertPdfToText = async () => {
     return;
   }
 
-  const file = fileList.value[0].response.file_path;
+  const doneFile = fileList.value.find((f) => f.status === 'done') || fileList.value[0]
+  const resp = doneFile?.response || {}
+  const file = resp.file_path
+  const fileContent = resp.file_content
 
   try {
     state.loading = true;
-    const response = await fetch('/api/tools/pdf2txt', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ file: file.toString() })
-    });
 
-    if (!response.ok) {
-      throw new Error(`HTTP error! Status: ${response.status}`);
+    // Offline convenience: if user uploads txt/md, just show it.
+    if (fileContent && typeof file === 'string' && !String(file).toLowerCase().endsWith('.pdf')) {
+      convertedText.value = String(fileContent);
+      return;
     }
 
-    const data = await response.json();
+    const data = await apiFetch('/tools/pdf2txt', {
+      method: 'POST',
+      body: { file: file.toString() },
+      timeoutMs: 30000,
+    })
     convertedText.value = data.text;
-    state.loading = false;
   } catch (error) {
     console.error('Error converting PDF to text:', error);
     message.error('PDF转换失败，请重试');
+  } finally {
     state.loading = false;
   }
 };
+
+const customUpload = async ({ file, onSuccess, onError }) => {
+  state.uploading = true
+  try {
+    const mode = getOfflineMode()
+    const tryRemote = mode !== 'on'
+
+    const readAsText = async () => {
+      try {
+        return await file.text()
+      } catch {
+        return ''
+      }
+    }
+
+    if (tryRemote) {
+      try {
+        const formData = new FormData()
+        formData.append('file', file)
+        const data = await apiFetch('/data/upload', { method: 'POST', body: formData, timeoutMs: 60000 })
+        onSuccess?.(data, file)
+        return
+      } catch {
+        // fall through to local
+      }
+    }
+
+    // Local fallback: keep file content for txt/md preview; PDF content is binary so we skip.
+    const isPdf = String(file.name || '').toLowerCase().endsWith('.pdf')
+    const file_content = isPdf ? null : await readAsText()
+    onSuccess?.({ file_path: file.name, file_content }, file)
+  } catch (e) {
+    onError?.(e)
+  } finally {
+    state.uploading = false
+  }
+}
 </script>
 
 <style lang="less" scoped>

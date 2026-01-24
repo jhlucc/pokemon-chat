@@ -79,21 +79,23 @@
 </template>
 
 <script setup>
-import { Graph } from '@antv/g6';
-import { computed, onMounted, reactive, ref } from 'vue';
-import { message } from 'ant-design-vue';
-import { useConfigStore } from '@/stores/config';
-import HeaderComponent from '@/components/HeaderComponent.vue';
-import { apiFetch } from '@/api/http';
-import demoGraph from '@/assets/mock/graph.sample.json';
+ import { Graph } from '@antv/g6';
+ import { computed, reactive, ref, onMounted, onUnmounted, watch } from 'vue';
+ import { message } from 'ant-design-vue';
+ import { useConfigStore } from '@/stores/config';
+ import HeaderComponent from '@/components/HeaderComponent.vue';
+ import { apiFetch } from '@/api/http';
+ import demoGraph from '@/assets/mock/graph.sample.json';
 
 const configStore = useConfigStore();
 
-const container = ref(null);
+ const container = ref(null);
 const sampleNodeCount = ref(100);
 const graphData = reactive({ nodes: [], edges: [] });
 
-let graphInstance;
+ let graphInstance;
+ let layoutKey = null;
+ let resizeObserver = null;
 
 const state = reactive({
   fetching: false,
@@ -104,6 +106,15 @@ const state = reactive({
   selectedNodeId: null,
   layout: 'force',
 });
+
+const cssVar = (name, fallback) => {
+  try {
+    const v = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+    return v || fallback;
+  } catch {
+    return fallback;
+  }
+};
 
 const backendOnline = computed(() => Boolean(configStore.config.backend?.online));
 const canUseGraph = computed(() => backendOnline.value && Boolean(configStore.config.enable_knowledge_graph));
@@ -147,28 +158,28 @@ const loadGraphInfo = async () => {
       return;
     }
 
-    graphInfo.value = await apiFetch('/api/data/graph', { method: 'GET' });
-  } catch (e) {
+    graphInfo.value = await apiFetch('/data/graph', { method: 'GET' });
+  } catch {
     graphInfo.value = { status: 'closed' };
   } finally {
     state.loadingGraphInfo = false;
   }
 };
 
-const loadDemoGraph = () => {
-  graphData.nodes = demoGraph.nodes;
-  graphData.edges = demoGraph.edges;
+ const loadDemoGraph = () => {
+    graphData.nodes = demoGraph.nodes;
+    graphData.edges = demoGraph.edges;
   state.selectedNodeId = null;
   state.detailOpen = false;
-  loadGraphInfo();
-  setTimeout(() => renderGraph(), 0);
-};
+    loadGraphInfo();
+    setTimeout(() => renderGraph(), 0);
+  };
 
 const loadSampleNodes = async () => {
   if (!canUseGraph.value) return loadDemoGraph();
   state.fetching = true;
   try {
-    const data = await apiFetch('/api/data/graph/nodes', {
+    const data = await apiFetch('/data/graph/nodes', {
       method: 'GET',
       query: { kgdb_name: 'neo4j', num: sampleNodeCount.value },
     });
@@ -191,7 +202,7 @@ const onSearch = async () => {
 
   state.searchLoading = true;
   try {
-    const data = await apiFetch('/api/data/graph/node', {
+    const data = await apiFetch('/data/graph/node', {
       method: 'GET',
       query: { entity_name: state.searchInput },
     });
@@ -231,74 +242,154 @@ const getG6Data = () => {
   };
 };
 
-const renderGraph = () => {
-  if (!container.value || graphData.nodes.length === 0) return;
+ const ensureGraph = () => {
+   if (!container.value) return;
 
-  if (graphInstance) {
-    graphInstance.destroy();
-    graphInstance = null;
-  }
+   const key = state.layout;
+   const primary = cssVar('--primary-color', '#1677ff');
+   const surface = cssVar('--surface-color', '#ffffff');
+   const text = cssVar('--text-color', '#000000');
+   const edgeStroke = cssVar('--gray-500', '#999');
 
-  const layout =
-    state.layout === 'radial'
-      ? { type: 'radial', unitRadius: 120, preventOverlap: true }
-      : { type: 'd3-force', preventOverlap: true, collide: { radius: 40, strength: 0.6 } };
+   const layout =
+     key === 'radial'
+       ? { type: 'radial', unitRadius: 120, preventOverlap: true }
+       : { type: 'd3-force', preventOverlap: true, collide: { radius: 40, strength: 0.6 } };
 
-  graphInstance = new Graph({
-    container: container.value,
-    width: container.value.offsetWidth,
-    height: container.value.offsetHeight,
-    autoFit: true,
-    layout,
-    node: {
-      type: 'circle',
-      style: {
-        labelText: (d) => d.data.label,
-        size: (d) => Math.min(18 + (d.data.degree || 0) * 5, 52),
-        fill: (d) => (d.id === state.selectedNodeId ? '#1677ff' : '#ffffff'),
-        stroke: '#1677ff',
-        lineWidth: 2,
-      },
-    },
-    edge: {
-      type: 'line',
-      style: {
-        labelText: (d) => d.data.label,
-        labelBackground: '#fff',
-        endArrow: true,
-        stroke: '#999',
-      },
-    },
-    behaviors: ['drag-element', 'zoom-canvas', 'drag-canvas'],
-  });
+   // Only recreate when switching layout types (layout isn't always hot-swappable).
+   if (!graphInstance || layoutKey !== key) {
+     if (graphInstance) {
+       try {
+         graphInstance.destroy();
+       } catch {
+         // ignore
+       }
+       graphInstance = null;
+     }
 
-  graphInstance.setData(getG6Data());
-  graphInstance.render();
+     graphInstance = new Graph({
+       container: container.value,
+       width: container.value.offsetWidth,
+       height: container.value.offsetHeight,
+       autoFit: true,
+       layout,
+       node: {
+         type: 'circle',
+         style: {
+           labelText: (d) => d.data.label,
+           size: (d) => Math.min(18 + (d.data.degree || 0) * 5, 52),
+           labelFill: text,
+           fill: (d) => (d.id === state.selectedNodeId ? primary : surface),
+           stroke: primary,
+           lineWidth: 2,
+         },
+       },
+       edge: {
+         type: 'line',
+         style: {
+           labelText: (d) => d.data.label,
+           labelFill: text,
+           labelBackground: surface,
+           endArrow: true,
+           stroke: edgeStroke,
+         },
+       },
+       behaviors: ['drag-element', 'zoom-canvas', 'drag-canvas'],
+     });
 
-  graphInstance.on('node:click', (evt) => {
-    const id =
-      evt?.item?.getID?.() ||
-      evt?.item?.id ||
-      evt?.data?.id ||
-      evt?.target?.id ||
-      null;
-    if (!id) return;
-    state.selectedNodeId = id;
-    state.detailOpen = true;
-    // Re-render to update selected styling.
-    setTimeout(() => renderGraph(), 0);
-  });
-};
+     graphInstance.on('node:click', (evt) => {
+       const id =
+         evt?.item?.getID?.() ||
+         evt?.item?.id ||
+         evt?.data?.id ||
+         evt?.target?.id ||
+         null;
+       if (!id) return;
+       state.selectedNodeId = id;
+       state.detailOpen = true;
+       // Re-render to update selected styling.
+       setTimeout(() => renderGraph(), 0);
+     });
 
-const focusNode = (id) => {
-  state.selectedNodeId = id;
-  state.detailOpen = true;
-  setTimeout(() => renderGraph(), 0);
-};
+     layoutKey = key;
+   } else {
+     // Best-effort resize when the container size changes.
+     try {
+       graphInstance.resize?.(container.value.offsetWidth, container.value.offsetHeight);
+     } catch {
+       // ignore
+     }
+   }
+ };
+
+ const renderGraph = () => {
+   if (!container.value || graphData.nodes.length === 0) return;
+   ensureGraph();
+   graphInstance.setData(getG6Data());
+   graphInstance.render();
+ };
+
+ const focusNode = (id) => {
+   state.selectedNodeId = id;
+   state.detailOpen = true;
+   setTimeout(() => renderGraph(), 0);
+ };
 
 const graphDescription = computed(() => {
   const { graph_name, entity_count, relationship_count } = graphInfo.value || {};
   return `${graph_name || ''} - 共 ${entity_count || graphData.nodes.length || 0} 实体，${relationship_count || graphData.edges.length || 0} 个关系。`;
+});
+
+onMounted(() => {
+  // In offline/mock mode, show a demo graph by default so the page is not empty.
+  if (configStore.config?.backend?.mock || !backendOnline.value) {
+    loadDemoGraph();
+  }
+
+  // Resize graph when the container resizes (e.g. drawer open/close, window resize).
+  watch(
+    () => container.value,
+    (el) => {
+      try {
+        resizeObserver?.disconnect?.();
+      } catch {
+        // ignore
+      }
+      resizeObserver = null;
+      if (!el || typeof ResizeObserver === 'undefined') return;
+
+      resizeObserver = new ResizeObserver(() => {
+        if (!graphInstance || !container.value) return;
+        try {
+          graphInstance.resize?.(container.value.offsetWidth, container.value.offsetHeight);
+          graphInstance.render?.();
+        } catch {
+          // ignore
+        }
+      });
+      resizeObserver.observe(el);
+    },
+    { immediate: true }
+  );
+});
+
+onUnmounted(() => {
+  try {
+    resizeObserver?.disconnect?.();
+  } catch {
+    // ignore
+  }
+  resizeObserver = null;
+
+  if (graphInstance) {
+    try {
+      graphInstance.destroy();
+    } catch {
+      // ignore
+    }
+    graphInstance = null;
+  }
+  layoutKey = null;
 });
 </script>
 

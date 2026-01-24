@@ -40,7 +40,7 @@
             name="file"
             :max-count="1"
             :disabled="state.uploading"
-            action="/api/data/upload"
+            :customRequest="customUpload"
             @change="handleFileUpload"
             @drop="handleDrop"
           >
@@ -70,6 +70,8 @@
 <script setup>
 import { reactive, ref, computed } from 'vue';
 import { message } from 'ant-design-vue'
+import { apiFetch } from '@/api/http'
+import { getOfflineMode } from '@/utils/offlineMode'
 
 const text = ref('');
 const state = reactive({
@@ -86,7 +88,6 @@ const params = reactive({
 const chunks = ref([]);
 const fileList = ref([]);
 
-const wordCount = computed(() => text.value.split(/\s+/).filter(Boolean).length);
 const charCount = computed(() => text.value.length)
 const estimatedTokenCount = computed(() => {
   // 将文本分割成字符数组
@@ -113,8 +114,9 @@ const chunkText = async () => {
       message.error("请上传文件")
       return
     }
-    console.log(fileList.value)
-    text_or_file = fileList.value.filter(file => file.status === 'done').map(file => file.response.file_path)[0]
+    const doneFile = fileList.value.find((f) => f.status === 'done')
+    const resp = doneFile?.response || {}
+    text_or_file = resp.file_content || resp.file_path || ''
   } else {
     if (text.value.length === 0) {
       message.error("请输入文本")
@@ -125,24 +127,18 @@ const chunkText = async () => {
 
   try {
     state.loading = true
-    const response = await fetch('/api/tools/file-chunking', {
+    const data = await apiFetch('/tools/file-chunking', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
+      body: {
         text: text_or_file,
         params: {
           chunk_size: params.chunkSize,
           chunk_overlap: params.chunkOverlap,
           use_parser: params.useParser
         }
-      })
+      },
+      timeoutMs: 30000,
     });
-
-    if (!response.ok) {
-      throw new Error(`HTTP error! Status: ${response.status}`);
-    }
-
-    const data = await response.json();
     chunks.value = data.nodes;
     state.loading = false
   } catch (error) {
@@ -150,6 +146,42 @@ const chunkText = async () => {
     state.loading = false
   }
 };
+
+const customUpload = async ({ file, onSuccess, onError }) => {
+  state.uploading = true
+  try {
+    const mode = getOfflineMode()
+    // Force local upload in offline mock mode; or fall back to local if backend upload fails.
+    const tryRemote = mode !== 'on'
+
+    const readAsText = async () => {
+      try {
+        return await file.text()
+      } catch {
+        return ''
+      }
+    }
+
+    if (tryRemote) {
+      try {
+        const formData = new FormData()
+        formData.append('file', file)
+        const data = await apiFetch('/data/upload', { method: 'POST', body: formData, timeoutMs: 60000 })
+        onSuccess?.(data, file)
+        return
+      } catch {
+        // fall through to local
+      }
+    }
+
+    const content = await readAsText()
+    onSuccess?.({ file_path: file.name, file_content: content }, file)
+  } catch (e) {
+    onError?.(e)
+  } finally {
+    state.uploading = false
+  }
+}
 </script>
 
 <style lang="less" scoped>

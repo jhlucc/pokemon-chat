@@ -43,14 +43,16 @@
 </template>
 
 <script setup>
-import { ref, computed, toRefs } from 'vue';
-import {
-  AudioOutlined,
-  SendOutlined,
-  ArrowUpOutlined,
-  LoadingOutlined,
-  PauseOutlined
-} from '@ant-design/icons-vue';
+import { ref, computed } from 'vue';
+	import {
+	  AudioOutlined,
+	  SendOutlined,
+	  ArrowUpOutlined,
+	  LoadingOutlined,
+	  PauseOutlined
+	} from '@ant-design/icons-vue';
+	import { message } from 'ant-design-vue'
+	import { apiFetch } from '@/api/http'
 
 const isRecording = ref(false);
 const isRecordingLocked = ref(false); // ✅ 新增锁
@@ -111,13 +113,11 @@ const getIcon = computed(() => {
 });
 
 const toggleRecording = async () => {
-  console.log('[录音按钮] 点击了！当前状态 isRecording =', isRecording.value);
   if (isRecordingLocked.value) return;
 
   if (!isRecording.value) {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      console.log('[录音] 获取麦克风成功', stream);
 
       mediaRecorder = new MediaRecorder(stream);
       audioChunks = [];
@@ -128,28 +128,26 @@ const toggleRecording = async () => {
         }
       };
 
-mediaRecorder.onstop = async () => {
-  console.log('[录音] 已停止，开始识别上传');
-  try {
-    const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
-    const formData = new FormData();
-    formData.append('file', audioBlob, 'recording.wav');
+	mediaRecorder.onstop = async () => {
+	  try {
+	    const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+	    const formData = new FormData();
+	    formData.append('file', audioBlob, 'recording.wav');
 
-    const res = await fetch('/api/chat/asr/', {
+    const result = await apiFetch('/chat/asr/', {
       method: 'POST',
-      body: formData
-    });
-
-    console.log('[上传] Whisper 返回结果状态：', res.status);
-    const result = await res.json();
-    inputValue.value += result.text || '';
-  } catch (e) {
-    console.error('上传识别失败：', e);
-  } finally {
-    // ✅ 释放麦克风
-  const tracks = mediaRecorder?.stream?.getTracks?.();
-if (tracks && Array.isArray(tracks)) {
-  tracks.forEach(track => track.stop());
+      body: formData,
+      timeoutMs: 120000,
+	    })
+	    inputValue.value += result.text || '';
+	  } catch (e) {
+	    console.error('上传识别失败：', e);
+	    message.error(e?.message ? `语音识别失败：${e.message}` : '语音识别失败');
+	  } finally {
+	    // ✅ 释放麦克风
+	  const tracks = mediaRecorder?.stream?.getTracks?.();
+	if (tracks && Array.isArray(tracks)) {
+	  tracks.forEach(track => track.stop());
 }
     mediaRecorder = null;
     isRecordingLocked.value = false;
@@ -158,21 +156,19 @@ if (tracks && Array.isArray(tracks)) {
 };
 
       mediaRecorder.start();
-      console.log('[录音] 已开始');
-      isRecording.value = true;
-      isRecordingLocked.value = false; // ✅ 注意：开始不加锁，允许点击停止
-    } catch (err) {
-      console.error('无法开始录音：', err);
-      isRecording.value = false;
-    }
-  } else {
+	    isRecording.value = true;
+	    isRecordingLocked.value = false; // ✅ 注意：开始不加锁，允许点击停止
+	  } catch (err) {
+	    console.error('无法开始录音：', err);
+	    message.error(err?.message ? `无法开始录音：${err.message}` : '无法开始录音');
+	    isRecording.value = false;
+	  }
+	} else {
     try {
       if (mediaRecorder && mediaRecorder.state !== 'inactive') {
-        console.log('[录音] 正在停止...');
         mediaRecorder.stop();
         isRecordingLocked.value = true; // ✅ 锁定，等待 onstop 完成
       } else {
-        console.warn('[录音] stop 被调用但无效：', mediaRecorder);
         isRecording.value = false;
       }
     } catch (e) {
@@ -293,6 +289,11 @@ const handleSendOrStop = () => {
           color: var(--main-600);
           border: 1px solid var(--main-500);
           background-color: var(--main-10);
+        }
+
+        &.disabled {
+          opacity: 0.55;
+          cursor: not-allowed;
         }
       }
     }

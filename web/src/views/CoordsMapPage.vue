@@ -18,31 +18,61 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { message } from 'ant-design-vue'
 import HeaderComponent from '@/components/HeaderComponent.vue'
+import { apiFetch } from '@/api/http'
 import 'leaflet/dist/leaflet.css'
 import L from 'leaflet'
 
 const place = ref('')
 const loading = ref(false)
-let map, markersLayer
+let map, markersLayer, tileLayer
+let warnedTileError = false
 
 onMounted(() => {
   map = L.map('map').setView([20, 0], 2)
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  tileLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '© OpenStreetMap contributors'
-  }).addTo(map)
+  })
+    .on('tileerror', () => {
+      if (warnedTileError) return
+      warnedTileError = true
+      message.warning('地图瓦片加载失败（可能离线或网络受限），但坐标查询仍可用。')
+    })
+    .addTo(map)
   markersLayer = L.layerGroup().addTo(map)
+})
+
+onUnmounted(() => {
+  try {
+    tileLayer?.off?.()
+  } catch {
+    // ignore
+  }
+  tileLayer = null
+
+  try {
+    markersLayer?.clearLayers?.()
+  } catch {
+    // ignore
+  }
+  markersLayer = null
+
+  try {
+    map?.remove?.()
+  } catch {
+    // ignore
+  }
+  map = null
 })
 
 const handleSearch = async () => {
   if (!place.value.trim()) return
+  if (!map || !markersLayer) return
   loading.value = true
   try {
-    const resp = await fetch(`/api/mcp/coords?place=${encodeURIComponent(place.value)}`)
-    if (!resp.ok) throw new Error(await resp.text())
-    const data = await resp.json()
+    const data = await apiFetch('/mcp/coords', { method: 'GET', query: { place: place.value }, timeoutMs: 15000 })
     renderCoords(data.coords)
   } catch (e) {
     console.error(e)
@@ -79,7 +109,7 @@ function renderCoords(coords) {
   height: 100vh;
   display: flex;
   flex-direction: column;
-  background-color: #f5f7fa;
+  background-color: var(--layout-bg-color);
 }
 
 .search-bar {
@@ -89,22 +119,23 @@ function renderCoords(coords) {
 }
 
 .search-bar > .ant-input-search {
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.1);
-  border-radius: 12px;
+  box-shadow: var(--shadow-sm);
+  border-radius: var(--radius-lg);
   overflow: hidden;
   transition: box-shadow 0.3s ease;
 }
 
 .search-bar > .ant-input-search:hover {
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+  box-shadow: var(--shadow-md);
 }
 
 .map-container {
   flex: 1;
-  border-top: 1px solid #dcdfe6;
+  border-top: 1px solid var(--border-color);
   min-height: 500px;
-  border-radius: 16px;
+  border-radius: var(--radius-lg);
   overflow: hidden;
+  background: var(--surface-color);
   box-shadow: inset 0 0 6px rgba(0, 0, 0, 0.05);
 }
 

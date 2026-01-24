@@ -4,8 +4,18 @@
 import os
 import time
 import logging
+import contextvars
 from typing import Optional
 from src.core.settings import settings
+
+
+request_id_var: contextvars.ContextVar[str] = contextvars.ContextVar("request_id", default="-")
+
+
+class RequestIdFilter(logging.Filter):
+    def filter(self, record: logging.LogRecord) -> bool:  # pragma: no cover
+        record.request_id = request_id_var.get()
+        return True
 
 
 class HourlyFileHandler(logging.Handler):
@@ -19,7 +29,7 @@ class HourlyFileHandler(logging.Handler):
         self.file_handler: Optional[logging.FileHandler] = None
         # 定义 Formatter
         self.formatter = logging.Formatter(
-            "[%(asctime)s] [%(filename)s|%(funcName)s] [line:%(lineno)d] %(levelname)-8s: %(message)s",
+            "[%(asctime)s] [req:%(request_id)s] [%(filename)s|%(funcName)s] [line:%(lineno)d] %(levelname)-8s: %(message)s",
             datefmt="%Y-%m-%d %H:%M"
         )
         self.setFormatter(self.formatter)
@@ -90,7 +100,7 @@ def setup_global_logging():
     console_handler = logging.StreamHandler()
     console_handler.setLevel(logging.DEBUG)
     formatter = logging.Formatter(
-        "[%(asctime)s] [%(filename)s|%(funcName)s] [line:%(lineno)d] %(levelname)-8s: %(message)s",
+        "[%(asctime)s] [req:%(request_id)s] [%(filename)s|%(funcName)s] [line:%(lineno)d] %(levelname)-8s: %(message)s",
         datefmt="%Y-%m-%d %H:%M"
     )
     console_handler.setFormatter(formatter)
@@ -100,6 +110,9 @@ def setup_global_logging():
     file_handler = HourlyFileHandler(log_dir)
     file_handler.setLevel(logging.DEBUG)
     root_logger.addHandler(file_handler)
+
+    # Ensure every record has request_id (even when not in a request context).
+    root_logger.addFilter(RequestIdFilter())
     
     # 第三方库日志降噪
     logging.getLogger("httpx").setLevel(logging.WARNING)

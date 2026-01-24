@@ -17,20 +17,20 @@
         <DeploymentUnitOutlined /> 关系图
       </span>
 
-      <span
-        v-if="showKey('webSearch') && msg.refs?.web_search?.results?.length > 0"
-        class="item btn"
-        @click="showWebResult(msg)">
-        <GlobalOutlined /> 网页搜索 {{ msg.refs.web_search.results.length }}
-      </span>
+	      <span
+	        v-if="showKey('webSearch') && msg.refs?.web_search?.results?.length > 0"
+	        class="item btn"
+	        @click="showWebResult(msg)">
+	        <GlobalOutlined /> 网页搜索 {{ msg.refs.web_search.results.length }}
+	      </span>
 
-      <span class="filetag item btn"
-        v-for="(results, filename) in msg.groupedResults"
-        :key="filename"
-        @click="toggleDrawer(filename)">
-        <FileTextOutlined /> {{ filename }}
-        <a-drawer
-          v-model:open="openDetail[filename]"
+	      <span class="filetag item btn"
+	        v-for="(results, filename) in kbGroupedResults"
+	        :key="filename"
+	        @click="toggleDrawer(filename)">
+	        <FileTextOutlined /> {{ filename }}
+	        <a-drawer
+	          v-model:open="openDetail[filename]"
           :title="filename"
           width="700"
           :contentWrapperStyle="{ maxWidth: '100%'}"
@@ -64,9 +64,9 @@
       </span>
     </div>
 
-    <a-modal v-model:open="subGraphVisible" title="相关实体与关系" :width="800" :footer="null">
-      <GraphContainer :graphData="subGraphData" />
-    </a-modal>
+	<a-modal v-model:open="subGraphVisible" title="相关实体与关系" :width="800" :footer="null">
+	  <GraphContainer v-if="subGraphVisible && subGraphData" :graphData="subGraphData" />
+	</a-modal>
 
     <a-drawer
       v-model:open="webResultVisible"
@@ -86,10 +86,10 @@
                 <a-progress :percent="getPercent(result.score)" />
               </span>
             </div>
-            <div class="result-url">
-              <a :href="result.url" target="_blank">{{ result.url }}</a>
-            </div>
-          </div>
+	            <div class="result-url">
+	              <a :href="result.url" target="_blank" rel="noopener noreferrer">{{ result.url }}</a>
+	            </div>
+	          </div>
           <div class="result-content">
             <h3 class="result-title">{{ result.title }}</h3>
             <div class="result-text">{{ result.content }}</div>
@@ -101,9 +101,9 @@
 </template>
 
 <script setup>
-import { ref, reactive } from 'vue'
-import { useClipboard } from '@vueuse/core'
-import { message } from 'ant-design-vue'
+	import { ref, reactive, computed, watch, defineAsyncComponent } from 'vue'
+	import { useClipboard } from '@vueuse/core'
+	import { message as antdMessage } from 'ant-design-vue'
 import {
   GlobalOutlined,
   FileTextOutlined,
@@ -114,9 +114,9 @@ import {
   ClockCircleOutlined,
   ReloadOutlined,
 } from '@ant-design/icons-vue'
-import GraphContainer from './GraphContainer.vue'
+	const GraphContainer = defineAsyncComponent(() => import('./GraphContainer.vue'))
 
-const emit = defineEmits(['retry'])
+	const emit = defineEmits(['retry'])
 
 const props = defineProps({
   message: Object,
@@ -126,31 +126,60 @@ const props = defineProps({
   }
 })
 
-const msg = ref(props.message)
-const displayKeys = ref(props.showRefs)
+	const msg = computed(() => props.message || {})
+	const displayKeys = computed(() => props.showRefs)
 
-const showKey = (key) => {
-  if (displayKeys.value === true) return true
-  if (Array.isArray(displayKeys.value)) return displayKeys.value.includes(key)
-  return false
-}
+	const kbGroupedResults = computed(() => {
+	  const direct = msg.value?.groupedResults
+	  if (direct && typeof direct === 'object' && !Array.isArray(direct)) {
+	    return direct
+	  }
+	  const results = msg.value?.refs?.knowledge_base?.results
+	  if (!Array.isArray(results) || results.length === 0) return {}
+	  return results
+	    .filter((r) => r?.file?.filename)
+	    .reduce((acc, r) => {
+	      const filename = r.file.filename
+	      if (!acc[filename]) acc[filename] = []
+	      acc[filename].push(r)
+	      return acc
+	    }, {})
+	})
+
+	const showKey = (key) => {
+	  if (displayKeys.value === true) return true
+	  if (Array.isArray(displayKeys.value)) return displayKeys.value.includes(key)
+	  return false
+	}
 
 const { copy, isSupported } = useClipboard()
 const copyText = async (text) => {
+  if (!isSupported.value) {
+    antdMessage.error('当前浏览器不支持复制')
+    return
+  }
   try {
     await copy(text)
-    message.success('已复制到剪贴板')
-  } catch (e) {
-    message.error('复制失败')
+    antdMessage.success('已复制到剪贴板')
+  } catch {
+    antdMessage.error('复制失败')
   }
 }
 
 const regenerateMessage = () => emit('retry')
 
-const openDetail = reactive({})
-for (const filename in msg.value.groupedResults) {
-  openDetail[filename] = false
-}
+	const openDetail = reactive({})
+	const ensureOpenDetailKeys = () => {
+	  const grouped = kbGroupedResults.value && typeof kbGroupedResults.value === 'object' ? kbGroupedResults.value : {}
+	  Object.keys(grouped).forEach((filename) => {
+	    if (openDetail[filename] === undefined) openDetail[filename] = false
+	  })
+	}
+	watch(
+	  () => kbGroupedResults.value,
+	  () => ensureOpenDetailKeys(),
+	  { immediate: true, deep: true }
+	)
 const toggleDrawer = (filename) => {
   openDetail[filename] = !openDetail[filename]
 }
@@ -189,12 +218,12 @@ const getPercent = (value) =>
   display: flex;
   margin-bottom: 20px;
   //color: var(--gray-500);
-   background: var(--chat-background-color); // ✅ 跟聊天区域背景保持一致
+   background: transparent;
   font-size: 13px;
   gap: 10px;
 
   .item {
-    color: #555;
+    color: var(--gray-700);
     background: transparent; // ✅ 不要小气泡背景
     padding: 2px 8px;
     border-radius: 8px;
@@ -205,11 +234,11 @@ const getPercent = (value) =>
     &.btn {
       cursor: pointer;
       &:hover {
-        background: var(--gray-200);
-        color: #444;
+        background: var(--hover-bg);
+        color: var(--text-color);
       }
       &:active {
-        background: var(--gray-300);
+        background: var(--gray-200);
       }
     }
   }
@@ -232,13 +261,14 @@ const getPercent = (value) =>
     display: flex;
     justify-content: space-between;
     padding: 12px 16px;
-    background-color: #f5f5f5;
-    border-radius: 4px;
+    background-color: var(--surface-color-2);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
     margin-bottom: 16px;
 
     p {
       margin: 0;
-      color: #666;
+      color: var(--gray-700);
     }
   }
 
@@ -255,7 +285,7 @@ const getPercent = (value) =>
       strong {
         margin-right: 8px;
         white-space: nowrap;
-        color: #666;
+        color: var(--gray-700);
       }
 
       .ant-progress {
@@ -264,7 +294,7 @@ const getPercent = (value) =>
         margin-inline: 10px;
 
         .ant-progress-bg {
-          background-color: #666;
+          background-color: var(--main-500);
         }
       }
     }
@@ -272,7 +302,7 @@ const getPercent = (value) =>
 
   .result-id {
     font-size: 12px;
-    color: #999;
+    color: var(--gray-600);
     margin-bottom: 8px;
   }
 
@@ -281,16 +311,16 @@ const getPercent = (value) =>
     line-height: 1.6;
     white-space: pre-wrap;
     word-break: break-word;
-    background-color: #f9f9f9;
+    background-color: var(--surface-color-2);
     padding: 12px;
-    border-radius: 4px;
-    border: 1px solid #e8e8e8;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-color);
   }
 }
 
 .results-list {
   .result-item {
-    border-bottom: 1px solid #f0f0f0;
+    border-bottom: 1px solid var(--border-color);
     padding: 16px 0;
 
     &:last-child {
@@ -306,7 +336,7 @@ const getPercent = (value) =>
 .web-result-detail {
   .results-list {
     .result-item {
-      border-bottom: 1px solid #f0f0f0;
+      border-bottom: 1px solid var(--border-color);
       padding: 16px 0;
 
       &:last-child {
@@ -330,7 +360,7 @@ const getPercent = (value) =>
           strong {
             margin-right: 8px;
             white-space: nowrap;
-            color: #666;
+            color: var(--gray-700);
           }
 
           .ant-progress {
@@ -339,7 +369,7 @@ const getPercent = (value) =>
             margin-inline: 10px;
 
             .ant-progress-bg {
-              background-color: #666;
+              background-color: var(--main-500);
             }
           }
         }
@@ -347,7 +377,7 @@ const getPercent = (value) =>
 
       .result-url {
         font-size: 12px;
-        color: #1677FF;
+        color: var(--primary-color);
         margin-bottom: 8px;
         word-break: break-all;
       }
@@ -358,7 +388,7 @@ const getPercent = (value) =>
         font-size: 16px;
         font-weight: bold;
         margin-bottom: 8px;
-        color: #333;
+        color: var(--text-color);
       }
 
       .result-text {
@@ -366,10 +396,10 @@ const getPercent = (value) =>
         line-height: 1.6;
         white-space: pre-wrap;
         word-break: break-word;
-        background-color: #f9f9f9;
+        background-color: var(--surface-color-2);
         padding: 12px;
-        border-radius: 4px;
-        border: 1px solid #e8e8e8;
+        border-radius: var(--radius-sm);
+        border: 1px solid var(--border-color);
       }
     }
   }

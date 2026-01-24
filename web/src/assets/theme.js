@@ -17,7 +17,7 @@ export function normalizeThemeMode(mode) {
 export function getSavedThemeMode() {
   try {
     return normalizeThemeMode(localStorage.getItem(THEME_MODE_STORAGE_KEY))
-  } catch (e) {
+  } catch {
     return 'system'
   }
 }
@@ -28,7 +28,7 @@ export function getAppliedTheme(mode = getSavedThemeMode()) {
   try {
     const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
     return prefersDark ? 'dark' : 'light'
-  } catch (e) {
+  } catch {
     return 'light'
   }
 }
@@ -41,7 +41,7 @@ export function setThemeMode(mode) {
   const m = normalizeThemeMode(mode)
   try {
     localStorage.setItem(THEME_MODE_STORAGE_KEY, m)
-  } catch (e) {
+  } catch {
     // ignore quota / private mode errors
   }
   applyTheme(getAppliedTheme(m))

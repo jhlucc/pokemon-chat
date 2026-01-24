@@ -8,7 +8,8 @@
     "server:prod": "vite serve --host --port 8080",
     "build": "vite build",
     "preview": "vite preview",
-    "lint": "eslint . --ext .vue,.js,.jsx,.cjs,.mjs --fix --ignore-path .gitignore",
+    "lint": "eslint . --fix",
+    "lint:check": "eslint .",
     "format": "prettier --write src/"
   },
   "dependencies": {
@@ -17,7 +18,6 @@
     "@vueuse/core": "^10.11.0",
     "ant-design-vue": "^4.2.3",
     "ant-design-x-vue": "^1.0.6",
-    "axios": "^1.3.4",
     "d3": "^7.8.3",
     "dayjs": "^1.11.13",
     "echarts": "^5.4.2",
@@ -33,12 +33,15 @@
     "vue-router": "^4.1.6"
   },
   "devDependencies": {
-    "@rushstack/eslint-patch": "^1.2.0",
-    "@vitejs/plugin-vue": "^4.0.0",
-    "@vue/eslint-config-prettier": "^7.1.0",
+    "@vitejs/plugin-vue": "^5.2.4",
     "eslint": "^9.15.0",
     "eslint-plugin-vue": "^9.9.0",
     "prettier": "^2.8.4",
-    "vite": "^4.1.4"
+    "vite": "^6.4.1"
+  },
+  "overrides": {
+    "form-data": "4.0.5",
+    "lodash": "4.17.23",
+    "lodash-es": "4.17.23"
   }
 }

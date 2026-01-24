@@ -20,7 +20,7 @@ export const useConfigStore = defineStore('config', () => {
   function saveLocalConfig() {
     try {
       localStorage.setItem(LOCAL_CONFIG_KEY, JSON.stringify(config.value))
-    } catch (e) {
+    } catch {
       // ignore quota / private mode errors
     }
   }
@@ -45,7 +45,7 @@ export const useConfigStore = defineStore('config', () => {
   async function refreshConfig() {
     // Keep UI usable even if backend is down.
     try {
-      const remote = await apiFetch('/api/config', { method: 'GET' })
+      const remote = await apiFetch('/config', { method: 'GET' })
       patchLocal({
         ...remote,
         backend: { online: true, last_error: null, ...(remote?.backend || {}) },
@@ -53,14 +53,14 @@ export const useConfigStore = defineStore('config', () => {
 
       // Best-effort readiness probe (keeps UI informative, not required for rendering).
       try {
-        const ready = await apiFetch('/api/readyz', { method: 'GET', timeoutMs: 5000 })
+        const ready = await apiFetch('/readyz', { method: 'GET', timeoutMs: 5000 })
         patchLocal({
           backend: {
             ready: ready?.status === 'ok',
             checks: ready?.checks || null,
           },
         })
-      } catch (e) {
+      } catch {
         patchLocal({ backend: { ready: false, checks: null } })
       }
     } catch (e) {
@@ -74,7 +74,7 @@ export const useConfigStore = defineStore('config', () => {
     // Optional sync to backend (best-effort)
     if (!syncRemote) return
     try {
-      const remote = await apiFetch('/api/config', { method: 'PATCH', body: { [key]: value } })
+      const remote = await apiFetch('/config', { method: 'PATCH', body: { [key]: value } })
       patchLocal({
         ...remote,
         backend: { online: true, last_error: null, ...(remote?.backend || {}) },
@@ -85,7 +85,21 @@ export const useConfigStore = defineStore('config', () => {
     }
   }
 
-  return { config, setConfig, setConfigValue, refreshConfig, patchLocal }
+  async function setConfigValues(patch, { syncRemote = true } = {}) {
+    patchLocal(patch)
+    if (!syncRemote) return
+    try {
+      const remote = await apiFetch('/config', { method: 'PATCH', body: patch })
+      patchLocal({
+        ...remote,
+        backend: { online: true, last_error: null, ...(remote?.backend || {}) },
+      })
+    } catch (e) {
+      patchLocal({ backend: { online: false, last_error: e?.message || 'offline' } })
+    }
+  }
+
+  return { config, setConfig, setConfigValue, setConfigValues, refreshConfig, patchLocal }
 })
 
 function loadLocalConfig() {
@@ -93,7 +107,7 @@ function loadLocalConfig() {
     const raw = localStorage.getItem(LOCAL_CONFIG_KEY)
     if (!raw) return null
     return JSON.parse(raw)
-  } catch (e) {
+  } catch {
     return null
   }
 }

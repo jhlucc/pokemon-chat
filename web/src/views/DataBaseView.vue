@@ -5,14 +5,14 @@
       type="warning"
       show-icon
       :message="configStore.config.backend?.online ? '后端未启用知识库功能（enable_knowledge_base=false）' : '后端未启动/不可用（离线模式）'"
-      style="margin-bottom: 16px;"
+      style="margin: 16px 24px;"
     />
     <HeaderComponent
       title="文档知识库"
       description="知识型数据库，主要是非结构化的文本组成，使用向量检索使用。如果出现问题，可以检查 saves/data/database.json 查看配置。"
     >
       <template #actions>
-        <a-button type="primary" :disabled="!canUseKb" @click="newDatabase.open=true">新建知识库</a-button>
+        <a-button type="primary" @click="newDatabase.open=true">新建知识库</a-button>
       </template>
     </HeaderComponent>
 
@@ -35,7 +35,10 @@
       </template>
     </a-modal>
     <div class="databases">
-      <div class="new-database dbcard" @click="canUseKb && (newDatabase.open=true)">
+      <div
+        class="new-database dbcard ui-card"
+        @click="newDatabase.open=true"
+      >
         <div class="top">
           <div class="icon"><PlusOutlined /></div>
           <div class="info">
@@ -44,25 +47,36 @@
         </div>
         <p>导入您自己的文本数据或通过Webhook实时写入数据以增强 LLM 的上下文。</p>
       </div>
-      <div
-        v-for="database in databases"
-        :key="database.db_id"
-        class="database dbcard"
-        @click="navigateToDatabase(database.db_id)">
-        <div class="top">
-          <div class="icon"><ReadFilled /></div>
-          <div class="info">
-            <h3>{{ database.name }}</h3>
-            <p><span>{{ database.files ? Object.keys(database.files).length : 0 }} 文件</span></p>
+
+      <template v-if="state.loading">
+        <div v-for="n in 6" :key="n" class="dbcard ui-card dbcard--skeleton">
+          <a-skeleton active :title="{ width: '60%' }" :paragraph="{ rows: 2 }" />
+        </div>
+      </template>
+      <template v-else>
+        <div v-if="databases.length === 0" class="db-empty ui-muted">
+          暂无知识库
+        </div>
+        <div
+          v-for="database in databases"
+          :key="database.db_id"
+          class="database dbcard ui-card"
+          @click="navigateToDatabase(database.db_id)">
+          <div class="top">
+            <div class="icon"><ReadFilled /></div>
+            <div class="info">
+              <h3>{{ database.name }}</h3>
+              <p><span>{{ database.files ? Object.keys(database.files).length : 0 }} 文件</span></p>
+            </div>
           </div>
+          <p class="description">{{ database.description || '暂无描述' }}</p>
+          <div class="tags">
+            <a-tag color="blue" v-if="database.embed_model">{{ database.embed_model }}</a-tag>
+            <a-tag color="green" v-if="database.dimension">{{ database.dimension }}</a-tag>
+          </div>
+          <!-- <button @click="deleteDatabase(database.collection_name)">删除</button> -->
         </div>
-        <p class="description">{{ database.description || '暂无描述' }}</p>
-        <div class="tags">
-          <a-tag color="blue" v-if="database.embed_model">{{ database.embed_model }}</a-tag>
-          <a-tag color="green" v-if="database.dimension">{{ database.dimension }}</a-tag>
-        </div>
-        <!-- <button @click="deleteDatabase(database.collection_name)">删除</button> -->
-      </div>
+      </template>
     </div>
     <!-- <h2>图数据库 &nbsp; <a-spin v-if="graphloading" :indicator="indicator" /></h2>
     <p>基于 neo4j 构建的图数据库。</p>
@@ -85,10 +99,10 @@
 </template>
 
 <script setup>
-import { ref, onMounted, reactive, watch, h, computed } from 'vue'
+import { ref, onMounted, reactive, watch, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router';
-import { message, Button } from 'ant-design-vue'
-import { ReadFilled, PlusOutlined, AppstoreFilled, LoadingOutlined } from '@ant-design/icons-vue'
+import { message } from 'ant-design-vue'
+import { ReadFilled, PlusOutlined } from '@ant-design/icons-vue'
 import { useConfigStore } from '@/stores/config';
 import HeaderComponent from '@/components/HeaderComponent.vue';
 import { apiFetch } from '@/api/http'
@@ -96,12 +110,13 @@ import { apiFetch } from '@/api/http'
 const route = useRoute()
 const router = useRouter()
 const databases = ref([])
-const graph = ref(null)
-const graphloading = ref(false)
 
-const indicator = h(LoadingOutlined, {spin: true});
 const configStore = useConfigStore()
 const canUseKb = computed(() => Boolean(configStore.config.backend?.online) && Boolean(configStore.config.enable_knowledge_base))
+
+const state = reactive({
+  loading: false,
+})
 
 const newDatabase = reactive({
   name: '',
@@ -111,11 +126,8 @@ const newDatabase = reactive({
 })
 
 const loadDatabases = () => {
-  if (!canUseKb.value) {
-    databases.value = []
-    return
-  }
-  apiFetch('/api/data/', { method: "GET" })
+  state.loading = true
+  apiFetch('/data/', { method: "GET" })
     .then((data) => {
       databases.value = data?.databases || []
     })
@@ -123,17 +135,19 @@ const loadDatabases = () => {
       databases.value = []
       message.error(err?.message || '获取知识库列表失败')
     })
+    .finally(() => {
+      state.loading = false
+    })
 }
 
 const createDatabase = () => {
   newDatabase.loading = true
-  console.log(newDatabase)
   if (!newDatabase.name) {
     message.error('数据库名称不能为空')
     newDatabase.loading = false
     return
   }
-  apiFetch('/api/data/', {
+  apiFetch('/data/', {
     method: "POST",
     body: {
       database_name: newDatabase.name,
@@ -157,11 +171,7 @@ const navigateToDatabase = (databaseId) => {
   router.push({ path: `/database/${databaseId}` });
 };
 
-const navigateToGraph = () => {
-  router.push({ path: `/database/graph` });
-};
-
-watch(() => route.path, (newPath, oldPath) => {
+watch(() => route.path, (newPath, _oldPath) => {
   if (newPath === '/database') {
     loadDatabases();
   }
@@ -174,28 +184,21 @@ onMounted(() => {
 </script>
 
 <style lang="less" scoped>
+.database-container {
+  padding: 0; // Let HeaderComponent span full width (consistent with Tools/Graph pages)
+}
+
 .database-actions, .document-actions {
   margin-bottom: 20px;
 }
 .databases {
-  padding: 20px;
+  padding: 20px 24px;
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
   gap: 16px;
 
   .new-database {
     background-color: var(--gray-200);
-  }
-}
-
-.database, .graphbase {
-  background-color: var(--surface-color);
-  box-shadow: 0px 1px 2px 0px rgba(16,24,40,.06),0px 1px 3px 0px rgba(16,24,40,.1);
-  border: 2px solid var(--surface-color);
-  transition: box-shadow 0.2s ease-in-out;
-
-  &:hover {
-    box-shadow: 0px 4px 6px -2px rgba(16,24,40,.03),0px 12px 16px -4px rgba(16,24,40,.08);
   }
 }
 
@@ -254,6 +257,14 @@ onMounted(() => {
     text-overflow: ellipsis;
     margin-bottom: 10px;
   }
+}
+
+.dbcard--skeleton {
+  cursor: default;
+}
+
+.db-empty {
+  padding: 8px;
 }
 
 // 整个卡片是模糊的

@@ -30,7 +30,7 @@
         <MessageComponent
           v-for="(message, index) in messages"
           :message="message"
-          :key="index"
+          :key="message._local_id || message.id || index"
           :is-processing="isProcessing"
           :debug-mode="state.debug_mode"
           :show-refs="showMsgRefs(message)"
@@ -85,10 +85,10 @@
           <MessageInputComponent
             v-model="userInput"
             :is-loading="isProcessing"
-            :disabled="!currentAgent || isProcessing"
-            :send-button-disabled="!userInput || !currentAgent || isProcessing"
+            :disabled="!currentAgent"
+            :send-button-disabled="(!userInput && !isProcessing) || !currentAgent"
             :placeholder="'输入问题...'"
-            @send="sendMessage"
+            @send="handleSendOrStop"
             @keydown="handleKeyDown"
           />
           <div class="bottom-actions">
@@ -101,15 +101,20 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, watch, nextTick, computed } from 'vue';
+import { ref, onMounted, watch, nextTick } from 'vue';
+import { useDebounceFn } from '@vueuse/core';
 import {
-  RobotOutlined, SendOutlined, LoadingOutlined,
-  ThunderboltOutlined, ReloadOutlined, CheckCircleOutlined,
+  RobotOutlined, LoadingOutlined,
+  ThunderboltOutlined,
   PlusCircleOutlined
 } from '@ant-design/icons-vue';
 import { message } from 'ant-design-vue';
 import MessageInputComponent from '@/components/MessageInputComponent.vue'
 import MessageComponent from '@/components/MessageComponent.vue'
+import { readNdjsonStream } from '@/utils/ndjsonStream'
+import { apiFetch, apiRequest } from '@/api/http'
+import { randomId } from '@/utils/id'
+import { readJson, removeKey, writeJson } from '@/utils/storage'
 
 // 新增props属性，允许父组件传入agentId
 const props = defineProps({
@@ -133,10 +138,10 @@ const props = defineProps({
 const state = ref(props.state);
 const waitingServerResponse = ref(false);
 const showMsgRefs = (msg) => {
-  if (msg.isLast) {
-    return ['copy', 'regenerate']
-  }
-  return false
+  if (!msg) return false;
+  // Only show refs actions for the final assistant message by default.
+  if (msg.isLast) return true;
+  return false;
 }
 
 // DOM引用
@@ -148,6 +153,8 @@ const currentAgent = ref(null);        // 当前选中的智能体
 const userInput = ref('');             // 用户输入
 const messages = ref([]);              // 消息列表
 const isProcessing = ref(false);       // 是否正在处理请求
+const activeStreamId = ref(0);
+const activeAbortController = ref(null);
 
 // ==================== 工具调用相关 ====================
 
@@ -160,6 +167,13 @@ const expandedToolCalls = ref(new Set()); // 展开的工具调用集合
 
 // ==================== 基础工具函数 ====================
 
+const MAX_MESSAGES_TO_STORE = 300;
+
+const ensureLocalId = (msg) => {
+  if (!msg || typeof msg !== 'object') return msg;
+  return msg._local_id ? msg : { ...msg, _local_id: randomId(12) };
+};
+
 
 // 滚动到底部 TODO: 需要优化当用户向上滚动的时候，停止滚动，当用户点击回到底部或者滚动到最底部的时候，再滚动到底部
 const scrollToBottom = async () => {
@@ -167,7 +181,6 @@ const scrollToBottom = async () => {
   if (!messagesContainer.value) return;
 
   // 找到真正需要滚动的容器元素
-  const containerBox = messagesContainer.value;
   const container = document.querySelector('.chat');
   if (!container) return;
 
@@ -294,6 +307,25 @@ const sendMessage = () => {
   });
 };
 
+const handleSendOrStop = () => {
+  if (isProcessing.value) {
+    activeStreamId.value += 1;
+    activeAbortController.value?.abort?.();
+    activeAbortController.value = null;
+    waitingServerResponse.value = false;
+    isProcessing.value = false;
+
+    const lastMsg = messages.value[messages.value.length - 1];
+    if (lastMsg && lastMsg.role === 'assistant') {
+      lastMsg.isStoppedByUser = true;
+      lastMsg.status = 'stopped';
+    }
+    return;
+  }
+
+  sendMessage();
+};
+
 // 重试消息
 const retryMessage = (message) => {
   // 获取用户消息的request_id
@@ -316,12 +348,17 @@ const sendMessageWithText = async (text) => {
 
   // 重置状态
   resetStatusSteps();
+  const streamId = activeStreamId.value + 1;
+  activeStreamId.value = streamId;
+  const controller = new AbortController();
+  activeAbortController.value = controller;
 
   const userMessage = text.trim();
   const requestId = currentAgent.value.name + '-' + new Date().getTime();
 
   // 添加用户消息
   messages.value.push({
+    _local_id: randomId(12),
     role: 'user',
     content: userMessage,
     id: requestId
@@ -353,163 +390,66 @@ const sendMessageWithText = async (text) => {
       }
     };
 
-    // 发送请求
-    const response = await fetch(`/api/chat/agent/${currentAgent.value.name}`, {
+    const response = await apiRequest(`/chat/agent/${currentAgent.value.name}`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(requestData)
+      body: requestData,
+      signal: controller.signal,
+      timeoutMs: 300000,
     });
 
-    // console.log("requestData", requestData);
-    if (!response.ok) {
-      throw new Error('请求失败');
-    }
-
     // 处理流式响应
-    await handleStreamResponse(response);
+    await handleStreamResponse(response, { signal: controller.signal });
 
   } catch (error) {
-    console.error('发送消息错误:', error);
-    // 更新错误状态
-    const loadingMsgIndex = messages.value.length - 1;
-    if (loadingMsgIndex >= 0) {
-      messages.value[loadingMsgIndex] = {
+    if (!error?.isCancelled && !controller.signal.aborted) {
+      console.error('发送消息错误:', error);
+      messages.value.push({
+        _local_id: randomId(12),
         role: 'assistant',
-        content: `发生错误: ${error.message}`,
-        status: 'error'
-      };
+        content: '',
+        message: error?.message || '请求失败',
+        status: 'error',
+      });
     }
   } finally {
-    waitingServerResponse.value = false;
-    isProcessing.value = false;
-    await scrollToBottom();
+    if (activeStreamId.value === streamId) {
+      waitingServerResponse.value = false;
+      isProcessing.value = false;
+      activeAbortController.value = null;
+      await scrollToBottom();
+    }
   }
 };
 
 // 处理流式响应
-const handleStreamResponse = async (response) => {
+const handleStreamResponse = async (response, { signal } = {}) => {
   try {
     await scrollToBottom();
 
-    // 检查是否支持现代流API
-    if ('TransformStream' in window && 'ReadableStream' in window) {
-      const jsonStream = new TransformStream({
-        start(controller) {
-          this.buffer = '';
-          this.decoder = new TextDecoder();
-        },
-        transform(chunk, controller) {
-          this.buffer += this.decoder.decode(chunk, { stream: true });
+    await readNdjsonStream(
+      response,
+      async (value) => {
+        if (!value) return;
 
-          let position;
-          while ((position = this.buffer.indexOf('\n')) !== -1) {
-            const line = this.buffer.substring(0, position).trim();
-            this.buffer = this.buffer.substring(position + 1);
-
-            if (line) {
-              try {
-                controller.enqueue(JSON.parse(line));
-              } catch (e) {
-                // 不完整的JSON，保留在缓冲区中
-              }
-            }
-          }
-        },
-        flush(controller) {
-          if (this.buffer.trim()) {
-            try {
-              controller.enqueue(JSON.parse(this.buffer.trim()));
-            } catch (e) {
-              console.warn('最终缓冲区内容无法解析:', this.buffer);
-            }
-          }
-        }
-      });
-
-      // 通过管道处理响应流
-      const transformedStream = response.body.pipeThrough(jsonStream);
-      const reader = transformedStream.getReader();
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        // 这里的value已经是解析后的JSON对象
-        if (value) {
-          if (value.debug_mode) {
-            console.log("debug_mode", value);
-          }
-
-          // 处理不同状态的消息
-          if (value.status === 'init') {
-            await handleInit(value);
-          } else if (value.status === 'finished') {
-            await handleFinished(value);
-          } else if (value.status === 'error') {
-            await handleError(value);
-          } else {
-            await handleMessageById(value);
-          }
-
-          await scrollToBottom();
-        }
-      }
-    } else {
-      // 降级方案：使用传统方式处理流数据
-      const reader = response.body.getReader();
-      let buffer = '';
-      const decoder = new TextDecoder();
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split('\n');
-        buffer = lines.pop() || ''; // 保留最后一行可能不完整的内容
-
-        for (const line of lines) {
-          if (line.trim()) {
-            try {
-              const data = JSON.parse(line.trim());
-
-              if (data.debug_mode) {
-                console.log("debug_mode", data);
-              }
-
-              if (data.status === 'init') {
-                await handleInit(data);
-              } else if (data.status === 'finished') {
-                await handleFinished(data);
-              } else {
-                await handleMessageById(data);
-              }
-            } catch (e) {
-              console.debug('解析JSON出错:', e.message);
-            }
-          }
+        // 处理不同状态的消息
+        if (value.status === 'init') {
+          await handleInit(value);
+        } else if (value.status === 'finished') {
+          await handleFinished(value);
+        } else if (value.status === 'error') {
+          await handleError(value);
+        } else {
+          await handleMessageById(value);
         }
 
         await scrollToBottom();
+      },
+      {
+        onParseError: (e, line) => console.debug('解析JSON出错:', e?.message || e, line),
       }
-
-      // 处理缓冲区中可能剩余的内容
-      if (buffer.trim()) {
-        try {
-          const data = JSON.parse(buffer.trim());
-          if (data.status === 'init') {
-            await handleInit(data);
-          } else if (data.status === 'finished') {
-            await handleFinished(data);
-          } else {
-            await handleMessageById(data);
-          }
-        } catch (e) {
-          console.warn('最终缓冲区内容无法解析:', buffer);
-        }
-      }
-    }
+    );
   } catch (error) {
+    if (signal?.aborted) return;
     console.error('流式处理出错:', error);
     const lastMsg = messages.value[messages.value.length - 1];
     if (lastMsg.role === 'assistant') {
@@ -517,20 +457,20 @@ const handleStreamResponse = async (response) => {
       lastMsg.message = error.message;
     } else {
       messages.value.push({
+        _local_id: randomId(12),
         role: 'assistant',
-        message: `发生错误: ${error.message}`,
+        message: error?.message || '请求失败',
         status: 'error'
       });
       await scrollToBottom();
     }
-    isProcessing.value = false;
   }
 };
 
 const handleInit = async (data) => {
   waitingServerResponse.value = false;
-  console.log("handleInit", data);
   const initMsg = {
+    _local_id: randomId(12),
     role: 'assistant',
     content: '',
     status: 'init',
@@ -556,10 +496,24 @@ const handleFinished = async (data) => {
     lastAssistantMsg.status = 'finished';
     lastAssistantMsg.isLast = true;
     lastAssistantMsg.meta = data.meta;
+    if (data.refs) {
+      lastAssistantMsg.refs = data.refs;
+
+      const kbResults = data.refs?.knowledge_base?.results;
+      if (Array.isArray(kbResults) && kbResults.length > 0) {
+        lastAssistantMsg.groupedResults = kbResults
+          .filter((r) => r?.file?.filename)
+          .reduce((acc, r) => {
+            const filename = r.file.filename;
+            if (!acc[filename]) acc[filename] = [];
+            acc[filename].push(r);
+            return acc;
+          }, {});
+      }
+    }
   }
 
   // 标记处理完成
-  isProcessing.value = false;
   await scrollToBottom();
 };
 
@@ -584,7 +538,6 @@ const handleMessageById = async (data) => {
         // 更新现有助手消息
         messages.value[loadingAssistantIndex].id = msgId;
         messageMap.value.set(msgId, loadingAssistantIndex);
-        console.log("更新现有助手消息", messages.value[loadingAssistantIndex]);
         await updateExistingMessage(data, loadingAssistantIndex);
       } else {
         await createAssistantMessage(data);
@@ -618,6 +571,7 @@ const createAssistantMessage = async (data) => {
   } else {
     // 创建新消息
     currentMsg = {
+      _local_id: randomId(12),
       role: 'assistant',
       status: 'init',
       toolCalls: {},
@@ -627,6 +581,7 @@ const createAssistantMessage = async (data) => {
     messages.value.push(currentMsg);
   }
 
+  if (!currentMsg._local_id) currentMsg._local_id = randomId(12);
   currentMsg.id = msgId;
   currentMsg.content = msgContent;
   currentMsg.run_id = runId;
@@ -752,18 +707,11 @@ const appendToolMessageToExistingAssistant = async (data) => {
 // 获取智能体列表
 const fetchAgents = async () => {
   try {
-    const response = await fetch('/api/chat/agent');
-    if (response.ok) {
-      const data = await response.json();
-      // 将数组转换为对象
-      agents.value = data.agents.reduce((acc, agent) => {
-        acc[agent.name] = agent;
-        return acc;
-      }, {});
-      console.log("agents", agents.value);
-    } else {
-      console.error('获取智能体失败');
-    }
+    const data = await apiFetch('/chat/agent', { method: 'GET', timeoutMs: 10000 })
+    agents.value = (data?.agents || []).reduce((acc, agent) => {
+      acc[agent.name] = agent;
+      return acc;
+    }, {});
   } catch (error) {
     console.error('获取智能体错误:', error);
   }
@@ -851,7 +799,8 @@ const loadAgentData = async () => {
     // 处理消息历史
     if (messages.value && messages.value.length > 0) {
       // console.log("处理消息历史:", messages.value.length);
-      messages.value = prepareMessageHistory(messages.value);
+      const prepared = prepareMessageHistory(messages.value);
+      messages.value = Array.isArray(prepared) ? prepared.map(ensureLocalId) : [];
     }
   } catch (error) {
     console.error('加载智能体数据出错:', error);
@@ -874,20 +823,9 @@ const loadState = () => {
     // console.log("loadState with prefix:", storagePrefix);
 
     // 加载消息历史
-    const savedMessages = localStorage.getItem(`${storagePrefix}-messages`);
-    if (savedMessages) {
-      try {
-        const parsedMessages = JSON.parse(savedMessages);
-        // console.log(`加载消息历史 (${storagePrefix}):`, parsedMessages ? parsedMessages.length : 0);
-        if (Array.isArray(parsedMessages)) {
-          messages.value = parsedMessages;
-        }
-
-        // 检查消息历史是否成功加载
-        // console.log(`消息历史加载后数量:`, messages.value.length);
-      } catch (e) {
-        console.error('解析消息历史出错:', e);
-      }
+    const parsedMessages = readJson(`${storagePrefix}-messages`, null);
+    if (Array.isArray(parsedMessages)) {
+      messages.value = parsedMessages.map(ensureLocalId);
     }
 
     // 加载线程ID
@@ -942,9 +880,10 @@ const saveState = () => {
     // 保存消息历史
     if (messages.value && messages.value.length > 0) {
       // console.log(`保存消息历史 (${prefix}):`, messages.value.length);
-      localStorage.setItem(`${prefix}-messages`, JSON.stringify(messages.value));
+      const toStore = messages.value.slice(-MAX_MESSAGES_TO_STORE);
+      writeJson(`${prefix}-messages`, toStore);
     } else {
-      localStorage.removeItem(`${prefix}-messages`);
+      removeKey(`${prefix}-messages`);
     }
 
     // 保存线程ID
@@ -964,9 +903,15 @@ const sayHi = () => {
 }
 
 // 监听状态变化并保存
+const persistState = useDebounceFn(
+  () => saveState(),
+  800,
+  { maxWait: 2500 }
+);
+
 watch([currentAgent, messages, currentRunId], () => {
   try {
-    saveState();
+    persistState();
   } catch (error) {
     console.error('保存状态时出错:', error);
   }
@@ -974,8 +919,6 @@ watch([currentAgent, messages, currentRunId], () => {
 </script>
 
 <style lang="less" scoped>
-@import '@/assets/main.css';
-
 .chat-container {
   display: flex;
   width: 100%;

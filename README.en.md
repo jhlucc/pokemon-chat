@@ -112,9 +112,11 @@ No manual environment configuration needed. Directly use Docker Compose to start
 git clone https://github.com/skygazer42/pokemon-chat.git
 cd pokemon-chat
 
-# 2. Configure environment variables (Optional, defaults work out-of-the-box)
-cp .env.template .env
-# Edit .env file, fill in LLM API KEY (e.g., SILICONFLOW_API_KEY)
+# 2. Configure environment variables (Docker Compose reads ./docker/.env)
+cp docker/.env.example docker/.env
+# Edit docker/.env and fill in your LLM API key (e.g. llm_api_key / SILICONFLOW_API_KEY)
+# Optional: enable ASR (FunASR) -> enable_asr=true, funasr_url=ws://funasr:10095 (Docker)
+# Optional: restrict CORS origins (recommended for production) -> cors_allow_origins=http://localhost:3100
 
 # 3. Start all services (API + Web + DB + MCP)
 cd docker
@@ -123,7 +125,7 @@ docker compose --profile infra --profile mcp up -d --build
 
 Access:
 - **Web UI**: http://localhost:3100/
-- **API Docs**: http://localhost:5050/docs
+- **API Docs**: http://localhost:3100/api/docs (or direct http://localhost:5050/docs)
 
 ### 📦 Data Initialization (First Run)
 
@@ -133,7 +135,8 @@ Then execute the import scripts:
 
 ```bash
 # Enter API container
-docker exec -it pokemon-chat-api-1 bash
+cd docker
+docker compose exec api bash
 
 # Import Neo4j graph data
 python scripts/import_graph.py
@@ -165,6 +168,9 @@ If you wish to run backend/frontend code locally for development:
    npm install
    npm run dev
    ```
+
+> Tip: If you only want to work on the frontend UI (without starting the backend), go to **Settings** and switch **Offline Demo Mode** to **Force Mock**.
+> The frontend will simulate backend APIs with local mock data, so it can render all pages/features without relying on backend `base.yaml`.
 
 ---
 

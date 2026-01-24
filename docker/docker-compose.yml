@@ -6,6 +6,8 @@ services:
     restart: unless-stopped
     ports:
       - "5050:5050"
+    env_file:
+      - .env
     # Compose loads variables from docker/.env (if present). You can also export them in your shell.
     environment:
       # ---- Feature flags (safe defaults) ----
@@ -15,6 +17,7 @@ services:
       enable_mcp: ${enable_mcp:-false}
       enable_reranker: ${enable_reranker:-false}
       enable_ner_bert: ${enable_ner_bert:-false}
+      enable_asr: ${enable_asr:-false}
 
       # ---- LLM ----
       llm_api_key: ${llm_api_key:-}
@@ -53,9 +56,14 @@ services:
 
       # ---- MCP ----
       mcp_sse_url: http://mcp:8000/sse
+      funasr_url: ${funasr_url:-ws://funasr:10095}
 
       # ---- Web search ----
       tavily_api_key: ${tavily_api_key:-}
+
+      # ---- CORS ----
+      cors_allow_origins: ${cors_allow_origins:-*}
+      cors_allow_credentials: ${cors_allow_credentials:-true}
 
       # ---- Provider keys (legacy auto-detection compatibility) ----
       SILICONFLOW_API_KEY: ${SILICONFLOW_API_KEY:-}
@@ -96,6 +104,8 @@ services:
     command: ["python", "-m", "src.mcp.mcp_server"]
     ports:
       - "8000:8000"
+    env_file:
+      - .env
     environment:
       MCP_HOST: 0.0.0.0
       MCP_PORT: 8000

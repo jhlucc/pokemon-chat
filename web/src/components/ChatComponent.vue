@@ -8,11 +8,24 @@
           v-if="!state.isSidebarOpen"
           class="close nav-btn"
           @click="state.isSidebarOpen = true"
+          role="button"
+          tabindex="0"
+          aria-label="打开对话侧栏"
+          @keydown.enter.prevent="state.isSidebarOpen = true"
+          @keydown.space.prevent="state.isSidebarOpen = true"
         >
-          <img src="@/assets/icons/sidebar_left.svg" class="iconfont icon-20" alt="设置" />
+          <img src="@/assets/icons/sidebar_left.svg" class="iconfont icon-20 sidebar-icon" alt="侧栏" />
         </div>
 
-         <div class="action-button" @click="$emit('newconv')">
+         <div
+          class="action-button"
+          @click="$emit('newconv')"
+          role="button"
+          tabindex="0"
+          aria-label="新建会话"
+          @keydown.enter.prevent="$emit('newconv')"
+          @keydown.space.prevent="$emit('newconv')"
+        >
         <PlusCircleOutlined class="icon" />
         <span class="text">新建会话</span>
       </div>
@@ -21,7 +34,15 @@
       </div>
       <div class="header__right">
          <a-dropdown>
-  <div class="model-select" @click.prevent>
+  <div
+    class="model-select"
+    @click.prevent
+    role="button"
+    tabindex="0"
+    aria-label="选择模型"
+    @keydown.enter.prevent="$event.currentTarget?.click?.()"
+    @keydown.space.prevent="$event.currentTarget?.click?.()"
+  >
     <BulbOutlined class="icon" />
     <span class="text">{{ configStore.config?.model_provider }}/{{ configStore.config?.model_name }}</span>
   </div>
@@ -52,7 +73,15 @@
     </a-menu>
   </template>
 </a-dropdown>
-        <div class="nav-btn text" @click="opts.showPanel = !opts.showPanel">
+        <div
+          class="nav-btn text"
+          @click="opts.showPanel = !opts.showPanel"
+          role="button"
+          tabindex="0"
+          aria-label="聊天选项"
+          @keydown.enter.prevent="opts.showPanel = !opts.showPanel"
+          @keydown.space.prevent="opts.showPanel = !opts.showPanel"
+        >
           <component :is="opts.showPanel ? FolderOpenOutlined : FolderOutlined" /> <span class="text">选项</span>
         </div>
         <div v-if="opts.showPanel" class="my-panal r0 top100 swing-in-top-fwd" ref="panel">
@@ -80,23 +109,24 @@
         </div>
       </div>
     </div>
-<div v-if="conv.messages.length == 0" class="chat-examples">
-  <h1>你好，我是可萌，一个基于宝可梦知识图谱的智能助手</h1>
-  <div class="example-cards">
-    <div
-      class="card"
-      v-for="(exp, key) in examples"
-      :key="key"
-      @click="conv.inputText = exp"
-    >
-      <div class="blob"></div>
-      <div class="bg">
-        <span style="z-index: 3">{{ exp }}</span>
-      </div>
-    </div>
-  </div>
-</div>
     <div class="chat-box" :class="{ 'wide-screen': meta.wideScreen, 'font-smaller': meta.fontSize === 'smaller', 'font-larger': meta.fontSize === 'larger' }">
+      <div v-if="conv.messages.length === 0" class="chat-empty">
+        <div class="chat-empty__hero">
+          <h1>你好，我是可萌</h1>
+          <p>一个基于宝可梦知识图谱的智能助手</p>
+        </div>
+        <div class="chat-empty__prompts">
+          <button
+            v-for="(exp, key) in examples"
+            :key="key"
+            type="button"
+            class="prompt-card"
+            @click="conv.inputText = exp"
+          >
+            {{ exp }}
+          </button>
+        </div>
+      </div>
       <MessageComponent
         v-for="message in conv.messages"
         :message="message"
@@ -108,6 +138,19 @@
       >
       </MessageComponent>
     </div>
+
+    <a-float-button
+      v-if="showScrollToBottom"
+      class="scroll-to-bottom"
+      :style="{ right: '20px', bottom: '96px' }"
+      @click="jumpToBottom"
+      tooltip="回到底部"
+    >
+      <template #icon>
+        <DownOutlined />
+      </template>
+    </a-float-button>
+
     <div class="bottom">
       <div class="message-input-wrapper"  :class="{ 'wide-screen': meta.wideScreen}">
         <MessageInputComponent
@@ -119,50 +162,79 @@
           @keydown="handleKeyDown"
         >
           <template #options-left>
+            <a-tooltip :title="canWebSearch ? '' : (backendOnline ? '后端未启用联网搜索' : '后端离线/不可用')">
             <div
-              :class="{'switch': true, 'opt-item': true, 'active': meta.use_web}"
-              v-if="configStore.config.enable_web_search"
-              @click="meta.use_web=!meta.use_web"
+              :class="{'switch': true, 'opt-item': true, 'active': meta.use_web, 'disabled': !canWebSearch}"
+              @click="toggleWebSearch"
+              role="button"
+              tabindex="0"
+              aria-label="切换联网搜索"
+              @keydown.enter.prevent="toggleWebSearch"
+              @keydown.space.prevent="toggleWebSearch"
             >
               <CompassOutlined style="margin-right: 3px;"/>
               联网搜索
             </div>
+            </a-tooltip>
+            <a-tooltip :title="canGraph ? '' : (backendOnline ? '后端未启用知识图谱' : '后端离线/不可用')">
             <div
-              :class="{'switch': true, 'opt-item': true, 'active': meta.use_graph}"
-              v-if="configStore.config.enable_knowledge_graph"
-              @click="meta.use_graph=!meta.use_graph"
+              :class="{'switch': true, 'opt-item': true, 'active': meta.use_graph, 'disabled': !canGraph}"
+              @click="toggleGraph"
+              role="button"
+              tabindex="0"
+              aria-label="切换知识图谱"
+              @keydown.enter.prevent="toggleGraph"
+              @keydown.space.prevent="toggleGraph"
             >
               <DeploymentUnitOutlined style="margin-right: 3px;"/>
               知识图谱
             </div>
-          <div
-              :class="{'switch': true, 'opt-item': true, 'active': meta.use_mcp}"
-              v-if="configStore.config.enable_mcp"
-              @click="
-                meta.use_mcp = !meta.use_mcp;
-                meta.mcp_id  = meta.use_mcp ? 'default' : null;
-            ">
-              <DatabaseOutlined style="margin-right:3px;" />MCP
-            </div>
-            <a-dropdown
-              v-if="configStore.config.enable_knowledge_base && opts.databases.length > 0"
-              :class="{'opt-item': true, 'active': meta.selectedKB !== null}"
-            >
-              <a class="ant-dropdown-link" @click.prevent>
-                <BookOutlined style="margin-right: 3px;"/>
-                <span class="text">{{ meta.selectedKB === null ? '不使用知识库' : opts.databases[meta.selectedKB]?.name }}</span>
-              </a>
-              <template #overlay>
-                <a-menu>
-                  <a-menu-item v-for="(db, index) in opts.databases" :key="index" @click="useDatabase(index)">
-                    <a href="javascript:;">{{ db.name }}</a>
-                  </a-menu-item>
-                  <a-menu-item @click="useDatabase(null)">
-                    <a href="javascript:;">不使用</a>
-                  </a-menu-item>
-                </a-menu>
-              </template>
-            </a-dropdown>
+            </a-tooltip>
+            <a-tooltip :title="canMcp ? '' : (backendOnline ? '后端未启用 MCP' : '后端离线/不可用')">
+              <div
+                :class="{'switch': true, 'opt-item': true, 'active': meta.use_mcp, 'disabled': !canMcp}"
+                @click="toggleMcp"
+                role="button"
+                tabindex="0"
+                aria-label="切换 MCP"
+                @keydown.enter.prevent="toggleMcp"
+                @keydown.space.prevent="toggleMcp"
+              >
+                <DatabaseOutlined style="margin-right:3px;" />MCP
+              </div>
+            </a-tooltip>
+            <a-tooltip :title="canKb ? '' : (backendOnline ? '后端未启用知识库' : '后端离线/不可用')">
+              <a-dropdown
+                :disabled="!canKb || opts.databases.length === 0"
+                :class="{'opt-item': true, 'active': meta.selectedKB !== null, 'disabled': !canKb || opts.databases.length === 0}"
+              >
+                <a class="ant-dropdown-link" @click.prevent>
+                  <BookOutlined style="margin-right: 3px;"/>
+                  <span class="text">
+                    {{
+                      meta.selectedKB === null
+                        ? (opts.databases.length > 0 ? '不使用知识库' : '暂无知识库')
+                        : opts.databases[meta.selectedKB]?.name
+                    }}
+                  </span>
+                </a>
+                <template #overlay>
+                  <a-menu>
+                    <a-menu-item
+                      v-for="(db, index) in opts.databases"
+                      :key="index"
+                      :disabled="!canKb"
+                      @click="useDatabase(index)"
+                    >
+                      <a href="javascript:;">{{ db.name }}</a>
+                    </a-menu-item>
+                    <a-menu-item :disabled="!canKb" @click="useDatabase(null)">
+                      <a href="javascript:;">不使用</a>
+                    </a-menu-item>
+                  </a-menu>
+                </template>
+              </a-dropdown>
+            </a-tooltip>
           </template>
         </MessageInputComponent>
         <p class="note">请注意辨别内容的可靠性 By {{ configStore.config?.model_provider }}: {{ configStore.config?.model_name }}</p>
@@ -183,13 +255,18 @@ import {
   BulbOutlined,
   DeploymentUnitOutlined,
     DatabaseOutlined,
+  DownOutlined,
 
 } from '@ant-design/icons-vue'
-import { onClickOutside } from '@vueuse/core'
+import { onClickOutside, useDebounceFn } from '@vueuse/core'
 import { useConfigStore } from '@/stores/config'
 import { message } from 'ant-design-vue'
 import MessageInputComponent from '@/components/MessageInputComponent.vue'
 import MessageComponent from '@/components/MessageComponent.vue'
+import { readNdjsonStream } from '@/utils/ndjsonStream'
+import { apiFetch, apiRequest } from '@/api/http'
+import { randomId } from '@/utils/id'
+import { readJson, writeJson } from '@/utils/storage'
 
 const props = defineProps({
   conv: Object,
@@ -202,12 +279,44 @@ const configStore = useConfigStore()
 const { conv, state } = toRefs(props)
 const chatContainer = ref(null)
 
+const backendOnline = computed(() => Boolean(configStore.config.backend?.online))
+const canWebSearch = computed(() => backendOnline.value && Boolean(configStore.config.enable_web_search))
+const canGraph = computed(() => backendOnline.value && Boolean(configStore.config.enable_knowledge_graph))
+const canMcp = computed(() => backendOnline.value && Boolean(configStore.config.enable_mcp))
+const canKb = computed(() => backendOnline.value && Boolean(configStore.config.enable_knowledge_base))
+
+const toggleWebSearch = () => {
+  if (!canWebSearch.value) {
+    message.info(backendOnline.value ? '后端未启用联网搜索' : '后端离线/不可用')
+    return
+  }
+  meta.use_web = !meta.use_web
+}
+
+const toggleGraph = () => {
+  if (!canGraph.value) {
+    message.info(backendOnline.value ? '后端未启用知识图谱' : '后端离线/不可用')
+    return
+  }
+  meta.use_graph = !meta.use_graph
+}
+
+const toggleMcp = () => {
+  if (!canMcp.value) {
+    message.info(backendOnline.value ? '后端未启用 MCP' : '后端离线/不可用')
+    return
+  }
+  meta.use_mcp = !meta.use_mcp
+  meta.mcp_id = meta.use_mcp ? 'default' : null
+}
+
 const isStreaming = ref(false)
+const activeChatAbortController = ref(null)
+const activeStreamId = ref(0)
 const userIsScrolling = ref(false);
 const shouldAutoScroll = ref(true);
 
 const panel = ref(null)
-const modelCard = ref(null)
 const examples = ref([
   '喜欢小智吗？',
   '今天常州天气怎么样？',
@@ -223,33 +332,53 @@ const opts = reactive({
   mcps: []
 })
 
-const meta = reactive(JSON.parse(localStorage.getItem('meta')) || {
-  use_graph: false,
-  use_web: false,
-  use_mcp: false,
-  graph_name: "neo4j",
-  selectedKB: null,
-  mcp_id: null,
-  stream: true,
-  summary_title: false,
-  history_round: 20,
-  db_id: null,
-  fontSize: 'default',
+const showScrollToBottom = computed(() => !shouldAutoScroll.value && (conv.value?.messages?.length || 0) > 0)
+const jumpToBottom = () => {
+  shouldAutoScroll.value = true
+  userIsScrolling.value = false
+  forceScrollToBottom()
+}
 
-  wideScreen: false
-})
+const LEGACY_META_STORAGE_KEY = 'meta'
+const META_STORAGE_KEY = 'pokemon-chat-meta-v1'
 
+function defaultMeta() {
+  return {
+    use_graph: false,
+    use_web: false,
+    use_mcp: false,
+    graph_name: 'neo4j',
+    selectedKB: null,
+    mcp_id: null,
+    stream: true,
+    summary_title: false,
+    history_round: 20,
+    db_id: null,
+    fontSize: 'default',
+    wideScreen: false,
+  }
+}
 
-const consoleMsg = (msg) => console.log(msg)
+const meta = reactive(readJson(META_STORAGE_KEY, readJson(LEGACY_META_STORAGE_KEY, defaultMeta())))
+
+const persistMeta = useDebounceFn(
+  () => {
+    // Keep legacy key for backward compatibility with existing users.
+    writeJson(META_STORAGE_KEY, meta)
+    writeJson(LEGACY_META_STORAGE_KEY, meta)
+  },
+  600,
+  { maxWait: 2000 }
+)
+
 onClickOutside(panel, () => setTimeout(() => opts.showPanel = false, 30))
-onClickOutside(modelCard, () => setTimeout(() => opts.showModelCard = false, 30))
 
 // 从 message 中获取 history 信息，每个消息都是 {role, content} 的格式
 const getHistory = () => {
   const history = conv.value.messages.map((msg) => {
     if (msg.content) {
       return {
-        role: msg.role === 'sent' ? 'user' : 'assistant',
+        role: msg.role === 'sent' || msg.role === 'user' ? 'user' : 'assistant',
         content: msg.content
       }
     }
@@ -263,10 +392,12 @@ const getHistory = () => {
 }
 
 const useDatabase = (index) => {
+  if (!canKb.value) {
+    message.info(backendOnline.value ? '后端未启用知识库' : '后端离线/不可用')
+    return
+  }
   const selected = opts.databases[index]
-  console.log(selected)
   if (index != null && configStore.config.embed_model != selected.embed_model) {
-    console.log(selected.embed_model, configStore.config.embed_model)
     message.error(`所选知识库的向量模型（${selected.embed_model}）与当前向量模型（${configStore.config.embed_model}) 不匹配，请重新选择`)
   } else {
     meta.selectedKB = index
@@ -282,10 +413,11 @@ const handleKeyDown = (e) => {
     const textarea = e.target;
     const start = textarea.selectionStart;
     const end = textarea.selectionEnd;
-    conv.value.inputText.value =
-      conv.value.inputText.value.substring(0, start) +
+    const cur = conv.value.inputText || '';
+    conv.value.inputText =
+      cur.substring(0, start) +
       '\n' +
-      conv.value.inputText.value.substring(end);
+      cur.substring(end);
     nextTick(() => {
       textarea.setSelectionRange(start + 1, start + 1);
     });
@@ -326,22 +458,12 @@ const scrollToBottom = () => {
   }
 }
 
-const generateRandomHash = (length) => {
-    let chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-    let hash = '';
-    for (let i = 0; i < length; i++) {
-        hash += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
-    return hash;
-}
-
 const appendUserMessage = (msg) => {
   const data = {
-    id: generateRandomHash(16),
+    id: randomId(16),
     role: 'user',
     content: msg
   }
-  console.log("👤 添加用户消息：", data)
   conv.value.messages.push(data)
   scrollToBottom()
 }
@@ -349,11 +471,12 @@ const appendUserMessage = (msg) => {
 
 const appendAiMessage = (content, refs=null) => {
   conv.value.messages.push({
-    id: generateRandomHash(16),
+    id: randomId(16),
     role: 'assistant',
     content: content,
     reasoning_content: '',
     refs,
+    groupedResults: {},
     status: "init",
     meta: {},
     showThinking: "show"
@@ -414,150 +537,154 @@ const updateMessage = (info) => {
 
 const groupRefs = (id) => {
   const msg = conv.value.messages.find((msg) => msg.id === id)
-  if (msg.refs && msg.refs.knowledge_base.results.length > 0) {
-    msg.groupedResults = msg.refs.knowledge_base.results
-        .filter(result => result.file && result.file.filename)
-        .reduce((acc, result) => {
-          const {filename} = result.file;
-          if (!acc[filename]) {
-            acc[filename] = []
-          }
-          acc[filename].push(result)
-          return acc;
-        }, {})
+  if (!msg) return
+  const results = msg.refs?.knowledge_base?.results
+  if (!Array.isArray(results) || results.length === 0) {
+    msg.groupedResults = {}
+    return
   }
+
+  msg.groupedResults = results
+    .filter((result) => result?.file?.filename)
+    .reduce((acc, result) => {
+      const filename = result.file.filename
+      if (!acc[filename]) acc[filename] = []
+      acc[filename].push(result)
+      return acc
+    }, {})
   scrollToBottom()
 }
 
 const simpleCall = (msg) => {
-  return new Promise((resolve, reject) => {
-    fetch('/api/chat/call', {
-      method: 'POST',
-      body: JSON.stringify({
-        query: msg,
-        meta: {
-          model_provider: configStore.config?.model_provider,
-          model_name: configStore.config?.model_name,
-        },
-      }),
-      headers: {'Content-Type': 'application/json'}
-    })
-        .then((response) => response.json())
-        .then((data) => resolve(data))
-        .catch((error) => reject(error))
+  return apiFetch('/chat/call', {
+    method: 'POST',
+    body: {
+      query: msg,
+      meta: {
+        model_provider: configStore.config?.model_provider,
+        model_name: configStore.config?.model_name,
+      },
+    },
+    timeoutMs: 30000,
   })
 }
 
 const loadDatabases = () => {
-  fetch('/api/data/', {method: "GET",})
-      .then(response => response.json())
-      .then(data => {
-        console.log(data)
-        opts.databases = data.databases
-      })
+  apiFetch('/data/', { method: 'GET', timeoutMs: 5000 })
+    .then((data) => {
+      opts.databases = data?.databases || []
+    })
+    .catch(() => {
+      opts.databases = []
+    })
 }
 
-// 新函数用于处理 fetch 请求
-const fetchChatResponse = (user_input, cur_res_id) => {
-  const controller = new AbortController();
-  const signal = controller.signal;
+const fetchChatResponse = async (user_input, cur_res_id) => {
+  const streamId = activeStreamId.value + 1
+  activeStreamId.value = streamId
+
+  const controller = new AbortController()
+  activeChatAbortController.value = controller
 
   const params = {
     query: user_input,
-    history: getHistory().slice(0, -1), // 去掉最后一条刚添加的用户消息,
-    meta: meta,
-    cur_res_id: cur_res_id,
+    history: getHistory().slice(0, -1), // 去掉最后一条刚添加的用户消息
+    meta,
+    cur_res_id,
   }
-  console.log(params)
 
-  fetch('/api/chat/', {
-    method: 'POST',
-    body: JSON.stringify(params),
-    headers: {
-      'Content-Type': 'application/json'
-    },
-    signal // 添加 signal 用于中断请求
-  })
-      .then((response) => {
-        if (!response.body) throw new Error("ReadableStream not supported.");
-        const reader = response.body.getReader();
-        const decoder = new TextDecoder("utf-8");
-        let buffer = '';
+  // If the user disables streaming output, we still call the streaming endpoint
+  // (so refs/metadata remain available) but buffer content and render it at the end.
+  const streamOutput = Boolean(meta.stream)
+  let bufferedText = ''
+  let bufferedReasoning = ''
+  let bufferedRefs = null
+  let bufferedMeta = null
 
-        const readChunk = () => {
-          return reader.read().then(({done, value}) => {
-            if (done) {
-              const msg = conv.value.messages.find((msg) => msg.id === cur_res_id)
-              console.log(msg)
-              groupRefs(cur_res_id);
-              updateMessage({showThinking: "no", id: cur_res_id});
-              isStreaming.value = false;
-              if (conv.value.messages.length === 2) {
-                renameTitle();
-              }
-              return;
-            }
+  try {
+    const response = await apiRequest('/chat/', {
+      method: 'POST',
+      body: params,
+      signal: controller.signal,
+      timeoutMs: 300000,
+    })
 
-            buffer += decoder.decode(value, {stream: true});
-            const lines = buffer.split('\n');
+    await readNdjsonStream(
+      response,
+      async (data) => {
+        if (!data) return
 
-            // 处理除最后一行外的所有完整行
-            for (let i = 0; i < lines.length - 1; i++) {
-              const line = lines[i].trim();
-              if (line) {
-                try {
-                  const data = JSON.parse(line);
-                  updateMessage({
-                    id: cur_res_id,
-                    content: data.response,
-                    reasoning_content: data.reasoning_content,
-                    status: data.status,
-                    meta: data.meta,
-                    ...data,
-                  });
-                  // console.log("Last message", conv.value.messages[conv.value.messages.length - 1].content)
-                  // console.log("Last message", conv.value.messages[conv.value.messages.length - 1].status)
-                  if (data.history && conv.value.messages.length === 0) {
-                    conv.value.messages = data.history.map((msg) => ({
-                      id: generateRandomHash(8),
-                      role: msg.role,
-                      content: msg.content
-                    }))
-                  }
-
-                } catch (e) {
-                  console.error('JSON 解析错误:', e, line);
-                }
-              }
-            }
-
-            // 保留最后一个可能不完整的行
-            buffer = lines[lines.length - 1];
-
-            return readChunk(); // 继续读取
-          });
-        };
-        readChunk();
-      })
-      .catch((error) => {
-        if (error.name === 'AbortError') {
-          console.log('Fetch aborted');
-        } else {
-          console.error(error);
+        if (streamOutput) {
           updateMessage({
             id: cur_res_id,
-            status: "error",
-          });
-        }
-        isStreaming.value = false;
-      });
+            content: data.response,
+            reasoning_content: data.reasoning_content,
+            status: data.status,
+            meta: data.meta,
+            ...data,
+          })
+        } else {
+          if (data.response) bufferedText += data.response
+          if (data.reasoning_content) bufferedReasoning = data.reasoning_content
+          if (data.refs) bufferedRefs = data.refs
+          if (data.meta) bufferedMeta = data.meta
 
-  // 监听 isStreaming 变化，当为 false 时中断请求
-  watch(isStreaming, (newValue) => {
-    if (!newValue) {
-      controller.abort();
+          // Update status/meta in-place without streaming tokens to the UI.
+          updateMessage({
+            id: cur_res_id,
+            status: data.status,
+            meta: data.meta,
+            refs: data.refs,
+            ...data,
+            content: '', // never stream partial content
+          })
+        }
+
+        // Backward-compatible: backend may return reconstructed history
+        if (data.history && conv.value.messages.length === 0) {
+          conv.value.messages = data.history.map((msg) => ({
+            id: randomId(8),
+            role: msg.role,
+            content: msg.content,
+          }))
+        }
+      },
+      {
+        onParseError: (e, line) => console.debug('JSON 解析错误:', e?.message || e, line),
+      }
+    )
+
+    if (!streamOutput && bufferedText) {
+      // Render buffered output once at the end.
+      updateMessage({
+        id: cur_res_id,
+        content: bufferedText,
+        reasoning_content: bufferedReasoning,
+        refs: bufferedRefs,
+        meta: bufferedMeta,
+        status: 'finished',
+      })
     }
-  });
+
+    groupRefs(cur_res_id)
+    updateMessage({ showThinking: 'no', id: cur_res_id })
+    if (conv.value.messages.length === 2) renameTitle()
+  } catch (error) {
+    // user cancelled: keep partial answer and allow retry
+    if (!error?.isCancelled) {
+      console.error(error)
+      updateMessage({
+        id: cur_res_id,
+        status: 'error',
+        message: error?.message || '请求失败',
+      })
+    }
+  } finally {
+    if (activeStreamId.value === streamId) {
+      activeChatAbortController.value = null
+      isStreaming.value = false
+    }
+  }
 }
 
 
@@ -583,7 +710,7 @@ const sendMessage = () => {
     meta.model_name = configStore.config?.model_name
     fetchChatResponse(user_input, cur_res_id)
   } else {
-    console.log('请输入消息');
+    message.warning('请输入消息');
   }
 }
 
@@ -591,12 +718,10 @@ const retryMessage = (id) => {
   // 找到 id 对应的 message，然后删除包含 message 在内以及后面所有的 message
   const index = conv.value.messages.findIndex(msg => msg.id === id);
   const pastMessage = conv.value.messages[index - 1]
-  console.log("retryMessage", id, pastMessage)
   conv.value.inputText = pastMessage.content
   if (index !== -1) {
     conv.value.messages = conv.value.messages.slice(0, index - 1);
   }
-  console.log(conv.value.messages)
   sendMessage();
 }
 
@@ -605,7 +730,7 @@ onMounted(() => {
   scrollToBottom()
   loadDatabases()
 
-  chatContainer.value.addEventListener('scroll', handleUserScroll);
+  if (chatContainer.value) chatContainer.value.addEventListener('scroll', handleUserScroll);
 
   // 检查现有消息中是否有内容为空的情况
   if (conv.value.messages && conv.value.messages.length > 0) {
@@ -617,17 +742,11 @@ onMounted(() => {
     });
   }
 
-  console.log(conv.value.messages)
-
-  // 从本地存储加载数据
-  const storedMeta = localStorage.getItem('meta');
-  if (storedMeta) {
-    const parsedMeta = JSON.parse(storedMeta);
-    Object.assign(meta, parsedMeta);
-  }
 });
 
 onUnmounted(() => {
+  activeStreamId.value += 1
+  activeChatAbortController.value?.abort?.()
   if (chatContainer.value) {
     chatContainer.value.removeEventListener('scroll', handleUserScroll);
   }
@@ -643,17 +762,16 @@ const forceScrollToBottom = () => {
 
 // 监听 meta 对象的变化，并保存到本地存储
 watch(
-    () => meta,
-    (newMeta) => {
-      localStorage.setItem('meta', JSON.stringify(newMeta));
-    },
-    {deep: true}
+  meta,
+  () => persistMeta(),
+  { deep: true }
 );
 // 处理发送或停止
 const handleSendOrStop = () => {
   if (isStreaming.value) {
     // 停止生成
     isStreaming.value = false;
+    activeChatAbortController.value?.abort?.();
     const lastMessage = conv.value.messages[conv.value.messages.length - 1];
     if (lastMessage) {
       lastMessage.isStoppedByUser = true;
@@ -671,7 +789,7 @@ const retryStoppedMessage = (id) => {
   const messageIndex = conv.value.messages.findIndex(msg => msg.id === id);
   if (messageIndex > 0) {
     const userMessage = conv.value.messages[messageIndex - 1];
-    if (userMessage && userMessage.role === 'sent') {
+    if (userMessage && (userMessage.role === 'sent' || userMessage.role === 'user')) {
       conv.value.inputText = userMessage.content;
       // 删除被停止的消息，以及所有后面的消息
       conv.value.messages = conv.value.messages.slice(0, messageIndex - 1);
@@ -690,8 +808,7 @@ const modelKeys = computed(() => {
 
 // 选择模型的方法
 const selectModel = (provider, name) => {
-  configStore.setConfigValue('model_provider', provider)
-  configStore.setConfigValue('model_name', name)
+  configStore.setConfigValues({ model_provider: provider, model_name: name })
   message.success(`已切换到模型: ${provider}/${name}`)
 }
 </script>
@@ -771,6 +888,10 @@ const selectModel = (provider, name) => {
   }
 }
 
+.scroll-to-bottom {
+  z-index: 12;
+}
+
 .metas {
   display: flex;
   gap: 8px;
@@ -825,125 +946,64 @@ const selectModel = (provider, name) => {
   left: 0;
 }
 
-.chat-examples {
-  padding: 0 50px;
+.chat-empty {
+  flex: 1 1 auto;
+  min-height: 55vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 20px;
   text-align: center;
-  position: absolute;
-  top: 20%;
-  width: 100%;
-  z-index: 9;
-  animation: slideInUp 0.5s ease-out;
+  padding: 32px 0;
 
-  h1 {
-    margin-bottom: 20px;
-    font-size: 1.2rem;
-    color: var(--text-color);
-  }
-
-  .opts {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-    gap: 10px;
-
-    .opt__button {
-      background-color: var(--gray-200);
+  .chat-empty__hero {
+    max-width: 720px;
+    h1 {
+      margin: 0 0 8px;
+      font-size: 22px;
+      font-weight: 700;
       color: var(--text-color);
-      padding: .5rem 1.5rem;
-      border-radius: 2rem;
-      cursor: pointer;
-      // border: 2px solid var(--main-light-4);
-      transition: background-color 0.3s;
-      // box-shadow: 0px 0px 10px 2px var(--main-light-4);
-
-
-      &:hover {
-        background-color: var(--hover-bg);
-        // box-shadow: 0px 0px 10px 1px rgba(0, 0, 0, 0.1);
-      }
+      letter-spacing: 0.2px;
+    }
+    p {
+      margin: 0;
+      color: var(--gray-700);
+      font-size: 14px;
     }
   }
 
-}
-
-.example-cards {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 16px;
-  justify-content: center;
-  margin-top: 20px;
-}
-
-.card {
-  position: relative;
-  width: 200px;
-  height: 250px;
-  border-radius: 14px;
-  overflow: hidden;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 20px 20px 60px #bebebe, -20px -20px 60px #ffffff;
-  cursor: pointer;
-}
-
-.bg {
-  position: absolute;
-  top: 5px;
-  left: 5px;
-  width: 190px;
-  height: 240px;
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(24px);
-  border-radius: 10px;
-  outline: 2px solid white;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 16px;
-  font-weight: bold;
-  z-index: 2;
-  text-align: center;
-  padding: 12px;
-  transition: transform 0.2s ease;
-}
-
-.card:hover .bg {
-  transform: scale(1.03);
-}
-
-.blob {
-  position: absolute;
-  z-index: 1;
-  top: 50%;
-  left: 50%;
-  width: 150px;
-  height: 150px;
-  border-radius: 50%;
-  background-color: #ff0000;
-  opacity: 1;
-  filter: blur(12px);
-  animation: blob-bounce 5s infinite ease;
-}
-
-@keyframes blob-bounce {
-  0% {
-    transform: translate(-100%, -100%) translate3d(0, 0, 0);
+  .chat-empty__prompts {
+    width: 100%;
+    max-width: 720px;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
   }
-  25% {
-    transform: translate(-100%, -100%) translate3d(100%, 0, 0);
-  }
-  50% {
-    transform: translate(-100%, -100%) translate3d(100%, 100%, 0);
-  }
-  75% {
-    transform: translate(-100%, -100%) translate3d(0, 100%, 0);
-  }
-  100% {
-    transform: translate(-100%, -100%) translate3d(0, 0, 0);
+
+  .prompt-card {
+    text-align: left;
+    border: 1px solid var(--border-color);
+    background: var(--surface-color);
+    color: var(--text-color);
+    border-radius: var(--radius-md);
+    padding: 12px 14px;
+    cursor: pointer;
+    box-shadow: var(--shadow-xs);
+    transition: transform 0.12s ease, box-shadow 0.12s ease, background-color 0.12s ease;
+
+    &:hover {
+      background: var(--surface-color-2);
+      box-shadow: var(--shadow-sm);
+      transform: translateY(-1px);
+    }
+
+    &:active {
+      transform: translateY(0);
+      box-shadow: var(--shadow-xs);
+    }
   }
 }
-
 
 .chat-box {
 
@@ -1077,7 +1137,7 @@ const selectModel = (provider, name) => {
   width: 8px;
   height: 8px;
   margin: 0 4px;
-  background-color: #666;
+  background-color: var(--chat-muted-text);
   border-radius: 50%;
   opacity: 0.3;
   animation: pulse 0.5s infinite ease-in-out both;
@@ -1200,6 +1260,23 @@ const selectModel = (provider, name) => {
     .note {
       display: none;
     }
+  }
+
+  .chat-box {
+    padding: 0.75rem 0.75rem;
+  }
+
+  .chat-empty {
+    min-height: 45vh;
+    padding: 24px 0;
+
+    .chat-empty__prompts {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  .scroll-to-bottom {
+    bottom: 84px !important;
   }
 }
 

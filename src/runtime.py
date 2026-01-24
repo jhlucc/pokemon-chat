@@ -76,8 +76,9 @@ def get_asr_client():
     """FunASR client singleton."""
     global _asr_client_instance
     from src.utils.funasr_client import FunASRClient
+    from src.core.settings import settings
 
-    _asr_client_instance = FunASRClient()
+    _asr_client_instance = FunASRClient(url=settings.asr.funasr_url)
     return _asr_client_instance
 
 

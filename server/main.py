@@ -2,11 +2,15 @@ import uvicorn
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.requests import Request
 from server.routers import router
 from dotenv import load_dotenv
 from pathlib import Path
 from contextlib import asynccontextmanager
+from src.core.settings import settings
 from src.runtime import aclose_all
+from src.utils.logger import request_id_var
+import uuid
 
 # 强制加载.env
 load_dotenv(Path(__file__).parent.parent / ".env")
@@ -22,11 +26,33 @@ async def lifespan(app: FastAPI):
 app = FastAPI(lifespan=lifespan)
 app.include_router(router)
 
+# Attach a stable request id to every response (and expose it to logs via contextvar).
+@app.middleware("http")
+async def add_request_id(request: Request, call_next):
+    req_id = request.headers.get("X-Request-ID") or str(uuid.uuid4())
+    request.state.request_id = req_id
+    token = request_id_var.set(req_id)
+    try:
+        response = await call_next(request)
+    finally:
+        request_id_var.reset(token)
+    response.headers["X-Request-ID"] = req_id
+    return response
+
 # CORS 设置
+raw_origins = (settings.cors.allow_origins or "*").strip()
+if raw_origins == "*" or raw_origins == "":
+    cors_allow_origins = ["*"]
+    # Spec-compliant default: wildcard origin cannot be combined with credentials.
+    cors_allow_credentials = False
+else:
+    cors_allow_origins = [o.strip() for o in raw_origins.split(",") if o.strip()]
+    cors_allow_credentials = bool(settings.cors.allow_credentials)
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
+    allow_origins=cors_allow_origins,
+    allow_credentials=cors_allow_credentials,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -34,4 +60,3 @@ app.add_middleware(
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=5050)
-

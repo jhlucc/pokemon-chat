@@ -1,21 +1,23 @@
 from __future__ import annotations
 
-import json
 import asyncio
+import json
+import os
+import shutil
+import subprocess
+import tempfile
 import traceback
 import uuid
 from typing import List, Dict, Any, Optional
 
-from fastapi import APIRouter, Body, HTTPException
+from fastapi import APIRouter, Body, HTTPException, UploadFile, File
 from fastapi.responses import StreamingResponse
-from fastapi import UploadFile, File
+
 from src import executor
 from src.core.settings import settings
 from src.utils.logger import LogManager
 from src.runtime import get_retriever, get_asr_client
 logger = LogManager()
-import subprocess
-import tempfile
 
 # Semantic Cache
 from src.knowledge.cache.cache import get_semantic_cache
@@ -89,11 +91,13 @@ async def chat_get():
 @chat.post("/")
 async def chat_post(
         query: str = Body(...),
-        meta: Dict[str, Any] = Body({}),
+        meta: Optional[Dict[str, Any]] = Body(None),
         history: Optional[List[Dict[str, Any]]] = Body(None),
         thread_id: Optional[str] = Body(None),
 ):
     """主聊天接口，支持 **流式** 返回"""
+    meta = dict(meta or {})
+    history = list(history or [])
 
     # 1. 选择模型 ----------------------------------------------------------------
     from src.models import select_model
@@ -105,8 +109,8 @@ async def chat_post(
     # - Finally fallback to env defaults
     from server.runtime_config import load_ui_overrides
     overrides = load_ui_overrides()
-    model_provider = (meta or {}).get("model_provider") or overrides.get("model_provider") or "siliconflow"
-    model_name = (meta or {}).get("model_name") or overrides.get("model_name") or settings.llm.model_name
+    model_provider = meta.get("model_provider") or overrides.get("model_provider") or "siliconflow"
+    model_name = meta.get("model_name") or overrides.get("model_name") or settings.llm.model_name
 
     model = select_model(model_provider=model_provider, model_name=model_name)
     if model is None:
@@ -117,7 +121,7 @@ async def chat_post(
     meta["model_name"] = model_name
     
     # Get user preferences and inject into system prompt
-    user_id = thread_id or "default_user"
+    user_id = thread_id or meta.get("thread_id") or "default_user"
     memory = get_agentic_memory()
     preference_injection = memory.get_system_prompt_injection(user_id)
     
@@ -125,6 +129,18 @@ async def chat_post(
     enhanced_system_prompt = base_system_prompt + preference_injection if preference_injection else base_system_prompt
     
     history_manager = HistoryManager(system_prompt=enhanced_system_prompt)
+    # Load client-provided history into the prompt context (system prompt is managed server-side).
+    for item in history:
+        if not isinstance(item, dict):
+            continue
+        role = (item.get("role") or "").strip()
+        content = (item.get("content") or "").strip()
+        if not content:
+            continue
+        if role == "user":
+            history_manager.add_user(content)
+        elif role == "assistant":
+            history_manager.add_ai(content)
 
     logger.debug(f"Received query: {query} with meta: {meta}")
     
@@ -154,7 +170,7 @@ async def chat_post(
                 modified_query, refs = await to_thread(
                     retriever,  # 同步函数
                     modified_query,
-                    history_manager.history.messages,
+                    history,
                     meta
                 )
             except Exception as e:
@@ -267,10 +283,11 @@ async def chat_post(
 
 
 @chat.post("/call")
-async def call(query: str = Body(...), meta: Dict[str, Any] = Body({})):
+async def call(query: str = Body(...), meta: Optional[Dict[str, Any]] = Body(None)):
     """同步调用完整模型"""
     from src.models import select_model
 
+    meta = dict(meta or {})
     model = select_model(model_provider=meta.get("model_provider"), model_name=meta.get("model_name"))
     if model is None:
         raise HTTPException(status_code=500, detail="模型不可用")
@@ -282,13 +299,14 @@ async def call(query: str = Body(...), meta: Dict[str, Any] = Body({})):
 
 
 @chat.post("/call_lite")
-async def call_lite(query: str = Body(...), meta: Dict[str, Any] = Body({})):
+async def call_lite(query: str = Body(...), meta: Optional[Dict[str, Any]] = Body(None)):
     """使用 Lite 模型，同步调用"""
     from src.models import select_model
 
     async def _predict_async(q):
-        model_provider = meta.get("model_provider", "siliconflow")
-        model_name = meta.get("model_name", settings.llm.model_name)
+        meta_d = dict(meta or {})
+        model_provider = meta_d.get("model_provider", "siliconflow")
+        model_name = meta_d.get("model_name", settings.llm.model_name)
         model = select_model(model_provider=model_provider, model_name=model_name)
         if model is None:
             raise HTTPException(status_code=500, detail="Lite 模型不可用")
@@ -318,10 +336,13 @@ async def get_agent_list():
 async def chat_agent(
     agent_name: str,
     query: str = Body(...),
-    history: List[Dict[str, Any]] = Body([]),
-    cfg: Dict[str, Any] = Body({}),
-    meta: Dict[str, Any] = Body({})
+    history: Optional[List[Dict[str, Any]]] = Body(None),
+    cfg: Optional[Dict[str, Any]] = Body(None),
+    meta: Optional[Dict[str, Any]] = Body(None),
 ):
+    history = list(history or [])
+    cfg = dict(cfg or {})
+    meta = dict(meta or {})
     from src.agents.manager import agent_manager
     from src.knowledge.core.history_chat import HistoryManager
 
@@ -466,9 +487,13 @@ async def update_chat_models(model_provider: str, model_names: List[str]):
     # return {"models": config.model_names[model_provider]["models"]}
     raise HTTPException(status_code=501, detail="Configuration update not supported in this version")
 
-import os
 @chat.post("/asr/")
 async def asr_upload(file: UploadFile = File(...)):
+    if not settings.features.enable_asr:
+        raise HTTPException(status_code=503, detail="ASR is disabled (enable_asr=false).")
+    if shutil.which("ffmpeg") is None:
+        raise HTTPException(status_code=500, detail="ffmpeg not found (required for audio conversion).")
+
     audio_bytes = await file.read()
 
     with tempfile.NamedTemporaryFile(suffix=".ogg", delete=False) as temp_input:
@@ -491,8 +516,8 @@ async def asr_upload(file: UploadFile = File(...)):
         return {"text": result_text}
 
     except subprocess.CalledProcessError as e:
-        print("音频转码失败", e)
-        return {"text": ""}
+        logger.error(f"音频转码失败: {e}")
+        raise HTTPException(status_code=500, detail="Audio conversion failed")
 
     finally:
         try:
