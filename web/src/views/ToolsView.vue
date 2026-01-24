@@ -50,7 +50,7 @@ const getTools = () => {
       tools.value = [
         { name: 'file-chunking', title: '文件分块', description: '离线模式：仅展示', url: '/tools/file-chunking' },
         { name: 'pdf2txt', title: 'PDF 转文本', description: '离线模式：仅展示', url: '/tools/pdf2txt' },
-        { name: 'agent', title: '智能体', description: '离线模式：仅展示', url: '/tools/agent' },
+        { name: 'agent', title: '智能体', description: '离线模式：仅展示', url: '/agent' },
       ]
     })
     .finally(() => {

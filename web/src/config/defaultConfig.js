@@ -21,6 +21,7 @@ export const DEFAULT_CONFIG = {
     show_mcp: true,
     show_tools: true,
     show_agents: true,
+    show_map: true,
   },
 
   // --- model selection (frontend-controlled; sent with requests) ---

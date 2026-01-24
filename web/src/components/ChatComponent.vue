@@ -162,7 +162,10 @@
           @keydown="handleKeyDown"
         >
           <template #options-left>
-            <a-tooltip :title="canWebSearch ? '' : (backendOnline ? '后端未启用联网搜索' : '后端离线/不可用')">
+            <a-tooltip
+              v-if="configStore.config?.ui?.show_web_search !== false"
+              :title="canWebSearch ? '' : (backendOnline ? '后端未启用联网搜索' : '后端离线/不可用')"
+            >
             <div
               :class="{'switch': true, 'opt-item': true, 'active': meta.use_web, 'disabled': !canWebSearch}"
               @click="toggleWebSearch"
@@ -176,7 +179,10 @@
               联网搜索
             </div>
             </a-tooltip>
-            <a-tooltip :title="canGraph ? '' : (backendOnline ? '后端未启用知识图谱' : '后端离线/不可用')">
+            <a-tooltip
+              v-if="configStore.config?.ui?.show_knowledge_graph !== false"
+              :title="canGraph ? '' : (backendOnline ? '后端未启用知识图谱' : '后端离线/不可用')"
+            >
             <div
               :class="{'switch': true, 'opt-item': true, 'active': meta.use_graph, 'disabled': !canGraph}"
               @click="toggleGraph"
@@ -190,7 +196,10 @@
               知识图谱
             </div>
             </a-tooltip>
-            <a-tooltip :title="canMcp ? '' : (backendOnline ? '后端未启用 MCP' : '后端离线/不可用')">
+            <a-tooltip
+              v-if="configStore.config?.ui?.show_mcp !== false"
+              :title="canMcp ? '' : (backendOnline ? '后端未启用 MCP' : '后端离线/不可用')"
+            >
               <div
                 :class="{'switch': true, 'opt-item': true, 'active': meta.use_mcp, 'disabled': !canMcp}"
                 @click="toggleMcp"
@@ -203,7 +212,10 @@
                 <DatabaseOutlined style="margin-right:3px;" />MCP
               </div>
             </a-tooltip>
-            <a-tooltip :title="canKb ? '' : (backendOnline ? '后端未启用知识库' : '后端离线/不可用')">
+            <a-tooltip
+              v-if="configStore.config?.ui?.show_knowledge_base !== false"
+              :title="canKb ? '' : (backendOnline ? '后端未启用知识库' : '后端离线/不可用')"
+            >
               <a-dropdown
                 :disabled="!canKb || opts.databases.length === 0"
                 :class="{'opt-item': true, 'active': meta.selectedKB !== null, 'disabled': !canKb || opts.databases.length === 0}"

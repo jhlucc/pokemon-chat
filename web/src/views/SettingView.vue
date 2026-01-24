@@ -77,6 +77,45 @@
         </a-col>
 
         <a-col :xs="24" :md="24">
+          <a-card title="界面展示（前端）" :bordered="false">
+            <a-space wrap>
+              <a-space>
+                <span class="muted">知识库</span>
+                <a-switch :checked="uiVisibility.show_knowledge_base" @change="(v) => setUiVisibility('show_knowledge_base', v)" />
+              </a-space>
+              <a-space>
+                <span class="muted">知识图谱</span>
+                <a-switch :checked="uiVisibility.show_knowledge_graph" @change="(v) => setUiVisibility('show_knowledge_graph', v)" />
+              </a-space>
+              <a-space>
+                <span class="muted">联网搜索</span>
+                <a-switch :checked="uiVisibility.show_web_search" @change="(v) => setUiVisibility('show_web_search', v)" />
+              </a-space>
+              <a-space>
+                <span class="muted">MCP</span>
+                <a-switch :checked="uiVisibility.show_mcp" @change="(v) => setUiVisibility('show_mcp', v)" />
+              </a-space>
+              <a-space>
+                <span class="muted">工具</span>
+                <a-switch :checked="uiVisibility.show_tools" @change="(v) => setUiVisibility('show_tools', v)" />
+              </a-space>
+              <a-space>
+                <span class="muted">智能体</span>
+                <a-switch :checked="uiVisibility.show_agents" @change="(v) => setUiVisibility('show_agents', v)" />
+              </a-space>
+              <a-space>
+                <span class="muted">地图</span>
+                <a-switch :checked="uiVisibility.show_map" @change="(v) => setUiVisibility('show_map', v)" />
+              </a-space>
+              <a-button @click="resetUiVisibility">重置为默认</a-button>
+            </a-space>
+            <div class="muted" style="margin-top: 10px;">
+              这些开关只影响前端导航与入口显示，不会改变后端能力开关。
+            </div>
+          </a-card>
+        </a-col>
+
+        <a-col :xs="24" :md="24">
 	          <a-card title="本地配置" :bordered="false">
 	            <a-space wrap>
 	              <a-space>
@@ -128,6 +167,7 @@ import { computed, reactive, ref, watch } from 'vue';
 	import { message } from 'ant-design-vue';
 	import HeaderComponent from '@/components/HeaderComponent.vue';
 	import { useConfigStore } from '@/stores/config';
+	import { DEFAULT_CONFIG } from '@/config/defaultConfig';
 		import { apiFetch } from '@/api/http';
 		import { getOfflineMode, setOfflineMode } from '@/utils/offlineMode';
 		import { safeJsonParse } from '@/utils/storage';
@@ -150,6 +190,21 @@ const providerKeys = computed(() => Object.keys(modelCatalog.value || {}).filter
 
 const modelProvider = ref(configStore.config.model_provider);
 const modelName = ref(configStore.config.model_name);
+
+const uiVisibility = computed(() => ({
+  ...(DEFAULT_CONFIG.ui || {}),
+  ...(configStore.config?.ui || {}),
+}));
+
+const setUiVisibility = (key, checked) => {
+  const next = { ...uiVisibility.value, [key]: Boolean(checked) };
+  configStore.patchLocal({ ui: next });
+};
+
+const resetUiVisibility = () => {
+  configStore.patchLocal({ ui: { ...(DEFAULT_CONFIG.ui || {}) } });
+  message.success('已重置界面展示开关');
+};
 
 watch(
   () => configStore.config.model_provider,

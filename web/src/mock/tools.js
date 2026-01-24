@@ -17,8 +17,7 @@ export const MOCK_TOOLS = [
     name: 'agent',
     title: '智能体',
     description: '离线演示：展示智能体列表/配置/对话 UI（回答为 Mock）。',
-    url: '/tools/agent',
+    url: '/agent',
     method: 'GET',
   },
 ];
-

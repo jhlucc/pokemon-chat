@@ -18,6 +18,8 @@ import {
   ApiOutlined,
   BulbFilled,
   DesktopOutlined,
+  RobotOutlined,
+  RobotFilled,
 } from '@ant-design/icons-vue'
 import { theme as antdTheme } from 'ant-design-vue'
 import { applyTheme, getSavedThemeMode, setThemeMode, themeConfig } from '@/assets/theme'
@@ -122,36 +124,52 @@ const backendMode = computed(() => {
 
 
 // 下面是导航菜单部分，添加智能体项
-const mainList = [{
-    name: '对话',
-    path: '/chat',
-    icon: MessageOutlined,
-    activeIcon: MessageFilled,
-  }, {
-    name: '图谱',
-    path: '/graph',
-    icon: ProjectOutlined,
-    activeIcon: ProjectFilled,
-    // hidden: !configStore.config.enable_knowledge_graph,
-  }, {
-    name: '知识库',
-    path: '/database',
-    icon: BookOutlined,
-    activeIcon: BookFilled,
-    // hidden: !configStore.config.enable_knowledge_base,
-  }, {
-    name: '工具',
-    path: '/tools',
-    icon: ToolOutlined,
-    activeIcon: ToolFilled,
-  },
-   {
-    name: '地图',
-    path: '/coords',
-    icon: RedoOutlined, // 你可以换成其他图标
-    activeIcon: RedoOutlined,
-  }
-]
+const mainList = computed(() => {
+  const ui = configStore.config?.ui || {}
+  return [
+    {
+      name: '对话',
+      path: '/chat',
+      icon: MessageOutlined,
+      activeIcon: MessageFilled,
+    },
+    {
+      name: '图谱',
+      path: '/graph',
+      icon: ProjectOutlined,
+      activeIcon: ProjectFilled,
+      hidden: ui.show_knowledge_graph === false,
+    },
+    {
+      name: '知识库',
+      path: '/database',
+      icon: BookOutlined,
+      activeIcon: BookFilled,
+      hidden: ui.show_knowledge_base === false,
+    },
+    {
+      name: '工具',
+      path: '/tools',
+      icon: ToolOutlined,
+      activeIcon: ToolFilled,
+      hidden: ui.show_tools === false,
+    },
+    {
+      name: '智能体',
+      path: '/agent',
+      icon: RobotOutlined,
+      activeIcon: RobotFilled,
+      hidden: ui.show_agents === false,
+    },
+    {
+      name: '地图',
+      path: '/coords',
+      icon: RedoOutlined, // 你可以换成其他图标
+      activeIcon: RedoOutlined,
+      hidden: ui.show_map === false,
+    },
+  ]
+})
 </script>
 
 <template>
@@ -247,7 +265,13 @@ const mainList = [{
 	        <MessageOutlined class="icon" aria-hidden="true" />
 	        <span class="label">对话</span>
 	      </RouterLink>
-	      <RouterLink to="/database" class="nav-item" active-class="active" aria-label="知识库">
+	      <RouterLink
+	        v-if="configStore.config?.ui?.show_knowledge_base !== false"
+	        to="/database"
+	        class="nav-item"
+	        active-class="active"
+	        aria-label="知识库"
+	      >
 	        <BookOutlined class="icon" aria-hidden="true" />
 	        <span class="label">知识</span>
 	      </RouterLink>
