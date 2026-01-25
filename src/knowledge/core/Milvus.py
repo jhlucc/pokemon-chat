@@ -2,7 +2,6 @@ import warnings
 
 warnings.filterwarnings("ignore", category=FutureWarning)
 import numpy as np
-import torch
 from typing import List, Optional
 from langchain_core.documents import Document
 from pymilvus import (
@@ -97,7 +96,8 @@ class MilvusStorage:
                 emb = doc.metadata.get("embedding", None)
                 if emb is None:
                     raise ValueError("Document缺少embedding")
-                if isinstance(emb, (np.ndarray, torch.Tensor)):
+                # Keep torch optional: accept numpy arrays / torch tensors without importing torch at startup.
+                if hasattr(emb, "tolist"):
                     emb = emb.tolist()
                 if len(emb) != self.dim:
                     raise ValueError(f"embedding长度({len(emb)})与定义的维度({self.dim})不匹配!")

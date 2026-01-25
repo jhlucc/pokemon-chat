@@ -1,19 +1,20 @@
-import uvicorn
+import uuid
+from contextlib import asynccontextmanager
+from pathlib import Path
 
+import uvicorn
+from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.requests import Request
-from server.routers import router
-from dotenv import load_dotenv
-from pathlib import Path
-from contextlib import asynccontextmanager
-from src.core.settings import settings
-from src.runtime import aclose_all
-from src.utils.logger import request_id_var
-import uuid
 
-# 强制加载.env
-load_dotenv(Path(__file__).parent.parent / ".env")
+# Load `.env` early so feature flags / provider keys are available during import time.
+load_dotenv(Path(__file__).resolve().parents[1] / ".env")
+
+from src.core.settings import settings  # noqa: E402
+from src.runtime import aclose_all  # noqa: E402
+from src.utils.logger import request_id_var  # noqa: E402
+from server.routers import router  # noqa: E402
 
 
 @asynccontextmanager
@@ -25,6 +26,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 app.include_router(router)
+
 
 # Attach a stable request id to every response (and expose it to logs via contextvar).
 @app.middleware("http")
@@ -39,7 +41,8 @@ async def add_request_id(request: Request, call_next):
     response.headers["X-Request-ID"] = req_id
     return response
 
-# CORS 设置
+
+# CORS settings
 raw_origins = (settings.cors.allow_origins or "*").strip()
 if raw_origins == "*" or raw_origins == "":
     cors_allow_origins = ["*"]
@@ -60,3 +63,4 @@ app.add_middleware(
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=5050)
+

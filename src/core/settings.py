@@ -302,7 +302,8 @@ class KnowledgeBaseConfig(BaseSettings):
 class Settings(BaseSettings):
     """主配置类"""
     model_config = SettingsConfigDict(
-        env_file=".env",
+        # Use an absolute path so `.env` is found regardless of current working directory.
+        env_file=str(_BASE_DIR_PATH / ".env"),
         env_file_encoding="utf-8",
         case_sensitive=False,
         extra="ignore",
