@@ -14,14 +14,27 @@ from src.core.settings import settings
 _lock = Lock()
 
 
+_ALIAS_TO_CANONICAL: dict[str, str] = {
+    # Frontend uses `zhipu`, but assets/env commonly use `zhipuai`.
+    "zhipuai": "zhipu",
+    # Some UIs/assets use these keys; keep compatibility.
+    "together.ai": "togetherai",
+    "together": "togetherai",
+    "openrouter": "openrouterai",
+}
+
+
+def _canonical_provider(provider: str) -> str:
+    p = (provider or "").strip().lower()
+    return _ALIAS_TO_CANONICAL.get(p, p)
+
+
 # Provider -> env var mapping (compat with existing `.env.template` and code)
 _PROVIDER_ENV: dict[str, dict[str, str]] = {
     "siliconflow": {"api_key": "SILICONFLOW_API_KEY", "api_base": "SILICONFLOW_API_BASE"},
     "openai": {"api_key": "OPENAI_API_KEY", "api_base": "OPENAI_API_BASE"},
     "deepseek": {"api_key": "DEEPSEEK_API_KEY", "api_base": "DEEPSEEK_BASE_URL"},
     "zhipu": {"api_key": "ZHIPUAI_API_KEY", "api_base": "ZHIPUAI_API_BASE"},
-    # Keep aliases used by frontend assets or common naming conventions.
-    "zhipuai": {"api_key": "ZHIPUAI_API_KEY", "api_base": "ZHIPUAI_API_BASE"},
     "openrouterai": {"api_key": "OPENROUTER_API_KEY", "api_base": "OPENROUTER_BASE_URL"},
     "dashscope": {"api_key": "DASHSCOPE_API_KEY", "api_base": "DASHSCOPE_API_BASE"},
     "togetherai": {"api_key": "TOGETHER_API_KEY", "api_base": "TOGETHER_BASE_URL"},
@@ -38,7 +51,6 @@ _DEFAULT_API_BASE: dict[str, str] = {
     "deepseek": "https://api.deepseek.com/v1",
     # NOTE: some providers use non-standard paths; users can override via UI.
     "zhipu": "https://open.bigmodel.cn/api/paas/v4",
-    "zhipuai": "https://open.bigmodel.cn/api/paas/v4",
     "openrouterai": "https://openrouter.ai/api/v1",
     "dashscope": "https://dashscope.aliyuncs.com/compatible-mode/v1",
     "togetherai": "https://api.together.xyz/v1",
@@ -103,19 +115,30 @@ def load_provider_secrets() -> Dict[str, Any]:
 
 
 def _provider_env_key(provider: str) -> Optional[str]:
-    p = (provider or "").strip().lower()
+    p = _canonical_provider(provider)
     return _PROVIDER_ENV.get(p, {}).get("api_key")
 
 
 def _provider_env_base(provider: str) -> Optional[str]:
-    p = (provider or "").strip().lower()
+    p = _canonical_provider(provider)
     return _PROVIDER_ENV.get(p, {}).get("api_base")
 
 
 def get_provider_api_key(provider: str) -> str:
-    provider = (provider or "").strip().lower()
+    provider = _canonical_provider(provider)
     secrets = load_provider_secrets()
     key = (secrets.get(provider, {}) or {}).get("api_key") or ""
+    if not key and raw and raw != provider:
+        # Backward-compat for any previously stored alias key.
+        key = (secrets.get(raw, {}) or {}).get("api_key") or ""
+    if not key:
+        # Also check known aliases pointing to this canonical provider.
+        for alias, canon in _ALIAS_TO_CANONICAL.items():
+            if canon != provider:
+                continue
+            key = (secrets.get(alias, {}) or {}).get("api_key") or ""
+            if key:
+                break
     if key:
         return str(key).strip()
 
@@ -127,9 +150,19 @@ def get_provider_api_key(provider: str) -> str:
 
 
 def get_provider_api_base(provider: str) -> str:
-    provider = (provider or "").strip().lower()
+    raw = (provider or "").strip().lower()
+    provider = _canonical_provider(raw)
     secrets = load_provider_secrets()
     base = (secrets.get(provider, {}) or {}).get("api_base") or ""
+    if not base and raw and raw != provider:
+        base = (secrets.get(raw, {}) or {}).get("api_base") or ""
+    if not base:
+        for alias, canon in _ALIAS_TO_CANONICAL.items():
+            if canon != provider:
+                continue
+            base = (secrets.get(alias, {}) or {}).get("api_base") or ""
+            if base:
+                break
     if base:
         return str(base).strip().rstrip("/")
 
@@ -150,12 +183,17 @@ def patch_provider_secrets(provider: str, api_key: Optional[str] = None, api_bas
     - Empty string clears the stored value.
     - We DO NOT return the raw secret value (caller should use `build_provider_status()`).
     """
-    provider = (provider or "").strip().lower()
+    raw = (provider or "").strip().lower()
+    provider = _canonical_provider(raw)
     if not provider:
         raise ValueError("provider is required")
 
     with _lock:
         cur = _read_json_file(_secrets_file())
+        # If this provider was previously stored under an alias, migrate to canonical key.
+        for alias, canon in _ALIAS_TO_CANONICAL.items():
+            if canon == provider:
+                cur.pop(alias, None)
         provider_cfg = dict(cur.get(provider, {}) or {})
 
         if api_key is not None:
@@ -210,8 +248,15 @@ def patch_provider_secrets_many(patch: Dict[str, Any]) -> Dict[str, Any]:
     for k, v in patch.items():
         if not k:
             continue
-        if isinstance(v, dict):
-            normalized[k] = v
+        if not isinstance(v, dict):
+            continue
+        provider = _canonical_provider(k)
+        if not provider:
+            continue
+        # Allow aliases in payload while keeping storage canonical.
+        merged = dict(normalized.get(provider, {}) or {})
+        merged.update(v)
+        normalized[provider] = merged
 
     if not normalized:
         return load_provider_secrets()
@@ -219,9 +264,12 @@ def patch_provider_secrets_many(patch: Dict[str, Any]) -> Dict[str, Any]:
     with _lock:
         cur = _read_json_file(_secrets_file())
         for provider, cfg in normalized.items():
-            provider = (provider or "").strip().lower()
+            provider = _canonical_provider(provider)
             if not provider:
                 continue
+            for alias, canon in _ALIAS_TO_CANONICAL.items():
+                if canon == provider:
+                    cur.pop(alias, None)
             provider_cfg = dict(cur.get(provider, {}) or {})
 
             if "api_key" in cfg:
@@ -248,7 +296,7 @@ def patch_provider_secrets_many(patch: Dict[str, Any]) -> Dict[str, Any]:
 
     # Best-effort: update env for known providers.
     for provider, cfg in normalized.items():
-        provider = (provider or "").strip().lower()
+        provider = _canonical_provider(provider)
         if not provider:
             continue
         if "api_key" in cfg:
@@ -277,15 +325,30 @@ def build_provider_status() -> Dict[str, Any]:
     IMPORTANT: never include raw API keys in the response.
     """
     secrets = load_provider_secrets()
-    providers = set(_DEFAULT_API_BASE.keys()) | set(secrets.keys())
+    providers = set(_DEFAULT_API_BASE.keys())
+    for k in (secrets or {}).keys():
+        providers.add(_canonical_provider(k))
+
+    def _merged_stored(provider: str) -> Dict[str, Any]:
+        merged: Dict[str, Any] = dict(secrets.get(provider, {}) or {})
+        # Backward-compat: merge any existing alias entries into the canonical provider view.
+        for alias, canon in _ALIAS_TO_CANONICAL.items():
+            if canon != provider:
+                continue
+            a = secrets.get(alias, {}) or {}
+            if not merged.get("api_key") and a.get("api_key"):
+                merged["api_key"] = a.get("api_key")
+            if not merged.get("api_base") and a.get("api_base"):
+                merged["api_base"] = a.get("api_base")
+        return merged
 
     status: Dict[str, Any] = {}
     for provider in sorted(providers):
-        provider = (provider or "").strip().lower()
+        provider = _canonical_provider(provider)
         if not provider:
             continue
 
-        stored = secrets.get(provider, {}) or {}
+        stored = _merged_stored(provider)
         stored_key = (stored.get("api_key") or "").strip()
         stored_base = (stored.get("api_base") or "").strip()
 

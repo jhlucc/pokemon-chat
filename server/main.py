@@ -25,7 +25,11 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(lifespan=lifespan)
+# Serve endpoints both at `/` and `/api` so the frontend can work:
+# - with Vite dev proxy (rewrites `/api/*` -> `/*`)
+# - without any proxy (calls `/api/*` directly)
 app.include_router(router)
+app.include_router(router, prefix="/api")
 
 
 # Attach a stable request id to every response (and expose it to logs via contextvar).
@@ -63,4 +67,3 @@ app.add_middleware(
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=5050)
-

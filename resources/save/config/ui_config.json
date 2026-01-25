@@ -1,4 +1,10 @@
 {
   "model_provider": "siliconflow",
-  "model_name": "Qwen/Qwen2.5-72B-Instruct"
+  "model_name": "Qwen/Qwen2.5-72B-Instruct",
+  "enable_web_search": true,
+  "enable_knowledge_base": true,
+  "enable_mcp": true,
+  "enable_knowledge_graph": true,
+  "enable_ner_bert": false,
+  "enable_asr": true
 }

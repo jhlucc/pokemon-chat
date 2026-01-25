@@ -81,15 +81,29 @@
                   <a-col v-for="p in providerList" :key="p" :xs="24" :md="12" :lg="8">
                     <a-card :bordered="false" class="provider-card">
                     <template #title>
-                      <div class="provider-title">
-                        <img class="provider-icon" :src="getProviderIcon(p)" :alt="p" />
-                        <span class="provider-name">{{ modelCatalog[p]?.name || p }}</span>
-                        <StatusTag
-                          class="provider-status"
-                          variant="dot"
-                          :status="isProviderUsable(p) ? 'online' : 'offline'"
-                        />
-                      </div>
+                        <div class="provider-title">
+                          <img class="provider-icon" :src="getProviderIcon(p)" :alt="p" />
+                          <span class="provider-name">{{ modelCatalog[p]?.name || p }}</span>
+                          <a-tag class="provider-source" :color="providerSourceColor(p)">
+                            {{ providerSourceText(p) }}
+                          </a-tag>
+                          <a
+                            v-if="modelCatalog[p]?.url"
+                            class="provider-docs"
+                            :href="modelCatalog[p].url"
+                            target="_blank"
+                            rel="noreferrer"
+                            @click.stop
+                          >
+                            Docs
+                          </a>
+                          <StatusTag
+                            class="provider-status"
+                            variant="dot"
+                            :status="providerDotStatus(p)"
+                            :label="providerDotLabel(p)"
+                          />
+                        </div>
                     </template>
 
                     <a-form layout="vertical">
@@ -120,12 +134,18 @@
                       <a-space wrap>
                         <a-button
                           type="primary"
+                          :disabled="!backendOnline || !hasProviderChanges(p)"
                           :loading="Boolean(providersState.saving?.[p])"
                           @click="saveProvider(p)"
                         >
                           保存
                         </a-button>
-                        <a-button danger :loading="Boolean(providersState.saving?.[p])" @click="clearProvider(p)">
+                        <a-button
+                          danger
+                          :disabled="providersState.status?.[p]?.source !== 'file'"
+                          :loading="Boolean(providersState.saving?.[p])"
+                          @click="clearProvider(p)"
+                        >
                           清空
                         </a-button>
                       </a-space>
@@ -145,12 +165,16 @@
                           <a-select-option v-for="p in providerKeys" :key="p" :value="p">
                             <span class="provider-option">
                               <img class="provider-option-icon" :src="getProviderIcon(p)" :alt="p" />
-                              <span>{{ modelCatalog[p]?.name || p }}</span>
-                              <span class="provider-option-spacer" />
-                              <StatusTag variant="dot" :status="isProviderUsable(p) ? 'online' : 'offline'" />
-                            </span>
-                          </a-select-option>
-                        </a-select>
+                               <span>{{ modelCatalog[p]?.name || p }}</span>
+                               <span class="provider-option-spacer" />
+                               <StatusTag
+                                 variant="dot"
+                                 :status="providerDotStatus(p)"
+                                 :label="providerDotLabel(p)"
+                               />
+                             </span>
+                           </a-select-option>
+                         </a-select>
                       </a-form-item>
                       <a-form-item label="Model">
                         <a-select v-if="providerModels.length" v-model:value="modelName" @change="onModelChange">
@@ -177,12 +201,15 @@
 
                 <a-col :xs="24" :md="12">
                   <a-card title="使用建议" :bordered="false">
-                    <a-alert
-                      type="info"
-                      show-icon
-                      message="快速排查"
-                      description="如果出现调用失败，请先检查：1) 后端是否 Online；2) 是否选择了正确的 Provider/Model；3) 后端环境变量中是否配置了对应的 API Key。"
-                    />
+                    <a-collapse ghost>
+                      <a-collapse-panel key="troubleshoot" header="快速排查">
+                        <ol class="muted troubleshoot-list">
+                          <li>后端是否 Online</li>
+                          <li>是否选择了正确的 Provider / Model</li>
+                          <li>后端环境变量中是否配置了对应的 API Key</li>
+                        </ol>
+                      </a-collapse-panel>
+                    </a-collapse>
                   </a-card>
                 </a-col>
               </a-row>
@@ -363,6 +390,7 @@ import { ApiError, apiFetch } from '@/api/http'
 import { getUiDensity, setUiDensity } from '@/utils/uiDensity'
 import { THEME_PRESETS, getThemePreset, setThemePreset } from '@/utils/themePreset'
 import { notifyApiError } from '@/utils/notify'
+import { getProviderIcon } from '@/utils/providerIcon'
 
 const configStore = useConfigStore()
 
@@ -417,25 +445,47 @@ watch(
 
 const providerModels = computed(() => modelCatalog.value?.[modelProvider.value]?.models || [])
 
-// Vite glob: use absolute `/src/...` (alias `@` may not work in glob patterns).
-const providerIcons = import.meta.glob('/src/assets/providers/*.png', {
-  eager: true,
-  import: 'default'
-})
-const providerIconAlias = {
-  zhipu: 'zhipuai',
-  togetherai: 'together.ai'
-}
-const getProviderIcon = (provider) => {
-  const p = providerIconAlias[provider] || provider
-  return providerIcons[`/src/assets/providers/${p}.png`] || providerIcons['/src/assets/providers/default.png']
-}
-
-const isProviderUsable = (provider) => {
-  if (!backendOnline.value) return false
+const providerConfigured = (provider) => {
+  if (!backendOnline.value) return null
   const st = providersState.status?.[provider]
   if (st && typeof st.configured === 'boolean') return Boolean(st.configured)
-  return false
+  return null
+}
+
+const providerDotStatus = (provider) => {
+  const configured = providerConfigured(provider)
+  if (configured === null) return 'info'
+  return configured ? 'online' : 'offline'
+}
+
+const providerDotLabel = (provider) => {
+  const configured = providerConfigured(provider)
+  if (configured === null) return backendOnline.value ? '未知' : '后端离线'
+  return configured ? '可用' : '不可用'
+}
+
+const providerSourceText = (provider) => {
+  const s = providersState.status?.[provider]?.source
+  if (s === 'file') return '本地'
+  if (s === 'env') return 'ENV'
+  return '默认'
+}
+
+const providerSourceColor = (provider) => {
+  const s = providersState.status?.[provider]?.source
+  if (s === 'file') return 'blue'
+  if (s === 'env') return 'geekblue'
+  return 'default'
+}
+
+const normalizeApiBase = (v) => String(v || '').trim().replace(/\/+$/, '')
+const hasProviderChanges = (provider) => {
+  ensureProviderForm(provider)
+  const form = providerForm[provider] || {}
+  const st = providersState.status?.[provider] || {}
+  const baseChanged = normalizeApiBase(form.api_base) && normalizeApiBase(form.api_base) !== normalizeApiBase(st.api_base)
+  const keyChanged = Boolean(String(form.api_key || '').trim())
+  return baseChanged || keyChanged
 }
 
 const providersState = reactive({
@@ -504,6 +554,9 @@ const featureState = reactive({
 
 const setBackendFeature = async (key, checked) => {
   featureState.saving[key] = true
+  const prev = Boolean(configStore.config?.[key])
+  // Optimistic UI: flip immediately, then confirm with backend response.
+  configStore.patchLocal({ [key]: Boolean(checked) })
   try {
     const res = await apiFetch('/config', {
       method: 'PATCH',
@@ -514,8 +567,15 @@ const setBackendFeature = async (key, checked) => {
       ...res,
       backend: { online: true, last_error: null, ...(res?.backend || {}) }
     })
-    message.success('已更新后端开关')
+    const effective = Boolean(res?.[key])
+    if (effective !== Boolean(checked)) {
+      message.warning('后端未应用该开关（可能后端版本较旧或未支持该能力）')
+    } else {
+      message.success('已更新后端开关')
+    }
   } catch (e) {
+    // Revert optimistic change.
+    configStore.patchLocal({ [key]: prev })
     notifyApiError(e, { context: '后端开关', fallback: '更新失败' })
   } finally {
     featureState.saving[key] = false
@@ -666,6 +726,22 @@ onMounted(() => {
   flex: 1;
 }
 
+.provider-source {
+  user-select: none;
+}
+
+.provider-docs {
+  font-size: 12px;
+  color: var(--gray-600);
+  text-decoration: none;
+  user-select: none;
+}
+
+.provider-docs:hover {
+  color: var(--main-500);
+  text-decoration: underline;
+}
+
 .provider-status {
   margin-left: auto;
 }
@@ -687,6 +763,15 @@ onMounted(() => {
 
 .provider-option-spacer {
   flex: 1;
+}
+
+.troubleshoot-list {
+  padding-left: 18px;
+  margin: 0;
+}
+
+.troubleshoot-list li {
+  margin: 6px 0;
 }
 
 </style>

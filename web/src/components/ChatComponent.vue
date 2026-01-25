@@ -49,13 +49,18 @@
               @keydown.enter.prevent="$event.currentTarget?.click?.()"
               @keydown.space.prevent="$event.currentTarget?.click?.()"
             >
-              <BulbOutlined class="icon" />
-              <span class="text"
-                >{{ configStore.config?.model_provider || '-' }}/{{
-                  configStore.config?.model_name || '-'
-                }}</span
-              >
-            </div>
+              <img
+                class="model-select-icon"
+                :src="getProviderIcon(configStore.config?.model_provider)"
+                :alt="configStore.config?.model_provider || 'provider'"
+              />
+                <span class="text"
+                  >{{ configStore.config?.model_provider || '-' }}/{{
+                    configStore.config?.model_name || '-'
+                  }}</span
+                >
+                <DownOutlined class="model-select-caret" />
+              </div>
           </a-tooltip>
           <template #overlay>
             <a-menu class="scrollable-menu">
@@ -69,7 +74,10 @@
                   :key="`${item}-${idx}`"
                   @click="selectModel(item, model)"
                 >
-                  {{ item }}/{{ model }}
+                  <span class="model-menu-item">
+                    <img class="model-menu-icon" :src="getProviderIcon(item)" :alt="item" />
+                    <span class="model-menu-text">{{ model }}</span>
+                  </span>
                 </a-menu-item>
               </a-menu-item-group>
               <a-menu-item-group v-if="customModels.length > 0" title="自定义模型">
@@ -313,7 +321,6 @@ import {
   PlusCircleOutlined,
   FolderOutlined,
   FolderOpenOutlined,
-  BulbOutlined,
   DeploymentUnitOutlined,
   DatabaseOutlined,
   DownOutlined
@@ -327,6 +334,7 @@ import { readNdjsonStream } from '@/utils/ndjsonStream'
 import { apiFetch, apiRequest } from '@/api/http'
 import { randomId } from '@/utils/id'
 import { readJson, writeJson } from '@/utils/storage'
+import { getProviderIcon } from '@/utils/providerIcon'
 
 const props = defineProps({
   conv: Object,
@@ -970,11 +978,47 @@ const selectModel = (provider, name) => {
       overflow: hidden;
       text-overflow: ellipsis;
     }
+
+    .model-select-icon {
+      width: 16px;
+      height: 16px;
+      border-radius: 4px;
+      background: var(--surface-color-2);
+      object-fit: contain;
+      flex: 0 0 auto;
+    }
+
+    .model-select-caret {
+      font-size: 12px;
+      color: var(--gray-600);
+    }
   }
 }
 
 .scroll-to-bottom {
   z-index: 12;
+}
+
+.model-menu-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 100%;
+}
+
+.model-menu-icon {
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+  background: var(--surface-color-2);
+  object-fit: contain;
+  flex: 0 0 auto;
+}
+
+.model-menu-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .metas {

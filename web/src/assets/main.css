@@ -210,9 +210,15 @@ button.ant-btn-icon-only:hover {
 }
 
 /* Ant Design alerts: make them look more "enterprise" (neutral surface + subtle accent) */
-.ant-alert {
-  background: var(--surface-color);
-  border: 1px solid var(--border-color);
+/* Ant v5+ uses hashed classes (e.g. `.css-xxxx.ant-alert-info`) with higher specificity.
+   Use a slightly stronger selector + `!important` to ensure our neutral surface wins. */
+.ant-alert,
+.ant-alert.ant-alert-info,
+.ant-alert.ant-alert-success,
+.ant-alert.ant-alert-warning,
+.ant-alert.ant-alert-error {
+  background: var(--surface-color) !important;
+  border: 1px solid var(--border-color) !important;
   border-radius: var(--radius-md);
 }
 
