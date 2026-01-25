@@ -262,42 +262,6 @@
               </div>
             </a-tooltip>
             <a-tooltip
-              v-if="configStore.config?.ui?.show_agents !== false"
-              :title="canAgent ? '' : backendOnline ? 'Agent unavailable' : 'Backend offline/unavailable'"
-            >
-              <a-dropdown
-                :disabled="!canAgent"
-                :class="{
-                  'opt-item': true,
-                  active: meta.use_agent && Boolean(meta.agent_name),
-                  disabled: !canAgent
-                }"
-              >
-                <a class="ant-dropdown-link" @click.prevent>
-                  <RobotOutlined style="margin-right: 3px" />
-                  <span class="text">
-                    {{ meta.use_agent && meta.agent_name ? meta.agent_name : 'Agent' }}
-                  </span>
-                </a>
-                <template #overlay>
-                  <a-menu>
-                    <a-menu-item
-                      v-for="agent in opts.agents"
-                      :key="agent.name"
-                      :disabled="!canAgent"
-                      @click="selectAgent(agent.name)"
-                    >
-                      <a href="javascript:;">{{ agent.name }}</a>
-                    </a-menu-item>
-                    <a-menu-divider />
-                    <a-menu-item @click="disableAgent">
-                      <a href="javascript:;">Disable</a>
-                    </a-menu-item>
-                  </a-menu>
-                </template>
-              </a-dropdown>
-            </a-tooltip>
-            <a-tooltip
               v-if="configStore.config?.ui?.show_knowledge_base !== false"
               :title="canKb ? '' : backendOnline ? '后端未启用知识库' : '后端离线/不可用'"
             >
@@ -359,7 +323,6 @@ import {
   FolderOpenOutlined,
   DeploymentUnitOutlined,
   DatabaseOutlined,
-  RobotOutlined,
   DownOutlined
 } from '@ant-design/icons-vue'
 import { onClickOutside, useDebounceFn } from '@vueuse/core'
@@ -435,11 +398,8 @@ const opts = reactive({
   showModelCard: false,
   openDetail: false,
   databases: [],
-  mcps: [],
-  agents: []
+  mcps: []
 })
-
-const canAgent = computed(() => backendOnline.value && Array.isArray(opts.agents) && opts.agents.length > 0)
 
 const showScrollToBottom = computed(
   () => !shouldAutoScroll.value && (conv.value?.messages?.length || 0) > 0
@@ -458,11 +418,9 @@ function defaultMeta() {
     use_graph: false,
     use_web: false,
     use_mcp: false,
-    use_agent: false,
     graph_name: 'neo4j',
     selectedKB: null,
     mcp_id: null,
-    agent_name: null,
     stream: true,
     summary_title: false,
     history_round: 20,
@@ -472,8 +430,7 @@ function defaultMeta() {
   }
 }
 
-const rawMeta = readJson(META_STORAGE_KEY, readJson(LEGACY_META_STORAGE_KEY, null))
-const meta = reactive({ ...defaultMeta(), ...(rawMeta && typeof rawMeta === 'object' ? rawMeta : {}) })
+const meta = reactive(readJson(META_STORAGE_KEY, readJson(LEGACY_META_STORAGE_KEY, defaultMeta())))
 
 const persistMeta = useDebounceFn(
   () => {
@@ -520,19 +477,6 @@ const useDatabase = (index) => {
   } else {
     meta.selectedKB = index
   }
-}
-
-const selectAgent = (agentName) => {
-  if (!canAgent.value) {
-    message.info(backendOnline.value ? 'Agent unavailable' : 'Backend offline')
-    return
-  }
-  meta.use_agent = true
-  meta.agent_name = String(agentName || '')
-}
-
-const disableAgent = () => {
-  meta.use_agent = false
 }
 
 const handleKeyDown = (e) => {
@@ -717,23 +661,6 @@ const loadDatabases = () => {
     })
 }
 
-const loadAgents = () => {
-  apiFetch('/chat/agent', { method: 'GET', timeoutMs: 5000 })
-    .then((data) => {
-      const agents = Array.isArray(data?.agents) ? data.agents : []
-      opts.agents = agents
-
-      if (meta.use_agent) {
-        const exists = agents.some((a) => a?.name === meta.agent_name)
-        if (!exists) meta.agent_name = agents[0]?.name || null
-        if (!meta.agent_name) meta.use_agent = false
-      }
-    })
-    .catch(() => {
-      opts.agents = []
-    })
-}
-
 const fetchChatResponse = async (user_input, cur_res_id) => {
   const streamId = activeStreamId.value + 1
   activeStreamId.value = streamId
@@ -748,19 +675,6 @@ const fetchChatResponse = async (user_input, cur_res_id) => {
     cur_res_id
   }
 
-  const agentName = meta.use_agent && meta.agent_name ? String(meta.agent_name) : null
-  const isAgentMode = Boolean(agentName)
-
-  const endpoint = isAgentMode ? `/chat/agent/${encodeURIComponent(agentName)}` : '/chat/'
-  const requestBody = isAgentMode
-    ? {
-        query: user_input,
-        history: params.history,
-        cfg: { thread_id: conv.value?.id || null },
-        meta
-      }
-    : params
-
   // If the user disables streaming output, we still call the streaming endpoint
   // (so refs/metadata remain available) but buffer content and render it at the end.
   const streamOutput = Boolean(meta.stream)
@@ -770,9 +684,9 @@ const fetchChatResponse = async (user_input, cur_res_id) => {
   let bufferedMeta = null
 
   try {
-    const response = await apiRequest(endpoint, {
+    const response = await apiRequest('/chat/', {
       method: 'POST',
-      body: requestBody,
+      body: params,
       signal: controller.signal,
       timeoutMs: 300000
     })
@@ -781,75 +695,6 @@ const fetchChatResponse = async (user_input, cur_res_id) => {
       response,
       async (data) => {
         if (!data) return
-
-        if (isAgentMode) {
-          const status = data.status
-
-          if (streamOutput) {
-            if (status === 'finished') {
-              // Agent endpoint sends the full answer again on `finished` — avoid double append.
-              const existingMsg = conv.value.messages.find((m) => m.id === cur_res_id)
-              const shouldUseFullAnswer = !existingMsg?.content
-              updateMessage({
-                id: cur_res_id,
-                status: 'finished',
-                refs: data.refs,
-                meta: data.meta,
-                message: data.error || data.message,
-                ...data,
-                content: shouldUseFullAnswer ? data.response || '' : ''
-              })
-            } else if (status === 'error') {
-              updateMessage({
-                id: cur_res_id,
-                status: 'error',
-                message: data.error || data.message || 'Request failed',
-                ...data
-              })
-            } else {
-              updateMessage({
-                id: cur_res_id,
-                content: data.response,
-                status,
-                refs: data.refs,
-                meta: data.meta,
-                message: data.error || data.message,
-                ...data
-              })
-            }
-          } else {
-            if (status === 'finished') {
-              updateMessage({
-                id: cur_res_id,
-                content: data.response || '',
-                status: 'finished',
-                refs: data.refs,
-                meta: data.meta,
-                message: data.error || data.message,
-                ...data
-              })
-            } else if (status === 'error') {
-              updateMessage({
-                id: cur_res_id,
-                status: 'error',
-                message: data.error || data.message || 'Request failed',
-                ...data
-              })
-            } else {
-              updateMessage({
-                id: cur_res_id,
-                status,
-                refs: data.refs,
-                meta: data.meta,
-                message: data.error || data.message,
-                ...data,
-                content: '' // never stream partial content
-              })
-            }
-          }
-
-          return
-        }
 
         if (streamOutput) {
           updateMessage({
@@ -891,7 +736,7 @@ const fetchChatResponse = async (user_input, cur_res_id) => {
       }
     )
 
-    if (!isAgentMode && !streamOutput && bufferedText) {
+    if (!streamOutput && bufferedText) {
       // Render buffered output once at the end.
       updateMessage({
         id: cur_res_id,
@@ -932,17 +777,6 @@ const sendMessage = () => {
     message.error('请等待上一条消息处理完成')
     return
   }
-  if (meta.use_agent) {
-    if (!canAgent.value) {
-      message.error(backendOnline.value ? 'Agent unavailable' : 'Backend offline')
-      return
-    }
-    if (!meta.agent_name) {
-      message.error('Please select an Agent')
-      return
-    }
-  }
-
   if (user_input) {
     isStreaming.value = true
     appendUserMessage(user_input)
@@ -976,7 +810,6 @@ const retryMessage = (id) => {
 onMounted(() => {
   scrollToBottom()
   loadDatabases()
-  loadAgents()
 
   if (chatContainer.value) chatContainer.value.addEventListener('scroll', handleUserScroll)
 

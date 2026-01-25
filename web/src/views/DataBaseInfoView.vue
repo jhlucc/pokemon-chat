@@ -128,14 +128,6 @@
             ><span><CloudUploadOutlined />添加文件</span></template
           >
           <div class="db-tab-container">
-            <div class="ingest-guide ui-card">
-              <div class="guide-title">RAG Ingestion</div>
-              <div class="guide-steps">
-                <span class="step"><span class="dot" />Upload</span>
-                <span class="step"><span class="dot" />Chunk</span>
-                <span class="step"><span class="dot" />Index</span>
-              </div>
-            </div>
             <div class="upload-section">
               <div class="upload-sidebar">
                 <div class="chunking-params">
@@ -185,22 +177,15 @@
                   </a-upload-dragger>
                 </div>
                 <div class="actions">
-                  <a-space>
                   <a-button
                     type="primary"
                     @click="chunkFiles"
                     :loading="state.loading"
                     :disabled="fileList.length === 0"
+                    style="margin: 0px 20px 20px 0"
                   >
                     生成分块
                   </a-button>
-                  <a-button
-                    @click="resetIngest"
-                    :disabled="fileList.length === 0 && chunkResults.length === 0"
-                  >
-                    Reset
-                  </a-button>
-                  </a-space>
                 </div>
               </div>
             </div>
@@ -211,16 +196,9 @@
                 <h3>
                   分块预览 (共 {{ chunkResults.length }} 个文件，{{ getTotalChunks() }} 个分块)
                 </h3>
-                <div class="preview-actions">
-                  <a-space>
-                    <a-button type="primary" @click="addToDatabase" :loading="state.adding">
+                <a-button type="primary" @click="addToDatabase" :loading="state.adding">
                   添加到数据库
                 </a-button>
-                    <a-button @click="resetIngest" :disabled="state.adding">
-                      Reset
-                    </a-button>
-                  </a-space>
-                </div>
               </div>
 
               <a-collapse v-model:activeKey="activeFileKeys">
@@ -403,17 +381,6 @@ const state = reactive({
   refreshInterval: null,
   curPage: 'files'
 })
-
-const normalizeTab = (value) => {
-  const raw = Array.isArray(value) ? value[0] : value
-  const tab = String(raw || '').trim()
-  return tab === 'add' || tab === 'files' ? tab : null
-}
-
-const syncTabFromRoute = () => {
-  const tab = normalizeTab(route.query?.tab)
-  if (tab) state.curPage = tab
-}
 
 const handleFileUpload = (event) => {
   void event
@@ -601,12 +568,6 @@ const chunkParams = ref({
 const chunkResults = ref([])
 const activeFileKeys = ref([])
 
-const resetIngest = () => {
-  fileList.value = []
-  chunkResults.value = []
-  activeFileKeys.value = []
-}
-
 // 获取所有分块的总数
 const getTotalChunks = () => {
   return chunkResults.value.reduce((total, file) => total + file.nodes.length, 0)
@@ -724,36 +685,11 @@ watch(
   (newId) => {
     databaseId.value = newId
     clearInterval(state.refreshInterval)
-    syncTabFromRoute()
     getDatabaseInfo()
   }
 )
 
-watch(
-  () => route.query?.tab,
-  () => {
-    syncTabFromRoute()
-  }
-)
-
-watch(
-  () => state.curPage,
-  (tab) => {
-    const current = normalizeTab(route.query?.tab)
-    if (tab === current) return
-
-    const nextQuery = { ...(route.query || {}) }
-    if (tab === 'files') {
-      delete nextQuery.tab
-    } else {
-      nextQuery.tab = tab
-    }
-    router.replace({ query: nextQuery })
-  }
-)
-
 onMounted(() => {
-  syncTabFromRoute()
   getDatabaseInfo()
   state.refreshInterval = setInterval(() => {
     getDatabaseInfo()
@@ -1089,53 +1025,6 @@ onUnmounted(() => {
   }
 }
 
-.ingest-guide {
-  padding: 12px 16px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  border-radius: var(--radius-md);
-  margin-bottom: 12px;
-
-  &:hover {
-    transform: none;
-    box-shadow: var(--shadow-xs);
-    background: var(--surface-color);
-  }
-
-  .guide-title {
-    font-size: 14px;
-    font-weight: 650;
-    color: var(--text-color);
-    white-space: nowrap;
-  }
-
-  .guide-steps {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    flex-wrap: wrap;
-    justify-content: flex-end;
-    color: var(--gray-700);
-    font-size: 13px;
-
-    .step {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-    }
-
-    .dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 999px;
-      background: var(--main-500);
-      display: inline-block;
-    }
-  }
-}
-
 .upload-section {
   display: flex;
   gap: 20px;
@@ -1143,10 +1032,10 @@ onUnmounted(() => {
   .upload-sidebar {
     width: 280px;
     padding: 20px;
-    background-color: var(--surface-color);
+    background-color: var(--main-light-6);
     border-radius: 8px;
-    border: 1px solid var(--border-color);
-    box-shadow: var(--shadow-xs);
+    border: 1px solid var(--main-light-3);
+    // box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
 
     .chunking-params {
       h4 {
@@ -1161,7 +1050,7 @@ onUnmounted(() => {
       }
 
       .params-info {
-        background-color: var(--surface-color-2);
+        background-color: var(--main-light-4);
         border-radius: 6px;
         padding: 10px 12px;
         margin-bottom: 16px;
@@ -1218,17 +1107,6 @@ onUnmounted(() => {
 
   .upload-main {
     flex: 1;
-    padding: 20px;
-    background-color: var(--surface-color);
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
-    box-shadow: var(--shadow-xs);
-
-    .actions {
-      display: flex;
-      justify-content: flex-end;
-      margin-top: 12px;
-    }
   }
 }
 
@@ -1239,19 +1117,18 @@ onUnmounted(() => {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    gap: 12px;
     margin-bottom: 16px;
 
     h3 {
       margin: 0;
-      color: var(--text-color);
+      color: var(--main-color);
       font-size: 18px;
     }
   }
 
   .result-cards {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(600px, 1fr));
     gap: 12px;
     margin-top: 10px;
   }
@@ -1279,16 +1156,6 @@ onUnmounted(() => {
         color: var(--main-color);
         margin-right: 6px;
       }
-    }
-  }
-}
-
-@media (max-width: 900px) {
-  .upload-section {
-    flex-direction: column;
-
-    .upload-sidebar {
-      width: 100%;
     }
   }
 }

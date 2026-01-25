@@ -9,6 +9,8 @@ import {
   SettingFilled,
   BookOutlined,
   BookFilled,
+  ToolFilled,
+  ToolOutlined,
   BugOutlined,
   ProjectFilled,
   ProjectOutlined,
@@ -17,6 +19,8 @@ import {
   InfoCircleOutlined,
   BulbFilled,
   DesktopOutlined,
+  RobotOutlined,
+  RobotFilled,
   MenuFoldOutlined,
   MenuUnfoldOutlined
 } from '@ant-design/icons-vue'
@@ -175,16 +179,16 @@ const mainList = computed(() => {
     {
       name: '工具',
       path: '/tools',
-      icon: BookOutlined,
-      activeIcon: BookFilled,
-      hidden: true
+      icon: ToolOutlined,
+      activeIcon: ToolFilled,
+      hidden: ui.show_tools === false
     },
     {
       name: '智能体',
       path: '/agent',
-      icon: BookOutlined,
-      activeIcon: BookFilled,
-      hidden: true
+      icon: RobotOutlined,
+      activeIcon: RobotFilled,
+      hidden: ui.show_agents === false
     },
     {
       name: '地图',
