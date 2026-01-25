@@ -26,6 +26,7 @@ import os
 import traceback
 import warnings
 from src.core.settings import settings
+from src.core.feature_flags import feature_enabled
 from src.utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -55,7 +56,7 @@ class GraphDatabase:
     def start(self):
         if self.driver is not None and self.status == "open":
             return
-        if not settings.features.enable_knowledge_graph:
+        if not feature_enabled("enable_knowledge_graph"):
             raise RuntimeError("Knowledge graph is disabled (enable_knowledge_graph=false).")
         uri = settings.database.neo4j_uri
         username = settings.database.neo4j_username
@@ -99,7 +100,7 @@ class GraphDatabase:
 
     def is_running(self):
         """检查图数据库是否正在运行"""
-        if not settings.features.enable_knowledge_graph:
+        if not feature_enabled("enable_knowledge_graph"):
             return False
         return self.status == "open" and self.driver is not None
 
@@ -310,7 +311,7 @@ class GraphDatabase:
         tx.run(query)
 
     def query_node(self, entity_name, **kwargs):
-        if not settings.features.enable_knowledge_graph:
+        if not feature_enabled("enable_knowledge_graph"):
             raise RuntimeError("Knowledge graph is disabled (enable_knowledge_graph=false).")
 
         # Use the runtime singleton to avoid re-initializing LLM/Neo4j clients per request.

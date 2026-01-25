@@ -8,6 +8,7 @@ from typing import Any, Dict, List, Optional
 from pymilvus import CollectionSchema, DataType, FieldSchema, MilvusClient, MilvusException
 
 from src.core.settings import settings
+from src.core.feature_flags import feature_enabled
 from src.knowledge.store.kb_db import kb_db_manager
 from src.utils import hashstr
 from src.utils.logger import get_logger
@@ -31,11 +32,6 @@ class KnowledgeBase:
         milvus_uri: Optional[str] = None,
         embedding_config: Optional[Dict[str, Any]] = None
     ) -> None:
-        # "启用知识库" 既可以来自全局 settings，也可以来自调用方传入的 embedding_config
-        # （比如某些路由希望强制开启 KB 功能）
-        self._enabled = bool(
-            (embedding_config or {}).get("enable_knowledge_base", settings.features.enable_knowledge_base)
-        )
         self._milvus_uri = milvus_uri
         self._embedding_config = embedding_config
 
@@ -61,6 +57,12 @@ class KnowledgeBase:
         # 注意：Milvus/Embedding 初始化会阻塞/失败（服务未启动、未配置 key 等），
         # 因此这里改为懒加载，直到真正调用 KB 相关能力时再连接。
 
+    def _is_enabled(self) -> bool:
+        # Allow callers to force-enable via embedding_config, otherwise respect runtime feature flags.
+        if isinstance(self._embedding_config, dict) and "enable_knowledge_base" in self._embedding_config:
+            return bool(self._embedding_config.get("enable_knowledge_base"))
+        return bool(feature_enabled("enable_knowledge_base"))
+
     # -- 数据迁移 -----------------------------------------------------------
     def _check_migration(self):
         legacy = os.path.join(self.work_dir, "database.json")
@@ -76,7 +78,7 @@ class KnowledgeBase:
     # -- Embedding 模型 ---------------------------------------------------
     def _load_embedding_model(self, embedding_config: Optional[Dict[str, Any]]):
         logger.info(f"传入的 embedding_config: {embedding_config}")
-        if not self._enabled:
+        if not self._is_enabled():
             self.embed_model = None
             self.reranker = None
             return
@@ -96,7 +98,7 @@ class KnowledgeBase:
         self.conf = model_name
         self.embed_model = get_embedding_model(model=model_name)
         
-        if settings.features.enable_reranker:
+        if feature_enabled("enable_reranker"):
             from src.models.reranker_model import get_reranker
             self.reranker = get_reranker()
         else:
@@ -124,7 +126,7 @@ class KnowledgeBase:
         Ensure KB runtime dependencies are initialized.
         This keeps module import cheap and prevents server startup from blocking.
         """
-        if not self._enabled:
+        if not self._is_enabled():
             raise RuntimeError("KnowledgeBase is disabled (enable_knowledge_base=false).")
 
         if self.embed_model is None:
@@ -150,7 +152,7 @@ class KnowledgeBase:
         return info
 
     def delete_database(self, db_id: str) -> None:
-        if self._enabled:
+        if self._is_enabled():
             # Best-effort Milvus cleanup; still delete local metadata even if Milvus isn't reachable.
             try:
                 self._ensure_ready()

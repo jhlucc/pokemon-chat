@@ -5,10 +5,11 @@ import ahocorasick
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 from src.core.settings import settings
+from src.core.feature_flags import feature_enabled
 
 # BERT-based NER (only if enabled)
 _BERT_AVAILABLE = False
-if settings.features.enable_ner_bert:
+if feature_enabled("enable_ner_bert"):
     import torch
     from torch import nn
     from torch.utils.data import Dataset, DataLoader

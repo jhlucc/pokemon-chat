@@ -34,6 +34,8 @@ export const DEFAULT_CONFIG = {
   enable_web_search: false,
   enable_mcp: false,
   enable_reranker: true,
+  enable_asr: false,
+  enable_ner_bert: false,
 
   // --- embedding / reranker (display only; backend owns the real config) ---
   embed_model: 'BAAI/bge-m3',

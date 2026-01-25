@@ -7,6 +7,7 @@ from typing import Any, Dict, List, Callable
 
 from pymilvus import connections, Collection
 from src.core.settings import settings
+from src.core.feature_flags import feature_enabled
 from src.models.embedding import get_embedding_model
 from src.models.reranker_model import RerankerWrapper
 from src.utils.logger import get_logger
@@ -42,7 +43,7 @@ class VectorRecaller:
             raise ValueError("Embedding model is None")
 
         self.reranker = None
-        if settings.features.enable_reranker:
+        if feature_enabled("enable_reranker"):
             reranker_key = settings.kb_config.reranker_key
             model_name = settings.reranker.model_name
             local_path = str(settings.paths.model_reranker_path)

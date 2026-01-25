@@ -1,6 +1,7 @@
 from typing import Any, Dict, List, Optional
 from langchain_community.graphs import Neo4jGraph
 from src.core.settings import settings
+from src.core.feature_flags import feature_enabled
 from src.utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -11,7 +12,7 @@ class GraphStore:
     Wraps langchain_community.graphs.Neo4jGraph for easier integration.
     """
     def __init__(self, refresh_schema: bool = True):
-        if not settings.features.enable_knowledge_graph:
+        if not feature_enabled("enable_knowledge_graph"):
             logger.warning("Knowledge Graph feature is disabled in settings.")
             self.graph = None
             return

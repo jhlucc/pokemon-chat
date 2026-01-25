@@ -8,8 +8,8 @@ from pathlib import Path
 from fastapi import APIRouter, BackgroundTasks, HTTPException
 from pydantic import BaseModel
 
-from src.knowledge.core.refresh import get_knowledge_refresh_manager
 from src.utils.logger import LogManager
+from src.core.feature_flags import feature_enabled
 
 logger = LogManager()
 
@@ -31,6 +31,12 @@ class DirectoryRefreshRequest(BaseModel):
 @refresh_router.get("/status")
 async def get_refresh_status():
     """Get current knowledge refresh status and history."""
+    if not feature_enabled("enable_knowledge_base"):
+        raise HTTPException(status_code=503, detail="Knowledge base refresh is disabled (enable_knowledge_base=false).")
+
+    # Lazy import: avoid importing KB stack when the feature is disabled.
+    from src.knowledge.core.refresh import get_knowledge_refresh_manager
+
     manager = get_knowledge_refresh_manager()
     return manager.get_refresh_status()
 
@@ -44,6 +50,11 @@ async def refresh_from_web(
     Trigger knowledge refresh from web URLs.
     Runs in background.
     """
+    if not feature_enabled("enable_knowledge_base"):
+        raise HTTPException(status_code=503, detail="Knowledge base refresh is disabled (enable_knowledge_base=false).")
+
+    from src.knowledge.core.refresh import get_knowledge_refresh_manager
+
     manager = get_knowledge_refresh_manager()
     
     # Run in background
@@ -64,6 +75,11 @@ async def refresh_from_directory(request: DirectoryRefreshRequest):
     """
     Trigger knowledge refresh from local directory.
     """
+    if not feature_enabled("enable_knowledge_base"):
+        raise HTTPException(status_code=503, detail="Knowledge base refresh is disabled (enable_knowledge_base=false).")
+
+    from src.knowledge.core.refresh import get_knowledge_refresh_manager
+
     directory = Path(request.directory)
     
     if not directory.exists():
@@ -92,6 +108,11 @@ async def refresh_from_bulbapedia(background_tasks: BackgroundTasks):
     """
     Refresh knowledge from Bulbapedia (predefined Pokemon pages).
     """
+    if not feature_enabled("enable_knowledge_base"):
+        raise HTTPException(status_code=503, detail="Knowledge base refresh is disabled (enable_knowledge_base=false).")
+
+    from src.knowledge.core.refresh import get_knowledge_refresh_manager
+
     manager = get_knowledge_refresh_manager()
     
     background_tasks.add_task(

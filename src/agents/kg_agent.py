@@ -15,6 +15,7 @@ from pydantic import BaseModel, Field
 from py2neo import Graph
 
 from src.core.settings import settings
+from src.core.feature_flags import feature_enabled
 from src.ner.ner_model import _BERT_AVAILABLE, get_ner_result_simple, rule_find, tfidf_alignment
 from src.utils.logger import get_logger
 
@@ -109,7 +110,7 @@ class EntityRecognizer:
         self._rule = None
         self._tfidf_r = None
 
-        self._use_bert = bool(settings.features.enable_ner_bert and _BERT_AVAILABLE)
+        self._use_bert = bool(feature_enabled("enable_ner_bert") and _BERT_AVAILABLE)
         self._bert_loaded = False
         self._bert_model = None
         self._bert_tokenizer = None

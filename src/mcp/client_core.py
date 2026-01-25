@@ -10,6 +10,7 @@ from mcp.client.sse import sse_client
 from openai import OpenAI
 
 from src.core.settings import settings
+from src.core.feature_flags import feature_enabled
 from src.utils.http_client import get_safe_httpx_client
 
 
@@ -45,7 +46,7 @@ class MCPClient:
             or os.getenv("MCP_LLM_API_KEY")
             or os.getenv("mcp_llm_api_key")
             or os.getenv("DEEPSEEK_API_KEY")
-            or (settings.llm.api_key if settings.features.enable_mcp else None)
+            or (settings.llm.api_key if feature_enabled("enable_mcp") else None)
         )
         self.llm_base_url = (
             llm_base_url

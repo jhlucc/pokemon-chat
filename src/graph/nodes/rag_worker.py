@@ -4,6 +4,7 @@ from langchain_core.prompts import ChatPromptTemplate
 from langchain_openai import ChatOpenAI
 
 from src.core.settings import settings
+from src.core.feature_flags import feature_enabled
 from src.graph.state import AgentState
 from src.knowledge.store.vector import VectorStore
 from src.knowledge.core.operators import HyDEOperator
@@ -30,12 +31,12 @@ class RagWorker:
         self.vector_store = VectorStore(
             collection_name=settings.database.milvus_collection_name or "pokemon_knowledge",
             embedding_model=settings.embedding.model_name, # managed by VectorStore internal resolver
-            reranker_model=settings.reranker.model_name if settings.features.enable_reranker else None
+            reranker_model=settings.reranker.model_name if feature_enabled("enable_reranker") else None
         )
 
     def retrieve(self, query: str) -> str:
         try:
-            results = self.vector_store.search(query, top_k=5, rerank=settings.features.enable_reranker)
+            results = self.vector_store.search(query, top_k=5, rerank=feature_enabled("enable_reranker"))
             if not results:
                 return "No relevant information found in the knowledge base."
             
@@ -75,7 +76,7 @@ class RagWorker:
         Retrieve with CRAG (Corrective RAG) - evaluates and corrects retrieval quality.
         """
         # 1. Initial retrieval
-        results = self.vector_store.search(query, top_k=5, rerank=settings.features.enable_reranker)
+        results = self.vector_store.search(query, top_k=5, rerank=feature_enabled("enable_reranker"))
         
         if not results:
             # No docs - use web search directly
@@ -182,7 +183,7 @@ class RagWorker:
         # 2. Retrieve with CRAG (Self-Correcting) for each sub-query
         all_contexts = []
         for sq in sub_queries:
-            if settings.features.enable_web_search:
+            if feature_enabled("enable_web_search"):
                 ctx = self.retrieve_with_crag(hyde_query if sq == query else sq)  # Use HyDE for main query
             else:
                 ctx = self.retrieve(hyde_query if sq == query else sq)

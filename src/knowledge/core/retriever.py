@@ -7,6 +7,7 @@ from typing import Any, Dict, List
 from langchain_openai import ChatOpenAI
 
 from src.core.settings import settings
+from src.core.feature_flags import feature_enabled
 from src.knowledge.core.operators import HyDEOperator
 from src.knowledge.core.prompts import knowbase_qa_template, rewritten_query_prompt_template, keywords_prompt_template
 from src.models.reranker_model import RerankerWrapper
@@ -33,7 +34,7 @@ class Retriever:
         return get_kb()
 
     def _get_kg_agent(self):
-        if not settings.features.enable_knowledge_graph:
+        if not feature_enabled("enable_knowledge_graph"):
             return None
         if self._kg_agent is None:
             self._kg_agent = get_kg_agent()
@@ -55,11 +56,11 @@ class Retriever:
         self.reranker = None
         self.web_searcher = None
 
-        if settings.features.enable_reranker:
+        if feature_enabled("enable_reranker"):
             # 使用 settings 默认配置初始化
             self.reranker = RerankerWrapper()
 
-        if settings.features.enable_web_search:
+        if feature_enabled("enable_web_search"):
             from src.agents.tools.websearch.websearcher import LiteBaseSearcher
             self.web_searcher = LiteBaseSearcher()
 
@@ -88,7 +89,7 @@ class Retriever:
     def query_mysql_mcp(self, query: str, history: List[Dict[str, Any]], refs: Dict[str, Any]) -> Dict[str, Any]:
         meta = refs["meta"]
         mcp_id = meta.get("mcp_id")  # 按钮亮时 = 'default'
-        if not mcp_id or not settings.features.enable_mcp:
+        if not mcp_id or not feature_enabled("enable_mcp"):
             return {"answer": "" }
 
         try:
@@ -182,7 +183,7 @@ class Retriever:
         raise NotImplementedError
 
     def query_graph(self, query, history, refs):
-        if not (refs["meta"].get("use_graph") and settings.features.enable_knowledge_graph):
+        if not (refs["meta"].get("use_graph") and feature_enabled("enable_knowledge_graph")):
             return {"answer": None, "subgraph": {"nodes": [], "edges": []}}
 
         try:
@@ -211,7 +212,7 @@ class Retriever:
 
         meta = refs["meta"]
         db_id = meta.get("db_id")
-        if not db_id or not settings.features.enable_knowledge_base:
+        if not db_id or not feature_enabled("enable_knowledge_base"):
             response["message"] = "知识库未启用、或未指定知识库、或知识库不存在"
             return response
 
@@ -235,10 +236,14 @@ class Retriever:
 
     def query_web(self, query, history, refs):
         """查询网络：直接同步调用 WebSearcher"""
-        if not (refs["meta"].get("use_web") and settings.features.enable_web_search):
+        if not (refs["meta"].get("use_web") and feature_enabled("enable_web_search")):
             return {"results": [], "message": "Web search is disabled"}
 
         try:
+            if self.web_searcher is None:
+                # Feature might be toggled on at runtime; lazy init here.
+                from src.agents.tools.websearch.websearcher import LiteBaseSearcher
+                self.web_searcher = LiteBaseSearcher()
             search_results = self.web_searcher.search(query, top_k=5)
         except Exception as e:
             _log.error(f"Web search error: {e}")

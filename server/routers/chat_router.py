@@ -15,6 +15,7 @@ from fastapi.responses import StreamingResponse
 
 from src import executor
 from src.core.settings import settings
+from src.core.feature_flags import feature_enabled
 from src.utils.logger import LogManager
 from src.runtime import get_retriever, get_asr_client
 logger = LogManager()
@@ -489,7 +490,7 @@ async def update_chat_models(model_provider: str, model_names: List[str]):
 
 @chat.post("/asr/")
 async def asr_upload(file: UploadFile = File(...)):
-    if not settings.features.enable_asr:
+    if not feature_enabled("enable_asr"):
         raise HTTPException(status_code=503, detail="ASR is disabled (enable_asr=false).")
     if shutil.which("ffmpeg") is None:
         raise HTTPException(status_code=500, detail="ffmpeg not found (required for audio conversion).")

@@ -186,25 +186,77 @@
             </a-tab-pane>
 
             <a-tab-pane key="capabilities" tab="能力">
-              <a-card title="后端能力（只读）" :bordered="false">
+              <a-card title="后端功能开关" :bordered="false">
                 <a-space wrap>
-                  <a-tag :color="configStore.config.enable_knowledge_base ? 'green' : 'default'"
-                    >知识库</a-tag
-                  >
-                  <a-tag :color="configStore.config.enable_knowledge_graph ? 'green' : 'default'"
-                    >知识图谱</a-tag
-                  >
-                  <a-tag :color="configStore.config.enable_web_search ? 'green' : 'default'"
-                    >联网搜索</a-tag
-                  >
-                  <a-tag :color="configStore.config.enable_mcp ? 'green' : 'default'">MCP</a-tag>
-                  <a-tag :color="configStore.config.enable_reranker ? 'green' : 'default'"
-                    >Reranker</a-tag
-                  >
+                  <a-space>
+                    <span class="muted">知识库</span>
+                    <a-switch
+                      :checked="Boolean(configStore.config.enable_knowledge_base)"
+                      :loading="Boolean(featureState.saving.enable_knowledge_base)"
+                      @change="(v) => setBackendFeature('enable_knowledge_base', v)"
+                    />
+                  </a-space>
+                  <a-space>
+                    <span class="muted">知识图谱</span>
+                    <a-switch
+                      :checked="Boolean(configStore.config.enable_knowledge_graph)"
+                      :loading="Boolean(featureState.saving.enable_knowledge_graph)"
+                      @change="(v) => setBackendFeature('enable_knowledge_graph', v)"
+                    />
+                  </a-space>
+                  <a-space>
+                    <span class="muted">联网搜索</span>
+                    <a-switch
+                      :checked="Boolean(configStore.config.enable_web_search)"
+                      :loading="Boolean(featureState.saving.enable_web_search)"
+                      @change="(v) => setBackendFeature('enable_web_search', v)"
+                    />
+                  </a-space>
+                  <a-space>
+                    <span class="muted">MCP</span>
+                    <a-switch
+                      :checked="Boolean(configStore.config.enable_mcp)"
+                      :loading="Boolean(featureState.saving.enable_mcp)"
+                      @change="(v) => setBackendFeature('enable_mcp', v)"
+                    />
+                  </a-space>
+                  <a-space>
+                    <span class="muted">Reranker</span>
+                    <a-switch
+                      :checked="Boolean(configStore.config.enable_reranker)"
+                      :loading="Boolean(featureState.saving.enable_reranker)"
+                      @change="(v) => setBackendFeature('enable_reranker', v)"
+                    />
+                  </a-space>
                 </a-space>
-                <div class="muted" style="margin-top: 10px">
-                  这些开关由后端环境变量控制（见 `.env` / `docker-compose.yml`）。前端不依赖后端也能渲染，但功能调用需要后端在线且对应能力开启。
-                </div>
+
+                <a-divider style="margin: 12px 0" />
+                <a-space wrap>
+                  <a-space>
+                    <span class="muted">ASR</span>
+                    <a-switch
+                      :checked="Boolean(configStore.config.enable_asr)"
+                      :loading="Boolean(featureState.saving.enable_asr)"
+                      @change="(v) => setBackendFeature('enable_asr', v)"
+                    />
+                  </a-space>
+                  <a-space>
+                    <span class="muted">NER BERT</span>
+                    <a-switch
+                      :checked="Boolean(configStore.config.enable_ner_bert)"
+                      :loading="Boolean(featureState.saving.enable_ner_bert)"
+                      @change="(v) => setBackendFeature('enable_ner_bert', v)"
+                    />
+                  </a-space>
+                </a-space>
+
+                <a-alert
+                  style="margin-top: 12px"
+                  type="info"
+                  show-icon
+                  message="说明"
+                  description="这些开关会写入后端本地配置（resources/save/config/ui_config.json），不修改 .env。部分能力需要额外服务/依赖：知识库需要 Milvus；图谱需要 Neo4j；联网搜索需要 tavily_api_key；NER BERT 需要 torch/transformers。"
+                />
               </a-card>
             </a-tab-pane>
 
@@ -285,7 +337,7 @@
                   <a-button @click="resetUiVisibility">重置为默认</a-button>
                 </a-space>
                 <div class="muted" style="margin-top: 10px">
-                  这些开关只影响前端导航与入口显示，不会改变后端能力开关。
+                  这些开关只影响前端导航与入口显示；后端能力请在「能力」页配置。
                 </div>
               </a-card>
             </a-tab-pane>
@@ -436,6 +488,30 @@ const restartBackend = async () => {
   }
 }
 
+const featureState = reactive({
+  saving: {}
+})
+
+const setBackendFeature = async (key, checked) => {
+  featureState.saving[key] = true
+  try {
+    const res = await apiFetch('/config', {
+      method: 'PATCH',
+      body: { [key]: Boolean(checked) },
+      timeoutMs: 10000
+    })
+    configStore.patchLocal({
+      ...res,
+      backend: { online: true, last_error: null, ...(res?.backend || {}) }
+    })
+    message.success('已更新后端开关')
+  } catch (e) {
+    notifyApiError(e, { context: '后端开关', fallback: '更新失败' })
+  } finally {
+    featureState.saving[key] = false
+  }
+}
+	
 const refreshProviders = async () => {
   providersState.loading = true
   try {

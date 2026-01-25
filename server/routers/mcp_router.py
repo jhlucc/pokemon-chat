@@ -5,6 +5,7 @@ from fastapi import APIRouter, HTTPException, Query, FastAPI
 from pydantic import BaseModel
 from contextlib import asynccontextmanager
 from src.runtime import get_mcp_client
+from src.core.feature_flags import feature_enabled
 
 router = APIRouter(prefix="/mcp", tags=["mcp"])
 
@@ -18,6 +19,8 @@ class CoordsResp(BaseModel):
 # ---------- routes ----------
 @router.get("/chat", response_model=ChatResp)
 async def chat(q: str = Query(..., description="聊天提问")):
+    if not feature_enabled("enable_mcp"):
+        raise HTTPException(status_code=503, detail="MCP is disabled (enable_mcp=false).")
     try:
         client = get_mcp_client()
         answer, _ = await client.ask(q)
@@ -29,6 +32,8 @@ async def chat(q: str = Query(..., description="聊天提问")):
 
 @router.get("/coords", response_model=CoordsResp)
 async def coords(place: str = Query(..., description="地点名")):
+    if not feature_enabled("enable_mcp"):
+        raise HTTPException(status_code=503, detail="MCP is disabled (enable_mcp=false).")
     try:
         client = get_mcp_client()
         _, coords_json = await client.ask(f"{place} 出现在真实世界的具体坐标")

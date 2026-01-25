@@ -6,6 +6,7 @@ from urllib.parse import urlparse
 from fastapi import APIRouter
 
 from src.core.settings import settings
+from src.core.feature_flags import feature_enabled
 
 health = APIRouter(tags=["health"])
 
@@ -59,11 +60,11 @@ async def readyz():
         or get_provider_api_key("zhipu")
     ):
         warnings.append("No LLM API key configured (llm_api_key / SILICONFLOW_API_KEY / OPENAI_API_KEY).")
-    if settings.features.enable_web_search and not (settings.tavily.api_key):
+    if feature_enabled("enable_web_search") and not (settings.tavily.api_key):
         warnings.append("Web search is enabled but tavily_api_key is empty.")
 
     # Neo4j (bolt)
-    neo4j_enabled = bool(settings.features.enable_knowledge_graph)
+    neo4j_enabled = bool(feature_enabled("enable_knowledge_graph"))
     neo4j_host, neo4j_port = _parse_host_port(settings.database.neo4j_uri, default_port=7687)
     neo4j_ok, neo4j_err = _tcp_check(neo4j_host, neo4j_port) if neo4j_enabled else (True, "")
     checks["neo4j"] = {
@@ -74,7 +75,7 @@ async def readyz():
     }
 
     # Milvus (best-effort TCP check on configured URI)
-    kb_enabled = bool(settings.features.enable_knowledge_base)
+    kb_enabled = bool(feature_enabled("enable_knowledge_base"))
     milvus_host, milvus_port = _parse_host_port(settings.database.milvus_uri, default_port=19530)
     milvus_ok, milvus_err = _tcp_check(milvus_host, milvus_port) if kb_enabled else (True, "")
     checks["milvus"] = {
@@ -85,7 +86,7 @@ async def readyz():
     }
 
     # MySQL
-    mysql_enabled = bool(settings.features.enable_mcp)  # MCP tool uses MySQL in this project
+    mysql_enabled = bool(feature_enabled("enable_mcp"))  # MCP tool uses MySQL in this project
     mysql_ok, mysql_err = _tcp_check(settings.database.mysql_host, settings.database.mysql_port) if mysql_enabled else (True, "")
     checks["mysql"] = {
         "enabled": mysql_enabled,
@@ -95,7 +96,7 @@ async def readyz():
     }
 
     # FunASR (ASR)
-    funasr_enabled = bool(settings.features.enable_asr)
+    funasr_enabled = bool(feature_enabled("enable_asr"))
     funasr_host, funasr_port = _parse_host_port(settings.asr.funasr_url, default_port=10095)
     funasr_ok, funasr_err = _tcp_check(funasr_host, funasr_port) if funasr_enabled else (True, "")
     checks["funasr"] = {

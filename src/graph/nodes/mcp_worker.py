@@ -8,7 +8,7 @@ from typing import Dict, Any
 from langchain_core.messages import AIMessage
 
 from src.graph.state import AgentState
-from src.core.settings import settings
+from src.core.feature_flags import feature_enabled
 from src.utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -24,11 +24,12 @@ class MCPWorker:
     """
     
     def __init__(self):
-        self.enabled = settings.features.enable_mcp
+        # Keep init cheap; the feature can be toggled at runtime.
+        pass
     
     async def _query_mcp(self, query: str) -> Dict[str, Any]:
         """Execute MCP query with caching."""
-        if not self.enabled:
+        if not feature_enabled("enable_mcp"):
             return {"answer": "", "coords": None}
         
         try:

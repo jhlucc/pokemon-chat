@@ -16,6 +16,7 @@ from langgraph.graph import StateGraph, MessagesState, START, END
 
 # Project Imports
 from src.core.settings import settings
+from src.core.feature_flags import feature_enabled
 from src.agents.base import BaseAgent
 from src.knowledge import PokemonLightRAG
 from src.agents.tools.websearch.websearcher import LiteBaseSearcher
@@ -138,7 +139,7 @@ class PokemonKGChatAgent(BaseAgent):
 
         # 初始化知识图谱查询代理
         self.kgsql_agent = None
-        if settings.features.enable_knowledge_graph:
+        if feature_enabled("enable_knowledge_graph"):
             try:
                 # 使用 self._llm 而不是 self.llm
                 self.kgsql_agent = KGQueryAgent(llm=self._llm)
@@ -165,7 +166,7 @@ class PokemonKGChatAgent(BaseAgent):
 
         # 添加兼容方法 (模拟搜索)
         async def fake_search_and_generate(query: str) -> str:
-            if settings.features.enable_web_search:
+            if feature_enabled("enable_web_search"):
                 # 如果开启了 web search，尝试真实的搜索
                 try:
                     # LiteBaseSearcher.search 是同步方法，但可以在 async 中直接调用
