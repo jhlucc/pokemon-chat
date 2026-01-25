@@ -10,7 +10,8 @@
     "preview": "vite preview",
     "lint": "eslint . --fix",
     "lint:check": "eslint .",
-    "format": "prettier --write src/"
+    "typecheck": "vue-tsc --noEmit",
+    "format": "prettier --write \"src/**/*.{js,ts,vue,css,less,md}\""
   },
   "dependencies": {
     "@ant-design/icons-vue": "^6.1.0",
@@ -33,10 +34,13 @@
     "vue-router": "^4.1.6"
   },
   "devDependencies": {
+    "@types/node": "^22.13.0",
     "@vitejs/plugin-vue": "^5.2.4",
     "eslint": "^9.15.0",
     "eslint-plugin-vue": "^9.9.0",
     "prettier": "^2.8.4",
+    "typescript": "^5.7.3",
+    "vue-tsc": "^2.2.0",
     "vite": "^6.4.1"
   },
   "overrides": {
