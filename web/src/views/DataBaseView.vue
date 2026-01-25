@@ -92,6 +92,11 @@
                 <a-tag color="blue" v-if="database.embed_model">{{ database.embed_model }}</a-tag>
                 <a-tag color="green" v-if="database.dimension">{{ database.dimension }}</a-tag>
               </div>
+              <div class="card-actions">
+                <a-button size="small" type="primary" @click.stop="navigateToDatabaseAdd(database.db_id)">
+                  Import / Chunk
+                </a-button>
+              </div>
               <!-- <button @click="deleteDatabase(database.collection_name)">删除</button> -->
             </div>
           </template>
@@ -193,6 +198,10 @@ const navigateToDatabase = (databaseId) => {
   router.push({ path: `/database/${databaseId}` })
 }
 
+const navigateToDatabaseAdd = (databaseId) => {
+  router.push({ path: `/database/${databaseId}`, query: { tab: 'add' } })
+}
+
 watch(
   () => route.path,
   (newPath, _oldPath) => {
@@ -235,6 +244,7 @@ onMounted(() => {
   border-radius: var(--radius-lg);
   min-height: 160px;
   cursor: pointer;
+  position: relative;
 
   .top {
     display: flex;
@@ -283,6 +293,12 @@ onMounted(() => {
     -webkit-box-orient: vertical;
     text-overflow: ellipsis;
     margin-bottom: 10px;
+  }
+
+  .card-actions {
+    position: absolute;
+    right: 16px;
+    bottom: 16px;
   }
 }
 

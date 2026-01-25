@@ -36,13 +36,13 @@ const routes: RouteRecordRaw[] = [
       {
         path: '',
         name: 'Agent',
-        component: () => import('@/views/AgentView.vue'),
+        redirect: '/chat',
         meta: { title: '智能体', keepAlive: true }
       },
       {
         path: ':agent_id',
         name: 'AgentSinglePage',
-        component: () => import('@/views/AgentSingleView.vue'),
+        redirect: '/chat',
         meta: { title: '智能体详情', keepAlive: false }
       }
     ]
@@ -96,25 +96,29 @@ const routes: RouteRecordRaw[] = [
       {
         path: '',
         name: 'Tools',
-        component: () => import('@/views/ToolsView.vue'),
+        redirect: '/database',
         meta: { title: '工具', keepAlive: true }
       },
       {
         path: 'file-chunking',
         name: 'FileChunking',
-        component: () => import('@/components/tools/TextChunkingComponent.vue'),
+        redirect: '/database',
         meta: { title: '文件切分', keepAlive: false }
       },
       {
         path: 'pdf2txt',
         name: 'PDF_to_TXT',
-        component: () => import('@/components/tools/ConvertToTxtComponent.vue'),
+        redirect: '/database',
         meta: { title: 'PDF 转 TXT', keepAlive: false }
       },
       {
         path: 'agent',
         name: 'AgentRedirect',
-        redirect: '/agent'
+        redirect: '/chat'
+      },
+      {
+        path: ':pathMatch(.*)*',
+        redirect: '/database'
       }
     ]
   },

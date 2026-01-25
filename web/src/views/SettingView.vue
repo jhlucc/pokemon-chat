@@ -344,20 +344,6 @@
                     />
                   </a-space>
                   <a-space>
-                    <span class="muted">工具</span>
-                    <a-switch
-                      :checked="uiVisibility.show_tools"
-                      @change="(v) => setUiVisibility('show_tools', v)"
-                    />
-                  </a-space>
-                  <a-space>
-                    <span class="muted">智能体</span>
-                    <a-switch
-                      :checked="uiVisibility.show_agents"
-                      @change="(v) => setUiVisibility('show_agents', v)"
-                    />
-                  </a-space>
-                  <a-space>
                     <span class="muted">地图</span>
                     <a-switch
                       :checked="uiVisibility.show_map"
