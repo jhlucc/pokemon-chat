@@ -86,7 +86,8 @@
                         <span class="provider-name">{{ modelCatalog[p]?.name || p }}</span>
                         <StatusTag
                           class="provider-status"
-                          :status="providersState.status?.[p]?.configured ? 'online' : 'offline'"
+                          variant="dot"
+                          :status="isProviderUsable(p) ? 'online' : 'offline'"
                         />
                       </div>
                     </template>
@@ -145,6 +146,8 @@
                             <span class="provider-option">
                               <img class="provider-option-icon" :src="getProviderIcon(p)" :alt="p" />
                               <span>{{ modelCatalog[p]?.name || p }}</span>
+                              <span class="provider-option-spacer" />
+                              <StatusTag variant="dot" :status="isProviderUsable(p) ? 'online' : 'offline'" />
                             </span>
                           </a-select-option>
                         </a-select>
@@ -428,6 +431,13 @@ const getProviderIcon = (provider) => {
   return providerIcons[`/src/assets/providers/${p}.png`] || providerIcons['/src/assets/providers/default.png']
 }
 
+const isProviderUsable = (provider) => {
+  if (!backendOnline.value) return false
+  const st = providersState.status?.[provider]
+  if (st && typeof st.configured === 'boolean') return Boolean(st.configured)
+  return false
+}
+
 const providersState = reactive({
   loading: false,
   saving: {},
@@ -592,10 +602,20 @@ const onThemePresetChange = (v) => {
 watch(
   () => activeTab.value,
   (tab) => {
-    if (tab === 'providers' && backendOnline.value && !providersState.loading) {
+    if ((tab === 'providers' || tab === 'model') && backendOnline.value && !providersState.loading) {
       // Lazy load provider status when the tab is opened.
       refreshProviders()
     }
+  }
+)
+
+watch(
+  () => backendOnline.value,
+  (on) => {
+    if (!on) return
+    if (providersState.loading) return
+    if (Object.keys(providersState.status || {}).length) return
+    refreshProviders()
   }
 )
 
@@ -651,9 +671,10 @@ onMounted(() => {
 }
 
 .provider-option {
-  display: inline-flex;
+  display: flex;
   align-items: center;
   gap: 8px;
+  width: 100%;
 }
 
 .provider-option-icon {
@@ -662,6 +683,10 @@ onMounted(() => {
   border-radius: 4px;
   background: var(--surface-color-2);
   object-fit: contain;
+}
+
+.provider-option-spacer {
+  flex: 1;
 }
 
 </style>
