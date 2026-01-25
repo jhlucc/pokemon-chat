@@ -163,21 +163,22 @@
 </template>
 
 <script setup>
-import { computed, reactive, ref, watch } from 'vue';
-	import { message } from 'ant-design-vue';
-	import HeaderComponent from '@/components/HeaderComponent.vue';
-	import { useConfigStore } from '@/stores/config';
-	import { DEFAULT_CONFIG } from '@/config/defaultConfig';
-		import { apiFetch } from '@/api/http';
-		import { getOfflineMode, setOfflineMode } from '@/utils/offlineMode';
-		import { safeJsonParse } from '@/utils/storage';
-		import { downloadJson } from '@/utils/download';
+import { computed, reactive, ref, watch } from 'vue'
+import { message } from 'ant-design-vue'
+import HeaderComponent from '@/components/HeaderComponent.vue'
+import { useConfigStore } from '@/stores/config'
+import { DEFAULT_CONFIG } from '@/config/defaultConfig'
+import { APP_NAME, APP_VERSION, BUILD_SHA, BUILD_TIME } from '@/config/appMeta'
+import { apiFetch } from '@/api/http'
+import { getOfflineMode, setOfflineMode } from '@/utils/offlineMode'
+import { safeJsonParse } from '@/utils/storage'
+import { downloadJson } from '@/utils/download'
 
-	const configStore = useConfigStore();
+const configStore = useConfigStore()
 
-	const state = reactive({
+const state = reactive({
   refreshing: false,
-});
+})
 
 const backendOnline = computed(() => Boolean(configStore.config.backend?.online));
 const backendMock = computed(() => Boolean(configStore.config.backend?.mock));
