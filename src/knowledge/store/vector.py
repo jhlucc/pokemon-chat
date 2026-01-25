@@ -1,6 +1,5 @@
 import warnings
 import numpy as np
-import torch
 from typing import List, Optional, Dict, Any, Union
 from langchain_core.documents import Document
 from pymilvus import (
