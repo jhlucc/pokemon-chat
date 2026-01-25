@@ -59,6 +59,10 @@ jobs:
         working-directory: web
         run: npm run lint:check
 
+      - name: Typecheck (vue-tsc)
+        working-directory: web
+        run: npm run typecheck
+
       - name: Build
         working-directory: web
         run: npm run build

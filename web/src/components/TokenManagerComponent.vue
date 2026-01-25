@@ -58,9 +58,9 @@
 </template>
 
 <script setup>
-import { ref, watch } from 'vue';
-import { message, Empty } from 'ant-design-vue';
-import { PlusOutlined, DeleteOutlined, CopyOutlined } from '@ant-design/icons-vue';
+import { ref, watch } from 'vue'
+import { message, Empty } from 'ant-design-vue'
+import { PlusOutlined, DeleteOutlined, CopyOutlined } from '@ant-design/icons-vue'
 import { apiFetch } from '@/api/http'
 
 const props = defineProps({
@@ -68,94 +68,101 @@ const props = defineProps({
     type: String,
     required: true
   }
-});
+})
 
 // 状态
-const tokens = ref([]);
-const loading = ref(false);
-const addTokenModalVisible = ref(false);
+const tokens = ref([])
+const loading = ref(false)
+const addTokenModalVisible = ref(false)
 const newToken = ref({
   name: ''
-});
+})
 
 // 获取令牌列表
 const fetchTokens = async () => {
-  loading.value = true;
+  loading.value = true
   try {
-    const data = await apiFetch('/admin/tokens', { method: 'GET', query: { agent_id: props.agentId }, timeoutMs: 10000 })
+    const data = await apiFetch('/admin/tokens', {
+      method: 'GET',
+      query: { agent_id: props.agentId },
+      timeoutMs: 10000
+    })
     tokens.value = Array.isArray(data) ? data : []
   } catch (error) {
-    console.error('获取令牌列表出错:', error);
-    message.error(error?.message || '获取令牌列表出错');
+    console.error('获取令牌列表出错:', error)
+    message.error(error?.message || '获取令牌列表出错')
   } finally {
-    loading.value = false;
+    loading.value = false
   }
-};
+}
 
 // 创建新令牌
 const createToken = async () => {
   if (!newToken.value.name.trim()) {
-    message.warning('请输入令牌名称');
-    return;
+    message.warning('请输入令牌名称')
+    return
   }
 
   try {
     const data = await apiFetch('/admin/tokens', {
       method: 'POST',
       body: { agent_id: props.agentId, name: newToken.value.name },
-      timeoutMs: 10000,
+      timeoutMs: 10000
     })
-    tokens.value.push(data);
-    message.success('令牌创建成功');
-    addTokenModalVisible.value = false;
-    newToken.value.name = '';
+    tokens.value.push(data)
+    message.success('令牌创建成功')
+    addTokenModalVisible.value = false
+    newToken.value.name = ''
   } catch (error) {
-    console.error('创建令牌出错:', error);
-    message.error(error?.message || '创建令牌出错');
+    console.error('创建令牌出错:', error)
+    message.error(error?.message || '创建令牌出错')
   }
-};
+}
 
 // 删除令牌
 const deleteToken = async (tokenId) => {
   try {
     await apiFetch(`/admin/tokens/${tokenId}`, { method: 'DELETE', timeoutMs: 10000 })
-    tokens.value = tokens.value.filter(token => token.id !== tokenId);
-    message.success('令牌已删除');
+    tokens.value = tokens.value.filter((token) => token.id !== tokenId)
+    message.success('令牌已删除')
   } catch (error) {
-    console.error('删除令牌出错:', error);
-    message.error(error?.message || '删除令牌出错');
+    console.error('删除令牌出错:', error)
+    message.error(error?.message || '删除令牌出错')
   }
-};
+}
 
 // 复制令牌到剪贴板
 const copyToken = (token) => {
   navigator.clipboard.writeText(token).then(() => {
-    message.success('令牌已复制到剪贴板');
-  });
-};
+    message.success('令牌已复制到剪贴板')
+  })
+}
 
 // 显示添加令牌弹窗
 const showAddTokenModal = () => {
-  newToken.value.name = '';
-  addTokenModalVisible.value = true;
-};
+  newToken.value.name = ''
+  addTokenModalVisible.value = true
+}
 
 // 格式化日期
 const formatDate = (dateString) => {
-  if (!dateString) return '';
-  const date = new Date(dateString);
-  return date.toLocaleString();
-};
+  if (!dateString) return ''
+  const date = new Date(dateString)
+  return date.toLocaleString()
+}
 
 // 监听agentId变化
-watch(() => props.agentId, (newAgentId) => {
-  if (newAgentId) {
-    fetchTokens();
-  } else {
-    tokens.value = [];
-  }
-}, { immediate: true });
-
+watch(
+  () => props.agentId,
+  (newAgentId) => {
+    if (newAgentId) {
+      fetchTokens()
+    } else {
+      tokens.value = []
+    }
+  },
+  { immediate: true }
+)
 </script>
 
 <style lang="less" scoped>

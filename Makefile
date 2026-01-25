@@ -1,4 +1,4 @@
-.PHONY: help docker-up docker-up-infra docker-up-full docker-down docker-logs web-install web-dev web-build api-logs
+.PHONY: help docker-up docker-up-infra docker-up-full docker-down docker-logs web-install web-dev web-build web-lint web-typecheck api-logs
 
 help:
 	@echo "Targets:"
@@ -10,6 +10,8 @@ help:
 	@echo "  web-install      Install frontend deps (npm ci)"
 	@echo "  web-dev          Run Vite dev server"
 	@echo "  web-build        Build frontend"
+	@echo "  web-lint         Lint frontend (eslint)"
+	@echo "  web-typecheck    Typecheck frontend (vue-tsc)"
 	@echo "  api-logs         Tail API logs"
 
 docker-up:
@@ -39,3 +41,8 @@ web-dev:
 web-build:
 	cd web && npm run build
 
+web-lint:
+	cd web && npm run lint:check
+
+web-typecheck:
+	cd web && npm run typecheck

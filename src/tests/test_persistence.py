@@ -5,6 +5,12 @@ from src.agents.supervisor_agent import SupervisorAgent
 from src.core.settings import settings
 from langchain_core.messages import HumanMessage
 
+try:
+    from langgraph.checkpoint.sqlite import SqliteSaver  # type: ignore
+    _HAS_SQLITE = True
+except ModuleNotFoundError:
+    _HAS_SQLITE = False
+
 class TestPersistence(unittest.TestCase):
     
     def setUp(self):
@@ -14,8 +20,16 @@ class TestPersistence(unittest.TestCase):
             os.remove(db_path)
     
     def test_persistence(self):
-        # Create Agent
-        agent = SupervisorAgent()
+        if not _HAS_SQLITE:
+            self.skipTest("langgraph-checkpoint-sqlite is not installed")
+
+        # Force sqlite checkpointer for this test.
+        orig = settings.agent.checkpointer_type
+        settings.agent.checkpointer_type = "sqlite"
+        try:
+            agent = SupervisorAgent()
+        finally:
+            settings.agent.checkpointer_type = orig
         
         # Create a thread ID
         config = {"configurable": {"thread_id": "test_thread_1"}}

@@ -26,6 +26,7 @@ resources/save/config/base.yaml
 
 # SQLite and DB files
 *.sqlite3
+*.sqlite
 *.db
 
 # Temporary / backup files

@@ -1,11 +1,10 @@
-import "vue-router";
+import 'vue-router'
 
-declare module "vue-router" {
+declare module 'vue-router' {
   interface RouteMeta {
-    title?: string;
-    keepAlive?: boolean;
+    title?: string
+    keepAlive?: boolean
   }
 }
 
-export {};
-
+export {}

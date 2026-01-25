@@ -13,7 +13,9 @@
       />
     </div>
 
-    <div id="map" class="map-container"></div>
+    <a-spin :spinning="leafletLoading" tip="加载地图组件...">
+      <div id="map" class="map-container"></div>
+    </a-spin>
   </div>
 </template>
 
@@ -22,15 +24,34 @@ import { ref, onMounted, onUnmounted } from 'vue'
 import { message } from 'ant-design-vue'
 import HeaderComponent from '@/components/HeaderComponent.vue'
 import { apiFetch } from '@/api/http'
-import 'leaflet/dist/leaflet.css'
-import L from 'leaflet'
+import { notifyApiError } from '@/utils/notify'
 
 const place = ref('')
 const loading = ref(false)
+const leafletLoading = ref(false)
+
+let Leaflet = null
 let map, markersLayer, tileLayer
 let warnedTileError = false
 
-onMounted(() => {
+const ensureLeaflet = async () => {
+  if (Leaflet) return Leaflet
+  leafletLoading.value = true
+  try {
+    const [mod] = await Promise.all([import('leaflet'), import('leaflet/dist/leaflet.css')])
+    Leaflet = mod.default
+    return Leaflet
+  } catch {
+    message.error('地图组件加载失败（Leaflet）')
+    return null
+  } finally {
+    leafletLoading.value = false
+  }
+}
+
+onMounted(async () => {
+  const L = await ensureLeaflet()
+  if (!L) return
   map = L.map('map').setView([20, 0], 2)
   tileLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '© OpenStreetMap contributors'
@@ -72,11 +93,14 @@ const handleSearch = async () => {
   if (!map || !markersLayer) return
   loading.value = true
   try {
-    const data = await apiFetch('/mcp/coords', { method: 'GET', query: { place: place.value }, timeoutMs: 15000 })
+    const data = await apiFetch('/mcp/coords', {
+      method: 'GET',
+      query: { place: place.value },
+      timeoutMs: 15000
+    })
     renderCoords(data.coords)
   } catch (e) {
-    console.error(e)
-    message.error('查询失败: ' + (e.message || e))
+    notifyApiError(e, { context: '坐标查询', fallback: '查询失败' })
     markersLayer.clearLayers()
   } finally {
     loading.value = false
@@ -84,6 +108,7 @@ const handleSearch = async () => {
 }
 
 function renderCoords(coords) {
+  if (!Leaflet) return
   markersLayer.clearLayers()
   if (!coords.length) {
     message.warning('未查询到坐标')
@@ -91,7 +116,7 @@ function renderCoords(coords) {
   }
   const bounds = []
   coords.forEach(({ lat, lng, location }) => {
-    const marker = L.marker([lat, lng]).addTo(markersLayer)
+    const marker = Leaflet.marker([lat, lng]).addTo(markersLayer)
     marker.bindPopup(`<b>${location}</b><br/>${lat.toFixed(4)}, ${lng.toFixed(4)}`)
     bounds.push([lat, lng])
   })

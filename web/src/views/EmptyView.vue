@@ -1,31 +1,30 @@
 <template>
   <div class="not-found">
-    <h1>404 - 页面还没做</h1>
-    <p>Sorry, Yemian has not been zuoed.</p>
+    <a-result status="404" title="404" sub-title="页面不存在，或已被移动。">
+      <template #extra>
+        <a-space>
+          <a-button @click="goBack">返回</a-button>
+          <a-button type="primary" @click="goHome">回到首页</a-button>
+        </a-space>
+      </template>
+    </a-result>
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
+import { useRouter } from 'vue-router'
+
+const router = useRouter()
+const goHome = () => router.push('/')
+const goBack = () => router.back()
 </script>
 
 <style scoped>
 .not-found {
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-  height: 80vh;
-  text-align: center;
+  padding: 24px;
+  min-height: 70vh;
 }
-
-.not-found h1 {
-  font-size: 2rem;
-  margin-bottom: 1rem;
-}
-
-.not-found p {
-  font-size: 1.5rem;
-  margin-bottom: 2rem;
-}
-
 </style>

@@ -9,31 +9,43 @@
         <CopyOutlined />
       </span>
 
-      <span v-if="showKey('regenerate')" class="item btn" @click="regenerateMessage()" title="重新生成">
+      <span
+        v-if="showKey('regenerate')"
+        class="item btn"
+        @click="regenerateMessage()"
+        title="重新生成"
+      >
         <ReloadOutlined />
       </span>
 
-      <span v-if="showKey('subGraph') && hasSubGraphData(msg)" class="item btn" @click="openSubGraph(msg)">
+      <span
+        v-if="showKey('subGraph') && hasSubGraphData(msg)"
+        class="item btn"
+        @click="openSubGraph(msg)"
+      >
         <DeploymentUnitOutlined /> 关系图
       </span>
 
-	      <span
-	        v-if="showKey('webSearch') && msg.refs?.web_search?.results?.length > 0"
-	        class="item btn"
-	        @click="showWebResult(msg)">
-	        <GlobalOutlined /> 网页搜索 {{ msg.refs.web_search.results.length }}
-	      </span>
+      <span
+        v-if="showKey('webSearch') && msg.refs?.web_search?.results?.length > 0"
+        class="item btn"
+        @click="showWebResult(msg)"
+      >
+        <GlobalOutlined /> 网页搜索 {{ msg.refs.web_search.results.length }}
+      </span>
 
-	      <span class="filetag item btn"
-	        v-for="(results, filename) in kbGroupedResults"
-	        :key="filename"
-	        @click="toggleDrawer(filename)">
-	        <FileTextOutlined /> {{ filename }}
-	        <a-drawer
-	          v-model:open="openDetail[filename]"
+      <span
+        class="filetag item btn"
+        v-for="(results, filename) in kbGroupedResults"
+        :key="filename"
+        @click="toggleDrawer(filename)"
+      >
+        <FileTextOutlined /> {{ filename }}
+        <a-drawer
+          v-model:open="openDetail[filename]"
           :title="filename"
           width="700"
-          :contentWrapperStyle="{ maxWidth: '100%'}"
+          :contentWrapperStyle="{ maxWidth: '100%' }"
           placement="right"
           class="retrieval-detail"
           rootClassName="root"
@@ -64,15 +76,15 @@
       </span>
     </div>
 
-	<a-modal v-model:open="subGraphVisible" title="相关实体与关系" :width="800" :footer="null">
-	  <GraphContainer v-if="subGraphVisible && subGraphData" :graphData="subGraphData" />
-	</a-modal>
+    <a-modal v-model:open="subGraphVisible" title="相关实体与关系" :width="800" :footer="null">
+      <GraphContainer v-if="subGraphVisible && subGraphData" :graphData="subGraphData" />
+    </a-modal>
 
     <a-drawer
       v-model:open="webResultVisible"
       title="网页搜索结果"
       width="700"
-      :contentWrapperStyle="{ maxWidth: '100%'}"
+      :contentWrapperStyle="{ maxWidth: '100%' }"
       placement="right"
       class="web-result-detail"
       rootClassName="root"
@@ -86,10 +98,10 @@
                 <a-progress :percent="getPercent(result.score)" />
               </span>
             </div>
-	            <div class="result-url">
-	              <a :href="result.url" target="_blank" rel="noopener noreferrer">{{ result.url }}</a>
-	            </div>
-	          </div>
+            <div class="result-url">
+              <a :href="result.url" target="_blank" rel="noopener noreferrer">{{ result.url }}</a>
+            </div>
+          </div>
           <div class="result-content">
             <h3 class="result-title">{{ result.title }}</h3>
             <div class="result-text">{{ result.content }}</div>
@@ -101,9 +113,9 @@
 </template>
 
 <script setup>
-	import { ref, reactive, computed, watch, defineAsyncComponent } from 'vue'
-	import { useClipboard } from '@vueuse/core'
-	import { message as antdMessage } from 'ant-design-vue'
+import { ref, reactive, computed, watch, defineAsyncComponent } from 'vue'
+import { useClipboard } from '@vueuse/core'
+import { message as antdMessage } from 'ant-design-vue'
 import {
   GlobalOutlined,
   FileTextOutlined,
@@ -112,11 +124,11 @@ import {
   BulbOutlined,
   FileOutlined,
   ClockCircleOutlined,
-  ReloadOutlined,
+  ReloadOutlined
 } from '@ant-design/icons-vue'
-	const GraphContainer = defineAsyncComponent(() => import('./GraphContainer.vue'))
+const GraphContainer = defineAsyncComponent(() => import('./GraphContainer.vue'))
 
-	const emit = defineEmits(['retry'])
+const emit = defineEmits(['retry'])
 
 const props = defineProps({
   message: Object,
@@ -126,31 +138,31 @@ const props = defineProps({
   }
 })
 
-	const msg = computed(() => props.message || {})
-	const displayKeys = computed(() => props.showRefs)
+const msg = computed(() => props.message || {})
+const displayKeys = computed(() => props.showRefs)
 
-	const kbGroupedResults = computed(() => {
-	  const direct = msg.value?.groupedResults
-	  if (direct && typeof direct === 'object' && !Array.isArray(direct)) {
-	    return direct
-	  }
-	  const results = msg.value?.refs?.knowledge_base?.results
-	  if (!Array.isArray(results) || results.length === 0) return {}
-	  return results
-	    .filter((r) => r?.file?.filename)
-	    .reduce((acc, r) => {
-	      const filename = r.file.filename
-	      if (!acc[filename]) acc[filename] = []
-	      acc[filename].push(r)
-	      return acc
-	    }, {})
-	})
+const kbGroupedResults = computed(() => {
+  const direct = msg.value?.groupedResults
+  if (direct && typeof direct === 'object' && !Array.isArray(direct)) {
+    return direct
+  }
+  const results = msg.value?.refs?.knowledge_base?.results
+  if (!Array.isArray(results) || results.length === 0) return {}
+  return results
+    .filter((r) => r?.file?.filename)
+    .reduce((acc, r) => {
+      const filename = r.file.filename
+      if (!acc[filename]) acc[filename] = []
+      acc[filename].push(r)
+      return acc
+    }, {})
+})
 
-	const showKey = (key) => {
-	  if (displayKeys.value === true) return true
-	  if (Array.isArray(displayKeys.value)) return displayKeys.value.includes(key)
-	  return false
-	}
+const showKey = (key) => {
+  if (displayKeys.value === true) return true
+  if (Array.isArray(displayKeys.value)) return displayKeys.value.includes(key)
+  return false
+}
 
 const { copy, isSupported } = useClipboard()
 const copyText = async (text) => {
@@ -168,26 +180,27 @@ const copyText = async (text) => {
 
 const regenerateMessage = () => emit('retry')
 
-	const openDetail = reactive({})
-	const ensureOpenDetailKeys = () => {
-	  const grouped = kbGroupedResults.value && typeof kbGroupedResults.value === 'object' ? kbGroupedResults.value : {}
-	  Object.keys(grouped).forEach((filename) => {
-	    if (openDetail[filename] === undefined) openDetail[filename] = false
-	  })
-	}
-	watch(
-	  () => kbGroupedResults.value,
-	  () => ensureOpenDetailKeys(),
-	  { immediate: true, deep: true }
-	)
+const openDetail = reactive({})
+const ensureOpenDetailKeys = () => {
+  const grouped =
+    kbGroupedResults.value && typeof kbGroupedResults.value === 'object'
+      ? kbGroupedResults.value
+      : {}
+  Object.keys(grouped).forEach((filename) => {
+    if (openDetail[filename] === undefined) openDetail[filename] = false
+  })
+}
+watch(
+  () => kbGroupedResults.value,
+  () => ensureOpenDetailKeys(),
+  { immediate: true, deep: true }
+)
 const toggleDrawer = (filename) => {
   openDetail[filename] = !openDetail[filename]
 }
 
 const hasSubGraphData = (msg) =>
-  msg.refs &&
-  msg.refs.graph_base &&
-  msg.refs.graph_base.results?.nodes?.length > 0
+  msg.refs && msg.refs.graph_base && msg.refs.graph_base.results?.nodes?.length > 0
 
 const subGraphVisible = ref(false)
 const subGraphData = ref(null)
@@ -205,20 +218,17 @@ const showWebResult = (msg) => {
   webResultVisible.value = true
 }
 
-const formatDate = (timestamp) =>
-  new Date(timestamp * 1000).toLocaleString()
+const formatDate = (timestamp) => new Date(timestamp * 1000).toLocaleString()
 
-const getPercent = (value) =>
-  parseFloat((value * 100).toFixed(2))
+const getPercent = (value) => parseFloat((value * 100).toFixed(2))
 </script>
-
 
 <style lang="less" scoped>
 .refs {
   display: flex;
   margin-bottom: 20px;
   //color: var(--gray-500);
-   background: transparent;
+  background: transparent;
   font-size: 13px;
   gap: 10px;
 

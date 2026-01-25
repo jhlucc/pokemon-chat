@@ -2,7 +2,13 @@ from typing import Dict, Any, Optional
 import os
 import sqlite3
 from langgraph.graph.state import CompiledStateGraph
-from langgraph.checkpoint.sqlite import SqliteSaver
+from langgraph.checkpoint.memory import MemorySaver
+
+try:
+    # Optional dependency: provided by `langgraph-checkpoint-sqlite`.
+    from langgraph.checkpoint.sqlite import SqliteSaver  # type: ignore
+except ModuleNotFoundError:  # pragma: no cover
+    SqliteSaver = None
 from src.agents.base import BaseAgent
 from src.graph.workflow import workflow
 from src.core.settings import settings
@@ -17,15 +23,21 @@ class SupervisorAgent(BaseAgent):
         Builds the graph using the pre-defined workflow and the agent's checkpointer.
         Uses SqliteSaver for persistence if configured.
         """
-        # Ensure directory exists
-        db_path = os.path.join(settings.paths.save_yaml_path, "agent_checkpoints.sqlite")
-        os.makedirs(os.path.dirname(db_path), exist_ok=True)
-        
-        # We need to manage the connection context manually or let SqliteSaver handle it.
-        # SqliteSaver.from_conn_string(conn_string) is cleaner.
-        # But for concurrent access in typical python app, simple connection is okay for now.
-        conn = sqlite3.connect(db_path, check_same_thread=False)
-        self._checkpointer = SqliteSaver(conn)
+        type_ = (settings.agent.checkpointer_type or "memory").lower()
+
+        if type_ == "sqlite" and SqliteSaver is not None:
+            # Ensure directory exists
+            db_path = os.path.join(settings.paths.save_yaml_path, "agent_checkpoints.sqlite")
+            os.makedirs(os.path.dirname(db_path), exist_ok=True)
+
+            # We need to manage the connection context manually or let SqliteSaver handle it.
+            # SqliteSaver.from_conn_string(conn_string) is cleaner.
+            # But for concurrent access in typical python app, simple connection is okay for now.
+            conn = sqlite3.connect(db_path, check_same_thread=False)
+            self._checkpointer = SqliteSaver(conn)
+        else:
+            # Fallback: in-memory checkpoints (works without extra deps).
+            self._checkpointer = MemorySaver()
         
         # Attach tracing callback by updating the compiled graph's runtime config?
         # LangGraph invoke passes config. We can add callbacks there.

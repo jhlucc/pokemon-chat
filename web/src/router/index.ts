@@ -1,151 +1,151 @@
-import { createRouter, createWebHistory, type RouteRecordRaw } from "vue-router";
+import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
 
-import AppLayout from "@/layouts/AppLayout.vue";
-import BlankLayout from "@/layouts/BlankLayout.vue";
-import { APP_NAME } from "@/config/appMeta";
+import AppLayout from '@/layouts/AppLayout.vue'
+import BlankLayout from '@/layouts/BlankLayout.vue'
+import { APP_NAME } from '@/config/appMeta'
 
 const routes: RouteRecordRaw[] = [
   {
-    path: "/",
+    path: '/',
     component: BlankLayout,
     children: [
       {
-        path: "",
-        name: "Home",
-        component: () => import("@/views/HomeView.vue"),
-        meta: { title: "首页", keepAlive: true },
-      },
-    ],
+        path: '',
+        name: 'Home',
+        component: () => import('@/views/HomeView.vue'),
+        meta: { title: '首页', keepAlive: true }
+      }
+    ]
   },
   {
-    path: "/chat",
+    path: '/chat',
     component: AppLayout,
     children: [
       {
-        path: "",
-        name: "Chat",
-        component: () => import("@/views/ChatView.vue"),
-        meta: { title: "对话", keepAlive: true },
-      },
-    ],
+        path: '',
+        name: 'Chat',
+        component: () => import('@/views/ChatView.vue'),
+        meta: { title: '对话', keepAlive: true }
+      }
+    ]
   },
   {
-    path: "/agent",
+    path: '/agent',
     component: AppLayout,
     children: [
       {
-        path: "",
-        name: "Agent",
-        component: () => import("@/views/AgentView.vue"),
-        meta: { title: "智能体", keepAlive: true },
+        path: '',
+        name: 'Agent',
+        component: () => import('@/views/AgentView.vue'),
+        meta: { title: '智能体', keepAlive: true }
       },
       {
-        path: ":agent_id",
-        name: "AgentSinglePage",
-        component: () => import("@/views/AgentSingleView.vue"),
-        meta: { title: "智能体详情", keepAlive: false },
-      },
-    ],
+        path: ':agent_id',
+        name: 'AgentSinglePage',
+        component: () => import('@/views/AgentSingleView.vue'),
+        meta: { title: '智能体详情', keepAlive: false }
+      }
+    ]
   },
   {
-    path: "/graph",
+    path: '/graph',
     component: AppLayout,
     children: [
       {
-        path: "",
-        name: "Graph",
-        component: () => import("@/views/GraphView.vue"),
-        meta: { title: "知识图谱", keepAlive: false },
-      },
-    ],
+        path: '',
+        name: 'Graph',
+        component: () => import('@/views/GraphView.vue'),
+        meta: { title: '知识图谱', keepAlive: false }
+      }
+    ]
   },
   {
-    path: "/database",
+    path: '/database',
     component: AppLayout,
     children: [
       {
-        path: "",
-        name: "Database",
-        component: () => import("@/views/DataBaseView.vue"),
-        meta: { title: "知识库", keepAlive: true },
+        path: '',
+        name: 'Database',
+        component: () => import('@/views/DataBaseView.vue'),
+        meta: { title: '知识库', keepAlive: true }
       },
       {
-        path: ":database_id",
-        name: "DatabaseInfo",
-        component: () => import("@/views/DataBaseInfoView.vue"),
-        meta: { title: "知识库详情", keepAlive: false },
-      },
-    ],
+        path: ':database_id',
+        name: 'DatabaseInfo',
+        component: () => import('@/views/DataBaseInfoView.vue'),
+        meta: { title: '知识库详情', keepAlive: false }
+      }
+    ]
   },
   {
-    path: "/coords",
+    path: '/coords',
     component: AppLayout,
     children: [
       {
-        path: "",
-        name: "CoordsMap",
-        component: () => import("@/views/CoordsMapPage.vue"),
-        meta: { title: "地图", keepAlive: false },
-      },
-    ],
+        path: '',
+        name: 'CoordsMap',
+        component: () => import('@/views/CoordsMapPage.vue'),
+        meta: { title: '地图', keepAlive: false }
+      }
+    ]
   },
   {
-    path: "/tools",
+    path: '/tools',
     component: AppLayout,
     children: [
       {
-        path: "",
-        name: "Tools",
-        component: () => import("@/views/ToolsView.vue"),
-        meta: { title: "工具", keepAlive: true },
+        path: '',
+        name: 'Tools',
+        component: () => import('@/views/ToolsView.vue'),
+        meta: { title: '工具', keepAlive: true }
       },
       {
-        path: "file-chunking",
-        name: "FileChunking",
-        component: () => import("@/components/tools/TextChunkingComponent.vue"),
-        meta: { title: "文件切分", keepAlive: false },
+        path: 'file-chunking',
+        name: 'FileChunking',
+        component: () => import('@/components/tools/TextChunkingComponent.vue'),
+        meta: { title: '文件切分', keepAlive: false }
       },
       {
-        path: "pdf2txt",
-        name: "PDF_to_TXT",
-        component: () => import("@/components/tools/ConvertToTxtComponent.vue"),
-        meta: { title: "PDF 转 TXT", keepAlive: false },
+        path: 'pdf2txt',
+        name: 'PDF_to_TXT',
+        component: () => import('@/components/tools/ConvertToTxtComponent.vue'),
+        meta: { title: 'PDF 转 TXT', keepAlive: false }
       },
       {
-        path: "agent",
-        name: "AgentRedirect",
-        redirect: "/agent",
-      },
-    ],
+        path: 'agent',
+        name: 'AgentRedirect',
+        redirect: '/agent'
+      }
+    ]
   },
   {
-    path: "/setting",
+    path: '/setting',
     component: AppLayout,
     children: [
       {
-        path: "",
-        name: "Setting",
-        component: () => import("@/views/SettingView.vue"),
-        meta: { title: "设置", keepAlive: true },
-      },
-    ],
+        path: '',
+        name: 'Setting',
+        component: () => import('@/views/SettingView.vue'),
+        meta: { title: '设置', keepAlive: true }
+      }
+    ]
   },
   {
-    path: "/:pathMatch(.*)*",
-    name: "NotFound",
-    component: () => import("@/views/EmptyView.vue"),
-    meta: { title: "404", keepAlive: false },
-  },
-];
+    path: '/:pathMatch(.*)*',
+    name: 'NotFound',
+    component: () => import('@/views/EmptyView.vue'),
+    meta: { title: '404', keepAlive: false }
+  }
+]
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
-  routes,
-});
+  routes
+})
 
 router.afterEach((to) => {
-  const pageTitle = to.meta?.title;
-  document.title = pageTitle ? `${pageTitle} - ${APP_NAME}` : APP_NAME;
-});
+  const pageTitle = to.meta?.title
+  document.title = pageTitle ? `${pageTitle} - ${APP_NAME}` : APP_NAME
+})
 
-export default router;
+export default router

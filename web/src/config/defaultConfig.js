@@ -1,6 +1,6 @@
-import { MODEL_CATALOG } from './models';
+import { MODEL_CATALOG } from './models'
 
-const DEFAULT_PROVIDER = 'siliconflow';
+const DEFAULT_PROVIDER = 'siliconflow'
 
 export const DEFAULT_CONFIG = {
   // --- backend status (derived) ---
@@ -8,7 +8,7 @@ export const DEFAULT_CONFIG = {
     online: false,
     ready: false,
     last_error: null,
-    checks: null,
+    checks: null
   },
 
   // --- UI feature visibility (frontend-controlled) ---
@@ -21,7 +21,7 @@ export const DEFAULT_CONFIG = {
     show_mcp: true,
     show_tools: true,
     show_agents: true,
-    show_map: true,
+    show_map: true
   },
 
   // --- model selection (frontend-controlled; sent with requests) ---
@@ -41,7 +41,7 @@ export const DEFAULT_CONFIG = {
 
   // --- UI helpers (frontend only) ---
   model_names: MODEL_CATALOG,
-  custom_models: [], // [{ custom_id, name, api_base, api_key? }]
-};
+  custom_models: [] // [{ custom_id, name, api_base, api_key? }]
+}
 
-export const LOCAL_CONFIG_KEY = 'pokemon_chat_config_v1';
+export const LOCAL_CONFIG_KEY = 'pokemon_chat_config_v1'

@@ -5,7 +5,11 @@
       <h2 class="sidebar-title">
         智能体列表
         <div class="toggle-sidebar" @click="toggleSidebar">
-          <img src="@/assets/icons/sidebar_left.svg" class="iconfont icon-20 sidebar-icon" alt="侧栏" />
+          <img
+            src="@/assets/icons/sidebar_left.svg"
+            class="iconfont icon-20 sidebar-icon"
+            alt="侧栏"
+          />
         </div>
       </h2>
       <div class="agent-info">
@@ -15,32 +19,22 @@
           style="width: 100%"
           @change="selectAgent"
         >
-          <a-select-option
-            v-for="(agent, name) in agents"
-            :key="name"
-            :value="name"
-          >
+          <a-select-option v-for="(agent, name) in agents" :key="name" :value="name">
             {{ agent.name }}
           </a-select-option>
         </a-select>
-        <p style="padding: 0 4px;">
+        <p style="padding: 0 4px">
           {{ agents[selectedAgentId]?.description }}
         </p>
 
         <!-- 添加配置按钮 -->
         <div class="agent-action-buttons">
-          <a-button
-            class="action-button"
-            @click="openConfigModal"
-          >
+          <a-button class="action-button" @click="openConfigModal">
             <template #icon><SettingOutlined /></template>
             智能体配置
           </a-button>
 
-          <a-button
-            class="action-button"
-            @click="openTokenModal"
-          >
+          <a-button class="action-button" @click="openTokenModal">
             <template #icon><KeyOutlined /></template>
             访问令牌
           </a-button>
@@ -52,25 +46,15 @@
             </a-button>
             <template #overlay>
               <a-menu>
-                <a-menu-item @click="exportAgentChat">
-                  <DownloadOutlined /> 导出
-                </a-menu-item>
-                <a-menu-item @click="triggerImportAgentChat">
-                  <UploadOutlined /> 导入
-                </a-menu-item>
+                <a-menu-item @click="exportAgentChat"> <DownloadOutlined /> 导出 </a-menu-item>
+                <a-menu-item @click="triggerImportAgentChat"> <UploadOutlined /> 导入 </a-menu-item>
                 <a-menu-divider />
-                <a-menu-item danger @click="clearAgentChat">
-                  <ClearOutlined /> 清空
-                </a-menu-item>
+                <a-menu-item danger @click="clearAgentChat"> <ClearOutlined /> 清空 </a-menu-item>
               </a-menu>
             </template>
           </a-dropdown>
 
-          <a-button
-            class="action-button"
-            @click="goToAgentPage"
-            v-if="selectedAgentId"
-          >
+          <a-button class="action-button" @click="goToAgentPage" v-if="selectedAgentId">
             <template #icon><LinkOutlined /></template>
             打开独立页面
           </a-button>
@@ -85,7 +69,13 @@
         />
 
         <!-- 添加requirements显示部分 -->
-        <div v-if="agents[selectedAgentId]?.requirements && agents[selectedAgentId]?.requirements.length > 0" class="info-section">
+        <div
+          v-if="
+            agents[selectedAgentId]?.requirements &&
+            agents[selectedAgentId]?.requirements.length > 0
+          "
+          class="info-section"
+        >
           <h3>所需环境变量:</h3>
           <div class="requirements-list">
             <a-tag v-for="req in agents[selectedAgentId].requirements" :key="req">
@@ -95,7 +85,10 @@
         </div>
 
         <!-- 添加all_tools显示部分 -->
-        <div v-if="agents[selectedAgentId]?.all_tools && agents[selectedAgentId]?.all_tools.length > 0" class="info-section">
+        <div
+          v-if="agents[selectedAgentId]?.all_tools && agents[selectedAgentId]?.all_tools.length > 0"
+          class="info-section"
+        >
           <h3>可用工具:</h3>
           <div class="all-tools-list">
             <a-tag v-for="tool in agents[selectedAgentId].all_tools" :key="tool">
@@ -117,7 +110,11 @@
       >
         <template #header-left>
           <div class="toggle-sidebar nav-btn" @click="toggleSidebar" v-if="!state.isSidebarOpen">
-            <img src="@/assets/icons/sidebar_left.svg" class="iconfont icon-20 sidebar-icon" alt="侧栏" />
+            <img
+              src="@/assets/icons/sidebar_left.svg"
+              class="iconfont icon-20 sidebar-icon"
+              alt="侧栏"
+            />
           </div>
         </template>
         <!-- <template #header-right>
@@ -140,12 +137,9 @@
       <div v-if="selectedAgentId" class="config-form">
         <!-- 已将按钮移至左侧边栏 -->
       </div>
-      <div v-else class="no-agent-selected">
-        请先选择一个智能体
-      </div>
+      <div v-else class="no-agent-selected">请先选择一个智能体</div>
       <p>你好，智能体</p>
     </div>
-
 
     <!-- 配置弹窗 -->
     <a-modal
@@ -159,15 +153,11 @@
         <!-- 配置表单 -->
         <a-form :model="agentConfig" layout="vertical">
           <div class="empty-config" v-if="state.isEmptyConfig">
-            <a-alert type="warning" message="该智能体没有配置项" show-icon/>
+            <a-alert type="warning" message="该智能体没有配置项" show-icon />
           </div>
           <!-- 统一显示所有配置项 -->
           <template v-for="(value, key) in configurableItems" :key="key">
-            <a-form-item
-              :label="getConfigLabel(key, value)"
-              :name="key"
-              class="config-item"
-            >
+            <a-form-item :label="getConfigLabel(key, value)" :name="key" class="config-item">
               <p v-if="value.description" class="description">{{ value.description }}</p>
               <a-switch
                 v-if="typeof agentConfig[key] === 'boolean'"
@@ -179,11 +169,12 @@
                 :rows="4"
                 :placeholder="getPlaceholder(key, value)"
               />
-              <a-select
-                v-else-if="value?.options"
-                v-model:value="agentConfig[key]"
-              >
-                <a-select-option v-for="option in value.options" :key="option" :value="option"></a-select-option>
+              <a-select v-else-if="value?.options" v-model:value="agentConfig[key]">
+                <a-select-option
+                  v-for="option in value.options"
+                  :key="option"
+                  :value="option"
+                ></a-select-option>
               </a-select>
               <a-input
                 v-else
@@ -195,7 +186,10 @@
 
           <!-- 添加工具选择部分 -->
           <a-form-item label="可用工具" name="tools" class="config-item">
-            <p class="description">选择要启用的工具（注：retrieve 工具仅展现了与当前向量模型匹配的知识库，详情请查看 docker 日志。）</p>
+            <p class="description">
+              选择要启用的工具（注：retrieve 工具仅展现了与当前向量模型匹配的知识库，详情请查看
+              docker 日志。）
+            </p>
             <a-form-item-rest>
               <div class="tools-switches">
                 <div v-for="tool in availableTools" :key="tool" class="tool-switch-item">
@@ -234,174 +228,174 @@
 </template>
 
 <script setup>
-import { ref, onMounted, reactive, watch, computed } from 'vue';
-	import {
-	  CloseOutlined,
-	  SettingOutlined,
-	  KeyOutlined,
-	  LinkOutlined,
-	  DatabaseOutlined,
-	  DownloadOutlined,
-	  UploadOutlined,
-	  ClearOutlined
-	} from '@ant-design/icons-vue';
-	import { Modal, message } from 'ant-design-vue';
-	import AgentChatComponent from '@/components/AgentChatComponent.vue';
-	import TokenManagerComponent from '@/components/TokenManagerComponent.vue';
-	import { apiFetch } from '@/api/http'
-	import { downloadJson } from '@/utils/download'
-	import { randomId } from '@/utils/id'
-	import { readJson, removeKey, writeJson } from '@/utils/storage'
+import { ref, onMounted, reactive, watch, computed } from 'vue'
+import {
+  CloseOutlined,
+  SettingOutlined,
+  KeyOutlined,
+  LinkOutlined,
+  DatabaseOutlined,
+  DownloadOutlined,
+  UploadOutlined,
+  ClearOutlined
+} from '@ant-design/icons-vue'
+import { Modal, message } from 'ant-design-vue'
+import AgentChatComponent from '@/components/AgentChatComponent.vue'
+import TokenManagerComponent from '@/components/TokenManagerComponent.vue'
+import { apiFetch } from '@/api/http'
+import { downloadJson } from '@/utils/download'
+import { randomId } from '@/utils/id'
+import { readJson, removeKey, writeJson } from '@/utils/storage'
 
 // 状态
-const agents = ref({});
-const selectedAgentId = ref(null);
-const availableTools = ref([]); // 存储所有可用的工具列表
+const agents = ref({})
+const selectedAgentId = ref(null)
+const availableTools = ref([]) // 存储所有可用的工具列表
 const state = reactive({
   debug_mode: false,
   isSidebarOpen: JSON.parse(localStorage.getItem('agent-sidebar-open') || 'true'),
   isConfigSidebarOpen: false,
   configModalVisible: false,
   tokenModalVisible: false,
-  isEmptyConfig: computed(() =>
-    !selectedAgentId.value ||
-    Object.keys(configurableItems.value).length === 0
+  isEmptyConfig: computed(
+    () => !selectedAgentId.value || Object.keys(configurableItems.value).length === 0
   )
-});
-const configSchema = computed(() => agents.value[selectedAgentId.value]?.config_schema || {});
-const configurableItems = computed(() => configSchema.value.configurable_items || {});
+})
+const configSchema = computed(() => agents.value[selectedAgentId.value]?.config_schema || {})
+const configurableItems = computed(() => configSchema.value.configurable_items || {})
 
 // 配置状态
-	const agentConfig = ref({});
-	const agentChatKey = ref(0);
-	const importAgentInput = ref(null);
+const agentConfig = ref({})
+const agentChatKey = ref(0)
+const importAgentInput = ref(null)
 
 // 调试模式
 const toggleDebugMode = () => {
-  state.debug_mode = !state.debug_mode;
-};
+  state.debug_mode = !state.debug_mode
+}
 
 // 打开配置弹窗
 const openConfigModal = () => {
-  state.configModalVisible = true;
-};
+  state.configModalVisible = true
+}
 
 // 关闭配置弹窗
 const closeConfigModal = () => {
-  state.configModalVisible = false;
-};
+  state.configModalVisible = false
+}
 
-	// 打开令牌管理弹窗
-	const openTokenModal = () => {
-	  state.tokenModalVisible = true;
-	};
+// 打开令牌管理弹窗
+const openTokenModal = () => {
+  state.tokenModalVisible = true
+}
 
-	// 关闭令牌管理弹窗
-	const closeTokenModal = () => {
-	  state.tokenModalVisible = false;
-	};
+// 关闭令牌管理弹窗
+const closeTokenModal = () => {
+  state.tokenModalVisible = false
+}
 
-	const getAgentStoragePrefix = () => (selectedAgentId.value ? `agent-${selectedAgentId.value}` : 'agent-multi');
+const getAgentStoragePrefix = () =>
+  selectedAgentId.value ? `agent-${selectedAgentId.value}` : 'agent-multi'
 
-	const normalizeImportedAgentMessages = (payload) => {
-	  const raw = Array.isArray(payload) ? payload : (payload?.messages || payload?.data || payload?.history || []);
-	  if (!Array.isArray(raw)) return [];
-	  return raw
-	    .filter((m) => m && typeof m === 'object')
-	    .map((m) => ({
-	      ...m,
-	      _local_id: m._local_id ? m._local_id : randomId(12),
-	      id: typeof m.id === 'string' && m.id ? m.id : randomId(16),
-	      role: typeof m.role === 'string' ? m.role : 'assistant',
-	      content: typeof m.content === 'string' ? m.content : '',
-	    }));
-	};
+const normalizeImportedAgentMessages = (payload) => {
+  const raw = Array.isArray(payload)
+    ? payload
+    : payload?.messages || payload?.data || payload?.history || []
+  if (!Array.isArray(raw)) return []
+  return raw
+    .filter((m) => m && typeof m === 'object')
+    .map((m) => ({
+      ...m,
+      _local_id: m._local_id ? m._local_id : randomId(12),
+      id: typeof m.id === 'string' && m.id ? m.id : randomId(16),
+      role: typeof m.role === 'string' ? m.role : 'assistant',
+      content: typeof m.content === 'string' ? m.content : ''
+    }))
+}
 
-	const exportAgentChat = () => {
-	  if (!selectedAgentId.value) return;
-	  const prefix = getAgentStoragePrefix();
-	  const exportedAt = new Date().toISOString();
-	  const safeTs = exportedAt.replace(/[:.]/g, '-');
-	  const payload = {
-	    version: 1,
-	    exported_at: exportedAt,
-	    agent_id: selectedAgentId.value,
-	    thread_id: localStorage.getItem(`${prefix}-thread-id`) || null,
-	    messages: readJson(`${prefix}-messages`, []),
-	  };
-	  const ok = downloadJson(`pokemon-chat-agent-${selectedAgentId.value}-${safeTs}.json`, payload);
-	  if (ok) message.success('已导出对话');
-	  else message.error('导出失败');
-	};
+const exportAgentChat = () => {
+  if (!selectedAgentId.value) return
+  const prefix = getAgentStoragePrefix()
+  const exportedAt = new Date().toISOString()
+  const safeTs = exportedAt.replace(/[:.]/g, '-')
+  const payload = {
+    version: 1,
+    exported_at: exportedAt,
+    agent_id: selectedAgentId.value,
+    thread_id: localStorage.getItem(`${prefix}-thread-id`) || null,
+    messages: readJson(`${prefix}-messages`, [])
+  }
+  const ok = downloadJson(`pokemon-chat-agent-${selectedAgentId.value}-${safeTs}.json`, payload)
+  if (ok) message.success('已导出对话')
+  else message.error('导出失败')
+}
 
-	const triggerImportAgentChat = () => {
-	  importAgentInput.value?.click?.();
-	};
+const triggerImportAgentChat = () => {
+  importAgentInput.value?.click?.()
+}
 
-	const onImportAgentChatFileChange = async (e) => {
-	  try {
-	    const file = e?.target?.files?.[0];
-	    if (!file) return;
-	    const text = await file.text();
-	    const parsed = JSON.parse(text);
-	    const prefix = getAgentStoragePrefix();
-	    const msgs = normalizeImportedAgentMessages(parsed);
-	    const threadId =
-	      typeof parsed?.thread_id === 'string' && parsed.thread_id
-	        ? parsed.thread_id
-	        : null;
+const onImportAgentChatFileChange = async (e) => {
+  try {
+    const file = e?.target?.files?.[0]
+    if (!file) return
+    const text = await file.text()
+    const parsed = JSON.parse(text)
+    const prefix = getAgentStoragePrefix()
+    const msgs = normalizeImportedAgentMessages(parsed)
+    const threadId =
+      typeof parsed?.thread_id === 'string' && parsed.thread_id ? parsed.thread_id : null
 
-	    writeJson(`${prefix}-messages`, msgs);
-	    if (threadId) localStorage.setItem(`${prefix}-thread-id`, threadId);
-	    else localStorage.removeItem(`${prefix}-thread-id`);
+    writeJson(`${prefix}-messages`, msgs)
+    if (threadId) localStorage.setItem(`${prefix}-thread-id`, threadId)
+    else localStorage.removeItem(`${prefix}-thread-id`)
 
-	    agentChatKey.value += 1;
-	    message.success('已导入对话');
-	  } catch (err) {
-	    console.error('导入对话失败:', err);
-	    message.error(err?.message ? `导入失败：${err.message}` : '导入失败');
-	  } finally {
-	    try {
-	      if (e?.target) e.target.value = '';
-	    } catch {
-	      // ignore
-	    }
-	  }
-	};
+    agentChatKey.value += 1
+    message.success('已导入对话')
+  } catch (err) {
+    console.error('导入对话失败:', err)
+    message.error(err?.message ? `导入失败：${err.message}` : '导入失败')
+  } finally {
+    try {
+      if (e?.target) e.target.value = ''
+    } catch {
+      // ignore
+    }
+  }
+}
 
-	const clearAgentChat = () => {
-	  if (!selectedAgentId.value) return;
-	  const prefix = getAgentStoragePrefix();
-	  Modal.confirm({
-	    title: '清空对话记录',
-	    content: `将清空智能体「${selectedAgentId.value}」在本机浏览器的对话数据，确定继续吗？`,
-	    okText: '清空',
-	    okType: 'danger',
-	    cancelText: '取消',
-	    onOk: () => {
-	      removeKey(`${prefix}-messages`);
-	      localStorage.removeItem(`${prefix}-thread-id`);
-	      agentChatKey.value += 1;
-	      message.success('已清空对话');
-	    },
-	  });
-	};
+const clearAgentChat = () => {
+  if (!selectedAgentId.value) return
+  const prefix = getAgentStoragePrefix()
+  Modal.confirm({
+    title: '清空对话记录',
+    content: `将清空智能体「${selectedAgentId.value}」在本机浏览器的对话数据，确定继续吗？`,
+    okText: '清空',
+    okType: 'danger',
+    cancelText: '取消',
+    onOk: () => {
+      removeKey(`${prefix}-messages`)
+      localStorage.removeItem(`${prefix}-thread-id`)
+      agentChatKey.value += 1
+      message.success('已清空对话')
+    }
+  })
+}
 
 // 获取智能体列表
 const fetchAgents = async () => {
   try {
     const data = await apiFetch('/chat/agent', { method: 'GET', timeoutMs: 10000 })
     agents.value = (data?.agents || []).reduce((acc, agent) => {
-      acc[agent.name] = agent;
-      return acc;
-    }, {});
+      acc[agent.name] = agent
+      return acc
+    }, {})
 
     // 加载当前选中智能体的配置
-    if (selectedAgentId.value) loadAgentConfig();
+    if (selectedAgentId.value) loadAgentConfig()
   } catch (error) {
-    console.error('获取智能体错误:', error);
+    console.error('获取智能体错误:', error)
   }
-};
+}
 
 // 获取所有可用工具
 const fetchTools = async () => {
@@ -413,184 +407,186 @@ const fetchTools = async () => {
       availableTools.value = data?.tools || []
     }
   } catch (error) {
-    console.error('获取工具列表错误:', error);
+    console.error('获取工具列表错误:', error)
   }
-};
+}
 
 // 根据选中的智能体加载配置
 const loadAgentConfig = () => {
   // BUG: 目前消息重置有问题，需要重置消息
-  if (!selectedAgentId.value || !agents.value[selectedAgentId.value]) return;
+  if (!selectedAgentId.value || !agents.value[selectedAgentId.value]) return
 
-  const agent = agents.value[selectedAgentId.value];
-  const schema = agent.config_schema || {};
-  const items = schema.configurable_items || {};
+  const agent = agents.value[selectedAgentId.value]
+  const schema = agent.config_schema || {}
+  const items = schema.configurable_items || {}
 
   // 重置配置
-  agentConfig.value = {};
+  agentConfig.value = {}
 
   // 初始化基础配置项
   if (schema.system_prompt) {
-    agentConfig.value.system_prompt = schema.system_prompt;
+    agentConfig.value.system_prompt = schema.system_prompt
   }
 
   if (schema.model) {
-    agentConfig.value.model = schema.model;
+    agentConfig.value.model = schema.model
   }
 
   if (schema.tools) {
-    agentConfig.value.tools = schema.tools;
+    agentConfig.value.tools = schema.tools
   }
 
   // 初始化可配置项
-  Object.keys(items).forEach(key => {
-    const item = items[key];
+  Object.keys(items).forEach((key) => {
+    const item = items[key]
 
     // 根据类型设置默认值
     if (typeof item.default === 'boolean') {
-      agentConfig.value[key] = item.default;
+      agentConfig.value[key] = item.default
     } else {
-      agentConfig.value[key] = item.default || '';
+      agentConfig.value[key] = item.default || ''
     }
-  });
+  })
 
   // 加载存储的配置
-  const savedConfig = JSON.parse(localStorage.getItem(`agent-config-${selectedAgentId.value}`) || '{}');
+  const savedConfig = JSON.parse(
+    localStorage.getItem(`agent-config-${selectedAgentId.value}`) || '{}'
+  )
 
   // 合并已保存的配置
   if (savedConfig) {
-    Object.keys(savedConfig).forEach(key => {
+    Object.keys(savedConfig).forEach((key) => {
       if (key in agentConfig.value) {
-        agentConfig.value[key] = savedConfig[key];
+        agentConfig.value[key] = savedConfig[key]
       }
-    });
+    })
   }
-};
+}
 
 // 保存配置
 const saveConfig = () => {
   // 保存配置到本地存储
-  localStorage.setItem(`agent-config-${selectedAgentId.value}`, JSON.stringify(agentConfig.value));
+  localStorage.setItem(`agent-config-${selectedAgentId.value}`, JSON.stringify(agentConfig.value))
 
   // 提示保存成功
-  message.success('配置已保存');
-  closeConfigModal();
-};
+  message.success('配置已保存')
+  closeConfigModal()
+}
 
 // 重置配置
 const resetConfig = () => {
   // 清除本地存储中的配置
-  localStorage.removeItem(`agent-config-${selectedAgentId.value}`);
+  localStorage.removeItem(`agent-config-${selectedAgentId.value}`)
   // 重新加载默认配置
-  loadAgentConfig();
-  message.info('配置已重置');
-};
+  loadAgentConfig()
+  message.info('配置已重置')
+}
 
 // 监听侧边栏状态变化并保存到localStorage
 watch(
   () => state.isSidebarOpen,
   (newValue) => {
-    localStorage.setItem('agent-sidebar-open', JSON.stringify(newValue));
+    localStorage.setItem('agent-sidebar-open', JSON.stringify(newValue))
   }
-);
+)
 
 // 监听智能体选择变化
 watch(
   () => selectedAgentId.value,
   () => {
-    loadAgentConfig();
+    loadAgentConfig()
   }
-);
+)
 
 // 切换左侧侧边栏
 const toggleSidebar = () => {
-  state.isSidebarOpen = !state.isSidebarOpen;
-};
+  state.isSidebarOpen = !state.isSidebarOpen
+}
 
 // 切换配置侧边栏
 const toggleConfigSidebar = (forceOpen) => {
   if (forceOpen !== undefined) {
-    state.isConfigSidebarOpen = forceOpen;
+    state.isConfigSidebarOpen = forceOpen
   } else {
-    state.isConfigSidebarOpen = !state.isConfigSidebarOpen;
+    state.isConfigSidebarOpen = !state.isConfigSidebarOpen
   }
-};
+}
 
 // 选择智能体
 const selectAgent = (agentId) => {
-  selectedAgentId.value = agentId;
+  selectedAgentId.value = agentId
   // 保存选择到本地存储
-  localStorage.setItem('last-selected-agent', agentId);
+  localStorage.setItem('last-selected-agent', agentId)
   // 加载该智能体的配置
-  loadAgentConfig();
-};
+  loadAgentConfig()
+}
 
 // 初始化
 onMounted(async () => {
   // 获取智能体列表
-  await fetchAgents();
+  await fetchAgents()
   // 获取工具列表
-  await fetchTools();
+  await fetchTools()
 
   // 恢复上次选择的智能体
-  const lastSelectedAgent = localStorage.getItem('last-selected-agent');
+  const lastSelectedAgent = localStorage.getItem('last-selected-agent')
   if (lastSelectedAgent && agents.value[lastSelectedAgent]) {
-    selectedAgentId.value = lastSelectedAgent;
+    selectedAgentId.value = lastSelectedAgent
   } else if (Object.keys(agents.value).length > 0) {
     // 默认选择第一个智能体
-    selectedAgentId.value = Object.keys(agents.value)[0];
+    selectedAgentId.value = Object.keys(agents.value)[0]
   }
 
   // 加载配置
-  loadAgentConfig();
-});
+  loadAgentConfig()
+})
 
 // 获取配置标签
 const getConfigLabel = (key, value) => {
   // 根据配置项属性选择合适的显示文本
   if (value.description) {
-    return `${value.name}（${key}）`;
+    return `${value.name}（${key}）`
   }
-  return key;
-};
+  return key
+}
 
 // 获取占位符
 const getPlaceholder = (key, value) => {
   // 返回描述作为占位符
-  return `（默认: ${value.default}）` ;
-};
+  return `（默认: ${value.default}）`
+}
 
 // 跳转到独立智能体页面
 const goToAgentPage = () => {
   if (selectedAgentId.value) {
-    window.open(`/agent/${selectedAgentId.value}`, '_blank');
+    window.open(`/agent/${selectedAgentId.value}`, '_blank')
   }
-};
+}
 
 // 检查工具是否激活
 const isToolActive = (tool) => {
   if (!agentConfig.value.tools) {
-    agentConfig.value.tools = [];
+    agentConfig.value.tools = []
   }
-  return agentConfig.value.tools.includes(tool);
-};
+  return agentConfig.value.tools.includes(tool)
+}
 
 // 切换工具状态
 const toggleTool = (tool, checked) => {
   if (!agentConfig.value.tools) {
-    agentConfig.value.tools = [];
+    agentConfig.value.tools = []
   }
 
   if (checked) {
     // 添加工具到列表
     if (!agentConfig.value.tools.includes(tool)) {
-      agentConfig.value.tools.push(tool);
+      agentConfig.value.tools.push(tool)
     }
   } else {
     // 从列表中移除工具
-    agentConfig.value.tools = agentConfig.value.tools.filter(item => item !== tool);
+    agentConfig.value.tools = agentConfig.value.tools.filter((item) => item !== tool)
   }
-};
+}
 </script>
 
 <style lang="less" scoped>

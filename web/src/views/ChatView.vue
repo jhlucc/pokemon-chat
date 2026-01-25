@@ -1,6 +1,6 @@
 <template>
   <div class="chat-container">
-<!--    左边是侧边栏（对话列表 conversations）-->
+    <!--    左边是侧边栏（对话列表 conversations）-->
     <div class="conversations" :class="{ 'is-open': state.isSidebarOpen }">
       <div class="actions">
         <!-- <div class="action new" @click="addNewConv"><FormOutlined /></div> -->
@@ -59,7 +59,11 @@
             @keydown.enter.prevent="state.isSidebarOpen = false"
             @keydown.space.prevent="state.isSidebarOpen = false"
           >
-            <img src="@/assets/icons/sidebar_left.svg" class="iconfont icon-20 sidebar-icon" alt="侧栏" />
+            <img
+              src="@/assets/icons/sidebar_left.svg"
+              class="iconfont icon-20 sidebar-icon"
+              alt="侧栏"
+            />
           </div>
         </div>
       </div>
@@ -71,12 +75,7 @@
         @change="onImportConversationsFileChange"
       />
       <div class="conversation-search">
-        <a-input
-          v-model:value="convSearch"
-          allow-clear
-          size="small"
-          placeholder="搜索对话"
-        />
+        <a-input v-model:value="convSearch" allow-clear size="small" placeholder="搜索对话" />
       </div>
       <div class="conversation-list">
         <template v-if="filteredConvs.length > 0">
@@ -99,31 +98,43 @@
             </a-popconfirm>
           </div>
         </template>
-        <div v-else class="conversation-empty">
-          没有匹配的对话
-        </div>
+        <a-empty v-else class="conversation-empty" description="暂无对话">
+          <a-space>
+            <a-button size="small" type="primary" @click="addNewConv">新建对话</a-button>
+            <a-button size="small" @click="convSearch = ''">清除搜索</a-button>
+          </a-space>
+        </a-empty>
       </div>
     </div>
-<!--    聊天组件（ChatComponent） 渲染右边聊天内容区域。  把当前选中的对话 (convs[curConvId]) 作为 prop 传给 ChatComponent,传递状态对象 state-->
+    <!--    聊天组件（ChatComponent） 渲染右边聊天内容区域。  把当前选中的对话 (convs[curConvId]) 作为 prop 传给 ChatComponent,传递状态对象 state-->
     <ChatComponent
       :conv="convs[curConvId]"
       :state="state"
       @rename-title="renameTitle"
-      @newconv="addNewConv"/>
-<!--  重命名对话&新建对话-->
+      @newconv="addNewConv"
+    />
+    <!--  重命名对话&新建对话-->
   </div>
 </template>
 
 <script setup>
-	import { reactive, ref, watch, computed } from 'vue'
+import { reactive, ref, watch, computed } from 'vue'
 
-	import ChatComponent from '@/components/ChatComponent.vue'
-	import { Modal, message } from 'ant-design-vue'
-	import { DeleteOutlined, CommentOutlined, PlusCircleOutlined, MoreOutlined, DownloadOutlined, UploadOutlined, ClearOutlined } from '@ant-design/icons-vue'
-	import { useDebounceFn } from '@vueuse/core'
-	import { randomId } from '@/utils/id'
-	import { readJson, writeJson } from '@/utils/storage'
-	import { downloadJson } from '@/utils/download'
+import ChatComponent from '@/components/ChatComponent.vue'
+import { Modal, message } from 'ant-design-vue'
+import {
+  DeleteOutlined,
+  CommentOutlined,
+  PlusCircleOutlined,
+  MoreOutlined,
+  DownloadOutlined,
+  UploadOutlined,
+  ClearOutlined
+} from '@ant-design/icons-vue'
+import { useDebounceFn } from '@vueuse/core'
+import { randomId } from '@/utils/id'
+import { readJson, writeJson } from '@/utils/storage'
+import { downloadJson } from '@/utils/download'
 // 从 localStorage 里读取历史对话记录，如果没有就用一个初始默认对话。
 const CONVS_STORAGE_KEY = 'chat-convs'
 const SIDEBAR_STORAGE_KEY = 'chat-sidebar-open'
@@ -136,59 +147,65 @@ function makeEmptyConv() {
     title: '新对话',
     history: [],
     messages: [],
-    inputText: '',
+    inputText: ''
   }
 }
 
-	function pruneConvsForStorage(list) {
-	  const safeList = Array.isArray(list) ? list : []
-	  return safeList.slice(0, MAX_CONVS_TO_STORE).map((c) => ({
-	    ...c,
-	    messages: Array.isArray(c?.messages) ? c.messages.slice(-MAX_MESSAGES_PER_CONV) : [],
-	  }))
-	}
+function pruneConvsForStorage(list) {
+  const safeList = Array.isArray(list) ? list : []
+  return safeList.slice(0, MAX_CONVS_TO_STORE).map((c) => ({
+    ...c,
+    messages: Array.isArray(c?.messages) ? c.messages.slice(-MAX_MESSAGES_PER_CONV) : []
+  }))
+}
 
-	function normalizeImportedConvs(payload) {
-	  const rawList = Array.isArray(payload) ? payload : (payload?.convs || payload?.chat_convs || payload?.data || []);
-	  if (!Array.isArray(rawList)) return [makeEmptyConv()];
+function normalizeImportedConvs(payload) {
+  const rawList = Array.isArray(payload)
+    ? payload
+    : payload?.convs || payload?.chat_convs || payload?.data || []
+  if (!Array.isArray(rawList)) return [makeEmptyConv()]
 
-	  const list = rawList
-	    .filter((c) => c && typeof c === 'object')
-	    .map((c) => {
-	      const convId = typeof c.id === 'string' && c.id ? c.id : randomId(8);
-	      const title = typeof c.title === 'string' && c.title ? c.title : '导入对话';
-	      const messages = Array.isArray(c.messages) ? c.messages : [];
+  const list = rawList
+    .filter((c) => c && typeof c === 'object')
+    .map((c) => {
+      const convId = typeof c.id === 'string' && c.id ? c.id : randomId(8)
+      const title = typeof c.title === 'string' && c.title ? c.title : '导入对话'
+      const messages = Array.isArray(c.messages) ? c.messages : []
 
-	      const normalizedMessages = messages
-	        .filter((m) => m && typeof m === 'object')
-	        .map((m) => ({
-	          ...m,
-	          id: typeof m.id === 'string' && m.id ? m.id : randomId(16),
-	          role: typeof m.role === 'string' ? m.role : 'assistant',
-	          content: typeof m.content === 'string' ? m.content : '',
-	          groupedResults:
-	            m?.groupedResults && typeof m.groupedResults === 'object' && !Array.isArray(m.groupedResults)
-	              ? m.groupedResults
-	              : {},
-	        }));
+      const normalizedMessages = messages
+        .filter((m) => m && typeof m === 'object')
+        .map((m) => ({
+          ...m,
+          id: typeof m.id === 'string' && m.id ? m.id : randomId(16),
+          role: typeof m.role === 'string' ? m.role : 'assistant',
+          content: typeof m.content === 'string' ? m.content : '',
+          groupedResults:
+            m?.groupedResults &&
+            typeof m.groupedResults === 'object' &&
+            !Array.isArray(m.groupedResults)
+              ? m.groupedResults
+              : {}
+        }))
 
-	      return {
-	        id: convId,
-	        title,
-	        history: Array.isArray(c.history) ? c.history : [],
-	        messages: normalizedMessages,
-	        inputText: typeof c.inputText === 'string' ? c.inputText : '',
-	      };
-	    });
+      return {
+        id: convId,
+        title,
+        history: Array.isArray(c.history) ? c.history : [],
+        messages: normalizedMessages,
+        inputText: typeof c.inputText === 'string' ? c.inputText : ''
+      }
+    })
 
-	  return list.length > 0 ? list : [makeEmptyConv()];
-	}
+  return list.length > 0 ? list : [makeEmptyConv()]
+}
 
 const storedConvs = readJson(CONVS_STORAGE_KEY, null)
-const convs = reactive(Array.isArray(storedConvs) && storedConvs.length > 0 ? storedConvs : [makeEmptyConv()])
+const convs = reactive(
+  Array.isArray(storedConvs) && storedConvs.length > 0 ? storedConvs : [makeEmptyConv()]
+)
 
 const state = reactive({
-  isSidebarOpen: Boolean(readJson(SIDEBAR_STORAGE_KEY, true)),
+  isSidebarOpen: Boolean(readJson(SIDEBAR_STORAGE_KEY, true))
 })
 
 // Watch isSidebarOpen and save to localStorage
@@ -198,8 +215,8 @@ watch(
     writeJson(SIDEBAR_STORAGE_KEY, newValue)
   }
 )
-	const curConvId = ref(0)
-	const importInput = ref(null)
+const curConvId = ref(0)
+const importInput = ref(null)
 
 const convSearch = ref('')
 const filteredConvs = computed(() => {
@@ -231,8 +248,8 @@ const addNewConv = () => {
   })
 }
 
-	const delConv = (index) => {
-	  convs.splice(index, 1)
+const delConv = (index) => {
+  convs.splice(index, 1)
 
   if (index < curConvId.value) {
     curConvId.value -= 1
@@ -240,68 +257,68 @@ const addNewConv = () => {
     curConvId.value = 0
   }
 
-	  if (convs.length === 0) {
-	    addNewConv()
-	  }
-	}
+  if (convs.length === 0) {
+    addNewConv()
+  }
+}
 
-	const exportConversations = () => {
-	  const exportedAt = new Date().toISOString();
-	  const safeTs = exportedAt.replace(/[:.]/g, '-');
-	  const payload = {
-	    version: 1,
-	    exported_at: exportedAt,
-	    convs: pruneConvsForStorage(convs),
-	  };
-	  const ok = downloadJson(`pokemon-chat-convs-${safeTs}.json`, payload);
-	  if (ok) message.success('已导出对话');
-	  else message.error('导出失败');
-	}
+const exportConversations = () => {
+  const exportedAt = new Date().toISOString()
+  const safeTs = exportedAt.replace(/[:.]/g, '-')
+  const payload = {
+    version: 1,
+    exported_at: exportedAt,
+    convs: pruneConvsForStorage(convs)
+  }
+  const ok = downloadJson(`pokemon-chat-convs-${safeTs}.json`, payload)
+  if (ok) message.success('已导出对话')
+  else message.error('导出失败')
+}
 
-	const triggerImportConversations = () => {
-	  importInput.value?.click?.()
-	}
+const triggerImportConversations = () => {
+  importInput.value?.click?.()
+}
 
-	const onImportConversationsFileChange = async (e) => {
-	  try {
-	    const file = e?.target?.files?.[0]
-	    if (!file) return
-	    const text = await file.text()
-	    const parsed = JSON.parse(text)
-	    const normalized = normalizeImportedConvs(parsed)
+const onImportConversationsFileChange = async (e) => {
+  try {
+    const file = e?.target?.files?.[0]
+    if (!file) return
+    const text = await file.text()
+    const parsed = JSON.parse(text)
+    const normalized = normalizeImportedConvs(parsed)
 
-	    convs.splice(0, convs.length, ...normalized)
-	    curConvId.value = 0
-	    writeJson(CONVS_STORAGE_KEY, pruneConvsForStorage(convs))
-	    message.success('已导入对话')
-	  } catch (err) {
-	    console.error('导入对话失败:', err)
-	    message.error(err?.message ? `导入失败：${err.message}` : '导入失败')
-	  } finally {
-	    // reset so the same file can be chosen again
-	    try {
-	      if (e?.target) e.target.value = ''
-	    } catch {
-	      // ignore
-	    }
-	  }
-	}
+    convs.splice(0, convs.length, ...normalized)
+    curConvId.value = 0
+    writeJson(CONVS_STORAGE_KEY, pruneConvsForStorage(convs))
+    message.success('已导入对话')
+  } catch (err) {
+    console.error('导入对话失败:', err)
+    message.error(err?.message ? `导入失败：${err.message}` : '导入失败')
+  } finally {
+    // reset so the same file can be chosen again
+    try {
+      if (e?.target) e.target.value = ''
+    } catch {
+      // ignore
+    }
+  }
+}
 
-	const clearAllConversations = () => {
-	  Modal.confirm({
-	    title: '清空所有对话',
-	    content: '这将删除本地保存的所有对话记录（仅影响本机浏览器）。确定继续吗？',
-	    okText: '清空',
-	    okType: 'danger',
-	    cancelText: '取消',
-	    onOk: () => {
-	      convs.splice(0, convs.length, makeEmptyConv())
-	      curConvId.value = 0
-	      writeJson(CONVS_STORAGE_KEY, pruneConvsForStorage(convs))
-	      message.success('已清空对话')
-	    },
-	  })
-	}
+const clearAllConversations = () => {
+  Modal.confirm({
+    title: '清空所有对话',
+    content: '这将删除本地保存的所有对话记录（仅影响本机浏览器）。确定继续吗？',
+    okText: '清空',
+    okType: 'danger',
+    cancelText: '取消',
+    onOk: () => {
+      convs.splice(0, convs.length, makeEmptyConv())
+      curConvId.value = 0
+      writeJson(CONVS_STORAGE_KEY, pruneConvsForStorage(convs))
+      message.success('已清空对话')
+    }
+  })
+}
 
 // Watch convs and save to localStorage
 const persistConvs = useDebounceFn(
@@ -312,11 +329,7 @@ const persistConvs = useDebounceFn(
   { maxWait: 2000 }
 )
 
-watch(
-  convs,
-  () => persistConvs(),
-  { deep: true }
-)
+watch(convs, () => persistConvs(), { deep: true })
 </script>
 
 <style lang="less" scoped>
@@ -335,6 +348,9 @@ watch(
   transition: all 0.3s ease;
   white-space: nowrap; /* 防止文本换行 */
   overflow: hidden; /* 确保内容不溢出 */
+  display: flex;
+  flex-direction: column;
+  height: 100%;
 
   &.is-open {
     width: 230px;
@@ -345,32 +361,34 @@ watch(
     padding: 0;
     overflow: hidden;
   }
- .action.new {
-  color: var(--main-500);
-  &:hover { background: var(--main-light-4); }
-}
-	  & .actions {
-	    height: var(--header-height);
-	    display: flex;
-	    justify-content: space-between;
-	    align-items: center;
-	    padding: 16px;
-	    z-index: 9;
-	    border-bottom: 1px solid var(--main-light-3);
+  .action.new {
+    color: var(--main-500);
+    &:hover {
+      background: var(--main-light-4);
+    }
+  }
+  & .actions {
+    height: var(--header-height);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px;
+    z-index: 9;
+    border-bottom: 1px solid var(--main-light-3);
 
-	    .actions-left,
-	    .actions-right {
-	      display: flex;
-	      align-items: center;
-	      gap: 8px;
-	    }
+    .actions-left,
+    .actions-right {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
 
-	    .header-title {
-	      font-weight: bold;
-	      user-select: none;
-	      white-space: nowrap;
-	      overflow: hidden;
-	    }
+    .header-title {
+      font-weight: bold;
+      user-select: none;
+      white-space: nowrap;
+      overflow: hidden;
+    }
 
     .action {
       font-size: 1.2rem;
@@ -403,7 +421,7 @@ watch(
     display: flex;
     flex-direction: column;
     overflow-y: auto;
-    max-height: 100%;
+    flex: 1 1 auto;
   }
 
   .conversation-list .conversation {
@@ -419,7 +437,7 @@ watch(
     &__title {
       color: var(--gray-700);
       white-space: nowrap; /* 禁止换行 */
-      overflow: hidden;    /* 超出部分隐藏 */
+      overflow: hidden; /* 超出部分隐藏 */
       text-overflow: ellipsis; /* 显示省略号 */
     }
 
@@ -454,9 +472,11 @@ watch(
   }
 
   .conversation-empty {
-    padding: 16px;
-    color: var(--gray-600);
-    font-size: 13px;
+    padding: 28px 12px;
+
+    :deep(.ant-empty-description) {
+      color: var(--gray-600);
+    }
   }
 }
 

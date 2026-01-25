@@ -20,15 +20,19 @@
             @drop="handleDrop"
           >
             <p class="ant-upload-text">点击或者把PDF文件拖拽到这里上传</p>
-            <p class="ant-upload-hint">
-              仅支持上传PDF文件。同名文件无法重复添加
-            </p>
+            <p class="ant-upload-hint">仅支持上传PDF文件。同名文件无法重复添加</p>
           </a-upload-dragger>
         </div>
-        <a-button type="primary" @click="convertPdfToText" :loading="state.loading">Convert PDF to Text</a-button>
+        <a-button type="primary" @click="convertPdfToText" :loading="state.loading"
+          >Convert PDF to Text</a-button
+        >
       </div>
       <div class="output-container">
-        <textarea v-model="convertedText" placeholder="Converted text will appear here" readonly></textarea>
+        <textarea
+          v-model="convertedText"
+          placeholder="Converted text will appear here"
+          readonly
+        ></textarea>
         <div class="infos">
           <span>字符数: {{ charCount }}</span>
           <span>Token 数：{{ estimatedTokenCount }}</span>
@@ -39,50 +43,50 @@
 </template>
 
 <script setup>
-import { reactive, ref, computed } from 'vue';
-import { message } from 'ant-design-vue';
+import { reactive, ref, computed } from 'vue'
+import { message } from 'ant-design-vue'
 import { apiFetch } from '@/api/http'
 import { getOfflineMode } from '@/utils/offlineMode'
 
 const state = reactive({
   loading: false,
-  uploading: false,
-});
+  uploading: false
+})
 
-const fileList = ref([]);
-const convertedText = ref('');
+const fileList = ref([])
+const convertedText = ref('')
 
-const charCount = computed(() => convertedText.value.length);
+const charCount = computed(() => convertedText.value.length)
 const estimatedTokenCount = computed(() => {
-  const chars = convertedText.value.split('');
-  let tokenCount = 0;
+  const chars = convertedText.value.split('')
+  let tokenCount = 0
   for (let char of chars) {
     if (/[\u4e00-\u9fff]/.test(char)) {
-      tokenCount += 1;
+      tokenCount += 1
     } else if (/[a-zA-Z]/.test(char)) {
-      tokenCount += 0.25;
+      tokenCount += 0.25
     } else {
-      tokenCount += 0.5;
+      tokenCount += 0.5
     }
   }
-  return Math.ceil(tokenCount);
-});
+  return Math.ceil(tokenCount)
+})
 
 const handleFileUpload = (info) => {
-  const { status } = info.file;
+  const { status } = info.file
   if (status === 'done') {
-    message.success(`${info.file.name} file uploaded successfully.`);
+    message.success(`${info.file.name} file uploaded successfully.`)
   } else if (status === 'error') {
-    message.error(`${info.file.name} file upload failed.`);
+    message.error(`${info.file.name} file upload failed.`)
   }
-};
+}
 
-const handleDrop = () => {};
+const handleDrop = () => {}
 
 const convertPdfToText = async () => {
   if (fileList.value.length === 0) {
-    message.error("请上传PDF文件");
-    return;
+    message.error('请上传PDF文件')
+    return
   }
 
   const doneFile = fileList.value.find((f) => f.status === 'done') || fileList.value[0]
@@ -91,27 +95,27 @@ const convertPdfToText = async () => {
   const fileContent = resp.file_content
 
   try {
-    state.loading = true;
+    state.loading = true
 
     // Offline convenience: if user uploads txt/md, just show it.
     if (fileContent && typeof file === 'string' && !String(file).toLowerCase().endsWith('.pdf')) {
-      convertedText.value = String(fileContent);
-      return;
+      convertedText.value = String(fileContent)
+      return
     }
 
     const data = await apiFetch('/tools/pdf2txt', {
       method: 'POST',
       body: { file: file.toString() },
-      timeoutMs: 30000,
+      timeoutMs: 30000
     })
-    convertedText.value = data.text;
+    convertedText.value = data.text
   } catch (error) {
-    console.error('Error converting PDF to text:', error);
-    message.error('PDF转换失败，请重试');
+    console.error('Error converting PDF to text:', error)
+    message.error('PDF转换失败，请重试')
   } finally {
-    state.loading = false;
+    state.loading = false
   }
-};
+}
 
 const customUpload = async ({ file, onSuccess, onError }) => {
   state.uploading = true
@@ -131,7 +135,11 @@ const customUpload = async ({ file, onSuccess, onError }) => {
       try {
         const formData = new FormData()
         formData.append('file', file)
-        const data = await apiFetch('/data/upload', { method: 'POST', body: formData, timeoutMs: 60000 })
+        const data = await apiFetch('/data/upload', {
+          method: 'POST',
+          body: formData,
+          timeoutMs: 60000
+        })
         onSuccess?.(data, file)
         return
       } catch {
@@ -140,7 +148,9 @@ const customUpload = async ({ file, onSuccess, onError }) => {
     }
 
     // Local fallback: keep file content for txt/md preview; PDF content is binary so we skip.
-    const isPdf = String(file.name || '').toLowerCase().endsWith('.pdf')
+    const isPdf = String(file.name || '')
+      .toLowerCase()
+      .endsWith('.pdf')
     const file_content = isPdf ? null : await readAsText()
     onSuccess?.({ file_path: file.name, file_content }, file)
   } catch (e) {

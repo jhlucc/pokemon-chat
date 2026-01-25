@@ -18,16 +18,16 @@ export function mockConfigResponse() {
       mock: {
         name: 'Mock (Offline)',
         default: 'offline',
-        models: ['offline'],
-      },
+        models: ['offline']
+      }
     },
-    custom_models: [],
-  };
+    custom_models: []
+  }
 }
 
 export function mockReadyzResponse() {
   return {
     status: 'ok',
-    checks: [{ name: 'mock', status: 'ok' }],
-  };
+    checks: [{ name: 'mock', status: 'ok' }]
+  }
 }

@@ -16,17 +16,21 @@ import {
   ProjectOutlined,
   RedoOutlined,
   ApiOutlined,
+  InfoCircleOutlined,
   BulbFilled,
   DesktopOutlined,
   RobotOutlined,
   RobotFilled,
+  MenuFoldOutlined,
+  MenuUnfoldOutlined
 } from '@ant-design/icons-vue'
 import { theme as antdTheme } from 'ant-design-vue'
 import { applyTheme, getSavedThemeMode, setThemeMode, themeConfig } from '@/assets/theme'
+import { APP_NAME, BUILD_SHA, BUILD_TIME, getBuildLabel } from '@/config/appMeta'
 import { useConfigStore } from '@/stores/config'
 import { useDatabaseStore } from '@/stores/database'
 import DebugComponent from '@/components/DebugComponent.vue'
-import { getOfflineMode } from '@/utils/offlineMode'
+import { getOfflineMode, setOfflineMode } from '@/utils/offlineMode'
 
 const configStore = useConfigStore()
 const databaseStore = useDatabaseStore()
@@ -37,14 +41,60 @@ const onOfflineModeChanged = () => {
   offlineMode.value = getOfflineMode()
 }
 
+const buildLabel = getBuildLabel()
+
+const SIDER_COLLAPSED_STORAGE_KEY = 'pokemon_chat_sider_collapsed_v1'
+const getSavedSiderCollapsed = () => {
+  try {
+    const raw = localStorage.getItem(SIDER_COLLAPSED_STORAGE_KEY)
+    if (raw === '0') return false
+    if (raw === '1') return true
+  } catch {
+    // ignore storage errors
+  }
+
+  try {
+    // Default: expanded on desktop, collapsed on smaller screens.
+    return window.matchMedia('(max-width: 960px)').matches
+  } catch {
+    return false
+  }
+}
+
+const siderCollapsed = ref(getSavedSiderCollapsed())
+watch(
+  () => siderCollapsed.value,
+  (v) => {
+    try {
+      localStorage.setItem(SIDER_COLLAPSED_STORAGE_KEY, v ? '1' : '0')
+    } catch {
+      // ignore quota / private mode errors
+    }
+  }
+)
+
+const toggleSider = () => {
+  siderCollapsed.value = !siderCollapsed.value
+}
+
+const setOffline = (mode) => {
+  setOfflineMode(mode)
+  offlineMode.value = getOfflineMode()
+  // Refresh status line so UI stays informative after switching modes.
+  configStore.refreshConfig()
+}
+
 const layoutSettings = reactive({
   showDebug: false,
   useTopBar: false, // 是否使用顶栏
+  showAbout: false
 })
 
 // Theme mode: only "system" | "dark" (stored in localStorage)
 const themeMode = ref(getSavedThemeMode())
-const appliedIsDark = computed(() => themeMode.value === 'dark' || (themeMode.value === 'system' && preferredDark.value))
+const appliedIsDark = computed(
+  () => themeMode.value === 'dark' || (themeMode.value === 'system' && preferredDark.value)
+)
 const themeLabel = computed(() => (themeMode.value === 'dark' ? '暗色主题' : '跟随系统'))
 const appliedLabel = computed(() => (appliedIsDark.value ? '暗色' : '亮色'))
 
@@ -77,10 +127,8 @@ const onThemeToggleKeydown = (e) => {
 
 const antdThemeConfig = computed(() => ({
   ...themeConfig,
-  ...(appliedIsDark.value ? { algorithm: antdTheme.darkAlgorithm } : {}),
+  ...(appliedIsDark.value ? { algorithm: antdTheme.darkAlgorithm } : {})
 }))
-
-
 
 const getRemoteConfig = () => {
   configStore.refreshConfig()
@@ -92,7 +140,6 @@ const getRemoteDatabase = () => {
   }
   databaseStore.refreshDatabase()
 }
-
 
 onMounted(() => {
   getRemoteConfig()
@@ -122,6 +169,27 @@ const backendMode = computed(() => {
   return { key: 'offline', short: 'OFF', label: 'Backend Offline' }
 })
 
+const offlineBanner = computed(() => {
+  if (offlineMode.value === 'on') {
+    return {
+      type: 'info',
+      message: '离线演示模式已开启：接口将优先使用 Mock 数据。',
+      actionLabel: '关闭',
+      onAction: () => setOffline('off')
+    }
+  }
+
+  if (offlineMode.value === 'auto' && backendMode.value.key === 'offline') {
+    return {
+      type: 'warning',
+      message: '后端不可用：已进入自动回退模式（能回退的接口会使用 Mock）。',
+      actionLabel: '强制 Mock',
+      onAction: () => setOffline('on')
+    }
+  }
+
+  return null
+})
 
 // 下面是导航菜单部分，添加智能体项
 const mainList = computed(() => {
@@ -131,55 +199,55 @@ const mainList = computed(() => {
       name: '对话',
       path: '/chat',
       icon: MessageOutlined,
-      activeIcon: MessageFilled,
+      activeIcon: MessageFilled
     },
     {
       name: '图谱',
       path: '/graph',
       icon: ProjectOutlined,
       activeIcon: ProjectFilled,
-      hidden: ui.show_knowledge_graph === false,
+      hidden: ui.show_knowledge_graph === false
     },
     {
       name: '知识库',
       path: '/database',
       icon: BookOutlined,
       activeIcon: BookFilled,
-      hidden: ui.show_knowledge_base === false,
+      hidden: ui.show_knowledge_base === false
     },
     {
       name: '工具',
       path: '/tools',
       icon: ToolOutlined,
       activeIcon: ToolFilled,
-      hidden: ui.show_tools === false,
+      hidden: ui.show_tools === false
     },
     {
       name: '智能体',
       path: '/agent',
       icon: RobotOutlined,
       activeIcon: RobotFilled,
-      hidden: ui.show_agents === false,
+      hidden: ui.show_agents === false
     },
     {
       name: '地图',
       path: '/coords',
       icon: RedoOutlined, // 你可以换成其他图标
       activeIcon: RedoOutlined,
-      hidden: ui.show_map === false,
-    },
+      hidden: ui.show_map === false
+    }
   ]
 })
 </script>
 
 <template>
   <div class="app-layout" :class="{ 'use-top-bar': layoutSettings.useTopBar }">
-    <div class="debug-panel" >
+    <div class="debug-panel">
       <a-float-button
         @click="layoutSettings.showDebug = !layoutSettings.showDebug"
         tooltip="调试面板"
         :style="{
-          right: '12px',
+          right: '12px'
         }"
       >
         <template #icon>
@@ -190,52 +258,131 @@ const mainList = computed(() => {
         v-model:open="layoutSettings.showDebug"
         title="调试面板"
         width="800"
-        :contentWrapperStyle="{ maxWidth: '100%'}"
+        :contentWrapperStyle="{ maxWidth: '100%' }"
         placement="right"
       >
         <DebugComponent />
       </a-drawer>
     </div>
-    <div class="header" :class="{ 'top-bar': layoutSettings.useTopBar }">
+    <div
+      class="header"
+      :class="{
+        'top-bar': layoutSettings.useTopBar,
+        'is-collapsed': !layoutSettings.useTopBar && siderCollapsed,
+        'is-expanded': !layoutSettings.useTopBar && !siderCollapsed
+      }"
+    >
       <div class="logo circle">
-	        <router-link to="/">
-	          <img src="/avatar.jpg" alt="Logo">
-	          <span class="logo-text">可萌</span>
-	        </router-link>
-	      </div>
-      <div class="nav">
-        <!-- 使用mainList渲染导航项 -->
-        <RouterLink
-          v-for="(item, index) in mainList"
-          :key="index"
-          :to="item.path"
-          v-show="!item.hidden"
-          class="nav-item"
-          active-class="active">
-          <component class="icon" :is="route.path.startsWith(item.path) ? item.activeIcon : item.icon" />
-          <span class="text">{{item.name}}</span>
-        </RouterLink>
-      </div>
-      <div class="fill" style="flex-grow: 1;"></div>
-
-      <div class="nav-item mode-indicator" aria-label="运行模式">
         <a-tooltip placement="right">
           <template #title>
-            <div>{{ backendMode.label }}</div>
-            <div>离线模式：{{ offlineMode }}</div>
+            <div>{{ APP_NAME }}</div>
+            <div v-if="buildLabel" style="opacity: 0.75; font-size: 12px">{{ buildLabel }}</div>
           </template>
-          <span class="mode-pill" :class="backendMode.key">{{ backendMode.short }}</span>
+          <router-link to="/" aria-label="返回首页">
+            <img src="/avatar.jpg" alt="Logo" />
+            <div class="logo-meta">
+              <span class="logo-text">{{ APP_NAME }}</span>
+              <span v-if="buildLabel" class="logo-sub">{{ buildLabel }}</span>
+            </div>
+          </router-link>
+        </a-tooltip>
+      </div>
+      <div class="nav">
+        <!-- 使用mainList渲染导航项 -->
+        <div v-for="(item, index) in mainList" :key="index" v-show="!item.hidden" class="nav-item-wrap">
+          <a-tooltip
+            placement="right"
+            :title="!layoutSettings.useTopBar && siderCollapsed ? item.name : null"
+          >
+            <RouterLink
+              :to="item.path"
+              class="nav-item"
+              active-class="active"
+              :aria-label="item.name"
+            >
+              <component
+                class="icon"
+                :is="route.path.startsWith(item.path) ? item.activeIcon : item.icon"
+              />
+              <span class="text">{{ item.name }}</span>
+            </RouterLink>
+          </a-tooltip>
+        </div>
+      </div>
+      <div class="fill" style="flex-grow: 1"></div>
+
+      <div
+        v-if="!layoutSettings.useTopBar"
+        class="nav-item collapse-toggle"
+        @click="toggleSider"
+        role="button"
+        tabindex="0"
+        aria-label="Toggle sidebar"
+        @keydown.enter.prevent="toggleSider"
+        @keydown.space.prevent="toggleSider"
+      >
+        <a-tooltip placement="right">
+          <template #title>{{ siderCollapsed ? 'Expand sidebar' : 'Collapse sidebar' }}</template>
+          <component class="icon" :is="siderCollapsed ? MenuUnfoldOutlined : MenuFoldOutlined" />
+          <span class="text">{{ siderCollapsed ? 'Expand' : 'Collapse' }}</span>
         </a-tooltip>
       </div>
 
-	      <div class="nav-item api-docs">
-	        <a-tooltip placement="right">
-	          <template #title>接口文档 {{ apiDocsUrl }}</template>
-	          <a :href="apiDocsUrl" target="_blank" rel="noopener noreferrer" aria-label="接口文档" class="github-link">
-	            <ApiOutlined class="icon" />
-	          </a>
-	        </a-tooltip>
-	      </div>
+      <a-dropdown placement="rightTop" trigger="click">
+        <div
+          class="nav-item mode-indicator"
+          aria-label="运行模式"
+          role="button"
+          tabindex="0"
+          @keydown.enter.prevent="$event.currentTarget?.click?.()"
+          @keydown.space.prevent="$event.currentTarget?.click?.()"
+        >
+          <a-tooltip placement="right">
+            <template #title>
+              <div>{{ backendMode.label }}</div>
+              <div>离线模式：{{ offlineMode }}</div>
+              <div style="opacity: 0.75">点击切换</div>
+            </template>
+            <span class="mode-pill" :class="backendMode.key">{{ backendMode.short }}</span>
+          </a-tooltip>
+        </div>
+        <template #overlay>
+          <a-menu :selectedKeys="[offlineMode]" @click="({ key }) => setOffline(key)">
+            <a-menu-item key="auto">Auto：失败回退 Mock</a-menu-item>
+            <a-menu-item key="off">Off：强制真实后端</a-menu-item>
+            <a-menu-item key="on">On：强制 Mock 演示</a-menu-item>
+          </a-menu>
+        </template>
+      </a-dropdown>
+
+      <div class="nav-item api-docs">
+        <a-tooltip placement="right">
+          <template #title>接口文档 {{ apiDocsUrl }}</template>
+          <a
+            :href="apiDocsUrl"
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="接口文档"
+            class="github-link"
+          >
+            <ApiOutlined class="icon" />
+          </a>
+        </a-tooltip>
+      </div>
+      <div
+        class="nav-item about"
+        @click="layoutSettings.showAbout = true"
+        role="button"
+        tabindex="0"
+        aria-label="关于"
+        @keydown.enter.prevent="layoutSettings.showAbout = true"
+        @keydown.space.prevent="layoutSettings.showAbout = true"
+      >
+        <a-tooltip placement="right">
+          <template #title>关于</template>
+          <InfoCircleOutlined class="icon" aria-hidden="true" />
+        </a-tooltip>
+      </div>
       <div
         class="nav-item theme-toggle"
         @click="toggleThemeMode"
@@ -256,38 +403,85 @@ const mainList = computed(() => {
       <RouterLink class="nav-item setting" to="/setting" active-class="active">
         <a-tooltip placement="right">
           <template #title>设置</template>
-          <component class="icon" :is="route.path === '/setting' ? SettingFilled : SettingOutlined" />
+          <component
+            class="icon"
+            :is="route.path === '/setting' ? SettingFilled : SettingOutlined"
+          />
         </a-tooltip>
       </RouterLink>
     </div>
-	    <div class="header-mobile">
-	      <RouterLink to="/chat" class="nav-item" active-class="active" aria-label="对话">
-	        <MessageOutlined class="icon" aria-hidden="true" />
-	        <span class="label">对话</span>
-	      </RouterLink>
-	      <RouterLink
-	        v-if="configStore.config?.ui?.show_knowledge_base !== false"
-	        to="/database"
-	        class="nav-item"
-	        active-class="active"
-	        aria-label="知识库"
-	      >
-	        <BookOutlined class="icon" aria-hidden="true" />
-	        <span class="label">知识</span>
-	      </RouterLink>
-	      <RouterLink to="/setting" class="nav-item" active-class="active" aria-label="设置">
-	        <SettingOutlined class="icon" aria-hidden="true" />
-	        <span class="label">设置</span>
-	        <span class="mode-badge" :class="backendMode.key" aria-hidden="true">{{ backendMode.short }}</span>
-	      </RouterLink>
-	    </div>
+    <div class="header-mobile">
+      <RouterLink to="/chat" class="nav-item" active-class="active" aria-label="对话">
+        <MessageOutlined class="icon" aria-hidden="true" />
+        <span class="label">对话</span>
+      </RouterLink>
+      <RouterLink
+        v-if="configStore.config?.ui?.show_knowledge_base !== false"
+        to="/database"
+        class="nav-item"
+        active-class="active"
+        aria-label="知识库"
+      >
+        <BookOutlined class="icon" aria-hidden="true" />
+        <span class="label">知识</span>
+      </RouterLink>
+      <RouterLink to="/setting" class="nav-item" active-class="active" aria-label="设置">
+        <SettingOutlined class="icon" aria-hidden="true" />
+        <span class="label">设置</span>
+        <span class="mode-badge" :class="backendMode.key" aria-hidden="true">{{
+          backendMode.short
+        }}</span>
+      </RouterLink>
+    </div>
     <a-config-provider :theme="antdThemeConfig">
-    <router-view v-slot="{ Component, route }" id="app-router-view">
-      <keep-alive v-if="route.meta.keepAlive !== false">
-        <component :is="Component" />
-      </keep-alive>
-      <component :is="Component" v-else />
-    </router-view>
+      <div id="app-router-view">
+        <a-alert
+          v-if="offlineBanner"
+          class="offline-banner"
+          banner
+          show-icon
+          :type="offlineBanner.type"
+          :message="offlineBanner.message"
+        >
+          <template #action>
+            <a-button size="small" type="link" @click="offlineBanner.onAction">{{
+              offlineBanner.actionLabel
+            }}</a-button>
+          </template>
+        </a-alert>
+
+        <router-view v-slot="{ Component, route }">
+          <keep-alive v-if="route.meta.keepAlive !== false">
+            <component :is="Component" />
+          </keep-alive>
+          <component :is="Component" v-else />
+        </router-view>
+      </div>
+
+      <a-back-top
+        :target="() => document.getElementById('app-router-view')"
+        :visibilityHeight="240"
+      />
+
+      <a-modal v-model:open="layoutSettings.showAbout" title="关于" :footer="null">
+        <a-descriptions size="small" :column="1" bordered>
+          <a-descriptions-item label="应用">{{ APP_NAME }}</a-descriptions-item>
+          <a-descriptions-item label="前端">{{ buildLabel || 'dev' }}</a-descriptions-item>
+          <a-descriptions-item v-if="BUILD_TIME" label="Build time">{{
+            BUILD_TIME
+          }}</a-descriptions-item>
+          <a-descriptions-item v-if="BUILD_SHA" label="Commit">{{ BUILD_SHA }}</a-descriptions-item>
+          <a-descriptions-item label="API Docs">
+            <a :href="apiDocsUrl" target="_blank" rel="noopener noreferrer">{{ apiDocsUrl }}</a>
+          </a-descriptions-item>
+        </a-descriptions>
+        <a-alert
+          style="margin-top: 12px"
+          type="info"
+          show-icon
+          message="排查问题时请提供 Request ID（RID），可在错误提示或后端响应头 X-Request-ID 中找到。"
+        />
+      </a-modal>
     </a-config-provider>
   </div>
 </template>
@@ -314,7 +508,8 @@ const mainList = computed(() => {
   }
 }
 
-div.header, #app-router-view {
+div.header,
+#app-router-view {
   height: 100%;
   max-width: 100%;
   user-select: none;
@@ -323,6 +518,12 @@ div.header, #app-router-view {
 #app-router-view {
   flex: 1 1 auto;
   overflow-y: auto;
+}
+
+.offline-banner {
+  position: sticky;
+  top: 0;
+  z-index: 20;
 }
 
 .header {
@@ -335,6 +536,7 @@ div.header, #app-router-view {
   height: 100%;
   width: 74px;
   border-right: 1px solid var(--border-color);
+  transition: width 0.18s ease-in-out;
 
   .logo {
     width: 40px;
@@ -344,14 +546,29 @@ div.header, #app-router-view {
     img {
       width: 100%;
       height: 100%;
-      border-radius: 4px;  // 50% for circle
+      border-radius: 4px; // 50% for circle
     }
 
-    .logo-text {
+    .logo-meta {
       display: none;
+      min-width: 0;
+    }
+
+    .logo-sub {
+      display: block;
+      font-size: 11px;
+      color: var(--gray-600);
+      opacity: 0.9;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
     & > a {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
       text-decoration: none;
       font-size: 24px;
       font-weight: bold;
@@ -366,6 +583,7 @@ div.header, #app-router-view {
     align-items: center;
     justify-content: center;
     width: 52px;
+    min-height: 52px;
     padding: 4px;
     padding-top: 10px;
     border: 1px solid transparent;
@@ -373,7 +591,8 @@ div.header, #app-router-view {
     background-color: transparent;
     color: var(--text-color);
     font-size: 20px;
-    transition: background-color 0.2s ease-in-out;
+    transition: background-color 0.2s ease-in-out, border-color 0.2s ease-in-out, color 0.2s ease-in-out,
+      transform 0.12s ease-in-out;
     margin: 0 10px;
     text-decoration: none;
     cursor: pointer;
@@ -410,18 +629,18 @@ div.header, #app-router-view {
       }
     }
 
-	    &.api-docs {
-	      padding: 10px 12px;
-	    }
+    &.api-docs {
+      padding: 10px 12px;
+    }
 
-	    &.mode-indicator {
-	      padding: 10px 0;
-	    }
+    &.mode-indicator {
+      padding: 10px 0;
+    }
 
-	    &.setting {
-	      padding: 16px 12px;
-	      width: 56px;
-	    }
+    &.setting {
+      padding: 16px 12px;
+      width: 56px;
+    }
 
     &.active {
       font-weight: bold;
@@ -448,51 +667,61 @@ div.header, #app-router-view {
 
     &:hover {
       background-color: var(--hover-bg);
+      border-color: var(--border-color);
     }
 
-	    .text {
-	      font-size: 12px;
-	      margin-top: 4px;
-	      text-align: center;
-	    }
+    &:active {
+      transform: translateY(1px);
+    }
 
-	    .mode-pill {
-	      display: inline-flex;
-	      align-items: center;
-	      justify-content: center;
-	      min-width: 44px;
-	      padding: 4px 8px;
-	      border-radius: 999px;
-	      border: 1px solid var(--border-color);
-	      background: var(--surface-color);
-	      color: var(--gray-700);
-	      font-size: 11px;
-	      font-weight: 700;
-	      letter-spacing: 0.4px;
-	      user-select: none;
-	    }
+    &:focus-visible {
+      border-color: color-mix(in srgb, var(--main-500) 32%, var(--border-color));
+      background-color: var(--surface-color);
+    }
 
-	    .mode-pill.mock {
-	      color: var(--main-600);
-	      border-color: color-mix(in srgb, var(--main-500) 35%, var(--border-color));
-	      background: color-mix(in srgb, var(--main-500) 14%, var(--surface-color));
-	    }
+    .text {
+      font-size: 12px;
+      margin-top: 4px;
+      text-align: center;
+    }
 
-	    .mode-pill.online {
-	      color: var(--success-color);
-	      border-color: color-mix(in srgb, var(--success-color) 35%, var(--border-color));
-	      background: color-mix(in srgb, var(--success-color) 12%, var(--surface-color));
-	    }
+    .mode-pill {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 44px;
+      padding: 4px 8px;
+      border-radius: 999px;
+      border: 1px solid var(--border-color);
+      background: var(--surface-color);
+      color: var(--gray-700);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.4px;
+      user-select: none;
+    }
 
-	    .mode-pill.offline {
-	      color: var(--danger-600);
-	      border-color: color-mix(in srgb, var(--danger-600) 35%, var(--border-color));
-	      background: color-mix(in srgb, var(--danger-600) 10%, var(--surface-color));
-	    }
-	  }
+    .mode-pill.mock {
+      color: var(--main-600);
+      border-color: color-mix(in srgb, var(--main-500) 35%, var(--border-color));
+      background: color-mix(in srgb, var(--main-500) 14%, var(--surface-color));
+    }
 
-	  .setting {
-	    width: auto;
+    .mode-pill.online {
+      color: var(--success-color);
+      border-color: color-mix(in srgb, var(--success-color) 35%, var(--border-color));
+      background: color-mix(in srgb, var(--success-color) 12%, var(--surface-color));
+    }
+
+    .mode-pill.offline {
+      color: var(--danger-600);
+      border-color: color-mix(in srgb, var(--danger-600) 35%, var(--border-color));
+      background: color-mix(in srgb, var(--danger-600) 10%, var(--surface-color));
+    }
+  }
+
+  .setting {
+    width: auto;
     font-size: 20px;
     color: var(--text-color);
     margin-bottom: 20px;
@@ -504,6 +733,83 @@ div.header, #app-router-view {
   }
 }
 
+.header.is-expanded {
+  width: 224px;
+  align-items: stretch;
+  padding: 0 8px;
+}
+
+.header.is-expanded .logo {
+  width: auto;
+  height: auto;
+  margin: 14px 4px 12px;
+}
+
+.header.is-expanded .logo img {
+  width: 32px;
+  height: 32px;
+}
+
+.header.is-expanded .logo > a {
+  justify-content: flex-start;
+  padding: 8px 10px;
+  border-radius: var(--radius-md);
+}
+
+.header.is-expanded .logo > a:hover {
+  background: var(--hover-bg);
+}
+
+.header.is-expanded .logo-meta {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.header.is-expanded .logo-text {
+  display: block;
+  font-size: 14px;
+  font-weight: 650;
+  line-height: 1.2;
+}
+
+.header.is-expanded .nav {
+  align-items: stretch;
+}
+
+.header.is-expanded .nav-item {
+  flex-direction: row;
+  justify-content: flex-start;
+  width: 100%;
+  padding: 10px 10px;
+  margin: 0;
+  gap: 10px;
+}
+
+.header.is-expanded .nav-item .text {
+  margin-top: 0;
+  font-size: 14px;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.header.is-expanded .nav-item.active::before {
+  left: 0;
+}
+
+.header.is-expanded .nav-item.api-docs,
+.header.is-expanded .nav-item.mode-indicator,
+.header.is-expanded .nav-item.setting {
+  padding: 10px 10px;
+  width: 100%;
+}
+
+.header.is-collapsed .nav-item.collapse-toggle .text {
+  display: none;
+}
+
 .header .nav {
   display: flex;
   flex-direction: column;
@@ -512,6 +818,20 @@ div.header, #app-router-view {
   position: relative;
   padding: 6px 0;
   gap: 12px;
+}
+
+.header .nav .nav-item-wrap {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+
+.header.is-expanded .nav .nav-item-wrap {
+  justify-content: stretch;
+}
+
+.header.is-collapsed .nav .nav-item .text {
+  display: none;
 }
 
 @media (max-width: 520px) {
@@ -525,7 +845,6 @@ div.header, #app-router-view {
     .debug-panel {
       bottom: 10rem;
     }
-
   }
   .app-layout div.header-mobile {
     display: flex;
@@ -540,15 +859,16 @@ div.header, #app-router-view {
     background-color: var(--bg-sider);
     border-top: 1px solid var(--border-color);
 
-	    .nav-item {
-	      position: relative;
-	      text-decoration: none;
-	      width: auto;
-	      min-width: 52px;
-	      color: var(--gray-700);
+    .nav-item {
+      position: relative;
+      text-decoration: none;
+      width: auto;
+      min-width: 52px;
+      color: var(--gray-700);
       font-size: 12px;
       font-weight: 600;
-      transition: color 0.12s ease-in-out, transform 0.12s ease-in-out, background-color 0.12s ease-in-out;
+      transition: color 0.12s ease-in-out, transform 0.12s ease-in-out,
+        background-color 0.12s ease-in-out;
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -561,49 +881,49 @@ div.header, #app-router-view {
         font-size: 18px;
       }
 
-	      &.active {
-	        color: var(--main-600);
-	        background-color: var(--surface-color);
-	      }
+      &.active {
+        color: var(--main-600);
+        background-color: var(--surface-color);
+      }
 
-	      .mode-badge {
-	        position: absolute;
-	        top: 6px;
-	        right: 6px;
-	        display: inline-flex;
-	        align-items: center;
-	        justify-content: center;
-	        min-width: 34px;
-	        padding: 2px 6px;
-	        border-radius: 999px;
-	        border: 1px solid var(--border-color);
-	        background: var(--surface-color);
-	        font-size: 10px;
-	        font-weight: 800;
-	        letter-spacing: 0.3px;
-	        color: var(--gray-700);
-	        pointer-events: none;
-	      }
+      .mode-badge {
+        position: absolute;
+        top: 6px;
+        right: 6px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 34px;
+        padding: 2px 6px;
+        border-radius: 999px;
+        border: 1px solid var(--border-color);
+        background: var(--surface-color);
+        font-size: 10px;
+        font-weight: 800;
+        letter-spacing: 0.3px;
+        color: var(--gray-700);
+        pointer-events: none;
+      }
 
-	      .mode-badge.mock {
-	        color: var(--main-600);
-	        border-color: color-mix(in srgb, var(--main-500) 35%, var(--border-color));
-	        background: color-mix(in srgb, var(--main-500) 14%, var(--surface-color));
-	      }
+      .mode-badge.mock {
+        color: var(--main-600);
+        border-color: color-mix(in srgb, var(--main-500) 35%, var(--border-color));
+        background: color-mix(in srgb, var(--main-500) 14%, var(--surface-color));
+      }
 
-	      .mode-badge.online {
-	        color: var(--success-color);
-	        border-color: color-mix(in srgb, var(--success-color) 35%, var(--border-color));
-	        background: color-mix(in srgb, var(--success-color) 12%, var(--surface-color));
-	      }
+      .mode-badge.online {
+        color: var(--success-color);
+        border-color: color-mix(in srgb, var(--success-color) 35%, var(--border-color));
+        background: color-mix(in srgb, var(--success-color) 12%, var(--surface-color));
+      }
 
-	      .mode-badge.offline {
-	        color: var(--danger-600);
-	        border-color: color-mix(in srgb, var(--danger-600) 35%, var(--border-color));
-	        background: color-mix(in srgb, var(--danger-600) 10%, var(--surface-color));
-	      }
-	    }
-	  }
+      .mode-badge.offline {
+        color: var(--danger-600);
+        border-color: color-mix(in srgb, var(--danger-600) 35%, var(--border-color));
+        background: color-mix(in srgb, var(--danger-600) 10%, var(--surface-color));
+      }
+    }
+  }
   .app-layout .chat-box::webkit-scrollbar {
     width: 0;
   }
@@ -644,6 +964,11 @@ div.header, #app-router-view {
       margin-right: 8px;
     }
 
+    .logo-meta {
+      display: flex;
+      align-items: center;
+    }
+
     .logo-text {
       display: block;
       font-size: 16px;
@@ -651,6 +976,10 @@ div.header, #app-router-view {
       letter-spacing: 0.5px;
       color: var(--main-600);
       white-space: nowrap;
+    }
+
+    .logo-sub {
+      display: none;
     }
   }
 
@@ -676,7 +1005,8 @@ div.header, #app-router-view {
       font-size: 15px;
     }
 
-    &.github, &.setting {
+    &.github,
+    &.setting {
       padding: 8px 12px;
 
       .icon {

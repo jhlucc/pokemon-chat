@@ -8,8 +8,8 @@
   --input-background-color: #fafafa;
 
   /* 主色调 */
-  --primary-color: #2C86A8;
-  --primary-light-color: #8CC6E1;
+  --primary-color: #2c86a8;
+  --primary-light-color: #8cc6e1;
   --error-color: #ba1a1a;
   --success-color: #52c41a;
   --warning-color: #faad14;
@@ -19,9 +19,9 @@
   --danger-600: #d9363e;
 
   /* 徽章色（文件类型等小标签） */
-  --badge-file-pdf: #005F77;
+  --badge-file-pdf: #005f77;
   --badge-file-txt: #068033;
-  --badge-file-doc: #2C59B7;
+  --badge-file-doc: #2c59b7;
   --badge-file-md: #020817;
 
   /* 通用表面色/交互色（用于自定义组件的暗色适配） */
@@ -55,10 +55,10 @@
 
   /* 兼容旧样式变量（项目内大量使用 --main-* / --main-light-*） */
   --main-color: var(--primary-color);
-  --main-700: #1D5F78;
-  --main-600: #24779A;
+  --main-700: #1d5f78;
+  --main-600: #24779a;
   --main-500: var(--primary-color);
-  --main-400: #4E99B9;
+  --main-400: #4e99b9;
   --main-300: var(--primary-light-color);
   --main-10: rgba(44, 134, 168, 0.12);
   --main-5: rgba(44, 134, 168, 0.06);
@@ -103,7 +103,7 @@
   --border-color: #333;
   --text-color: #eeeeee;
   /* 主色调（不变，除非你想换暗色版主色） */
-  --primary-color: #2C86A8;
+  --primary-color: #2c86a8;
   --primary-light-color: #4e99b9;
   --error-color: #ba1a1a;
   --success-color: #52c41a;
@@ -112,9 +112,9 @@
   --danger-500: #ff7875;
   --danger-600: #ff4d4f;
 
-  --badge-file-pdf: #005F77;
+  --badge-file-pdf: #005f77;
   --badge-file-txt: #068033;
-  --badge-file-doc: #2C59B7;
+  --badge-file-doc: #2c59b7;
   --badge-file-md: #020817;
 
   /* 灰阶色（重新定义深色环境下的灰度层次） */
@@ -155,7 +155,7 @@
 
   /* 暗色下的主色调微调（用于 hover/弱背景） */
   --main-10: rgba(44, 134, 168, 0.18);
-  --main-5: rgba(44, 134, 168, 0.10);
+  --main-5: rgba(44, 134, 168, 0.1);
 
   /* main-light 变量在暗色下映射到更深的灰阶 */
   --main-light-2: var(--gray-300);
@@ -179,7 +179,8 @@ body {
   min-height: 100vh;
   background-color: var(--background-color);
   color: var(--text-color);
-  font-family: -apple-system, BlinkMacSystemFont, 'Noto Sans SC', 'Roboto', 'HarmonyOS Sans SC', 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, 'Noto Sans SC', 'Roboto', 'HarmonyOS Sans SC',
+    'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
   font-size: 15px;
   line-height: 1.6;
   transition: background-color 0.25s ease, color 0.25s ease; /* 主题切换平滑过渡 */
@@ -262,7 +263,9 @@ button:hover {
 }
 
 /* === 布局类容器 === */
-header, footer, aside {
+header,
+footer,
+aside {
   background-color: var(--background-color);
   color: var(--text-color);
   transition: all 0.3s ease;

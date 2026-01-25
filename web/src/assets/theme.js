@@ -3,8 +3,8 @@ export const themeConfig = {
     colorPrimary: '#2C86A8',
     colorInfo: '#191919',
     fontFamily:
-      "'HarmonyOS Sans SC', Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif",
-  },
+      "'HarmonyOS Sans SC', Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif"
+  }
 }
 
 export const THEME_MODE_STORAGE_KEY = 'theme'

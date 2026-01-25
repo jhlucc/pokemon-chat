@@ -1,4 +1,4 @@
-import { MOCK_TOOLS } from './tools';
+import { MOCK_TOOLS } from './tools'
 
 export const MOCK_AGENTS = [
   {
@@ -16,10 +16,10 @@ export const MOCK_AGENTS = [
         style: {
           description: '回答风格（演示项）',
           default: 'balanced',
-          options: ['balanced', 'concise', 'detailed'],
-        },
-      },
-    },
+          options: ['balanced', 'concise', 'detailed']
+        }
+      }
+    }
   },
   {
     name: 'pokemon',
@@ -31,15 +31,14 @@ export const MOCK_AGENTS = [
       model: 'mock/offline',
       tools: MOCK_TOOLS.map((t) => t.name),
       configurable_items: {
-        safe_mode: { description: '安全模式（演示项）', default: true },
-      },
-    },
-  },
-];
+        safe_mode: { description: '安全模式（演示项）', default: true }
+      }
+    }
+  }
+]
 
 export function mockAgentListResponse() {
   return {
-    agents: MOCK_AGENTS.map((a) => ({ ...a })),
-  };
+    agents: MOCK_AGENTS.map((a) => ({ ...a }))
+  }
 }
-

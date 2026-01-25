@@ -4,23 +4,35 @@
       v-if="!canUseKb"
       type="warning"
       show-icon
-      :message="configStore.config.backend?.online ? '后端未启用知识库功能（enable_knowledge_base=false）' : '后端未启动/不可用（离线模式）'"
-      style="margin: 16px 24px;"
+      :message="
+        configStore.config.backend?.online
+          ? '后端未启用知识库功能（enable_knowledge_base=false）'
+          : '后端未启动/不可用（离线模式）'
+      "
+      style="margin: 16px 24px"
     />
     <HeaderComponent
       title="文档知识库"
       description="知识型数据库，主要是非结构化的文本组成，使用向量检索使用。如果出现问题，可以检查 saves/data/database.json 查看配置。"
+      :breadcrumbs="[{ label: '首页', to: '/' }, { label: '知识库' }]"
     >
       <template #actions>
-        <a-button type="primary" @click="newDatabase.open=true">新建知识库</a-button>
+        <a-button type="primary" @click="newDatabase.open = true">新建知识库</a-button>
       </template>
     </HeaderComponent>
 
-    <a-modal :open="newDatabase.open" title="新建知识库" @ok="createDatabase" @cancel="newDatabase.open=false">
+    <a-modal
+      :open="newDatabase.open"
+      title="新建知识库"
+      @ok="createDatabase"
+      @cancel="newDatabase.open = false"
+    >
       <h3>知识库名称<span style="color: var(--error-color)">*</span></h3>
       <a-input v-model:value="newDatabase.name" placeholder="新建知识库名称" />
-      <h3 style="margin-top: 20px;">知识库描述</h3>
-      <p style="color: var(--gray-700); font-size: 14px;">在智能体流程中，这里的描述会作为工具的描述。智能体会根据知识库的标题和描述来选择合适的工具。所以这里描述的越详细，智能体越容易选择到合适的工具。</p>
+      <h3 style="margin-top: 20px">知识库描述</h3>
+      <p style="color: var(--gray-700); font-size: 14px">
+        在智能体流程中，这里的描述会作为工具的描述。智能体会根据知识库的标题和描述来选择合适的工具。所以这里描述的越详细，智能体越容易选择到合适的工具。
+      </p>
       <a-textarea
         v-model:value="newDatabase.description"
         placeholder="新建知识库描述"
@@ -30,15 +42,14 @@
       <p>必须与向量模型 {{ configStore.config.embed_model }} 一致</p>
       <a-input v-model:value="newDatabase.dimension" placeholder="向量维度 (e.g. 768, 1024)" /> -->
       <template #footer>
-        <a-button key="back" @click="newDatabase.open=false">取消</a-button>
-        <a-button key="submit" type="primary" :loading="newDatabase.loading" @click="createDatabase">创建</a-button>
+        <a-button key="back" @click="newDatabase.open = false">取消</a-button>
+        <a-button key="submit" type="primary" :loading="newDatabase.loading" @click="createDatabase"
+          >创建</a-button
+        >
       </template>
     </a-modal>
     <div class="databases">
-      <div
-        class="new-database dbcard ui-card"
-        @click="newDatabase.open=true"
-      >
+      <div class="new-database dbcard ui-card" @click="newDatabase.open = true">
         <div class="top">
           <div class="icon"><PlusOutlined /></div>
           <div class="info">
@@ -54,19 +65,20 @@
         </div>
       </template>
       <template v-else>
-        <div v-if="databases.length === 0" class="db-empty ui-muted">
-          暂无知识库
-        </div>
+        <div v-if="databases.length === 0" class="db-empty ui-muted">暂无知识库</div>
         <div
           v-for="database in databases"
           :key="database.db_id"
           class="database dbcard ui-card"
-          @click="navigateToDatabase(database.db_id)">
+          @click="navigateToDatabase(database.db_id)"
+        >
           <div class="top">
             <div class="icon"><ReadFilled /></div>
             <div class="info">
               <h3>{{ database.name }}</h3>
-              <p><span>{{ database.files ? Object.keys(database.files).length : 0 }} 文件</span></p>
+              <p>
+                <span>{{ database.files ? Object.keys(database.files).length : 0 }} 文件</span>
+              </p>
             </div>
           </div>
           <p class="description">{{ database.description || '暂无描述' }}</p>
@@ -100,11 +112,11 @@
 
 <script setup>
 import { ref, onMounted, reactive, watch, computed } from 'vue'
-import { useRouter, useRoute } from 'vue-router';
+import { useRouter, useRoute } from 'vue-router'
 import { message } from 'ant-design-vue'
 import { ReadFilled, PlusOutlined } from '@ant-design/icons-vue'
-import { useConfigStore } from '@/stores/config';
-import HeaderComponent from '@/components/HeaderComponent.vue';
+import { useConfigStore } from '@/stores/config'
+import HeaderComponent from '@/components/HeaderComponent.vue'
 import { apiFetch } from '@/api/http'
 
 const route = useRoute()
@@ -112,22 +124,25 @@ const router = useRouter()
 const databases = ref([])
 
 const configStore = useConfigStore()
-const canUseKb = computed(() => Boolean(configStore.config.backend?.online) && Boolean(configStore.config.enable_knowledge_base))
+const canUseKb = computed(
+  () =>
+    Boolean(configStore.config.backend?.online) && Boolean(configStore.config.enable_knowledge_base)
+)
 
 const state = reactive({
-  loading: false,
+  loading: false
 })
 
 const newDatabase = reactive({
   name: '',
   description: '',
   dimension: '',
-  loading: false,
+  loading: false
 })
 
 const loadDatabases = () => {
   state.loading = true
-  apiFetch('/data/', { method: "GET" })
+  apiFetch('/data/', { method: 'GET' })
     .then((data) => {
       databases.value = data?.databases || []
     })
@@ -148,39 +163,40 @@ const createDatabase = () => {
     return
   }
   apiFetch('/data/', {
-    method: "POST",
+    method: 'POST',
     body: {
       database_name: newDatabase.name,
       description: newDatabase.description,
-      dimension: newDatabase.dimension ? parseInt(newDatabase.dimension) : null,
+      dimension: newDatabase.dimension ? parseInt(newDatabase.dimension) : null
     }
   })
-  .then(() => {
-    loadDatabases()
-    newDatabase.open = false
-    newDatabase.name = ''
-    newDatabase.description = '',
-    newDatabase.dimension = ''
-  })
-  .finally(() => {
-    newDatabase.loading = false
-  })
+    .then(() => {
+      loadDatabases()
+      newDatabase.open = false
+      newDatabase.name = ''
+      ;(newDatabase.description = ''), (newDatabase.dimension = '')
+    })
+    .finally(() => {
+      newDatabase.loading = false
+    })
 }
 
 const navigateToDatabase = (databaseId) => {
-  router.push({ path: `/database/${databaseId}` });
-};
+  router.push({ path: `/database/${databaseId}` })
+}
 
-watch(() => route.path, (newPath, _oldPath) => {
-  if (newPath === '/database') {
-    loadDatabases();
+watch(
+  () => route.path,
+  (newPath, _oldPath) => {
+    if (newPath === '/database') {
+      loadDatabases()
+    }
   }
-});
+)
 
 onMounted(() => {
   loadDatabases()
 })
-
 </script>
 
 <style lang="less" scoped>
@@ -188,7 +204,8 @@ onMounted(() => {
   padding: 0; // Let HeaderComponent span full width (consistent with Tools/Graph pages)
 }
 
-.database-actions, .document-actions {
+.database-actions,
+.document-actions {
   margin-bottom: 20px;
 }
 .databases {
@@ -202,7 +219,8 @@ onMounted(() => {
   }
 }
 
-.dbcard, .database {
+.dbcard,
+.database {
   width: 100%;
   padding: 10px;
   border-radius: 12px;
@@ -231,7 +249,8 @@ onMounted(() => {
     }
 
     .info {
-      h3, p {
+      h3,
+      p {
         margin: 0;
         color: var(--text-color);
       }

@@ -1,6 +1,10 @@
 <template>
   <div class="graph-page layout-container">
-    <HeaderComponent title="知识图谱" :description="graphDescription">
+    <HeaderComponent
+      title="知识图谱"
+      :description="graphDescription"
+      :breadcrumbs="[{ label: '首页', to: '/' }, { label: '知识图谱' }]"
+    >
       <template #actions>
         <div class="status-line">
           <a-tag :color="backendStatus.color">
@@ -18,56 +22,74 @@
       type="info"
       show-icon
       message="当前为 Mock 演示图谱：数据来自本地 Demo / Mock API。"
-      style="margin: 0 24px 16px;"
+      style="margin: 0 24px 16px"
     />
     <a-alert
       v-else-if="!canUseGraph"
       type="warning"
       show-icon
-      :message="backendOnline ? '后端未启用知识图谱（enable_knowledge_graph=false）' : '后端未启动/不可用：已切换为离线 Demo 图谱'"
-      style="margin: 0 24px 16px;"
+      :message="
+        backendOnline
+          ? '后端未启用知识图谱（enable_knowledge_graph=false）'
+          : '后端未启动/不可用：已切换为离线 Demo 图谱'
+      "
+      style="margin: 0 24px 16px"
     />
 
     <div class="toolbar">
-      <div class="left">
-        <a-input
-          v-model:value="state.searchInput"
-          placeholder="输入要查询的实体（如：皮卡丘）"
-          style="width: 260px"
-          @pressEnter="onSearch"
-        />
-        <a-button
-          type="primary"
-          :loading="state.searchLoading"
-          :disabled="!canUseGraph || state.searchLoading"
-          @click="onSearch"
-        >
-          检索关系
-        </a-button>
+      <a-space wrap :size="12">
+        <a-space-compact>
+          <a-input
+            v-model:value="state.searchInput"
+            placeholder="输入实体（如：皮卡丘）"
+            style="width: 260px"
+            @pressEnter="onSearch"
+          />
+          <a-button
+            type="primary"
+            :loading="state.searchLoading"
+            :disabled="!canUseGraph || state.searchLoading"
+            @click="onSearch"
+          >
+            检索
+          </a-button>
+        </a-space-compact>
         <a-button @click="loadDemoGraph">加载 Demo</a-button>
-      </div>
-      <div class="right">
-        <a-input-number v-model:value="sampleNodeCount" :min="20" :max="500" />
-        <a-button :loading="state.fetching" :disabled="!canUseGraph || state.fetching" @click="loadSampleNodes">
-          采样节点
-        </a-button>
-        <a-select v-model:value="state.layout" style="width: 140px" @change="renderGraph">
-          <a-select-option value="force">力导向</a-select-option>
-          <a-select-option value="radial">径向</a-select-option>
-        </a-select>
-      </div>
+      </a-space>
+
+      <a-space wrap :size="12">
+        <a-space-compact>
+          <a-input-number v-model:value="sampleNodeCount" :min="20" :max="500" />
+          <a-button
+            :loading="state.fetching"
+            :disabled="!canUseGraph || state.fetching"
+            @click="loadSampleNodes"
+          >
+            采样
+          </a-button>
+        </a-space-compact>
+        <a-segmented v-model:value="state.layout" :options="layoutOptions" @change="renderGraph" />
+      </a-space>
     </div>
 
     <div class="canvas-wrap">
-      <div class="main" ref="container" v-show="graphData.nodes.length > 0"></div>
-      <a-empty v-show="graphData.nodes.length === 0" style="padding: 4rem 0;" />
+      <a-spin :spinning="state.vizLoading" tip="加载图谱渲染器...">
+        <div class="main" ref="container" v-show="graphData.nodes.length > 0"></div>
+        <a-empty v-show="graphData.nodes.length === 0" style="padding: 4rem 0" />
+      </a-spin>
     </div>
 
     <a-drawer v-model:open="state.detailOpen" placement="right" width="380" title="节点详情">
       <div v-if="selectedNode">
-        <div class="kv"><span class="k">名称</span><span class="v">{{ selectedNode.name }}</span></div>
-        <div class="kv"><span class="k">ID</span><span class="v">{{ selectedNode.id }}</span></div>
-        <div class="kv"><span class="k">度</span><span class="v">{{ selectedNodeDegree }}</span></div>
+        <div class="kv">
+          <span class="k">名称</span><span class="v">{{ selectedNode.name }}</span>
+        </div>
+        <div class="kv">
+          <span class="k">ID</span><span class="v">{{ selectedNode.id }}</span>
+        </div>
+        <div class="kv">
+          <span class="k">度</span><span class="v">{{ selectedNodeDegree }}</span>
+        </div>
         <a-divider />
         <div class="section-title">邻居</div>
         <div v-if="neighborNodes.length === 0" class="muted">暂无邻居</div>
@@ -86,285 +108,311 @@
 </template>
 
 <script setup>
- import { Graph } from '@antv/g6';
- import { computed, reactive, ref, onMounted, onUnmounted, watch } from 'vue';
- import { message } from 'ant-design-vue';
- import { useConfigStore } from '@/stores/config';
- import HeaderComponent from '@/components/HeaderComponent.vue';
- import { apiFetch } from '@/api/http';
- import demoGraph from '@/assets/mock/graph.sample.json';
+import { computed, reactive, ref, onMounted, onUnmounted, watch } from 'vue'
+import { message } from 'ant-design-vue'
+import { useConfigStore } from '@/stores/config'
+import HeaderComponent from '@/components/HeaderComponent.vue'
+import { apiFetch } from '@/api/http'
+import { notifyApiError } from '@/utils/notify'
+import demoGraph from '@/assets/mock/graph.sample.json'
 
-const configStore = useConfigStore();
+const configStore = useConfigStore()
 
- const container = ref(null);
-const sampleNodeCount = ref(100);
-const graphData = reactive({ nodes: [], edges: [] });
+const container = ref(null)
+const sampleNodeCount = ref(100)
+const graphData = reactive({ nodes: [], edges: [] })
 
- let graphInstance;
- let layoutKey = null;
- let resizeObserver = null;
+let graphInstance
+let GraphCtor = null
+let layoutKey = null
+let resizeObserver = null
 
 const state = reactive({
   fetching: false,
   loadingGraphInfo: false,
+  vizLoading: false,
   searchInput: '',
   searchLoading: false,
   detailOpen: false,
   selectedNodeId: null,
-  layout: 'force',
-});
+  layout: 'force'
+})
+
+const layoutOptions = [
+  { label: '力导向', value: 'force' },
+  { label: '径向', value: 'radial' }
+]
+
+const ensureG6 = async () => {
+  if (GraphCtor) return GraphCtor
+  state.vizLoading = true
+  try {
+    const mod = await import('@antv/g6')
+    GraphCtor = mod.Graph
+    return GraphCtor
+  } catch (e) {
+    notifyApiError(e, { context: '加载图谱渲染器', fallback: '加载失败' })
+    return null
+  } finally {
+    state.vizLoading = false
+  }
+}
 
 const cssVar = (name, fallback) => {
   try {
-    const v = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
-    return v || fallback;
+    const v = getComputedStyle(document.documentElement).getPropertyValue(name).trim()
+    return v || fallback
   } catch {
-    return fallback;
+    return fallback
   }
-};
+}
 
-const backendOnline = computed(() => Boolean(configStore.config.backend?.online));
-const backendMock = computed(() => Boolean(configStore.config.backend?.mock));
-const canUseGraph = computed(() => (backendOnline.value && Boolean(configStore.config.enable_knowledge_graph)) || backendMock.value);
+const backendOnline = computed(() => Boolean(configStore.config.backend?.online))
+const backendMock = computed(() => Boolean(configStore.config.backend?.mock))
+const canUseGraph = computed(
+  () =>
+    (backendOnline.value && Boolean(configStore.config.enable_knowledge_graph)) || backendMock.value
+)
 
 const backendStatus = computed(() => {
-  if (backendMock.value) return { color: 'blue', label: 'Mock' };
-  if (backendOnline.value) return { color: 'green', label: 'Backend Online' };
-  return { color: 'red', label: 'Offline' };
-});
+  if (backendMock.value) return { color: 'blue', label: 'Mock' }
+  if (backendOnline.value) return { color: 'green', label: 'Backend Online' }
+  return { color: 'red', label: 'Offline' }
+})
 
 const kgStatus = computed(() => {
-  if (backendMock.value) return { color: 'blue', label: 'Demo' };
-  if (backendOnline.value && Boolean(configStore.config.enable_knowledge_graph)) return { color: 'green', label: 'KG Enabled' };
-  if (backendOnline.value) return { color: 'orange', label: 'KG Disabled' };
-  return { color: 'orange', label: 'KG Offline' };
-});
+  if (backendMock.value) return { color: 'blue', label: 'Demo' }
+  if (backendOnline.value && Boolean(configStore.config.enable_knowledge_graph))
+    return { color: 'green', label: 'KG Enabled' }
+  if (backendOnline.value) return { color: 'orange', label: 'KG Disabled' }
+  return { color: 'orange', label: 'KG Offline' }
+})
 
-const graphInfo = ref({});
+const graphInfo = ref({})
 
 const selectedNode = computed(() => {
-  if (!state.selectedNodeId) return null;
-  return graphData.nodes.find((n) => n.id === state.selectedNodeId) || null;
-});
+  if (!state.selectedNodeId) return null
+  return graphData.nodes.find((n) => n.id === state.selectedNodeId) || null
+})
 
 const selectedNodeDegree = computed(() => {
-  if (!state.selectedNodeId) return 0;
-  let d = 0;
+  if (!state.selectedNodeId) return 0
+  let d = 0
   graphData.edges.forEach((e) => {
-    if (e.source_id === state.selectedNodeId || e.target_id === state.selectedNodeId) d += 1;
-  });
-  return d;
-});
+    if (e.source_id === state.selectedNodeId || e.target_id === state.selectedNodeId) d += 1
+  })
+  return d
+})
 
 const neighborNodes = computed(() => {
-  if (!state.selectedNodeId) return [];
-  const neighborIds = new Set();
+  if (!state.selectedNodeId) return []
+  const neighborIds = new Set()
   graphData.edges.forEach((e) => {
-    if (e.source_id === state.selectedNodeId) neighborIds.add(e.target_id);
-    if (e.target_id === state.selectedNodeId) neighborIds.add(e.source_id);
-  });
-  return graphData.nodes.filter((n) => neighborIds.has(n.id));
-});
+    if (e.source_id === state.selectedNodeId) neighborIds.add(e.target_id)
+    if (e.target_id === state.selectedNodeId) neighborIds.add(e.source_id)
+  })
+  return graphData.nodes.filter((n) => neighborIds.has(n.id))
+})
 
 const loadGraphInfo = async () => {
-  state.loadingGraphInfo = true;
+  state.loadingGraphInfo = true
   try {
     if (!canUseGraph.value) {
       graphInfo.value = {
         status: backendOnline.value ? 'closed' : 'offline',
         graph_name: backendOnline.value ? 'neo4j' : 'demo',
         entity_count: graphData.nodes.length,
-        relationship_count: graphData.edges.length,
-      };
-      return;
+        relationship_count: graphData.edges.length
+      }
+      return
     }
 
-    graphInfo.value = await apiFetch('/data/graph', { method: 'GET' });
+    graphInfo.value = await apiFetch('/data/graph', { method: 'GET' })
   } catch {
-    graphInfo.value = { status: 'closed' };
+    graphInfo.value = { status: 'closed' }
   } finally {
-    state.loadingGraphInfo = false;
+    state.loadingGraphInfo = false
   }
-};
+}
 
- const loadDemoGraph = () => {
-    graphData.nodes = demoGraph.nodes;
-    graphData.edges = demoGraph.edges;
-  state.selectedNodeId = null;
-  state.detailOpen = false;
-    loadGraphInfo();
-    setTimeout(() => renderGraph(), 0);
-  };
+const loadDemoGraph = () => {
+  graphData.nodes = demoGraph.nodes
+  graphData.edges = demoGraph.edges
+  state.selectedNodeId = null
+  state.detailOpen = false
+  loadGraphInfo()
+  setTimeout(() => void renderGraph(), 0)
+}
 
 const loadSampleNodes = async () => {
-  if (!canUseGraph.value) return loadDemoGraph();
-  state.fetching = true;
+  if (!canUseGraph.value) return loadDemoGraph()
+  state.fetching = true
   try {
     const data = await apiFetch('/data/graph/nodes', {
       method: 'GET',
-      query: { kgdb_name: 'neo4j', num: sampleNodeCount.value },
-    });
-    graphData.nodes = data?.result?.nodes || [];
-    graphData.edges = data?.result?.edges || [];
-    state.selectedNodeId = null;
-    state.detailOpen = false;
-    await loadGraphInfo();
-    setTimeout(() => renderGraph(), 0);
+      query: { kgdb_name: 'neo4j', num: sampleNodeCount.value }
+    })
+    graphData.nodes = data?.result?.nodes || []
+    graphData.edges = data?.result?.edges || []
+    state.selectedNodeId = null
+    state.detailOpen = false
+    await loadGraphInfo()
+    setTimeout(() => void renderGraph(), 0)
   } catch (e) {
-    message.error(e?.message || '获取节点失败');
+    notifyApiError(e, { context: '获取节点', fallback: '获取节点失败' })
   } finally {
-    state.fetching = false;
+    state.fetching = false
   }
-};
+}
 
 const onSearch = async () => {
-  if (!state.searchInput) return message.error('请输入要查询的实体');
-  if (!canUseGraph.value) return loadDemoGraph();
+  if (!state.searchInput) return message.error('请输入要查询的实体')
+  if (!canUseGraph.value) return loadDemoGraph()
 
-  state.searchLoading = true;
+  state.searchLoading = true
   try {
     const data = await apiFetch('/data/graph/node', {
       method: 'GET',
-      query: { entity_name: state.searchInput },
-    });
-    graphData.nodes = data?.result?.nodes || [];
-    graphData.edges = data?.result?.edges || [];
-    if (graphData.nodes.length === 0) message.info('未找到相关实体');
-    state.selectedNodeId = null;
-    state.detailOpen = false;
-    await loadGraphInfo();
-    setTimeout(() => renderGraph(), 0);
+      query: { entity_name: state.searchInput }
+    })
+    graphData.nodes = data?.result?.nodes || []
+    graphData.edges = data?.result?.edges || []
+    if (graphData.nodes.length === 0) message.info('未找到相关实体')
+    state.selectedNodeId = null
+    state.detailOpen = false
+    await loadGraphInfo()
+    setTimeout(() => void renderGraph(), 0)
   } catch (e) {
-    message.error(e?.message || '检索失败');
+    notifyApiError(e, { context: '检索关系', fallback: '检索失败' })
   } finally {
-    state.searchLoading = false;
+    state.searchLoading = false
   }
-};
+}
 
 const getG6Data = () => {
-  const degree = {};
-  graphData.nodes.forEach((n) => (degree[n.id] = 0));
+  const degree = {}
+  graphData.nodes.forEach((n) => (degree[n.id] = 0))
   graphData.edges.forEach((e) => {
-    degree[e.source_id] = (degree[e.source_id] || 0) + 1;
-    degree[e.target_id] = (degree[e.target_id] || 0) + 1;
-  });
+    degree[e.source_id] = (degree[e.source_id] || 0) + 1
+    degree[e.target_id] = (degree[e.target_id] || 0) + 1
+  })
 
   return {
     nodes: graphData.nodes.map((n) => ({
       id: n.id,
-      data: { label: n.name, degree: degree[n.id] || 0 },
+      data: { label: n.name, degree: degree[n.id] || 0 }
     })),
     edges: graphData.edges.map((e) => ({
       id: `${e.source_id}-${e.type}-${e.target_id}`,
       source: e.source_id,
       target: e.target_id,
-      data: { label: e.type },
-    })),
-  };
-};
+      data: { label: e.type }
+    }))
+  }
+}
 
- const ensureGraph = () => {
-   if (!container.value) return;
+const ensureGraph = async () => {
+  if (!container.value) return
+  const Graph = await ensureG6()
+  if (!Graph) return
 
-   const key = state.layout;
-   const primary = cssVar('--primary-color', '#1677ff');
-   const surface = cssVar('--surface-color', '#ffffff');
-   const text = cssVar('--text-color', '#000000');
-   const edgeStroke = cssVar('--gray-500', '#999');
+  const key = state.layout
+  const primary = cssVar('--primary-color', '#1677ff')
+  const surface = cssVar('--surface-color', '#ffffff')
+  const text = cssVar('--text-color', '#000000')
+  const edgeStroke = cssVar('--gray-500', '#999')
 
-   const layout =
-     key === 'radial'
-       ? { type: 'radial', unitRadius: 120, preventOverlap: true }
-       : { type: 'd3-force', preventOverlap: true, collide: { radius: 40, strength: 0.6 } };
+  const layout =
+    key === 'radial'
+      ? { type: 'radial', unitRadius: 120, preventOverlap: true }
+      : { type: 'd3-force', preventOverlap: true, collide: { radius: 40, strength: 0.6 } }
 
-   // Only recreate when switching layout types (layout isn't always hot-swappable).
-   if (!graphInstance || layoutKey !== key) {
-     if (graphInstance) {
-       try {
-         graphInstance.destroy();
-       } catch {
-         // ignore
-       }
-       graphInstance = null;
-     }
+  // Only recreate when switching layout types (layout isn't always hot-swappable).
+  if (!graphInstance || layoutKey !== key) {
+    if (graphInstance) {
+      try {
+        graphInstance.destroy()
+      } catch {
+        // ignore
+      }
+      graphInstance = null
+    }
 
-     graphInstance = new Graph({
-       container: container.value,
-       width: container.value.offsetWidth,
-       height: container.value.offsetHeight,
-       autoFit: true,
-       layout,
-       node: {
-         type: 'circle',
-         style: {
-           labelText: (d) => d.data.label,
-           size: (d) => Math.min(18 + (d.data.degree || 0) * 5, 52),
-           labelFill: text,
-           fill: (d) => (d.id === state.selectedNodeId ? primary : surface),
-           stroke: primary,
-           lineWidth: 2,
-         },
-       },
-       edge: {
-         type: 'line',
-         style: {
-           labelText: (d) => d.data.label,
-           labelFill: text,
-           labelBackground: surface,
-           endArrow: true,
-           stroke: edgeStroke,
-         },
-       },
-       behaviors: ['drag-element', 'zoom-canvas', 'drag-canvas'],
-     });
+    graphInstance = new Graph({
+      container: container.value,
+      width: container.value.offsetWidth,
+      height: container.value.offsetHeight,
+      autoFit: true,
+      layout,
+      node: {
+        type: 'circle',
+        style: {
+          labelText: (d) => d.data.label,
+          size: (d) => Math.min(18 + (d.data.degree || 0) * 5, 52),
+          labelFill: text,
+          fill: (d) => (d.id === state.selectedNodeId ? primary : surface),
+          stroke: primary,
+          lineWidth: 2
+        }
+      },
+      edge: {
+        type: 'line',
+        style: {
+          labelText: (d) => d.data.label,
+          labelFill: text,
+          labelBackground: surface,
+          endArrow: true,
+          stroke: edgeStroke
+        }
+      },
+      behaviors: ['drag-element', 'zoom-canvas', 'drag-canvas']
+    })
 
-     graphInstance.on('node:click', (evt) => {
-       const id =
-         evt?.item?.getID?.() ||
-         evt?.item?.id ||
-         evt?.data?.id ||
-         evt?.target?.id ||
-         null;
-       if (!id) return;
-       state.selectedNodeId = id;
-       state.detailOpen = true;
-       // Re-render to update selected styling.
-       setTimeout(() => renderGraph(), 0);
-     });
+    graphInstance.on('node:click', (evt) => {
+      const id = evt?.item?.getID?.() || evt?.item?.id || evt?.data?.id || evt?.target?.id || null
+      if (!id) return
+      state.selectedNodeId = id
+      state.detailOpen = true
+      // Re-render to update selected styling.
+      setTimeout(() => void renderGraph(), 0)
+    })
 
-     layoutKey = key;
-   } else {
-     // Best-effort resize when the container size changes.
-     try {
-       graphInstance.resize?.(container.value.offsetWidth, container.value.offsetHeight);
-     } catch {
-       // ignore
-     }
-   }
- };
+    layoutKey = key
+  } else {
+    // Best-effort resize when the container size changes.
+    try {
+      graphInstance.resize?.(container.value.offsetWidth, container.value.offsetHeight)
+    } catch {
+      // ignore
+    }
+  }
+}
 
- const renderGraph = () => {
-   if (!container.value || graphData.nodes.length === 0) return;
-   ensureGraph();
-   graphInstance.setData(getG6Data());
-   graphInstance.render();
- };
+const renderGraph = async () => {
+  if (!container.value || graphData.nodes.length === 0) return
+  await ensureGraph()
+  if (!graphInstance) return
+  graphInstance.setData(getG6Data())
+  graphInstance.render()
+}
 
- const focusNode = (id) => {
-   state.selectedNodeId = id;
-   state.detailOpen = true;
-   setTimeout(() => renderGraph(), 0);
- };
+const focusNode = (id) => {
+  state.selectedNodeId = id
+  state.detailOpen = true
+  setTimeout(() => void renderGraph(), 0)
+}
 
 const graphDescription = computed(() => {
-  const { graph_name, entity_count, relationship_count } = graphInfo.value || {};
-  return `${graph_name || ''} - 共 ${entity_count || graphData.nodes.length || 0} 实体，${relationship_count || graphData.edges.length || 0} 个关系。`;
-});
+  const { graph_name, entity_count, relationship_count } = graphInfo.value || {}
+  return `${graph_name || ''} - 共 ${entity_count || graphData.nodes.length || 0} 实体，${
+    relationship_count || graphData.edges.length || 0
+  } 个关系。`
+})
 
 onMounted(() => {
   // In offline/mock mode, show a demo graph by default so the page is not empty.
   if (configStore.config?.backend?.mock || !backendOnline.value) {
-    loadDemoGraph();
+    loadDemoGraph()
   }
 
   // Resize graph when the container resizes (e.g. drawer open/close, window resize).
@@ -372,46 +420,46 @@ onMounted(() => {
     () => container.value,
     (el) => {
       try {
-        resizeObserver?.disconnect?.();
+        resizeObserver?.disconnect?.()
       } catch {
         // ignore
       }
-      resizeObserver = null;
-      if (!el || typeof ResizeObserver === 'undefined') return;
+      resizeObserver = null
+      if (!el || typeof ResizeObserver === 'undefined') return
 
       resizeObserver = new ResizeObserver(() => {
-        if (!graphInstance || !container.value) return;
+        if (!graphInstance || !container.value) return
         try {
-          graphInstance.resize?.(container.value.offsetWidth, container.value.offsetHeight);
-          graphInstance.render?.();
+          graphInstance.resize?.(container.value.offsetWidth, container.value.offsetHeight)
+          graphInstance.render?.()
         } catch {
           // ignore
         }
-      });
-      resizeObserver.observe(el);
+      })
+      resizeObserver.observe(el)
     },
     { immediate: true }
-  );
-});
+  )
+})
 
 onUnmounted(() => {
   try {
-    resizeObserver?.disconnect?.();
+    resizeObserver?.disconnect?.()
   } catch {
     // ignore
   }
-  resizeObserver = null;
+  resizeObserver = null
 
   if (graphInstance) {
     try {
-      graphInstance.destroy();
+      graphInstance.destroy()
     } catch {
       // ignore
     }
-    graphInstance = null;
+    graphInstance = null
   }
-  layoutKey = null;
-});
+  layoutKey = null
+})
 </script>
 
 <style lang="less" scoped>
@@ -428,16 +476,11 @@ onUnmounted(() => {
 .toolbar {
   display: flex;
   justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
   margin: 16px 0;
   padding: 0 24px;
   gap: 12px;
-
-  .left,
-  .right {
-    display: flex;
-    gap: 10px;
-    align-items: center;
-  }
 }
 
 .canvas-wrap {

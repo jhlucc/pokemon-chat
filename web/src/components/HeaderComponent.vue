@@ -1,10 +1,28 @@
 <template>
-  <div class="header-container">
+  <div class="header-container" :class="{ compact: compact, sticky: sticky }">
     <div class="header-content">
       <div class="header-title">
-        <h1>{{ title }}</h1>
+        <div
+          v-if="$slots.breadcrumbs || (breadcrumbs && breadcrumbs.length > 0)"
+          class="header-breadcrumb"
+        >
+          <slot name="breadcrumbs">
+            <a-breadcrumb>
+              <a-breadcrumb-item v-for="(bc, idx) in breadcrumbs" :key="idx">
+                <router-link v-if="bc?.to" :to="bc.to">{{ bc.label }}</router-link>
+                <span v-else>{{ bc.label }}</span>
+              </a-breadcrumb-item>
+            </a-breadcrumb>
+          </slot>
+        </div>
+
+        <div class="header-title-row">
+          <h1>{{ title }}</h1>
+          <slot name="extra"></slot>
+        </div>
+
         <slot name="description">
-          <p v-if="description">{{ description }}</p>
+          <p v-if="description" class="header-description">{{ description }}</p>
         </slot>
       </div>
       <div class="header-actions" v-if="$slots.actions">
@@ -23,8 +41,20 @@ defineProps({
   description: {
     type: String,
     default: ''
+  },
+  breadcrumbs: {
+    type: Array,
+    default: () => []
+  },
+  compact: {
+    type: Boolean,
+    default: false
+  },
+  sticky: {
+    type: Boolean,
+    default: true
   }
-});
+})
 </script>
 
 <style scoped lang="less">
@@ -33,20 +63,29 @@ defineProps({
   backdrop-filter: blur(10px);
   padding: 16px 24px;
   border-bottom: 1px solid var(--header-border);
-  position: sticky;
-  top: 0;
-  z-index: 1000;
+
+  &.sticky {
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+  }
+
+  &.compact {
+    padding: 10px 16px;
+  }
 }
 
 .header-content {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
+  gap: 12px;
 }
 
 .header-title {
   font-size: 14px;
   color: var(--header-desc);
+  min-width: 0;
 
   h1 {
     margin: 0;
@@ -55,7 +94,26 @@ defineProps({
     color: var(--header-title);
   }
 
-  p {
+  .header-breadcrumb :deep(.ant-breadcrumb) {
+    font-size: 12px;
+    color: var(--header-desc);
+  }
+
+  .header-title-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+  }
+
+  .header-title-row h1 {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .header-description {
     margin: 8px 0 0;
   }
 }
@@ -63,6 +121,7 @@ defineProps({
 .header-actions {
   display: flex;
   gap: 8px;
+  flex: 0 0 auto;
 }
 </style>
 

@@ -77,9 +77,16 @@ class PokemonKGChatAgent(BaseAgent):
         if type_ == "memory":
             return MemorySaver()
         elif type_ == "sqlite":
-            from langgraph.checkpoint.sqlite import SqliteSaver
+            try:
+                # Optional dependency: provided by `langgraph-checkpoint-sqlite`.
+                from langgraph.checkpoint.sqlite import SqliteSaver  # type: ignore
+            except ModuleNotFoundError:
+                logger.warning("SqliteSaver unavailable; falling back to MemorySaver. Install langgraph-checkpoint-sqlite.")
+                return MemorySaver()
+
             import sqlite3
-            conn = sqlite3.connect(":memory:", check_same_thread=False) 
+
+            conn = sqlite3.connect(":memory:", check_same_thread=False)
             return SqliteSaver(conn)
         else:
             raise ValueError(f"Unknown checkpointer type: {type_}")

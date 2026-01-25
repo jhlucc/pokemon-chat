@@ -1,8 +1,8 @@
 <template>
-  <div class="chat"  ref="chatContainer">
-<!--     顶部左侧是打开侧边栏、新建会话、切换模型，右侧是打开选项设置面板。>-->
+  <div class="chat" ref="chatContainer">
+    <!--     顶部左侧是打开侧边栏、新建会话、切换模型，右侧是打开选项设置面板。>-->
     <div class="chat-header">
-<!--      聊天界面顶部导航栏（新建对话、切换模型、选项面板）-->
+      <!--      聊天界面顶部导航栏（新建对话、切换模型、选项面板）-->
       <div class="header__left">
         <div
           v-if="!state.isSidebarOpen"
@@ -14,10 +14,14 @@
           @keydown.enter.prevent="state.isSidebarOpen = true"
           @keydown.space.prevent="state.isSidebarOpen = true"
         >
-          <img src="@/assets/icons/sidebar_left.svg" class="iconfont icon-20 sidebar-icon" alt="侧栏" />
+          <img
+            src="@/assets/icons/sidebar_left.svg"
+            class="iconfont icon-20 sidebar-icon"
+            alt="侧栏"
+          />
         </div>
 
-         <div
+        <div
           class="action-button"
           @click="$emit('newconv')"
           role="button"
@@ -26,53 +30,60 @@
           @keydown.enter.prevent="$emit('newconv')"
           @keydown.space.prevent="$emit('newconv')"
         >
-        <PlusCircleOutlined class="icon" />
-        <span class="text">新建会话</span>
-      </div>
-
-
+          <PlusCircleOutlined class="icon" />
+          <span class="text">新建会话</span>
+        </div>
       </div>
       <div class="header__right">
-         <a-dropdown>
-  <div
-    class="model-select"
-    @click.prevent
-    role="button"
-    tabindex="0"
-    aria-label="选择模型"
-    @keydown.enter.prevent="$event.currentTarget?.click?.()"
-    @keydown.space.prevent="$event.currentTarget?.click?.()"
-  >
-    <BulbOutlined class="icon" />
-    <span class="text">{{ configStore.config?.model_provider }}/{{ configStore.config?.model_name }}</span>
-  </div>
-  <template #overlay>
-    <a-menu class="scrollable-menu">
-      <a-menu-item-group
-        v-for="(item, key) in modelKeys"
-        :key="key"
-        :title="modelNames[item]?.name"
-      >
-        <a-menu-item
-          v-for="(model, idx) in modelNames[item]?.models"
-          :key="`${item}-${idx}`"
-          @click="selectModel(item, model)"
-        >
-          {{ item }}/{{ model }}
-        </a-menu-item>
-      </a-menu-item-group>
-      <a-menu-item-group v-if="customModels.length > 0" title="自定义模型">
-        <a-menu-item
-          v-for="(model, idx) in customModels"
-          :key="`custom-${idx}`"
-          @click="selectModel('custom', model.custom_id)"
-        >
-          custom/{{ model.custom_id }}
-        </a-menu-item>
-      </a-menu-item-group>
-    </a-menu>
-  </template>
-</a-dropdown>
+        <a-dropdown>
+          <a-tooltip
+            placement="bottom"
+            :title="`${configStore.config?.model_provider || '-'} / ${configStore.config?.model_name || '-'}`"
+          >
+            <div
+              class="model-select"
+              @click.prevent
+              role="button"
+              tabindex="0"
+              aria-label="选择模型"
+              @keydown.enter.prevent="$event.currentTarget?.click?.()"
+              @keydown.space.prevent="$event.currentTarget?.click?.()"
+            >
+              <BulbOutlined class="icon" />
+              <span class="text"
+                >{{ configStore.config?.model_provider || '-' }}/{{
+                  configStore.config?.model_name || '-'
+                }}</span
+              >
+            </div>
+          </a-tooltip>
+          <template #overlay>
+            <a-menu class="scrollable-menu">
+              <a-menu-item-group
+                v-for="(item, key) in modelKeys"
+                :key="key"
+                :title="modelNames[item]?.name"
+              >
+                <a-menu-item
+                  v-for="(model, idx) in modelNames[item]?.models"
+                  :key="`${item}-${idx}`"
+                  @click="selectModel(item, model)"
+                >
+                  {{ item }}/{{ model }}
+                </a-menu-item>
+              </a-menu-item-group>
+              <a-menu-item-group v-if="customModels.length > 0" title="自定义模型">
+                <a-menu-item
+                  v-for="(model, idx) in customModels"
+                  :key="`custom-${idx}`"
+                  @click="selectModel('custom', model.custom_id)"
+                >
+                  custom/{{ model.custom_id }}
+                </a-menu-item>
+              </a-menu-item-group>
+            </a-menu>
+          </template>
+        </a-dropdown>
         <div
           class="nav-btn text"
           @click="opts.showPanel = !opts.showPanel"
@@ -82,17 +93,26 @@
           @keydown.enter.prevent="opts.showPanel = !opts.showPanel"
           @keydown.space.prevent="opts.showPanel = !opts.showPanel"
         >
-          <component :is="opts.showPanel ? FolderOpenOutlined : FolderOutlined" /> <span class="text">选项</span>
+          <component :is="opts.showPanel ? FolderOpenOutlined : FolderOutlined" />
+          <span class="text">选项</span>
         </div>
         <div v-if="opts.showPanel" class="my-panal r0 top100 swing-in-top-fwd" ref="panel">
           <div class="flex-center" @click="meta.stream = !meta.stream">
-            流式输出 <div @click.stop><a-switch v-model:checked="meta.stream" /></div>
+            流式输出
+            <div @click.stop><a-switch v-model:checked="meta.stream" /></div>
           </div>
           <div class="flex-center" @click="meta.summary_title = !meta.summary_title">
-            总结对话标题 <div @click.stop><a-switch v-model:checked="meta.summary_title" /></div>
+            总结对话标题
+            <div @click.stop><a-switch v-model:checked="meta.summary_title" /></div>
           </div>
           <div class="flex-center">
-            最大历史轮数 <a-input-number id="inputNumber" v-model:value="meta.history_round" :min="1" :max="50" />
+            最大历史轮数
+            <a-input-number
+              id="inputNumber"
+              v-model:value="meta.history_round"
+              :min="1"
+              :max="50"
+            />
           </div>
           <div class="flex-center">
             字体大小
@@ -103,13 +123,20 @@
             </a-select>
           </div>
           <div class="flex-center" @click="meta.wideScreen = !meta.wideScreen">
-            宽屏模式 <div @click.stop><a-switch v-model:checked="meta.wideScreen" /></div>
+            宽屏模式
+            <div @click.stop><a-switch v-model:checked="meta.wideScreen" /></div>
           </div>
-
         </div>
       </div>
     </div>
-    <div class="chat-box" :class="{ 'wide-screen': meta.wideScreen, 'font-smaller': meta.fontSize === 'smaller', 'font-larger': meta.fontSize === 'larger' }">
+    <div
+      class="chat-box"
+      :class="{
+        'wide-screen': meta.wideScreen,
+        'font-smaller': meta.fontSize === 'smaller',
+        'font-larger': meta.fontSize === 'larger'
+      }"
+    >
       <div v-if="conv.messages.length === 0" class="chat-empty">
         <div class="chat-empty__hero">
           <h1>你好，我是可萌</h1>
@@ -152,7 +179,7 @@
     </a-float-button>
 
     <div class="bottom">
-      <div class="message-input-wrapper"  :class="{ 'wide-screen': meta.wideScreen}">
+      <div class="message-input-wrapper" :class="{ 'wide-screen': meta.wideScreen }">
         <MessageInputComponent
           v-model="conv.inputText"
           :is-loading="isStreaming"
@@ -164,44 +191,54 @@
           <template #options-left>
             <a-tooltip
               v-if="configStore.config?.ui?.show_web_search !== false"
-              :title="canWebSearch ? '' : (backendOnline ? '后端未启用联网搜索' : '后端离线/不可用')"
+              :title="canWebSearch ? '' : backendOnline ? '后端未启用联网搜索' : '后端离线/不可用'"
             >
-            <div
-              :class="{'switch': true, 'opt-item': true, 'active': meta.use_web, 'disabled': !canWebSearch}"
-              @click="toggleWebSearch"
-              role="button"
-              tabindex="0"
-              aria-label="切换联网搜索"
-              @keydown.enter.prevent="toggleWebSearch"
-              @keydown.space.prevent="toggleWebSearch"
-            >
-              <CompassOutlined style="margin-right: 3px;"/>
-              联网搜索
-            </div>
+              <div
+                :class="{
+                  switch: true,
+                  'opt-item': true,
+                  active: meta.use_web,
+                  disabled: !canWebSearch
+                }"
+                @click="toggleWebSearch"
+                role="button"
+                tabindex="0"
+                aria-label="切换联网搜索"
+                @keydown.enter.prevent="toggleWebSearch"
+                @keydown.space.prevent="toggleWebSearch"
+              >
+                <CompassOutlined style="margin-right: 3px" />
+                联网搜索
+              </div>
             </a-tooltip>
             <a-tooltip
               v-if="configStore.config?.ui?.show_knowledge_graph !== false"
-              :title="canGraph ? '' : (backendOnline ? '后端未启用知识图谱' : '后端离线/不可用')"
+              :title="canGraph ? '' : backendOnline ? '后端未启用知识图谱' : '后端离线/不可用'"
             >
-            <div
-              :class="{'switch': true, 'opt-item': true, 'active': meta.use_graph, 'disabled': !canGraph}"
-              @click="toggleGraph"
-              role="button"
-              tabindex="0"
-              aria-label="切换知识图谱"
-              @keydown.enter.prevent="toggleGraph"
-              @keydown.space.prevent="toggleGraph"
-            >
-              <DeploymentUnitOutlined style="margin-right: 3px;"/>
-              知识图谱
-            </div>
+              <div
+                :class="{
+                  switch: true,
+                  'opt-item': true,
+                  active: meta.use_graph,
+                  disabled: !canGraph
+                }"
+                @click="toggleGraph"
+                role="button"
+                tabindex="0"
+                aria-label="切换知识图谱"
+                @keydown.enter.prevent="toggleGraph"
+                @keydown.space.prevent="toggleGraph"
+              >
+                <DeploymentUnitOutlined style="margin-right: 3px" />
+                知识图谱
+              </div>
             </a-tooltip>
             <a-tooltip
               v-if="configStore.config?.ui?.show_mcp !== false"
-              :title="canMcp ? '' : (backendOnline ? '后端未启用 MCP' : '后端离线/不可用')"
+              :title="canMcp ? '' : backendOnline ? '后端未启用 MCP' : '后端离线/不可用'"
             >
               <div
-                :class="{'switch': true, 'opt-item': true, 'active': meta.use_mcp, 'disabled': !canMcp}"
+                :class="{ switch: true, 'opt-item': true, active: meta.use_mcp, disabled: !canMcp }"
                 @click="toggleMcp"
                 role="button"
                 tabindex="0"
@@ -209,23 +246,29 @@
                 @keydown.enter.prevent="toggleMcp"
                 @keydown.space.prevent="toggleMcp"
               >
-                <DatabaseOutlined style="margin-right:3px;" />MCP
+                <DatabaseOutlined style="margin-right: 3px" />MCP
               </div>
             </a-tooltip>
             <a-tooltip
               v-if="configStore.config?.ui?.show_knowledge_base !== false"
-              :title="canKb ? '' : (backendOnline ? '后端未启用知识库' : '后端离线/不可用')"
+              :title="canKb ? '' : backendOnline ? '后端未启用知识库' : '后端离线/不可用'"
             >
               <a-dropdown
                 :disabled="!canKb || opts.databases.length === 0"
-                :class="{'opt-item': true, 'active': meta.selectedKB !== null, 'disabled': !canKb || opts.databases.length === 0}"
+                :class="{
+                  'opt-item': true,
+                  active: meta.selectedKB !== null,
+                  disabled: !canKb || opts.databases.length === 0
+                }"
               >
                 <a class="ant-dropdown-link" @click.prevent>
-                  <BookOutlined style="margin-right: 3px;"/>
+                  <BookOutlined style="margin-right: 3px" />
                   <span class="text">
                     {{
                       meta.selectedKB === null
-                        ? (opts.databases.length > 0 ? '不使用知识库' : '暂无知识库')
+                        ? opts.databases.length > 0
+                          ? '不使用知识库'
+                          : '暂无知识库'
                         : opts.databases[meta.selectedKB]?.name
                     }}
                   </span>
@@ -249,7 +292,10 @@
             </a-tooltip>
           </template>
         </MessageInputComponent>
-        <p class="note">请注意辨别内容的可靠性 By {{ configStore.config?.model_provider }}: {{ configStore.config?.model_name }}</p>
+        <p class="note">
+          请注意辨别内容的可靠性 By {{ configStore.config?.model_provider }}:
+          {{ configStore.config?.model_name }}
+        </p>
       </div>
     </div>
   </div>
@@ -258,7 +304,6 @@
 <script setup>
 import { reactive, ref, onMounted, toRefs, nextTick, onUnmounted, watch, computed } from 'vue'
 import {
-
   BookOutlined,
   CompassOutlined,
   PlusCircleOutlined,
@@ -266,9 +311,8 @@ import {
   FolderOpenOutlined,
   BulbOutlined,
   DeploymentUnitOutlined,
-    DatabaseOutlined,
-  DownOutlined,
-
+  DatabaseOutlined,
+  DownOutlined
 } from '@ant-design/icons-vue'
 import { onClickOutside, useDebounceFn } from '@vueuse/core'
 import { useConfigStore } from '@/stores/config'
@@ -285,17 +329,23 @@ const props = defineProps({
   state: Object
 })
 
-const emit = defineEmits(['rename-title', 'newconv']);
+const emit = defineEmits(['rename-title', 'newconv'])
 const configStore = useConfigStore()
 
 const { conv, state } = toRefs(props)
 const chatContainer = ref(null)
 
 const backendOnline = computed(() => Boolean(configStore.config.backend?.online))
-const canWebSearch = computed(() => backendOnline.value && Boolean(configStore.config.enable_web_search))
-const canGraph = computed(() => backendOnline.value && Boolean(configStore.config.enable_knowledge_graph))
+const canWebSearch = computed(
+  () => backendOnline.value && Boolean(configStore.config.enable_web_search)
+)
+const canGraph = computed(
+  () => backendOnline.value && Boolean(configStore.config.enable_knowledge_graph)
+)
 const canMcp = computed(() => backendOnline.value && Boolean(configStore.config.enable_mcp))
-const canKb = computed(() => backendOnline.value && Boolean(configStore.config.enable_knowledge_base))
+const canKb = computed(
+  () => backendOnline.value && Boolean(configStore.config.enable_knowledge_base)
+)
 
 const toggleWebSearch = () => {
   if (!canWebSearch.value) {
@@ -325,16 +375,11 @@ const toggleMcp = () => {
 const isStreaming = ref(false)
 const activeChatAbortController = ref(null)
 const activeStreamId = ref(0)
-const userIsScrolling = ref(false);
-const shouldAutoScroll = ref(true);
+const userIsScrolling = ref(false)
+const shouldAutoScroll = ref(true)
 
 const panel = ref(null)
-const examples = ref([
-  '喜欢小智吗？',
-  '今天常州天气怎么样？',
-  '介绍一下皮卡丘',
-  '今天星期几？'
-])
+const examples = ref(['喜欢小智吗？', '今天常州天气怎么样？', '介绍一下皮卡丘', '今天星期几？'])
 
 const opts = reactive({
   showPanel: false,
@@ -344,7 +389,9 @@ const opts = reactive({
   mcps: []
 })
 
-const showScrollToBottom = computed(() => !shouldAutoScroll.value && (conv.value?.messages?.length || 0) > 0)
+const showScrollToBottom = computed(
+  () => !shouldAutoScroll.value && (conv.value?.messages?.length || 0) > 0
+)
 const jumpToBottom = () => {
   shouldAutoScroll.value = true
   userIsScrolling.value = false
@@ -367,7 +414,7 @@ function defaultMeta() {
     history_round: 20,
     db_id: null,
     fontSize: 'default',
-    wideScreen: false,
+    wideScreen: false
   }
 }
 
@@ -383,23 +430,25 @@ const persistMeta = useDebounceFn(
   { maxWait: 2000 }
 )
 
-onClickOutside(panel, () => setTimeout(() => opts.showPanel = false, 30))
+onClickOutside(panel, () => setTimeout(() => (opts.showPanel = false), 30))
 
 // 从 message 中获取 history 信息，每个消息都是 {role, content} 的格式
 const getHistory = () => {
-  const history = conv.value.messages.map((msg) => {
-    if (msg.content) {
-      return {
-        role: msg.role === 'sent' || msg.role === 'user' ? 'user' : 'assistant',
-        content: msg.content
+  const history = conv.value.messages
+    .map((msg) => {
+      if (msg.content) {
+        return {
+          role: msg.role === 'sent' || msg.role === 'user' ? 'user' : 'assistant',
+          content: msg.content
+        }
       }
-    }
-  }).reduce((acc, cur) => {
-    if (cur) {
-      acc.push(cur)
-    }
-    return acc
-  }, [])
+    })
+    .reduce((acc, cur) => {
+      if (cur) {
+        acc.push(cur)
+      }
+      return acc
+    }, [])
   return history.slice(-meta.history_round)
 }
 
@@ -410,7 +459,9 @@ const useDatabase = (index) => {
   }
   const selected = opts.databases[index]
   if (index != null && configStore.config.embed_model != selected.embed_model) {
-    message.error(`所选知识库的向量模型（${selected.embed_model}）与当前向量模型（${configStore.config.embed_model}) 不匹配，请重新选择`)
+    message.error(
+      `所选知识库的向量模型（${selected.embed_model}）与当前向量模型（${configStore.config.embed_model}) 不匹配，请重新选择`
+    )
   } else {
     meta.selectedKB = index
   }
@@ -422,17 +473,14 @@ const handleKeyDown = (e) => {
     sendMessage()
   } else if (e.key === 'Enter' && e.shiftKey) {
     // Insert a newline character at the current cursor position
-    const textarea = e.target;
-    const start = textarea.selectionStart;
-    const end = textarea.selectionEnd;
-    const cur = conv.value.inputText || '';
-    conv.value.inputText =
-      cur.substring(0, start) +
-      '\n' +
-      cur.substring(end);
+    const textarea = e.target
+    const start = textarea.selectionStart
+    const end = textarea.selectionEnd
+    const cur = conv.value.inputText || ''
+    conv.value.inputText = cur.substring(0, start) + '\n' + cur.substring(end)
     nextTick(() => {
-      textarea.setSelectionRange(start + 1, start + 1);
-    });
+      textarea.setSelectionRange(start + 1, start + 1)
+    })
   }
 }
 
@@ -443,7 +491,10 @@ const renameTitle = () => {
     const firstAiMessage = conv.value.messages[1].content
     const context = `${prompt}\n\n问题: ${firstUserMessage}\n\n回复: ${firstAiMessage}，主题是（一句话）：`
     simpleCall(context).then((data) => {
-      const response = data.response.split("：")[0].replace(/^["'"']/g, '').replace(/["'"']$/g, '')
+      const response = data.response
+        .split('：')[0]
+        .replace(/^["'"']/g, '')
+        .replace(/["'"']$/g, '')
       emit('rename-title', response)
     })
   } else {
@@ -453,20 +504,25 @@ const renameTitle = () => {
 
 const handleUserScroll = () => {
   // 计算我们是否接近底部（100像素以内）
-  const isNearBottom = chatContainer.value.scrollHeight - chatContainer.value.scrollTop - chatContainer.value.clientHeight < 20;
+  const isNearBottom =
+    chatContainer.value.scrollHeight -
+      chatContainer.value.scrollTop -
+      chatContainer.value.clientHeight <
+    20
 
   // 如果用户不在底部，则仅将其标记为用户滚动
-  userIsScrolling.value = !isNearBottom;
+  userIsScrolling.value = !isNearBottom
 
   // 如果用户再次滚动到底部，请恢复自动滚动
-  shouldAutoScroll.value = isNearBottom;
-};
+  shouldAutoScroll.value = isNearBottom
+}
 
 const scrollToBottom = () => {
   if (shouldAutoScroll.value) {
     setTimeout(() => {
-      chatContainer.value.scrollTop = chatContainer.value.scrollHeight - chatContainer.value.clientHeight;
-    }, 10);
+      chatContainer.value.scrollTop =
+        chatContainer.value.scrollHeight - chatContainer.value.clientHeight
+    }, 10)
   }
 }
 
@@ -480,8 +536,7 @@ const appendUserMessage = (msg) => {
   scrollToBottom()
 }
 
-
-const appendAiMessage = (content, refs=null) => {
+const appendAiMessage = (content, refs = null) => {
   conv.value.messages.push({
     id: randomId(16),
     role: 'assistant',
@@ -489,63 +544,66 @@ const appendAiMessage = (content, refs=null) => {
     reasoning_content: '',
     refs,
     groupedResults: {},
-    status: "init",
+    status: 'init',
     meta: {},
-    showThinking: "show"
+    showThinking: 'show'
   })
   scrollToBottom()
 }
 
 const updateMessage = (info) => {
-  const msg = conv.value.messages.find((msg) => msg.id === info.id);
+  const msg = conv.value.messages.find((msg) => msg.id === info.id)
   if (msg) {
     try {
       // 只有在 text 不为空时更新
       if (info.content !== null && info.content !== undefined && info.content !== '') {
-        msg.content += info.content;
+        msg.content += info.content
       }
 
-      if (info.reasoning_content !== null && info.reasoning_content !== undefined && info.reasoning_content !== '') {
-        msg.reasoning_content = info.reasoning_content;
+      if (
+        info.reasoning_content !== null &&
+        info.reasoning_content !== undefined &&
+        info.reasoning_content !== ''
+      ) {
+        msg.reasoning_content = info.reasoning_content
       }
 
       // 只有在 refs 不为空时更新
       if (info.refs !== null && info.refs !== undefined) {
-        msg.refs = info.refs;
+        msg.refs = info.refs
       }
 
       if (info.model_name !== null && info.model_name !== undefined && info.model_name !== '') {
-        msg.model_name = info.model_name;
+        msg.model_name = info.model_name
       }
 
       // 只有在 status 不为空时更新
       if (info.status !== null && info.status !== undefined && info.status !== '') {
-        msg.status = info.status;
+        msg.status = info.status
       }
 
       if (info.meta !== null && info.meta !== undefined) {
-        msg.meta = info.meta;
+        msg.meta = info.meta
       }
 
       if (info.message !== null && info.message !== undefined) {
-        msg.message = info.message;
+        msg.message = info.message
       }
 
       if (info.showThinking !== null && info.showThinking !== undefined) {
-        msg.showThinking = info.showThinking;
+        msg.showThinking = info.showThinking
       }
 
-      scrollToBottom();
+      scrollToBottom()
     } catch (error) {
-      console.error('Error updating message:', error);
-      msg.status = 'error';
-      msg.content = '消息更新失败';
+      console.error('Error updating message:', error)
+      msg.status = 'error'
+      msg.content = '消息更新失败'
     }
   } else {
-    console.error('Message not found:', info.id);
+    console.error('Message not found:', info.id)
   }
-};
-
+}
 
 const groupRefs = (id) => {
   const msg = conv.value.messages.find((msg) => msg.id === id)
@@ -574,10 +632,10 @@ const simpleCall = (msg) => {
       query: msg,
       meta: {
         model_provider: configStore.config?.model_provider,
-        model_name: configStore.config?.model_name,
-      },
+        model_name: configStore.config?.model_name
+      }
     },
-    timeoutMs: 30000,
+    timeoutMs: 30000
   })
 }
 
@@ -602,7 +660,7 @@ const fetchChatResponse = async (user_input, cur_res_id) => {
     query: user_input,
     history: getHistory().slice(0, -1), // 去掉最后一条刚添加的用户消息
     meta,
-    cur_res_id,
+    cur_res_id
   }
 
   // If the user disables streaming output, we still call the streaming endpoint
@@ -618,7 +676,7 @@ const fetchChatResponse = async (user_input, cur_res_id) => {
       method: 'POST',
       body: params,
       signal: controller.signal,
-      timeoutMs: 300000,
+      timeoutMs: 300000
     })
 
     await readNdjsonStream(
@@ -633,7 +691,7 @@ const fetchChatResponse = async (user_input, cur_res_id) => {
             reasoning_content: data.reasoning_content,
             status: data.status,
             meta: data.meta,
-            ...data,
+            ...data
           })
         } else {
           if (data.response) bufferedText += data.response
@@ -648,7 +706,7 @@ const fetchChatResponse = async (user_input, cur_res_id) => {
             meta: data.meta,
             refs: data.refs,
             ...data,
-            content: '', // never stream partial content
+            content: '' // never stream partial content
           })
         }
 
@@ -657,12 +715,12 @@ const fetchChatResponse = async (user_input, cur_res_id) => {
           conv.value.messages = data.history.map((msg) => ({
             id: randomId(8),
             role: msg.role,
-            content: msg.content,
+            content: msg.content
           }))
         }
       },
       {
-        onParseError: (e, line) => console.debug('JSON 解析错误:', e?.message || e, line),
+        onParseError: (e, line) => console.debug('JSON 解析错误:', e?.message || e, line)
       }
     )
 
@@ -674,7 +732,7 @@ const fetchChatResponse = async (user_input, cur_res_id) => {
         reasoning_content: bufferedReasoning,
         refs: bufferedRefs,
         meta: bufferedMeta,
-        status: 'finished',
+        status: 'finished'
       })
     }
 
@@ -688,7 +746,7 @@ const fetchChatResponse = async (user_input, cur_res_id) => {
       updateMessage({
         id: cur_res_id,
         status: 'error',
-        message: error?.message || '请求失败',
+        message: error?.message || '请求失败'
       })
     }
   } finally {
@@ -699,42 +757,41 @@ const fetchChatResponse = async (user_input, cur_res_id) => {
   }
 }
 
-
 // 更新后的 sendMessage 函数
 const sendMessage = () => {
-  const user_input = conv.value.inputText.trim();
-  const dbID = opts.databases.length > 0 ? opts.databases[meta.selectedKB]?.db_id : null;
+  const user_input = conv.value.inputText.trim()
+  const dbID = opts.databases.length > 0 ? opts.databases[meta.selectedKB]?.db_id : null
   if (isStreaming.value) {
-    message.error('请等待上一条消息处理完成');
+    message.error('请等待上一条消息处理完成')
     return
   }
   if (user_input) {
-    isStreaming.value = true;
-    appendUserMessage(user_input);
-    appendAiMessage("", null);
-    forceScrollToBottom();
+    isStreaming.value = true
+    appendUserMessage(user_input)
+    appendAiMessage('', null)
+    forceScrollToBottom()
 
-    const cur_res_id = conv.value.messages[conv.value.messages.length - 1].id;
-    conv.value.inputText = '';
-    meta.db_id = dbID;
+    const cur_res_id = conv.value.messages[conv.value.messages.length - 1].id
+    conv.value.inputText = ''
+    meta.db_id = dbID
     meta.mcp_id = meta.use_mcp ? 'default' : null
     meta.model_provider = configStore.config?.model_provider
     meta.model_name = configStore.config?.model_name
     fetchChatResponse(user_input, cur_res_id)
   } else {
-    message.warning('请输入消息');
+    message.warning('请输入消息')
   }
 }
 
 const retryMessage = (id) => {
   // 找到 id 对应的 message，然后删除包含 message 在内以及后面所有的 message
-  const index = conv.value.messages.findIndex(msg => msg.id === id);
+  const index = conv.value.messages.findIndex((msg) => msg.id === id)
   const pastMessage = conv.value.messages[index - 1]
   conv.value.inputText = pastMessage.content
   if (index !== -1) {
-    conv.value.messages = conv.value.messages.slice(0, index - 1);
+    conv.value.messages = conv.value.messages.slice(0, index - 1)
   }
-  sendMessage();
+  sendMessage()
 }
 
 // 从本地存储加载数据
@@ -742,69 +799,65 @@ onMounted(() => {
   scrollToBottom()
   loadDatabases()
 
-  if (chatContainer.value) chatContainer.value.addEventListener('scroll', handleUserScroll);
+  if (chatContainer.value) chatContainer.value.addEventListener('scroll', handleUserScroll)
 
   // 检查现有消息中是否有内容为空的情况
   if (conv.value.messages && conv.value.messages.length > 0) {
-    conv.value.messages.forEach(msg => {
+    conv.value.messages.forEach((msg) => {
       if (msg.role === 'received' && (!msg.content || msg.content.trim() === '')) {
-        msg.status = 'error';
-        msg.message = '内容加载失败';
+        msg.status = 'error'
+        msg.message = '内容加载失败'
       }
-    });
+    })
   }
-
-});
+})
 
 onUnmounted(() => {
   activeStreamId.value += 1
   activeChatAbortController.value?.abort?.()
   if (chatContainer.value) {
-    chatContainer.value.removeEventListener('scroll', handleUserScroll);
+    chatContainer.value.removeEventListener('scroll', handleUserScroll)
   }
-});
+})
 
 // 添加新函数来处理特定的滚动行为
 const forceScrollToBottom = () => {
-  shouldAutoScroll.value = true;
+  shouldAutoScroll.value = true
   setTimeout(() => {
-    chatContainer.value.scrollTop = chatContainer.value.scrollHeight - chatContainer.value.clientHeight;
-  }, 10);
-};
+    chatContainer.value.scrollTop =
+      chatContainer.value.scrollHeight - chatContainer.value.clientHeight
+  }, 10)
+}
 
 // 监听 meta 对象的变化，并保存到本地存储
-watch(
-  meta,
-  () => persistMeta(),
-  { deep: true }
-);
+watch(meta, () => persistMeta(), { deep: true })
 // 处理发送或停止
 const handleSendOrStop = () => {
   if (isStreaming.value) {
     // 停止生成
-    isStreaming.value = false;
-    activeChatAbortController.value?.abort?.();
-    const lastMessage = conv.value.messages[conv.value.messages.length - 1];
+    isStreaming.value = false
+    activeChatAbortController.value?.abort?.()
+    const lastMessage = conv.value.messages[conv.value.messages.length - 1]
     if (lastMessage) {
-      lastMessage.isStoppedByUser = true;
-      lastMessage.status = 'stopped';
+      lastMessage.isStoppedByUser = true
+      lastMessage.status = 'stopped'
     }
   } else {
     // 发送消息
-    sendMessage();
+    sendMessage()
   }
 }
 
 // 重试被停止的消息
 const retryStoppedMessage = (id) => {
   // 找到用户的原始问题
-  const messageIndex = conv.value.messages.findIndex(msg => msg.id === id);
+  const messageIndex = conv.value.messages.findIndex((msg) => msg.id === id)
   if (messageIndex > 0) {
-    const userMessage = conv.value.messages[messageIndex - 1];
+    const userMessage = conv.value.messages[messageIndex - 1]
     if (userMessage && (userMessage.role === 'sent' || userMessage.role === 'user')) {
-      conv.value.inputText = userMessage.content;
+      conv.value.inputText = userMessage.content
       // 删除被停止的消息，以及所有后面的消息
-      conv.value.messages = conv.value.messages.slice(0, messageIndex - 1);
+      conv.value.messages = conv.value.messages.slice(0, messageIndex - 1)
       // sendMessage();
     }
   }
@@ -850,16 +903,18 @@ const selectModel = (provider, name) => {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 1rem;
+    padding: 12px 16px;
 
-    .header__left, .header__right {
+    .header__left,
+    .header__right {
       display: flex;
       align-items: center;
+      gap: 10px;
     }
 
     .header__left {
       .close {
-        margin-right: 12px;
+        margin-right: 0;
       }
     }
   }
@@ -887,11 +942,25 @@ const selectModel = (provider, name) => {
   }
 
   .model-select {
-    // color: var(--gray-900);
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: 999px;
+    border: 1px solid var(--border-color);
+    background: var(--surface-color);
+    color: var(--text-color);
+    cursor: pointer;
+    transition: background-color 0.2s ease, border-color 0.2s ease;
     max-width: 300px;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+
+    &:hover {
+      background: var(--surface-color-2);
+      border-color: color-mix(in srgb, var(--main-500) 22%, var(--border-color));
+    }
 
     .text {
       overflow: hidden;
@@ -1018,7 +1087,6 @@ const selectModel = (provider, name) => {
 }
 
 .chat-box {
-
   width: 100%;
   max-width: 800px;
   margin: 0 auto;
@@ -1164,7 +1232,9 @@ const selectModel = (provider, name) => {
 }
 
 @keyframes pulse {
-  0%, 80%, 100% {
+  0%,
+  80%,
+  100% {
     transform: scale(0.8);
     opacity: 0.3;
   }
@@ -1175,7 +1245,9 @@ const selectModel = (provider, name) => {
 }
 
 @keyframes loading {
-  0%, 80%, 100% {
+  0%,
+  80%,
+  100% {
     transform: scale(0.5);
   }
   40% {
@@ -1184,13 +1256,13 @@ const selectModel = (provider, name) => {
 }
 
 .slide-out-left {
-  -webkit-animation: slide-out-left .2s cubic-bezier(.55, .085, .68, .53) both;
-  animation: slide-out-left .5s cubic-bezier(.55, .085, .68, .53) both
+  -webkit-animation: slide-out-left 0.2s cubic-bezier(0.55, 0.085, 0.68, 0.53) both;
+  animation: slide-out-left 0.5s cubic-bezier(0.55, 0.085, 0.68, 0.53) both;
 }
 
 .swing-in-top-fwd {
-  -webkit-animation: swing-in-top-fwd 0.3s cubic-bezier(0.175, 0.885, 0.320, 1.275) both;
-  animation: swing-in-top-fwd 0.3s cubic-bezier(0.175, 0.885, 0.320, 1.275) both;
+  -webkit-animation: swing-in-top-fwd 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) both;
+  animation: swing-in-top-fwd 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) both;
 }
 
 @keyframes swing-in-top-fwd {
@@ -1238,7 +1310,8 @@ const selectModel = (provider, name) => {
   .chat-container .chat .chat-header {
     background: var(--main-light-4);
 
-    .header__left, .header__right {
+    .header__left,
+    .header__right {
       gap: 24px;
     }
 
@@ -1356,7 +1429,6 @@ const selectModel = (provider, name) => {
     color: var(--text-color);
   }
 }
-
 </style>
 
 <style lang="less">

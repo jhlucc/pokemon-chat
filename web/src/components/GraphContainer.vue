@@ -3,8 +3,8 @@
 </template>
 
 <script setup>
-import { Graph } from "@antv/g6";
-import { onMounted, onUnmounted, watch, ref } from 'vue';
+import { Graph } from '@antv/g6'
+import { onMounted, onUnmounted, watch, ref } from 'vue'
 
 const props = defineProps({
   graphData: {
@@ -12,25 +12,25 @@ const props = defineProps({
     required: true,
     default: () => ({ nodes: [], edges: [] })
   }
-});
+})
 
-const container = ref(null);
-let graphInstance = null;
-let resizeObserver = null;
+const container = ref(null)
+let graphInstance = null
+let resizeObserver = null
 
 const cssVar = (name, fallback) => {
   try {
-    const v = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
-    return v || fallback;
+    const v = getComputedStyle(document.documentElement).getPropertyValue(name).trim()
+    return v || fallback
   } catch {
-    return fallback;
+    return fallback
   }
-};
+}
 
 const initGraph = () => {
-  const surface = cssVar('--surface-color', '#fff');
-  const text = cssVar('--text-color', '#000');
-  const border = cssVar('--border-color', '#e6e6e6');
+  const surface = cssVar('--surface-color', '#fff')
+  const text = cssVar('--text-color', '#000')
+  const border = cssVar('--border-color', '#e6e6e6')
   graphInstance = new Graph({
     container: container.value,
     width: container.value.offsetWidth,
@@ -42,19 +42,19 @@ const initGraph = () => {
       preventOverlap: true,
       kr: 20,
       collide: {
-        strength: 1.0,
-      },
+        strength: 1.0
+      }
     },
     node: {
       type: 'circle',
       style: {
         labelText: (d) => d.data.label,
-        size: 70,
+        size: 70
       },
       palette: {
         field: 'label',
-        color: 'tableau',
-      },
+        color: 'tableau'
+      }
     },
     edge: {
       type: 'line',
@@ -63,69 +63,69 @@ const initGraph = () => {
         labelFill: text,
         labelBackground: surface,
         stroke: border,
-        endArrow: true,
-      },
+        endArrow: true
+      }
     },
-    behaviors: ['drag-element', 'zoom-canvas', 'drag-canvas'],
-  });
-};
+    behaviors: ['drag-element', 'zoom-canvas', 'drag-canvas']
+  })
+}
 
 const renderGraph = () => {
-  if (!graphInstance) initGraph();
+  if (!graphInstance) initGraph()
 
   const formattedData = {
-    nodes: props.graphData.nodes.map(node => ({
+    nodes: props.graphData.nodes.map((node) => ({
       id: node.id,
       data: { label: node.name }
     })),
-    edges: props.graphData.edges.map(edge => ({
+    edges: props.graphData.edges.map((edge) => ({
       source: edge.source_id,
       target: edge.target_id,
       data: { label: edge.type }
     }))
-  };
+  }
 
-  graphInstance.setData(formattedData);
-  graphInstance.render();
-};
+  graphInstance.setData(formattedData)
+  graphInstance.render()
+}
 
 onMounted(() => {
-  renderGraph();
+  renderGraph()
 
   // Resize based on the actual container size (modal open/close, viewport resize, etc).
   if (typeof ResizeObserver !== 'undefined' && container.value) {
     resizeObserver = new ResizeObserver(() => {
-      if (!graphInstance || !container.value) return;
+      if (!graphInstance || !container.value) return
       try {
-        graphInstance.resize?.(container.value.offsetWidth, container.value.offsetHeight);
-        graphInstance.render?.();
+        graphInstance.resize?.(container.value.offsetWidth, container.value.offsetHeight)
+        graphInstance.render?.()
       } catch {
         // ignore
       }
-    });
-    resizeObserver.observe(container.value);
+    })
+    resizeObserver.observe(container.value)
   }
-});
+})
 
-watch(() => props.graphData, renderGraph, { deep: true });
+watch(() => props.graphData, renderGraph, { deep: true })
 
 onUnmounted(() => {
   try {
-    resizeObserver?.disconnect?.();
+    resizeObserver?.disconnect?.()
   } catch {
     // ignore
   }
-  resizeObserver = null;
+  resizeObserver = null
 
   if (graphInstance) {
     try {
-      graphInstance.destroy();
+      graphInstance.destroy()
     } catch {
       // ignore
     }
-    graphInstance = null;
+    graphInstance = null
   }
-});
+})
 </script>
 
 <style scoped>

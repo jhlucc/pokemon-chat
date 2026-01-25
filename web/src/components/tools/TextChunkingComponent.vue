@@ -10,18 +10,26 @@
           layout="vertical"
           @finish="chunkText"
         >
-          <a-form-item label="Chunk Size" name="chunkSize" >
-            <a-input v-model:value="params.chunkSize" :disabled="params.useParser && state.useFile" />
+          <a-form-item label="Chunk Size" name="chunkSize">
+            <a-input
+              v-model:value="params.chunkSize"
+              :disabled="params.useParser && state.useFile"
+            />
           </a-form-item>
-          <a-form-item label="Chunk Overlap" name="chunkOverlap" >
-            <a-input v-model:value="params.chunkOverlap" :disabled="params.useParser && state.useFile" />
+          <a-form-item label="Chunk Overlap" name="chunkOverlap">
+            <a-input
+              v-model:value="params.chunkOverlap"
+              :disabled="params.useParser && state.useFile"
+            />
           </a-form-item>
           <a-form-item label="使用文件节点解析器" name="useParser" v-if="state.useFile">
             <a-switch v-model:checked="params.useParser" />
           </a-form-item>
 
           <a-form-item>
-            <a-button type="primary" html-type="submit" :loading="state.loading">Chunk Text</a-button>
+            <a-button type="primary" html-type="submit" :loading="state.loading"
+              >Chunk Text</a-button
+            >
           </a-form-item>
         </a-form>
         <!-- Future parameters can be added here -->
@@ -30,8 +38,8 @@
     <div class="result-container">
       <div class="input-container">
         <div class="actions">
-          <span :class="{'active': !state.useFile}" @click="state.useFile = false">输入文本</span>
-          <span :class="{'active': state.useFile}" @click="state.useFile = true">上传文件</span>
+          <span :class="{ active: !state.useFile }" @click="state.useFile = false">输入文本</span>
+          <span :class="{ active: state.useFile }" @click="state.useFile = true">上传文件</span>
         </div>
         <div class="upload" v-if="state.useFile">
           <a-upload-dragger
@@ -60,7 +68,9 @@
       <!-- <div>{{ chunks[0] }}</div> -->
       <div id="result-cards" class="result-cards">
         <div v-for="(chunk, index) in chunks" :key="index" class="chunk">
-          <p><strong>#{{ index + 1 }}</strong> {{ chunk.text }}</p>
+          <p>
+            <strong>#{{ index + 1 }}</strong> {{ chunk.text }}
+          </p>
         </div>
       </div>
     </div>
@@ -68,50 +78,48 @@
 </template>
 
 <script setup>
-import { reactive, ref, computed } from 'vue';
+import { reactive, ref, computed } from 'vue'
 import { message } from 'ant-design-vue'
 import { apiFetch } from '@/api/http'
 import { getOfflineMode } from '@/utils/offlineMode'
 
-const text = ref('');
+const text = ref('')
 const state = reactive({
   loading: false,
   uploading: false,
-  useFile: false,
+  useFile: false
 })
 
 const params = reactive({
   chunkSize: 500,
   chunkOverlap: 20,
-  useParser: false,
+  useParser: false
 })
-const chunks = ref([]);
-const fileList = ref([]);
+const chunks = ref([])
+const fileList = ref([])
 
 const charCount = computed(() => text.value.length)
 const estimatedTokenCount = computed(() => {
   // 将文本分割成字符数组
-  const chars = text.value.split('');
-  let tokenCount = 0;
+  const chars = text.value.split('')
+  let tokenCount = 0
   for (let char of chars) {
     if (/[\u4e00-\u9fff]/.test(char)) {
-      tokenCount += 1; // 对于中文字符，通常计为一个 token
-    }
-    else if (/[a-zA-Z]/.test(char)) {
-      tokenCount += 0.25; // 对于英文单词，大约每 4 个字符算作一个 token
-    }
-    else {
-      tokenCount += 0.5; // 对于中文字符，通常计为一个 token
+      tokenCount += 1 // 对于中文字符，通常计为一个 token
+    } else if (/[a-zA-Z]/.test(char)) {
+      tokenCount += 0.25 // 对于英文单词，大约每 4 个字符算作一个 token
+    } else {
+      tokenCount += 0.5 // 对于中文字符，通常计为一个 token
     }
   }
-  return Math.ceil(tokenCount);
+  return Math.ceil(tokenCount)
 })
 
 const chunkText = async () => {
   let text_or_file = ''
   if (state.useFile) {
     if (fileList.value.length === 0) {
-      message.error("请上传文件")
+      message.error('请上传文件')
       return
     }
     const doneFile = fileList.value.find((f) => f.status === 'done')
@@ -119,7 +127,7 @@ const chunkText = async () => {
     text_or_file = resp.file_content || resp.file_path || ''
   } else {
     if (text.value.length === 0) {
-      message.error("请输入文本")
+      message.error('请输入文本')
       return
     }
     text_or_file = text.value
@@ -137,15 +145,15 @@ const chunkText = async () => {
           use_parser: params.useParser
         }
       },
-      timeoutMs: 30000,
-    });
-    chunks.value = data.nodes;
+      timeoutMs: 30000
+    })
+    chunks.value = data.nodes
     state.loading = false
   } catch (error) {
-    console.error('Error chunking text:', error);
+    console.error('Error chunking text:', error)
     state.loading = false
   }
-};
+}
 
 const customUpload = async ({ file, onSuccess, onError }) => {
   state.uploading = true
@@ -166,7 +174,11 @@ const customUpload = async ({ file, onSuccess, onError }) => {
       try {
         const formData = new FormData()
         formData.append('file', file)
-        const data = await apiFetch('/data/upload', { method: 'POST', body: formData, timeoutMs: 60000 })
+        const data = await apiFetch('/data/upload', {
+          method: 'POST',
+          body: formData,
+          timeoutMs: 60000
+        })
         onSuccess?.(data, file)
         return
       } catch {
@@ -235,7 +247,8 @@ const customUpload = async ({ file, onSuccess, onError }) => {
 
           &.active {
             background-color: var(--surface-color);
-            box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.03),0 1px 6px -1px rgba(0, 0, 0, 0.02),0 2px 4px 0 rgba(0, 0, 0, 0.02)
+            box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.03), 0 1px 6px -1px rgba(0, 0, 0, 0.02),
+              0 2px 4px 0 rgba(0, 0, 0, 0.02);
           }
         }
       }
@@ -264,7 +277,6 @@ const customUpload = async ({ file, onSuccess, onError }) => {
         display: flex;
         gap: 16px;
       }
-
     }
 
     .result-cards {
@@ -287,7 +299,6 @@ const customUpload = async ({ file, onSuccess, onError }) => {
   }
 }
 
-
 @media (max-width: 980px) {
   #result-cards {
     column-count: 1;
@@ -300,7 +311,7 @@ const customUpload = async ({ file, onSuccess, onError }) => {
   }
 }
 
-@media (min-width: 1501px){
+@media (min-width: 1501px) {
   #result-cards {
     column-count: 3;
   }

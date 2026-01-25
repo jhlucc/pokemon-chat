@@ -26,7 +26,7 @@
           {{ state.isFullscreen ? '退出全屏' : '全屏' }}
         </a-button>
         <a-tooltip :title="state.autoRefresh ? '点击停止自动刷新' : '点击开启自动刷新'">
-          <a-button 
+          <a-button
             :type="state.autoRefresh ? 'primary' : 'default'"
             @click="toggleAutoRefresh(!state.autoRefresh)"
           >
@@ -74,24 +74,24 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onActivated, onUnmounted, nextTick, reactive, computed } from 'vue';
-import { useConfigStore } from '@/stores/config';
-import { useThrottleFn } from '@vueuse/core';
-import { 
-  FullscreenOutlined, 
+import { ref, onMounted, onActivated, onUnmounted, nextTick, reactive, computed } from 'vue'
+import { useConfigStore } from '@/stores/config'
+import { useThrottleFn } from '@vueuse/core'
+import {
+  FullscreenOutlined,
   FullscreenExitOutlined,
-	  ReloadOutlined,
-	  ClearOutlined,
-	  DownloadOutlined,
-	  SettingOutlined,
-	  SyncOutlined
-	} from '@ant-design/icons-vue';
-import dayjs from 'dayjs';
+  ReloadOutlined,
+  ClearOutlined,
+  DownloadOutlined,
+  SettingOutlined,
+  SyncOutlined
+} from '@ant-design/icons-vue'
+import dayjs from 'dayjs'
 import { apiFetch } from '@/api/http'
 import { downloadText } from '@/utils/download'
 
 const configStore = useConfigStore()
-const config = configStore.config;
+const config = configStore.config
 
 // 定义日志级别
 const logLevels = [
@@ -99,29 +99,29 @@ const logLevels = [
   { value: 'ERROR', label: 'ERROR' },
   { value: 'DEBUG', label: 'DEBUG' },
   { value: 'WARNING', label: 'WARNING' }
-];
+]
 
-const logViewer = ref(null);
+const logViewer = ref(null)
 
 // 状态管理
 const state = reactive({
   fetching: false,
   autoRefresh: false,
   searchText: '',
-  selectedLevels: logLevels.map(l => l.value),
+  selectedLevels: logLevels.map((l) => l.value),
   rawLogs: [],
-  isFullscreen: false,
-});
+  isFullscreen: false
+})
 
-const error = ref('');
-const logContainer = ref(null);
-let autoRefreshInterval = null;
+const error = ref('')
+const logContainer = ref(null)
+let autoRefreshInterval = null
 
 // 解析日志行
 const parseLogLine = (line) => {
   // Format A (legacy):
   // 2025-03-10 08:26:37,269 - INFO - module - message
-  const m1 = line.match(/^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2},\d{3}) - (\w+) - ([^-]+) - (.+)$/);
+  const m1 = line.match(/^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2},\d{3}) - (\w+) - ([^-]+) - (.+)$/)
   if (m1) {
     return {
       timestamp: m1[1],
@@ -129,177 +129,180 @@ const parseLogLine = (line) => {
       module: m1[3].trim(),
       message: m1[4].trim(),
       raw: line
-    };
+    }
   }
 
   // Format B (current backend logger):
   // [2026-01-23 16:25] [vector.py|insert] [line:165] INFO    : message
-  const m2 = line.match(/^\[(\d{4}-\d{2}-\d{2} \d{2}:\d{2})\] \[([^\]]+)\] \[line:(\d+)\] (\w+)\s*: (.*)$/);
+  const m2 = line.match(
+    /^\[(\d{4}-\d{2}-\d{2} \d{2}:\d{2})\] \[([^\]]+)\] \[line:(\d+)\] (\w+)\s*: (.*)$/
+  )
   if (m2) {
-    const timestamp = m2[1];
-    const module = `${m2[2]}:${m2[3]}`;
-    const level = m2[4];
-    const message = m2[5];
-    return { timestamp, level, module, message, raw: line };
+    const timestamp = m2[1]
+    const module = `${m2[2]}:${m2[3]}`
+    const level = m2[4]
+    const message = m2[5]
+    return { timestamp, level, module, message, raw: line }
   }
 
-  return null;
-};
+  return null
+}
 
 // 格式化时间戳
 const formatTimestamp = (timestamp) => {
   try {
     // 将 "2025-03-10 08:26:37,269" 格式转换为 "2025-03-10 08:26:37.269"
-    const normalizedTimestamp = timestamp.replace(',', '.');
-    const date = dayjs(normalizedTimestamp);
-    return date.isValid() ? date.format('HH:mm:ss.SSS') : timestamp;
+    const normalizedTimestamp = timestamp.replace(',', '.')
+    const date = dayjs(normalizedTimestamp)
+    return date.isValid() ? date.format('HH:mm:ss.SSS') : timestamp
   } catch (err) {
-    console.error('时间戳格式化错误:', err);
-    return timestamp;
+    console.error('时间戳格式化错误:', err)
+    return timestamp
   }
-};
+}
 
 // 处理日志显示
 const processedLogs = computed(() => {
   return state.rawLogs
     .map(parseLogLine)
-    .filter(log => log !== null)
-    .filter(log => state.selectedLevels.includes(log.level))
-    .filter(log => {
-      if (!state.searchText) return true;
-      return log.raw.toLowerCase().includes(state.searchText.toLowerCase());
-    });
-});
+    .filter((log) => log !== null)
+    .filter((log) => state.selectedLevels.includes(log.level))
+    .filter((log) => {
+      if (!state.searchText) return true
+      return log.raw.toLowerCase().includes(state.searchText.toLowerCase())
+    })
+})
 
 // 获取日志数据
 const fetchLogs = async () => {
-  state.fetching = true;
+  state.fetching = true
   try {
-    error.value = '';
-    const levels = Array.isArray(state.selectedLevels) ? state.selectedLevels : [];
-    const levelParam = levels.length > 0 && levels.length < logLevels.length ? levels.join(',') : undefined;
+    error.value = ''
+    const levels = Array.isArray(state.selectedLevels) ? state.selectedLevels : []
+    const levelParam =
+      levels.length > 0 && levels.length < logLevels.length ? levels.join(',') : undefined
     const data = await apiFetch('/log', {
       method: 'GET',
       query: { lines: 800, level: levelParam, search: state.searchText || undefined },
-      timeoutMs: 5000,
-    });
-    state.rawLogs = String(data?.log || '').split('\n').filter(line => line.trim());
+      timeoutMs: 5000
+    })
+    state.rawLogs = String(data?.log || '')
+      .split('\n')
+      .filter((line) => line.trim())
 
-    await nextTick();
+    await nextTick()
     const scrollToBottom = useThrottleFn(() => {
       if (logContainer.value) {
-        logContainer.value.scrollTop = logContainer.value.scrollHeight;
+        logContainer.value.scrollTop = logContainer.value.scrollHeight
       }
-    }, 100);
-    scrollToBottom();
+    }, 100)
+    scrollToBottom()
   } catch (err) {
-    error.value = `错误: ${err?.message || '后端未启动或不可用'}`;
+    error.value = `错误: ${err?.message || '后端未启动或不可用'}`
   } finally {
-    state.fetching = false;
+    state.fetching = false
   }
-};
+}
 
 const downloadLogs = () => {
   try {
-    const now = new Date().toISOString().replace(/[:.]/g, '-');
-    const content = state.rawLogs.join('\n');
-    downloadText(`pokemon-chat-log-${now}.log`, content);
+    const now = new Date().toISOString().replace(/[:.]/g, '-')
+    const content = state.rawLogs.join('\n')
+    downloadText(`pokemon-chat-log-${now}.log`, content)
   } catch (e) {
-    console.error('下载日志失败:', e);
+    console.error('下载日志失败:', e)
   }
-};
+}
 
 // 清空日志
 const clearLogs = () => {
-  state.rawLogs = [];
-};
+  state.rawLogs = []
+}
 
 // 搜索功能
 const onSearch = () => {
   // 搜索会通过computed自动触发
-};
+}
 
 // 过滤日志
 const filterLogs = () => {
   // 过滤会通过computed自动触发
-};
+}
 
 // 自动刷新
 const toggleAutoRefresh = (value) => {
   if (value) {
-    autoRefreshInterval = setInterval(fetchLogs, 5000);
-    state.autoRefresh = true;
+    autoRefreshInterval = setInterval(fetchLogs, 5000)
+    state.autoRefresh = true
   } else {
     if (autoRefreshInterval) {
-      clearInterval(autoRefreshInterval);
-      autoRefreshInterval = null;
+      clearInterval(autoRefreshInterval)
+      autoRefreshInterval = null
     }
-    state.autoRefresh = false;
+    state.autoRefresh = false
   }
-};
+}
 
 // 全屏切换
 const toggleFullscreen = async () => {
   try {
     if (!state.isFullscreen) {
       if (logViewer.value.requestFullscreen) {
-        await logViewer.value.requestFullscreen();
+        await logViewer.value.requestFullscreen()
       } else if (logViewer.value.webkitRequestFullscreen) {
-        await logViewer.value.webkitRequestFullscreen();
+        await logViewer.value.webkitRequestFullscreen()
       } else if (logViewer.value.msRequestFullscreen) {
-        await logViewer.value.msRequestFullscreen();
+        await logViewer.value.msRequestFullscreen()
       }
     } else {
       if (document.exitFullscreen) {
-        await document.exitFullscreen();
+        await document.exitFullscreen()
       } else if (document.webkitExitFullscreen) {
-        await document.webkitExitFullscreen();
+        await document.webkitExitFullscreen()
       } else if (document.msExitFullscreen) {
-        await document.msExitFullscreen();
+        await document.msExitFullscreen()
       }
     }
   } catch (err) {
-    console.error('全屏切换失败:', err);
+    console.error('全屏切换失败:', err)
   }
-};
+}
 
 // 监听全屏变化
 const handleFullscreenChange = () => {
   state.isFullscreen = Boolean(
-    document.fullscreenElement ||
-    document.webkitFullscreenElement ||
-    document.msFullscreenElement
-  );
-};
+    document.fullscreenElement || document.webkitFullscreenElement || document.msFullscreenElement
+  )
+}
 
 onMounted(() => {
-  fetchLogs();
-  document.addEventListener('fullscreenchange', handleFullscreenChange);
-  document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
-  document.addEventListener('msfullscreenchange', handleFullscreenChange);
-});
+  fetchLogs()
+  document.addEventListener('fullscreenchange', handleFullscreenChange)
+  document.addEventListener('webkitfullscreenchange', handleFullscreenChange)
+  document.addEventListener('msfullscreenchange', handleFullscreenChange)
+})
 
 onActivated(() => {
   if (state.autoRefresh) {
-    toggleAutoRefresh(true);
+    toggleAutoRefresh(true)
   } else {
-    fetchLogs();
+    fetchLogs()
   }
-});
+})
 
 onUnmounted(() => {
   if (autoRefreshInterval) {
-    clearInterval(autoRefreshInterval);
-    autoRefreshInterval = null;
+    clearInterval(autoRefreshInterval)
+    autoRefreshInterval = null
   }
-  document.removeEventListener('fullscreenchange', handleFullscreenChange);
-  document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
-  document.removeEventListener('msfullscreenchange', handleFullscreenChange);
-});
+  document.removeEventListener('fullscreenchange', handleFullscreenChange)
+  document.removeEventListener('webkitfullscreenchange', handleFullscreenChange)
+  document.removeEventListener('msfullscreenchange', handleFullscreenChange)
+})
 
 const printConfig = () => {
-  console.log('Current config:', config);
-};
+  console.log('Current config:', config)
+}
 </script>
 
 <style scoped>
@@ -341,8 +344,8 @@ const printConfig = () => {
 .log-container {
   height: calc(100vh - 200px);
   overflow-y: auto;
-  background: #0C0C0C;
-  color: #D1D1D1;
+  background: #0c0c0c;
+  color: #d1d1d1;
   border-radius: 5px;
   font-family: 'Consolas', 'Monaco', monospace;
   font-size: 13px;
@@ -364,7 +367,7 @@ const printConfig = () => {
 }
 
 .timestamp {
-  color: #6A9955;
+  color: #6a9955;
   min-width: 80px;
 }
 
@@ -374,7 +377,7 @@ const printConfig = () => {
 }
 
 .module {
-  color: #569CD6;
+  color: #569cd6;
   min-width: 30px;
 }
 
@@ -385,19 +388,27 @@ const printConfig = () => {
 }
 
 .level-info {
-  .level { color: #4EC9B0; }
+  .level {
+    color: #4ec9b0;
+  }
 }
 
 .level-error {
-  .level { color: #F14C4C; }
+  .level {
+    color: #f14c4c;
+  }
 }
 
 .level-debug {
-  .level { color: #9CDCFE; }
+  .level {
+    color: #9cdcfe;
+  }
 }
 
 .level-warning {
-  .level { color: #DCD900; }
+  .level {
+    color: #dcd900;
+  }
 }
 
 .empty-logs {
@@ -408,7 +419,7 @@ const printConfig = () => {
 
 @media (prefers-color-scheme: dark) {
   .log-container {
-    background: #1E1E1E;
+    background: #1e1e1e;
   }
 }
 
@@ -423,5 +434,4 @@ const printConfig = () => {
 :-ms-fullscreen .log-container {
   height: calc(100vh - 120px);
 }
-
 </style>

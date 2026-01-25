@@ -5,42 +5,42 @@
  */
 export async function readNdjsonStream(response, onJson, { onParseError } = {}) {
   if (!response?.body) {
-    throw new Error('ReadableStream not supported.');
+    throw new Error('ReadableStream not supported.')
   }
 
-  const reader = response.body.getReader();
-  const decoder = new TextDecoder('utf-8');
-  let buffer = '';
+  const reader = response.body.getReader()
+  const decoder = new TextDecoder('utf-8')
+  let buffer = ''
 
   while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
+    const { done, value } = await reader.read()
+    if (done) break
 
-    buffer += decoder.decode(value, { stream: true });
-    const lines = buffer.split('\n');
+    buffer += decoder.decode(value, { stream: true })
+    const lines = buffer.split('\n')
 
     // Keep last (possibly incomplete) line in the buffer.
-    buffer = lines.pop() || '';
+    buffer = lines.pop() || ''
 
     for (const rawLine of lines) {
-      const line = rawLine.trim();
-      if (!line) continue;
+      const line = rawLine.trim()
+      if (!line) continue
       try {
-        const obj = JSON.parse(line);
+        const obj = JSON.parse(line)
         // Allow async callbacks.
-        await onJson(obj);
+        await onJson(obj)
       } catch (e) {
-        if (onParseError) onParseError(e, line);
+        if (onParseError) onParseError(e, line)
       }
     }
   }
 
-  const tail = buffer.trim();
+  const tail = buffer.trim()
   if (tail) {
     try {
-      await onJson(JSON.parse(tail));
+      await onJson(JSON.parse(tail))
     } catch (e) {
-      if (onParseError) onParseError(e, tail);
+      if (onParseError) onParseError(e, tail)
     }
   }
 }

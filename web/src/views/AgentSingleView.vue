@@ -30,90 +30,92 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue';
-import { useRoute } from 'vue-router';
-import AgentChatComponent from '@/components/AgentChatComponent.vue';
+import { ref, computed, onMounted } from 'vue'
+import { useRoute } from 'vue-router'
+import AgentChatComponent from '@/components/AgentChatComponent.vue'
 import { apiFetch } from '@/api/http'
 import { useConfigStore } from '@/stores/config'
 import { getOfflineMode } from '@/utils/offlineMode'
 
-const route = useRoute();
-const agentId = computed(() => route.params.agent_id);
+const route = useRoute()
+const agentId = computed(() => route.params.agent_id)
 const configStore = useConfigStore()
-const shouldBypassToken = computed(() => getOfflineMode() === 'on' || Boolean(configStore.config.backend?.mock))
+const shouldBypassToken = computed(
+  () => getOfflineMode() === 'on' || Boolean(configStore.config.backend?.mock)
+)
 
 // Token验证相关状态
-const tokenModalVisible = ref(false);
-const tokenInput = ref('');
-const isVerified = ref(false);
-const verifying = ref(false);
-const errorMessage = ref('');
+const tokenModalVisible = ref(false)
+const tokenInput = ref('')
+const isVerified = ref(false)
+const verifying = ref(false)
+const errorMessage = ref('')
 
 const verifyTokenRequest = async (token) => {
   return apiFetch('/admin/verify_token', {
     method: 'POST',
     body: { agent_id: agentId.value, token },
-    timeoutMs: 10000,
+    timeoutMs: 10000
   })
 }
 
 // 验证Token
 const verifyToken = async () => {
   if (!tokenInput.value) {
-    errorMessage.value = '请输入访问令牌';
-    return;
+    errorMessage.value = '请输入访问令牌'
+    return
   }
 
-  verifying.value = true;
-  errorMessage.value = '';
+  verifying.value = true
+  errorMessage.value = ''
 
   try {
-    await verifyTokenRequest(tokenInput.value);
-    isVerified.value = true;
-    tokenModalVisible.value = false;
-    localStorage.setItem(`agent-token-${agentId.value}`, tokenInput.value);
+    await verifyTokenRequest(tokenInput.value)
+    isVerified.value = true
+    tokenModalVisible.value = false
+    localStorage.setItem(`agent-token-${agentId.value}`, tokenInput.value)
   } catch (error) {
-    console.error('验证令牌出错:', error);
-    errorMessage.value = error?.data?.detail || error?.message || '验证令牌时发生错误';
+    console.error('验证令牌出错:', error)
+    errorMessage.value = error?.data?.detail || error?.message || '验证令牌时发生错误'
   } finally {
-    verifying.value = false;
+    verifying.value = false
   }
-};
+}
 
 // 检查是否已经验证
 const checkVerification = async () => {
-  const savedToken = localStorage.getItem(`agent-token-${agentId.value}`);
+  const savedToken = localStorage.getItem(`agent-token-${agentId.value}`)
 
   if (savedToken) {
     // 即使有保存的令牌，也要重新验证其有效性
-    verifying.value = true;
+    verifying.value = true
 
     try {
-      await verifyTokenRequest(savedToken);
-      isVerified.value = true;
-      tokenInput.value = savedToken; // 保存已验证的令牌到输入框
+      await verifyTokenRequest(savedToken)
+      isVerified.value = true
+      tokenInput.value = savedToken // 保存已验证的令牌到输入框
     } catch (error) {
-      console.error('验证令牌出错:', error);
-      localStorage.removeItem(`agent-token-${agentId.value}`);
-      tokenModalVisible.value = true;
+      console.error('验证令牌出错:', error)
+      localStorage.removeItem(`agent-token-${agentId.value}`)
+      tokenModalVisible.value = true
     } finally {
-      verifying.value = false;
+      verifying.value = false
     }
   } else {
     // 没有保存的令牌，显示输入框
-    tokenModalVisible.value = true;
+    tokenModalVisible.value = true
   }
-};
+}
 
 // 组件挂载时检查验证状态
 onMounted(() => {
   if (shouldBypassToken.value) {
-    isVerified.value = true;
-    tokenModalVisible.value = false;
-    return;
+    isVerified.value = true
+    tokenModalVisible.value = false
+    return
   }
-  checkVerification();
-});
+  checkVerification()
+})
 </script>
 
 <style lang="less" scoped>

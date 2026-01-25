@@ -40,11 +40,20 @@
 
           <!-- 工具调用 -->
           <template #tool-calls>
-            <div v-if="message.toolCalls && Object.keys(message.toolCalls).length > 0" class="tool-calls-container">
-              <div v-for="(toolCall, index) in message.toolCalls || {}"
-                    :key="index"
-                    class="tool-call-container">
-                <div v-if="toolCall" class="tool-call-display" :class="{ 'is-collapsed': !expandedToolCalls.has(toolCall.id) }">
+            <div
+              v-if="message.toolCalls && Object.keys(message.toolCalls).length > 0"
+              class="tool-calls-container"
+            >
+              <div
+                v-for="(toolCall, index) in message.toolCalls || {}"
+                :key="index"
+                class="tool-call-container"
+              >
+                <div
+                  v-if="toolCall"
+                  class="tool-call-display"
+                  :class="{ 'is-collapsed': !expandedToolCalls.has(toolCall.id) }"
+                >
                   <div class="tool-header" @click="toggleToolCall(toolCall.id)">
                     <span v-if="!toolCall.toolResultMsg">
                       <LoadingOutlined /> &nbsp;
@@ -52,24 +61,27 @@
                       <span class="tool-name">{{ toolCall.function.name }}</span>
                     </span>
                     <span v-else>
-                      <ThunderboltOutlined /> 工具 <span class="tool-name">{{ toolCall.function.name }}</span> 执行完成
+                      <ThunderboltOutlined /> 工具
+                      <span class="tool-name">{{ toolCall.function.name }}</span> 执行完成
                     </span>
 
                     <!-- <span class="step-badge" v-if="message.step !== undefined">步骤 {{ message.step }}</span> -->
                   </div>
                   <div class="tool-content" v-show="expandedToolCalls.has(toolCall.id)">
-                    <div class="tool-params" v-if="toolCall.function && toolCall.function.arguments">
-                      <div class="tool-params-header">
-                        参数:
-                      </div>
+                    <div
+                      class="tool-params"
+                      v-if="toolCall.function && toolCall.function.arguments"
+                    >
+                      <div class="tool-params-header">参数:</div>
                       <div class="tool-params-content">
                         <pre>{{ toolCall.function.arguments }}</pre>
                       </div>
                     </div>
-                    <div class="tool-params" v-if="toolCall.toolResultMsg && toolCall.toolResultMsg.content">
-                      <div class="tool-params-header">
-                        执行结果
-                      </div>
+                    <div
+                      class="tool-params"
+                      v-if="toolCall.toolResultMsg && toolCall.toolResultMsg.content"
+                    >
+                      <div class="tool-params-header">执行结果</div>
                       <div class="tool-params-content">{{ toolCall.toolResultMsg.content }}</div>
                     </div>
                   </div>
@@ -113,15 +125,16 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted, watch, nextTick, computed } from 'vue';
-import { useDebounceFn } from '@vueuse/core';
+import { ref, onMounted, onUnmounted, watch, nextTick, computed } from 'vue'
+import { useDebounceFn } from '@vueuse/core'
 import {
-  RobotOutlined, LoadingOutlined,
+  RobotOutlined,
+  LoadingOutlined,
   ThunderboltOutlined,
   PlusCircleOutlined,
-  DownOutlined,
-} from '@ant-design/icons-vue';
-import { message } from 'ant-design-vue';
+  DownOutlined
+} from '@ant-design/icons-vue'
+import { message } from 'ant-design-vue'
 import MessageInputComponent from '@/components/MessageInputComponent.vue'
 import MessageComponent from '@/components/MessageComponent.vue'
 import { readNdjsonStream } from '@/utils/ndjsonStream'
@@ -143,245 +156,260 @@ const props = defineProps({
     type: Object,
     default: () => ({})
   }
-});
+})
 
 // ==================== 状态管理 ====================
 
 // UI状态
-const state = ref(props.state);
-const waitingServerResponse = ref(false);
+const state = ref(props.state)
+const waitingServerResponse = ref(false)
 const showMsgRefs = (msg) => {
-  if (!msg) return false;
+  if (!msg) return false
   // Only show refs actions for the final assistant message by default.
-  if (msg.isLast) return true;
-  return false;
+  if (msg.isLast) return true
+  return false
 }
 
 // DOM引用
-const chatScrollContainer = ref(null);
+const chatScrollContainer = ref(null)
 // 数据状态
-const agents = ref({});                // 智能体列表
-const currentAgent = ref(null);        // 当前选中的智能体
-const userInput = ref('');             // 用户输入
-const messages = ref([]);              // 消息列表
-const isProcessing = ref(false);       // 是否正在处理请求
-const activeStreamId = ref(0);
-const activeAbortController = ref(null);
+const agents = ref({}) // 智能体列表
+const currentAgent = ref(null) // 当前选中的智能体
+const userInput = ref('') // 用户输入
+const messages = ref([]) // 消息列表
+const isProcessing = ref(false) // 是否正在处理请求
+const activeStreamId = ref(0)
+const activeAbortController = ref(null)
 
 // Scroll state: stop auto-scroll when user scrolls up, show a "jump to bottom" affordance.
-const userIsScrolling = ref(false);
-const shouldAutoScroll = ref(true);
-const showScrollToBottom = computed(() => !shouldAutoScroll.value && (messages.value?.length || 0) > 0);
+const userIsScrolling = ref(false)
+const shouldAutoScroll = ref(true)
+const showScrollToBottom = computed(
+  () => !shouldAutoScroll.value && (messages.value?.length || 0) > 0
+)
 
 const handleUserScroll = () => {
-  const el = chatScrollContainer.value;
-  if (!el) return;
-  const isNearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 20;
-  userIsScrolling.value = !isNearBottom;
-  shouldAutoScroll.value = isNearBottom;
-};
+  const el = chatScrollContainer.value
+  if (!el) return
+  const isNearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 20
+  userIsScrolling.value = !isNearBottom
+  shouldAutoScroll.value = isNearBottom
+}
 
 const forceScrollToBottom = async () => {
-  await nextTick();
-  const el = chatScrollContainer.value;
-  if (!el) return;
-  shouldAutoScroll.value = true;
-  userIsScrolling.value = false;
-  el.scrollTop = el.scrollHeight - el.clientHeight;
-};
+  await nextTick()
+  const el = chatScrollContainer.value
+  if (!el) return
+  shouldAutoScroll.value = true
+  userIsScrolling.value = false
+  el.scrollTop = el.scrollHeight - el.clientHeight
+}
 
 const jumpToBottom = () => {
-  forceScrollToBottom();
-};
+  forceScrollToBottom()
+}
 
 // ==================== 工具调用相关 ====================
 
 // 工具调用相关
-const toolCalls = ref([]);             // 工具调用列表
-const currentToolCallId = ref(null);   // 当前工具调用ID
-const currentRunId = ref(null);        // 当前运行ID
-const messageStepMap = ref({});        // 消息步骤映射
-const expandedToolCalls = ref(new Set()); // 展开的工具调用集合
+const toolCalls = ref([]) // 工具调用列表
+const currentToolCallId = ref(null) // 当前工具调用ID
+const currentRunId = ref(null) // 当前运行ID
+const messageStepMap = ref({}) // 消息步骤映射
+const expandedToolCalls = ref(new Set()) // 展开的工具调用集合
 
 // ==================== 基础工具函数 ====================
 
-const MAX_MESSAGES_TO_STORE = 300;
+const MAX_MESSAGES_TO_STORE = 300
 
 const ensureLocalId = (msg) => {
-  if (!msg || typeof msg !== 'object') return msg;
-  return msg._local_id ? msg : { ...msg, _local_id: randomId(12) };
-};
-
+  if (!msg || typeof msg !== 'object') return msg
+  return msg._local_id ? msg : { ...msg, _local_id: randomId(12) }
+}
 
 const scrollToBottom = async () => {
-  await nextTick();
-  const el = chatScrollContainer.value;
-  if (!el || !shouldAutoScroll.value) return;
-  el.scrollTop = el.scrollHeight - el.clientHeight;
-};
+  await nextTick()
+  const el = chatScrollContainer.value
+  if (!el || !shouldAutoScroll.value) return
+  el.scrollTop = el.scrollHeight - el.clientHeight
+}
 
 // ==================== 状态管理函数 ====================
 
 // 添加新的状态管理变量
-const messageMap = ref(new Map()); // 存储消息ID与消息对象的映射
-const toolCallMap = ref(new Map()); // 存储工具调用ID与对应消息ID的映射
+const messageMap = ref(new Map()) // 存储消息ID与消息对象的映射
+const toolCallMap = ref(new Map()) // 存储工具调用ID与对应消息ID的映射
 
 // 重置状态
 const resetStatusSteps = () => {
-  toolCalls.value = [];
-  currentToolCallId.value = null;
-  currentRunId.value = null;
-  messageStepMap.value = {};
-  messageMap.value.clear();
-  toolCallMap.value.clear();
-};
+  toolCalls.value = []
+  currentToolCallId.value = null
+  currentRunId.value = null
+  messageStepMap.value = {}
+  messageMap.value.clear()
+  toolCallMap.value.clear()
+}
 
 // 重置线程
 const resetThread = () => {
-  messages.value = [];
-  resetStatusSteps();
-  saveState();
-};
+  messages.value = []
+  resetStatusSteps()
+  saveState()
+}
 
 // ==================== 消息历史处理 ====================
 
 // 过滤和准备消息历史记录
 const prepareMessageHistory = (msgs) => {
   // 按步骤和运行ID建立索引
-  const toolCallsByRunAndStep = {};
-  const toolResultsByRunAndStep = {};
+  const toolCallsByRunAndStep = {}
+  const toolResultsByRunAndStep = {}
 
   // 收集所有工具调用
-  msgs.filter(msg => msg.role === 'tool_call').forEach(msg => {
-    const runId = msg.tool?.run_id || 'unknown';
-    const step = msg.tool?.step !== undefined ? msg.tool.step : -1;
-    const key = `${runId}:${step}`;
-    toolCallsByRunAndStep[key] = msg;
-  });
+  msgs
+    .filter((msg) => msg.role === 'tool_call')
+    .forEach((msg) => {
+      const runId = msg.tool?.run_id || 'unknown'
+      const step = msg.tool?.step !== undefined ? msg.tool.step : -1
+      const key = `${runId}:${step}`
+      toolCallsByRunAndStep[key] = msg
+    })
 
   // 收集所有工具结果
-  msgs.filter(msg => msg.role === 'tool').forEach(msg => {
-    const runId = msg.tool?.run_id || 'unknown';
-    // 尝试使用工具调用步骤（如果可用）或当前步骤
-    const step = msg.tool?.tool_call_step !== undefined ? msg.tool.tool_call_step :
-                (msg.tool?.step !== undefined ? msg.tool.step - 1 : -1);
-    const key = `${runId}:${step}`;
-    toolResultsByRunAndStep[key] = msg;
-  });
+  msgs
+    .filter((msg) => msg.role === 'tool')
+    .forEach((msg) => {
+      const runId = msg.tool?.run_id || 'unknown'
+      // 尝试使用工具调用步骤（如果可用）或当前步骤
+      const step =
+        msg.tool?.tool_call_step !== undefined
+          ? msg.tool.tool_call_step
+          : msg.tool?.step !== undefined
+          ? msg.tool.step - 1
+          : -1
+      const key = `${runId}:${step}`
+      toolResultsByRunAndStep[key] = msg
+    })
 
   // 构建有效的工具调用ID集合
-  const validToolCallKeys = new Set();
+  const validToolCallKeys = new Set()
 
   // 查找所有具有对应结果的工具调用
   for (const key in toolCallsByRunAndStep) {
-    if (toolResultsByRunAndStep[`${key.split(':')[0]}:${parseInt(key.split(':')[1]) + 1}`] ||
-        toolResultsByRunAndStep[key.replace(/:\d+$/, ':result')]) {
-      validToolCallKeys.add(key);
+    if (
+      toolResultsByRunAndStep[`${key.split(':')[0]}:${parseInt(key.split(':')[1]) + 1}`] ||
+      toolResultsByRunAndStep[key.replace(/:\d+$/, ':result')]
+    ) {
+      validToolCallKeys.add(key)
     }
   }
 
   // 过滤消息
-  return msgs.filter(msg => {
+  return msgs.filter((msg) => {
     // 保留用户和助手消息
-    if (msg.role === 'user' || msg.role === 'assistant') return true;
+    if (msg.role === 'user' || msg.role === 'assistant') return true
 
     // 处理工具调用和结果
     if (msg.role === 'tool_call') {
-      const runId = msg.tool?.run_id || 'unknown';
-      const step = msg.tool?.step !== undefined ? msg.tool.step : -1;
-      const key = `${runId}:${step}`;
-      return validToolCallKeys.has(key);
+      const runId = msg.tool?.run_id || 'unknown'
+      const step = msg.tool?.step !== undefined ? msg.tool.step : -1
+      const key = `${runId}:${step}`
+      return validToolCallKeys.has(key)
     }
 
     if (msg.role === 'tool') {
-      const runId = msg.tool?.run_id || 'unknown';
-      const callStep = msg.tool?.tool_call_step !== undefined ? msg.tool.tool_call_step :
-                    (msg.tool?.step !== undefined ? msg.tool.step - 1 : -1);
-      const key = `${runId}:${callStep}`;
-      return validToolCallKeys.has(key);
+      const runId = msg.tool?.run_id || 'unknown'
+      const callStep =
+        msg.tool?.tool_call_step !== undefined
+          ? msg.tool.tool_call_step
+          : msg.tool?.step !== undefined
+          ? msg.tool.step - 1
+          : -1
+      const key = `${runId}:${callStep}`
+      return validToolCallKeys.has(key)
     }
 
-    return false;
-  });
-};
+    return false
+  })
+}
 
 // ==================== 用户交互处理 ====================
 
 // 处理键盘事件
 const handleKeyDown = (e) => {
   if (e.key === 'Enter' && !e.shiftKey) {
-    e.preventDefault();
+    e.preventDefault()
     // 只有在满足条件时才发送
     if (userInput.value.trim() && currentAgent.value && !isProcessing.value) {
-      const tempUserInput = userInput.value;
-      userInput.value = ''; // 立即清空输入框
+      const tempUserInput = userInput.value
+      userInput.value = '' // 立即清空输入框
       // 使用异步调用确保清空先发生
       setTimeout(() => {
-        sendMessageWithText(tempUserInput);
-      }, 0);
+        sendMessageWithText(tempUserInput)
+      }, 0)
     }
   }
-};
+}
 
 // 发送消息
 const sendMessage = () => {
-  if (!userInput.value || !currentAgent.value || isProcessing.value) return;
-  const tempUserInput = userInput.value;
-  userInput.value = ''; // 立即清空输入框
+  if (!userInput.value || !currentAgent.value || isProcessing.value) return
+  const tempUserInput = userInput.value
+  userInput.value = '' // 立即清空输入框
   // 确保UI更新后再发送消息
   nextTick(() => {
-    sendMessageWithText(tempUserInput);
-  });
-};
+    sendMessageWithText(tempUserInput)
+  })
+}
 
 const handleSendOrStop = () => {
   if (isProcessing.value) {
-    activeStreamId.value += 1;
-    activeAbortController.value?.abort?.();
-    activeAbortController.value = null;
-    waitingServerResponse.value = false;
-    isProcessing.value = false;
+    activeStreamId.value += 1
+    activeAbortController.value?.abort?.()
+    activeAbortController.value = null
+    waitingServerResponse.value = false
+    isProcessing.value = false
 
-    const lastMsg = messages.value[messages.value.length - 1];
+    const lastMsg = messages.value[messages.value.length - 1]
     if (lastMsg && lastMsg.role === 'assistant') {
-      lastMsg.isStoppedByUser = true;
-      lastMsg.status = 'stopped';
+      lastMsg.isStoppedByUser = true
+      lastMsg.status = 'stopped'
     }
-    return;
+    return
   }
 
-  sendMessage();
-};
+  sendMessage()
+}
 
 // 重试消息
 const retryMessage = (message) => {
   // 获取用户消息的request_id
-  const requestId = message.request_id;
-  const sendMessage = messages.value.find(msg => msg.id === requestId);
-  const sendMessageIndex = messages.value.indexOf(sendMessage);
+  const requestId = message.request_id
+  const sendMessage = messages.value.find((msg) => msg.id === requestId)
+  const sendMessageIndex = messages.value.indexOf(sendMessage)
 
   // 删除包含 request_id 之后的所有消息
-  messages.value = messages.value.slice(0, sendMessageIndex);
+  messages.value = messages.value.slice(0, sendMessageIndex)
 
   // 重新发送消息
-  sendMessageWithText(sendMessage.content);
-};
+  sendMessageWithText(sendMessage.content)
+}
 
 // ==================== 核心消息处理 ====================
 
 // 使用文本发送消息
 const sendMessageWithText = async (text) => {
-  if (!text || !currentAgent.value || isProcessing.value) return;
+  if (!text || !currentAgent.value || isProcessing.value) return
 
   // 重置状态
-  resetStatusSteps();
-  const streamId = activeStreamId.value + 1;
-  activeStreamId.value = streamId;
-  const controller = new AbortController();
-  activeAbortController.value = controller;
+  resetStatusSteps()
+  const streamId = activeStreamId.value + 1
+  activeStreamId.value = streamId
+  const controller = new AbortController()
+  activeAbortController.value = controller
 
-  const userMessage = text.trim();
-  const requestId = currentAgent.value.name + '-' + new Date().getTime();
+  const userMessage = text.trim()
+  const requestId = currentAgent.value.name + '-' + new Date().getTime()
 
   // 添加用户消息
   messages.value.push({
@@ -389,22 +417,22 @@ const sendMessageWithText = async (text) => {
     role: 'user',
     content: userMessage,
     id: requestId
-  });
+  })
 
-  isProcessing.value = true;
-  await scrollToBottom();
+  isProcessing.value = true
+  await scrollToBottom()
 
   try {
     // 准备历史消息
     const history = messages.value
-      .filter(msg => msg.role !== 'assistant' || msg.status !== 'loading')
-      .filter(msg => msg.role !== 'tool_call' && msg.role !== 'tool')
-      .map(msg => ({
+      .filter((msg) => msg.role !== 'assistant' || msg.status !== 'loading')
+      .filter((msg) => msg.role !== 'tool_call' && msg.role !== 'tool')
+      .map((msg) => ({
         role: msg.role === 'user' || msg.role === 'assistant' ? msg.role : 'assistant',
         content: msg.content
-      }));
+      }))
 
-    waitingServerResponse.value = true;
+    waitingServerResponse.value = true
     // 设置请求参数
     const requestData = {
       query: userMessage,
@@ -415,87 +443,86 @@ const sendMessageWithText = async (text) => {
       meta: {
         request_id: requestId
       }
-    };
+    }
 
     const response = await apiRequest(`/chat/agent/${currentAgent.value.name}`, {
       method: 'POST',
       body: requestData,
       signal: controller.signal,
-      timeoutMs: 300000,
-    });
+      timeoutMs: 300000
+    })
 
     // 处理流式响应
-    await handleStreamResponse(response, { signal: controller.signal });
-
+    await handleStreamResponse(response, { signal: controller.signal })
   } catch (error) {
     if (!error?.isCancelled && !controller.signal.aborted) {
-      console.error('发送消息错误:', error);
+      console.error('发送消息错误:', error)
       messages.value.push({
         _local_id: randomId(12),
         role: 'assistant',
         content: '',
         message: error?.message || '请求失败',
-        status: 'error',
-      });
+        status: 'error'
+      })
     }
   } finally {
     if (activeStreamId.value === streamId) {
-      waitingServerResponse.value = false;
-      isProcessing.value = false;
-      activeAbortController.value = null;
-      await scrollToBottom();
+      waitingServerResponse.value = false
+      isProcessing.value = false
+      activeAbortController.value = null
+      await scrollToBottom()
     }
   }
-};
+}
 
 // 处理流式响应
 const handleStreamResponse = async (response, { signal } = {}) => {
   try {
-    await scrollToBottom();
+    await scrollToBottom()
 
     await readNdjsonStream(
       response,
       async (value) => {
-        if (!value) return;
+        if (!value) return
 
         // 处理不同状态的消息
         if (value.status === 'init') {
-          await handleInit(value);
+          await handleInit(value)
         } else if (value.status === 'finished') {
-          await handleFinished(value);
+          await handleFinished(value)
         } else if (value.status === 'error') {
-          await handleError(value);
+          await handleError(value)
         } else {
-          await handleMessageById(value);
+          await handleMessageById(value)
         }
 
-        await scrollToBottom();
+        await scrollToBottom()
       },
       {
-        onParseError: (e, line) => console.debug('解析JSON出错:', e?.message || e, line),
+        onParseError: (e, line) => console.debug('解析JSON出错:', e?.message || e, line)
       }
-    );
+    )
   } catch (error) {
-    if (signal?.aborted) return;
-    console.error('流式处理出错:', error);
-    const lastMsg = messages.value[messages.value.length - 1];
+    if (signal?.aborted) return
+    console.error('流式处理出错:', error)
+    const lastMsg = messages.value[messages.value.length - 1]
     if (lastMsg.role === 'assistant') {
-      lastMsg.status = 'error';
-      lastMsg.message = error.message;
+      lastMsg.status = 'error'
+      lastMsg.message = error.message
     } else {
       messages.value.push({
         _local_id: randomId(12),
         role: 'assistant',
         message: error?.message || '请求失败',
         status: 'error'
-      });
-      await scrollToBottom();
+      })
+      await scrollToBottom()
     }
   }
-};
+}
 
 const handleInit = async (data) => {
-  waitingServerResponse.value = false;
+  waitingServerResponse.value = false
   const initMsg = {
     _local_id: randomId(12),
     role: 'assistant',
@@ -505,96 +532,101 @@ const handleInit = async (data) => {
     toolCallIds: {},
     request_id: data.request_id
   }
-  messages.value.push(initMsg);
-  await scrollToBottom();
+  messages.value.push(initMsg)
+  await scrollToBottom()
 }
 
 // 处理完成状态
 const handleFinished = async (data) => {
   // 更新最后一条助手消息的状态
-  const lastAssistantMsg = messages.value[messages.value.length - 1];
+  const lastAssistantMsg = messages.value[messages.value.length - 1]
   if (lastAssistantMsg) {
     // 如果既没有内容也没有工具调用，添加一个完成提示
-    if ((!lastAssistantMsg.content || lastAssistantMsg.content.trim().length === 0) &&
-        (!lastAssistantMsg.toolCalls || Object.keys(lastAssistantMsg.toolCalls).length === 0)) {
-      lastAssistantMsg.content = '已完成';
+    if (
+      (!lastAssistantMsg.content || lastAssistantMsg.content.trim().length === 0) &&
+      (!lastAssistantMsg.toolCalls || Object.keys(lastAssistantMsg.toolCalls).length === 0)
+    ) {
+      lastAssistantMsg.content = '已完成'
     }
     // 更新状态为已完成
-    lastAssistantMsg.status = 'finished';
-    lastAssistantMsg.isLast = true;
-    lastAssistantMsg.meta = data.meta;
+    lastAssistantMsg.status = 'finished'
+    lastAssistantMsg.isLast = true
+    lastAssistantMsg.meta = data.meta
     if (data.refs) {
-      lastAssistantMsg.refs = data.refs;
+      lastAssistantMsg.refs = data.refs
 
-      const kbResults = data.refs?.knowledge_base?.results;
+      const kbResults = data.refs?.knowledge_base?.results
       if (Array.isArray(kbResults) && kbResults.length > 0) {
         lastAssistantMsg.groupedResults = kbResults
           .filter((r) => r?.file?.filename)
           .reduce((acc, r) => {
-            const filename = r.file.filename;
-            if (!acc[filename]) acc[filename] = [];
-            acc[filename].push(r);
-            return acc;
-          }, {});
+            const filename = r.file.filename
+            if (!acc[filename]) acc[filename] = []
+            acc[filename].push(r)
+            return acc
+          }, {})
       }
     }
   }
 
   // 标记处理完成
-  await scrollToBottom();
-};
+  await scrollToBottom()
+}
 
 // 基于ID处理消息
 const handleMessageById = async (data) => {
-  const msgId = data.msg.id;
-  const msgType = data.msg.type;
+  const msgId = data.msg.id
+  const msgType = data.msg.type
   // console.log("data", data);
 
   // 查找现有消息
-  const existingMsgIndex = messageMap.value.get(msgId);
+  const existingMsgIndex = messageMap.value.get(msgId)
   // console.log("existingMsgIndex", existingMsgIndex);
 
   if (existingMsgIndex === undefined) {
     // 创建新消息或附加到现有助手消息
     if (msgType === 'tool') {
-      await appendToolMessageToExistingAssistant(data);
+      await appendToolMessageToExistingAssistant(data)
     } else {
       // 查找是否有正在加载的助手消息
-      const loadingAssistantIndex = messages.value.findIndex(m => m.role === 'assistant' && m.status === 'init');
+      const loadingAssistantIndex = messages.value.findIndex(
+        (m) => m.role === 'assistant' && m.status === 'init'
+      )
       if (loadingAssistantIndex !== -1) {
         // 更新现有助手消息
-        messages.value[loadingAssistantIndex].id = msgId;
-        messageMap.value.set(msgId, loadingAssistantIndex);
-        await updateExistingMessage(data, loadingAssistantIndex);
+        messages.value[loadingAssistantIndex].id = msgId
+        messageMap.value.set(msgId, loadingAssistantIndex)
+        await updateExistingMessage(data, loadingAssistantIndex)
       } else {
-        await createAssistantMessage(data);
+        await createAssistantMessage(data)
       }
     }
   } else {
     // 更新现有消息
-    await updateExistingMessage(data, existingMsgIndex);
+    await updateExistingMessage(data, existingMsgIndex)
   }
-};
+}
 
 // 创建新的助手消息
 const createAssistantMessage = async (data) => {
   // console.log("createAssistantMessage", data);
-  const msgId = data.msg.id;
-  const msgContent = data.response || '';
-  const runId = data.metadata?.run_id;
-  const step = data.metadata?.langgraph_step;
-  const requestId = data.metadata?.request_id || data.request_id;
+  const msgId = data.msg.id
+  const msgContent = data.response || ''
+  const runId = data.metadata?.run_id
+  const step = data.metadata?.langgraph_step
+  const requestId = data.metadata?.request_id || data.request_id
 
-  let currentMsg = null;
+  let currentMsg = null
   // 查看最后一个消息是不是 assistant 并且 status 是 init，并且 request_id 是当前的 request_id，而且没有 id
-  const lastMsg = messages.value[messages.value.length - 1];
-  const lastMsgIsInit = lastMsg.role === 'assistant'
-      && lastMsg.status === 'init'
-      && lastMsg.request_id === requestId
-      && !lastMsg.id;
+  const lastMsg = messages.value[messages.value.length - 1]
+  const lastMsgIsInit =
+    lastMsg.role === 'assistant' &&
+    lastMsg.status === 'init' &&
+    lastMsg.request_id === requestId &&
+    !lastMsg.id
 
   if (lastMsgIsInit) {
-    currentMsg = lastMsg;
+    currentMsg = lastMsg
   } else {
     // 创建新消息
     currentMsg = {
@@ -604,124 +636,124 @@ const createAssistantMessage = async (data) => {
       toolCalls: {},
       toolCallIds: {},
       request_id: requestId
-    };
-    messages.value.push(currentMsg);
+    }
+    messages.value.push(currentMsg)
   }
 
-  if (!currentMsg._local_id) currentMsg._local_id = randomId(12);
-  currentMsg.id = msgId;
-  currentMsg.content = msgContent;
-  currentMsg.run_id = runId;
-  currentMsg.step = step;
+  if (!currentMsg._local_id) currentMsg._local_id = randomId(12)
+  currentMsg.id = msgId
+  currentMsg.content = msgContent
+  currentMsg.run_id = runId
+  currentMsg.step = step
 
   // 处理工具调用
-  const toolCalls = data.msg.additional_kwargs?.tool_calls;
+  const toolCalls = data.msg.additional_kwargs?.tool_calls
   if (toolCalls && toolCalls.length > 0) {
     // console.log("toolCalls in createAssistantMessage", toolCalls);
     for (const toolCall of toolCalls) {
-      const toolCallId = toolCall.id;
-      const toolIndex = toolCall.index || 0;
-      currentMsg.toolCallIds[toolCallId] = toolIndex;
-      currentMsg.toolCalls[toolIndex] = toolCall;
-      toolCallMap.value.set(toolCallId, msgId);
+      const toolCallId = toolCall.id
+      const toolIndex = toolCall.index || 0
+      currentMsg.toolCallIds[toolCallId] = toolIndex
+      currentMsg.toolCalls[toolIndex] = toolCall
+      toolCallMap.value.set(toolCallId, msgId)
     }
   }
 
   // 添加新消息
-  const newIndex = messages.value.length - 1;
-  messageMap.value.set(msgId, newIndex);
+  const newIndex = messages.value.length - 1
+  messageMap.value.set(msgId, newIndex)
 
-  await scrollToBottom();
-};
+  await scrollToBottom()
+}
 
 // 更新现有消息
 const updateExistingMessage = async (data, existingMsgIndex) => {
-  const msgInstance = messages.value[existingMsgIndex];
+  const msgInstance = messages.value[existingMsgIndex]
   // console.log("updateExistingMessage", msgInstance);
 
   // 如果消息状态是loading，更新为processing
   if (msgInstance.status === 'init') {
-    msgInstance.status = data.status || 'loading';
-    msgInstance.run_id = data.metadata?.run_id;
-    msgInstance.step = data.metadata?.langgraph_step;
+    msgInstance.status = data.status || 'loading'
+    msgInstance.run_id = data.metadata?.run_id
+    msgInstance.step = data.metadata?.langgraph_step
   }
 
   // 添加新的响应内容
   if (data.response) {
-    msgInstance.content = msgInstance.content || '';
-    msgInstance.content += data.response;
+    msgInstance.content = msgInstance.content || ''
+    msgInstance.content += data.response
   }
 
-  const toolCalls = data.msg.additional_kwargs?.tool_calls;
+  const toolCalls = data.msg.additional_kwargs?.tool_calls
   if (toolCalls && toolCalls.length > 0) {
     // console.log("toolCalls in updateExistingMessage", toolCalls);
     for (const toolCall of toolCalls) {
-      const toolIndex = toolCall.index || 0;
+      const toolIndex = toolCall.index || 0
 
       // 创建临时对象
-      const newToolCalls = { ...msgInstance.toolCalls };
-      const newToolCallIds = { ...msgInstance.toolCallIds };
+      const newToolCalls = { ...msgInstance.toolCalls }
+      const newToolCallIds = { ...msgInstance.toolCallIds }
       if (!newToolCalls[toolIndex]) {
-        newToolCalls[toolIndex] = toolCall;
-        newToolCallIds[toolCall.id] = toolIndex;
+        newToolCalls[toolIndex] = toolCall
+        newToolCallIds[toolCall.id] = toolIndex
       } else {
-        newToolCalls[toolIndex]['function']['arguments'] += toolCall.function.arguments;
+        newToolCalls[toolIndex]['function']['arguments'] += toolCall.function.arguments
       }
       // 整体替换，触发响应式更新
-      msgInstance.toolCalls = newToolCalls;
-      msgInstance.toolCallIds = newToolCallIds;
+      msgInstance.toolCalls = newToolCalls
+      msgInstance.toolCallIds = newToolCallIds
 
-      toolCallMap.value.set(toolCall.id, msgInstance.id);
+      toolCallMap.value.set(toolCall.id, msgInstance.id)
     }
   }
 
   // 如果状态是error，则更新为error
   if (data.status === 'error') {
-    msgInstance.status = 'error';
-    msgInstance.message = data.message;
+    msgInstance.status = 'error'
+    msgInstance.message = data.message
   }
 
   // 确保变更生效
-  await nextTick();
-  await scrollToBottom();
-};
+  await nextTick()
+  await scrollToBottom()
+}
 
 const handleError = async (data) => {
-  console.error('处理错误状态:', data);
-  const lastMsg = messages.value[messages.value.length - 1];
+  console.error('处理错误状态:', data)
+  const lastMsg = messages.value[messages.value.length - 1]
   if (lastMsg) {
-    lastMsg.status = 'error';
-    lastMsg.message = data.message;
+    lastMsg.status = 'error'
+    lastMsg.message = data.message
   }
-  isProcessing.value = false;
-};
+  isProcessing.value = false
+}
 
 const appendToolMessageToExistingAssistant = async (data) => {
   // console.log("appendToolMessageToExistingAssistant", data);
-  currentToolCallId.value = data.msg.tool_call_id;
-  const assignedMsgId = toolCallMap.value.get(currentToolCallId.value);
+  currentToolCallId.value = data.msg.tool_call_id
+  const assignedMsgId = toolCallMap.value.get(currentToolCallId.value)
   if (assignedMsgId === undefined) {
-    console.error('未找到关联的消息实例', currentToolCallId.value);
-    return;
+    console.error('未找到关联的消息实例', currentToolCallId.value)
+    return
   }
 
   // 获取消息索引
-  const msgIndex = messageMap.value.get(assignedMsgId);
+  const msgIndex = messageMap.value.get(assignedMsgId)
   if (msgIndex === undefined) {
-    console.error('未找到关联的消息索引', assignedMsgId);
-    return;
+    console.error('未找到关联的消息索引', assignedMsgId)
+    return
   }
 
-  const msgInstance = messages.value[msgIndex];
-  const toolCallIndex = msgInstance.toolCallIds[currentToolCallId.value];
+  const msgInstance = messages.value[msgIndex]
+  const toolCallIndex = msgInstance.toolCallIds[currentToolCallId.value]
   if (toolCallIndex === undefined) {
-    console.error('未找到工具调用索引', currentToolCallId.value);
-    return;
+    console.error('未找到工具调用索引', currentToolCallId.value)
+    return
   }
 
-  msgInstance.toolCalls[toolCallIndex].toolResultMsg = data.msg;
-  msgInstance.toolCalls[toolCallIndex].toolResultMetadata = data.metadata;
-  await scrollToBottom();
+  msgInstance.toolCalls[toolCallIndex].toolResultMsg = data.msg
+  msgInstance.toolCalls[toolCallIndex].toolResultMetadata = data.metadata
+  await scrollToBottom()
 }
 
 // ==================== 生命周期钩子 ====================
@@ -736,29 +768,33 @@ const fetchAgents = async () => {
   try {
     const data = await apiFetch('/chat/agent', { method: 'GET', timeoutMs: 10000 })
     agents.value = (data?.agents || []).reduce((acc, agent) => {
-      acc[agent.name] = agent;
-      return acc;
-    }, {});
+      acc[agent.name] = agent
+      return acc
+    }, {})
   } catch (error) {
-    console.error('获取智能体错误:', error);
+    console.error('获取智能体错误:', error)
   }
-};
+}
 
 // 监听消息变化自动滚动
-watch(messages, () => {
-  scrollToBottom();
-}, { deep: true });
+watch(
+  messages,
+  () => {
+    scrollToBottom()
+  },
+  { deep: true }
+)
 
 // 组件挂载时加载状态
 onMounted(async () => {
   try {
     // console.log("组件挂载");
     if (chatScrollContainer.value) {
-      chatScrollContainer.value.addEventListener('scroll', handleUserScroll);
+      chatScrollContainer.value.addEventListener('scroll', handleUserScroll)
     }
 
     // 获取智能体列表
-    await fetchAgents();
+    await fetchAgents()
 
     // 检查加载状态
     // console.log("路由参数:", props.agentId);
@@ -767,21 +803,21 @@ onMounted(async () => {
     // 初始加载 - 确保使用 Vue Router 的解析后路由
     // 使用 setTimeout 确保路由完全解析
     setTimeout(async () => {
-      await loadAgentData();
+      await loadAgentData()
       // console.log("初始化后消息数量:", messages.value.length);
-    }, 10);
+    }, 10)
   } catch (error) {
-    console.error("组件挂载出错:", error);
+    console.error('组件挂载出错:', error)
   }
-});
+})
 
 onUnmounted(() => {
-  activeStreamId.value += 1;
-  activeAbortController.value?.abort?.();
+  activeStreamId.value += 1
+  activeAbortController.value?.abort?.()
   if (chatScrollContainer.value) {
-    chatScrollContainer.value.removeEventListener('scroll', handleUserScroll);
+    chatScrollContainer.value.removeEventListener('scroll', handleUserScroll)
   }
-});
+})
 
 // // 处理元数据
 // const handleMetadata = (data) => {
@@ -803,158 +839,160 @@ onUnmounted(() => {
 // 在 script setup 部分添加 toggleToolCall 方法
 const toggleToolCall = (toolCallId) => {
   if (expandedToolCalls.value.has(toolCallId)) {
-    expandedToolCalls.value.delete(toolCallId);
+    expandedToolCalls.value.delete(toolCallId)
   } else {
-    expandedToolCalls.value.add(toolCallId);
+    expandedToolCalls.value.add(toolCallId)
   }
-};
+}
 
 // 加载智能体数据的方法
 const loadAgentData = async () => {
   try {
     // 确保智能体列表已加载
     if (Object.keys(agents.value).length === 0) {
-      await fetchAgents();
+      await fetchAgents()
     }
 
     // 设置当前智能体
     if (props.agentId && agents.value && agents.value[props.agentId]) {
       // 如果传入了指定的agentId，就加载对应的智能体
-      currentAgent.value = agents.value[props.agentId];
+      currentAgent.value = agents.value[props.agentId]
       // console.log("设置当前智能体", currentAgent.value.name);
     } else if (!props.agentId) {
       // 多智能体模式下，尝试从本地存储恢复上次选择的智能体
-      const storagePrefix = 'agent-multi';
-      const savedAgent = localStorage.getItem(`${storagePrefix}-current-agent`);
+      const storagePrefix = 'agent-multi'
+      const savedAgent = localStorage.getItem(`${storagePrefix}-current-agent`)
       if (savedAgent && agents.value && agents.value[savedAgent]) {
-        currentAgent.value = agents.value[savedAgent];
+        currentAgent.value = agents.value[savedAgent]
         // console.log("从存储中恢复智能体", currentAgent.value.name);
       }
     }
 
     // 加载保存的状态
-    loadState();
+    loadState()
 
     // 处理消息历史
     if (messages.value && messages.value.length > 0) {
       // console.log("处理消息历史:", messages.value.length);
-      const prepared = prepareMessageHistory(messages.value);
-      messages.value = Array.isArray(prepared) ? prepared.map(ensureLocalId) : [];
+      const prepared = prepareMessageHistory(messages.value)
+      messages.value = Array.isArray(prepared) ? prepared.map(ensureLocalId) : []
     }
   } catch (error) {
-    console.error('加载智能体数据出错:', error);
+    console.error('加载智能体数据出错:', error)
   }
-};
+}
 
 // 从localStorage加载状态
 const loadState = () => {
   try {
     // 确定存储前缀
-    const storagePrefix = props.agentId ?
-      `agent-${props.agentId}` :
-      'agent-multi';
+    const storagePrefix = props.agentId ? `agent-${props.agentId}` : 'agent-multi'
 
     if (!storagePrefix) {
-      console.error('无法确定存储前缀，agent_id缺失');
-      return;
+      console.error('无法确定存储前缀，agent_id缺失')
+      return
     }
 
     // console.log("loadState with prefix:", storagePrefix);
 
     // 加载消息历史
-    const parsedMessages = readJson(`${storagePrefix}-messages`, null);
+    const parsedMessages = readJson(`${storagePrefix}-messages`, null)
     if (Array.isArray(parsedMessages)) {
-      messages.value = parsedMessages.map(ensureLocalId);
+      messages.value = parsedMessages.map(ensureLocalId)
     }
 
     // 加载线程ID
-    const savedThreadId = localStorage.getItem(`${storagePrefix}-thread-id`);
+    const savedThreadId = localStorage.getItem(`${storagePrefix}-thread-id`)
     if (savedThreadId) {
-      currentRunId.value = savedThreadId;
+      currentRunId.value = savedThreadId
       // console.log(`加载线程ID (${storagePrefix}):`, currentRunId.value);
     }
   } catch (error) {
-    console.error('从localStorage加载状态出错:', error);
+    console.error('从localStorage加载状态出错:', error)
   }
-};
+}
 
 // 监听agentId变化
-watch(() => props.agentId, async (newAgentId, oldAgentId) => {
-  try {
-    // console.log("智能体ID变化", oldAgentId, "->", newAgentId);
+watch(
+  () => props.agentId,
+  async (newAgentId, oldAgentId) => {
+    try {
+      // console.log("智能体ID变化", oldAgentId, "->", newAgentId);
 
-    // 如果变化了，重置会话并加载新数据
-    if (newAgentId !== oldAgentId) {
-      // 重置会话
-      messages.value = [];
-      currentRunId.value = null;
-      resetStatusSteps();
+      // 如果变化了，重置会话并加载新数据
+      if (newAgentId !== oldAgentId) {
+        // 重置会话
+        messages.value = []
+        currentRunId.value = null
+        resetStatusSteps()
 
-      // 加载新的智能体数据
-      await loadAgentData();
+        // 加载新的智能体数据
+        await loadAgentData()
+      }
+    } catch (error) {
+      console.error('智能体ID变化处理出错:', error)
     }
-  } catch (error) {
-    console.error('智能体ID变化处理出错:', error);
-  }
-}, { immediate: true });
+  },
+  { immediate: true }
+)
 
 // 保存状态到localStorage
 const saveState = () => {
   try {
     // 防止初始化阶段保存干扰
     if (!currentAgent.value) {
-      console.warn("当前没有选中智能体，跳过保存");
-      return;
+      console.warn('当前没有选中智能体，跳过保存')
+      return
     }
 
     // 确定存储前缀
-    const prefix = props.agentId ? `agent-${props.agentId}` : 'agent-multi';
+    const prefix = props.agentId ? `agent-${props.agentId}` : 'agent-multi'
     // console.log("saveState with prefix:", prefix);
 
     // 如果是多智能体模式，保存当前选择的智能体
     if (!props.agentId && currentAgent.value) {
-      localStorage.setItem(`${prefix}-current-agent`, currentAgent.value.name);
+      localStorage.setItem(`${prefix}-current-agent`, currentAgent.value.name)
     }
 
     // 保存消息历史
     if (messages.value && messages.value.length > 0) {
       // console.log(`保存消息历史 (${prefix}):`, messages.value.length);
-      const toStore = messages.value.slice(-MAX_MESSAGES_TO_STORE);
-      writeJson(`${prefix}-messages`, toStore);
+      const toStore = messages.value.slice(-MAX_MESSAGES_TO_STORE)
+      writeJson(`${prefix}-messages`, toStore)
     } else {
-      removeKey(`${prefix}-messages`);
+      removeKey(`${prefix}-messages`)
     }
 
     // 保存线程ID
     if (currentRunId.value) {
-      localStorage.setItem(`${prefix}-thread-id`, currentRunId.value);
+      localStorage.setItem(`${prefix}-thread-id`, currentRunId.value)
       // console.log(`保存线程ID (${prefix}):`, currentRunId.value);
     } else {
-      localStorage.removeItem(`${prefix}-thread-id`);
+      localStorage.removeItem(`${prefix}-thread-id`)
     }
   } catch (error) {
-    console.error('保存状态到localStorage出错:', error);
+    console.error('保存状态到localStorage出错:', error)
   }
-};
+}
 
 const sayHi = () => {
-  message.success(`Hi, I am ${currentAgent.value.name}, ${currentAgent.value.description}`);
+  message.success(`Hi, I am ${currentAgent.value.name}, ${currentAgent.value.description}`)
 }
 
 // 监听状态变化并保存
-const persistState = useDebounceFn(
-  () => saveState(),
-  800,
-  { maxWait: 2500 }
-);
+const persistState = useDebounceFn(() => saveState(), 800, { maxWait: 2500 })
 
-watch([currentAgent, messages, currentRunId], () => {
-  try {
-    persistState();
-  } catch (error) {
-    console.error('保存状态时出错:', error);
-  }
-}, { deep: true });
+watch(
+  [currentAgent, messages, currentRunId],
+  () => {
+    try {
+      persistState()
+    } catch (error) {
+      console.error('保存状态时出错:', error)
+    }
+  },
+  { deep: true }
+)
 </script>
 
 <style lang="less" scoped>
@@ -991,7 +1029,8 @@ watch([currentAgent, messages, currentRunId], () => {
     padding: 1rem;
     border-bottom: 1px solid var(--main-light-3);
 
-    .header__left, .header__right {
+    .header__left,
+    .header__right {
       display: flex;
       align-items: center;
     }
@@ -1057,7 +1096,6 @@ watch([currentAgent, messages, currentRunId], () => {
   padding: 1rem 2rem;
   display: flex;
   flex-direction: column;
-
 
   .tool-calls-container {
     width: 100%;
@@ -1185,7 +1223,9 @@ watch([currentAgent, messages, currentRunId], () => {
 }
 
 @keyframes pulse {
-  0%, 80%, 100% {
+  0%,
+  80%,
+  100% {
     transform: scale(0.8);
     opacity: 0.3;
   }

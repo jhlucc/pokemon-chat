@@ -5,12 +5,18 @@
   --header-height: 60px;
   --page-padding-x: 24px;
   --page-padding-y: 20px;
+  --content-max-width: 1280px;
 }
 
 /* 页面主体布局容器 */
 .layout-container {
   width: 100%;
-  padding: 0px 30px;
+  padding: 0 var(--page-padding-x);
+  background-color: var(--layout-bg-color);
+}
+
+/* AppLayout scroll container background */
+#app-router-view {
   background-color: var(--layout-bg-color);
 }
 
@@ -96,6 +102,12 @@ button.ant-btn-icon-only:hover {
 /* ==================== UI Utilities ==================== */
 .ui-page {
   padding: var(--page-padding-y) var(--page-padding-x);
+}
+
+.ui-container {
+  width: 100%;
+  max-width: var(--content-max-width);
+  margin: 0 auto;
 }
 
 .ui-muted {

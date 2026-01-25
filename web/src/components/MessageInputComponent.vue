@@ -15,23 +15,19 @@
         <slot name="options-left"></slot>
       </div>
       <div class="options__right">
-      <a-tooltip :title="isRecording ? '点击停止录音' : '点击开始语音输入'">
-        <a-button
-          type="link"
-          @click="toggleRecording"
-          :style="{ color: isRecording ? 'red' : '' }"
-        >
-          <template #icon>
-            <component :is="isRecording ? LoadingOutlined : AudioOutlined" />
-          </template>
-        </a-button>
-      </a-tooltip>
-        <a-tooltip :title="isLoading ? '停止回答' : ''">
+        <a-tooltip :title="isRecording ? '点击停止录音' : '点击开始语音输入'">
           <a-button
-            @click="handleSendOrStop"
-            :disabled="sendButtonDisabled"
             type="link"
+            @click="toggleRecording"
+            :style="{ color: isRecording ? 'red' : '' }"
           >
+            <template #icon>
+              <component :is="isRecording ? LoadingOutlined : AudioOutlined" />
+            </template>
+          </a-button>
+        </a-tooltip>
+        <a-tooltip :title="isLoading ? '停止回答' : ''">
+          <a-button @click="handleSendOrStop" :disabled="sendButtonDisabled" type="link">
             <template #icon>
               <component :is="getIcon" class="send-btn" />
             </template>
@@ -43,22 +39,22 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue';
-	import {
-	  AudioOutlined,
-	  SendOutlined,
-	  ArrowUpOutlined,
-	  LoadingOutlined,
-	  PauseOutlined
-	} from '@ant-design/icons-vue';
-	import { message } from 'ant-design-vue'
-	import { apiFetch } from '@/api/http'
+import { ref, computed } from 'vue'
+import {
+  AudioOutlined,
+  SendOutlined,
+  ArrowUpOutlined,
+  LoadingOutlined,
+  PauseOutlined
+} from '@ant-design/icons-vue'
+import { message } from 'ant-design-vue'
+import { apiFetch } from '@/api/http'
 
-const isRecording = ref(false);
-const isRecordingLocked = ref(false); // ✅ 新增锁
+const isRecording = ref(false)
+const isRecordingLocked = ref(false) // ✅ 新增锁
 
-let mediaRecorder = null;
-let audioChunks = [];
+let mediaRecorder = null
+let audioChunks = []
 
 const props = defineProps({
   modelValue: {
@@ -93,109 +89,107 @@ const props = defineProps({
     type: Object,
     default: () => ({})
   }
-});
+})
 
-const emit = defineEmits(['update:modelValue', 'send', 'keydown']);
+const emit = defineEmits(['update:modelValue', 'send', 'keydown'])
 
 // 图标映射
 const iconComponents = {
-  'SendOutlined': SendOutlined,
-  'ArrowUpOutlined': ArrowUpOutlined,
-  'PauseOutlined': PauseOutlined
-};
+  SendOutlined: SendOutlined,
+  ArrowUpOutlined: ArrowUpOutlined,
+  PauseOutlined: PauseOutlined
+}
 
 // 根据传入的图标名动态获取组件
 const getIcon = computed(() => {
   if (props.isLoading) {
-    return PauseOutlined;
+    return PauseOutlined
   }
-  return iconComponents[props.sendIcon] || ArrowUpOutlined;
-});
+  return iconComponents[props.sendIcon] || ArrowUpOutlined
+})
 
 const toggleRecording = async () => {
-  if (isRecordingLocked.value) return;
+  if (isRecordingLocked.value) return
 
   if (!isRecording.value) {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
 
-      mediaRecorder = new MediaRecorder(stream);
-      audioChunks = [];
+      mediaRecorder = new MediaRecorder(stream)
+      audioChunks = []
 
       mediaRecorder.ondataavailable = (e) => {
         if (e.data.size > 0) {
-          audioChunks.push(e.data);
+          audioChunks.push(e.data)
         }
-      };
+      }
 
-	mediaRecorder.onstop = async () => {
-	  try {
-	    const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
-	    const formData = new FormData();
-	    formData.append('file', audioBlob, 'recording.wav');
+      mediaRecorder.onstop = async () => {
+        try {
+          const audioBlob = new Blob(audioChunks, { type: 'audio/wav' })
+          const formData = new FormData()
+          formData.append('file', audioBlob, 'recording.wav')
 
-    const result = await apiFetch('/chat/asr/', {
-      method: 'POST',
-      body: formData,
-      timeoutMs: 120000,
-	    })
-	    inputValue.value += result.text || '';
-	  } catch (e) {
-	    console.error('上传识别失败：', e);
-	    message.error(e?.message ? `语音识别失败：${e.message}` : '语音识别失败');
-	  } finally {
-	    // ✅ 释放麦克风
-	  const tracks = mediaRecorder?.stream?.getTracks?.();
-	if (tracks && Array.isArray(tracks)) {
-	  tracks.forEach(track => track.stop());
-}
-    mediaRecorder = null;
-    isRecordingLocked.value = false;
-    isRecording.value = false;
-  }
-};
+          const result = await apiFetch('/chat/asr/', {
+            method: 'POST',
+            body: formData,
+            timeoutMs: 120000
+          })
+          inputValue.value += result.text || ''
+        } catch (e) {
+          console.error('上传识别失败：', e)
+          message.error(e?.message ? `语音识别失败：${e.message}` : '语音识别失败')
+        } finally {
+          // ✅ 释放麦克风
+          const tracks = mediaRecorder?.stream?.getTracks?.()
+          if (tracks && Array.isArray(tracks)) {
+            tracks.forEach((track) => track.stop())
+          }
+          mediaRecorder = null
+          isRecordingLocked.value = false
+          isRecording.value = false
+        }
+      }
 
-      mediaRecorder.start();
-	    isRecording.value = true;
-	    isRecordingLocked.value = false; // ✅ 注意：开始不加锁，允许点击停止
-	  } catch (err) {
-	    console.error('无法开始录音：', err);
-	    message.error(err?.message ? `无法开始录音：${err.message}` : '无法开始录音');
-	    isRecording.value = false;
-	  }
-	} else {
+      mediaRecorder.start()
+      isRecording.value = true
+      isRecordingLocked.value = false // ✅ 注意：开始不加锁，允许点击停止
+    } catch (err) {
+      console.error('无法开始录音：', err)
+      message.error(err?.message ? `无法开始录音：${err.message}` : '无法开始录音')
+      isRecording.value = false
+    }
+  } else {
     try {
       if (mediaRecorder && mediaRecorder.state !== 'inactive') {
-        mediaRecorder.stop();
-        isRecordingLocked.value = true; // ✅ 锁定，等待 onstop 完成
+        mediaRecorder.stop()
+        isRecordingLocked.value = true // ✅ 锁定，等待 onstop 完成
       } else {
-        isRecording.value = false;
+        isRecording.value = false
       }
     } catch (e) {
-      console.error('停止录音失败：', e);
-      isRecording.value = false;
-      isRecordingLocked.value = false;
+      console.error('停止录音失败：', e)
+      isRecording.value = false
+      isRecordingLocked.value = false
     }
   }
-};
-
-
+}
 
 // 创建本地引用以进行双向绑定
 const inputValue = computed({
   get: () => props.modelValue,
   set: (val) => emit('update:modelValue', val)
-});
+})
 
 // 处理键盘事件
 const handleKeyPress = (e) => {
-  emit('keydown', e);
-};
+  emit('keydown', e)
+}
 
 // 处理发送按钮点击
 const handleSendOrStop = () => {
-  emit('send');
-};
+  emit('send')
+}
 </script>
 
 <style lang="less" scoped>

@@ -25,8 +25,8 @@ export const useConfigStore = defineStore('config', () => {
       ...(patch || {}),
       backend: {
         ...(config.value.backend || {}),
-        ...(patch?.backend || {}),
-      },
+        ...(patch?.backend || {})
+      }
     }
     saveLocalConfig()
   }
@@ -37,7 +37,7 @@ export const useConfigStore = defineStore('config', () => {
       const remote = await apiFetch('/config', { method: 'GET' })
       patchLocal({
         ...remote,
-        backend: { online: true, last_error: null, ...(remote?.backend || {}) },
+        backend: { online: true, last_error: null, ...(remote?.backend || {}) }
       })
 
       // Best-effort readiness probe (keeps UI informative, not required for rendering).
@@ -46,8 +46,8 @@ export const useConfigStore = defineStore('config', () => {
         patchLocal({
           backend: {
             ready: ready?.status === 'ok',
-            checks: ready?.checks || null,
-          },
+            checks: ready?.checks || null
+          }
         })
       } catch {
         patchLocal({ backend: { ready: false, checks: null } })
@@ -66,7 +66,7 @@ export const useConfigStore = defineStore('config', () => {
       const remote = await apiFetch('/config', { method: 'PATCH', body: { [key]: value } })
       patchLocal({
         ...remote,
-        backend: { online: true, last_error: null, ...(remote?.backend || {}) },
+        backend: { online: true, last_error: null, ...(remote?.backend || {}) }
       })
     } catch (e) {
       // Keep local; surface offline status via backend.last_error.
@@ -81,7 +81,7 @@ export const useConfigStore = defineStore('config', () => {
       const remote = await apiFetch('/config', { method: 'PATCH', body: patch })
       patchLocal({
         ...remote,
-        backend: { online: true, last_error: null, ...(remote?.backend || {}) },
+        backend: { online: true, last_error: null, ...(remote?.backend || {}) }
       })
     } catch (e) {
       patchLocal({ backend: { online: false, last_error: e?.message || 'offline' } })
