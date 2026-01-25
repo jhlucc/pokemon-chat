@@ -1,11 +1,21 @@
 import { fileURLToPath, URL } from 'node:url'
+import { readFileSync } from 'node:fs'
 import { defineConfig, loadEnv } from 'vite'
 import vue from '@vitejs/plugin-vue'
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
+  const pkg = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf-8'))
+  const buildTime = env.VITE_BUILD_TIME || new Date().toISOString()
+  const buildSha = env.VITE_BUILD_SHA || process.env.GITHUB_SHA || ''
   return {
     plugins: [vue()],
+    define: {
+      // Make app metadata available at runtime via import.meta.env.
+      'import.meta.env.VITE_APP_VERSION': JSON.stringify(env.VITE_APP_VERSION || pkg.version),
+      'import.meta.env.VITE_BUILD_TIME': JSON.stringify(buildTime),
+      'import.meta.env.VITE_BUILD_SHA': JSON.stringify(buildSha),
+    },
     resolve: {
       alias: {
         '@': fileURLToPath(new URL('./src', import.meta.url))
