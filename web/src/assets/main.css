@@ -209,6 +209,42 @@ button.ant-btn-icon-only:hover {
   background: var(--surface-color);
 }
 
+/* Ant Design alerts: make them look more "enterprise" (neutral surface + subtle accent) */
+.ant-alert {
+  background: var(--surface-color);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+}
+
+.ant-alert-info {
+  border-left: 3px solid color-mix(in srgb, var(--primary-color) 70%, #ffffff);
+}
+
+.ant-alert-success {
+  border-left: 3px solid var(--success-color);
+}
+
+.ant-alert-warning {
+  border-left: 3px solid var(--warning-color);
+}
+
+.ant-alert-error {
+  border-left: 3px solid var(--error-color);
+}
+
+.ant-alert .ant-alert-message {
+  color: var(--text-color);
+  font-weight: 600;
+}
+
+.ant-alert .ant-alert-description {
+  color: var(--gray-700);
+}
+
+:root[data-theme='dark'] .ant-alert-info {
+  border-left-color: color-mix(in srgb, var(--primary-color) 60%, transparent);
+}
+
 @media (max-width: 520px) {
   :root {
     --page-padding-x: 14px;

@@ -77,9 +77,9 @@
                 />
               </a-card>
 
-              <a-row :gutter="[16, 16]">
-                <a-col v-for="p in providerList" :key="p" :xs="24" :md="12" :lg="8">
-                  <a-card :bordered="false" class="provider-card">
+                <a-row :gutter="[16, 16]">
+                  <a-col v-for="p in providerList" :key="p" :xs="24" :md="12" :lg="8">
+                    <a-card :bordered="false" class="provider-card">
                     <template #title>
                       <div class="provider-title">
                         <img class="provider-icon" :src="getProviderIcon(p)" :alt="p" />
@@ -99,14 +99,21 @@
                         />
                       </a-form-item>
                       <a-form-item label="API Key（可选）">
+                        <div v-if="providersState.status?.[p]?.configured && !providersState.editingKey?.[p]">
+                          <a-space wrap>
+                            <a-tag color="green">已配置</a-tag>
+                            <span class="muted">{{ providersState.status?.[p]?.api_key_masked || '***' }}</span>
+                            <a-button size="small" @click="enableEditKey(p)">更换 Key</a-button>
+                          </a-space>
+                          <div class="muted" style="margin-top: 6px">
+                            出于安全考虑，前端不会回显明文 Key；如需更换，请点击“更换 Key”。
+                          </div>
+                        </div>
                         <a-input-password
+                          v-else
                           v-model:value="providerForm[p].api_key"
                           autocomplete="new-password"
-                          :placeholder="
-                            providersState.status?.[p]?.configured
-                              ? `已配置（${providersState.status?.[p]?.api_key_masked || '***'}）`
-                              : '未配置'
-                          "
+                          :placeholder="providersState.status?.[p]?.configured ? '输入新的 Key（留空则不修改）' : '输入 Key'"
                         />
                       </a-form-item>
                       <a-space wrap>
@@ -297,7 +304,7 @@ import StatusTag from '@/components/StatusTag.vue'
 import { useConfigStore } from '@/stores/config'
 import { DEFAULT_CONFIG } from '@/config/defaultConfig'
 import { APP_NAME, APP_VERSION, BUILD_SHA, BUILD_TIME } from '@/config/appMeta'
-import { apiFetch } from '@/api/http'
+import { ApiError, apiFetch } from '@/api/http'
 import { getUiDensity, setUiDensity } from '@/utils/uiDensity'
 import { THEME_PRESETS, getThemePreset, setThemePreset } from '@/utils/themePreset'
 import { notifyApiError } from '@/utils/notify'
@@ -372,7 +379,8 @@ const getProviderIcon = (provider) => {
 const providersState = reactive({
   loading: false,
   saving: {},
-  status: {}
+  status: {},
+  editingKey: {}
 })
 
 const providerForm = reactive({})
@@ -435,10 +443,20 @@ const refreshProviders = async () => {
     providersState.status = res?.providers || {}
     providerList.value.forEach((p) => ensureProviderForm(p))
   } catch (e) {
+    if (e instanceof ApiError && e.status === 404) {
+      message.warning('后端暂不支持 Provider 配置接口（/providers）。请停止后端并重新启动到最新代码。')
+      return
+    }
     notifyApiError(e, { context: 'Provider 配置', fallback: '获取 Provider 状态失败' })
   } finally {
     providersState.loading = false
   }
+}
+
+const enableEditKey = (provider) => {
+  providersState.editingKey[provider] = true
+  ensureProviderForm(provider)
+  providerForm[provider].api_key = ''
 }
 
 const saveProvider = async (provider) => {
@@ -455,6 +473,7 @@ const saveProvider = async (provider) => {
     const res = await apiFetch('/providers', { method: 'PATCH', body, timeoutMs: 10000 })
     providersState.status = res?.providers || providersState.status
     providerForm[provider].api_key = '' // never keep key in memory after save
+    providersState.editingKey[provider] = false
     message.success('已保存 Provider 配置')
   } catch (e) {
     notifyApiError(e, { context: 'Provider 配置', fallback: '保存失败' })
@@ -475,6 +494,7 @@ const clearProvider = async (provider) => {
     providersState.status = res?.providers || providersState.status
     providerForm[provider].api_key = ''
     providerForm[provider].api_base = modelCatalog.value?.[provider]?.base_url || ''
+    providersState.editingKey[provider] = false
     message.success('已清空 Provider 配置')
   } catch (e) {
     notifyApiError(e, { context: 'Provider 配置', fallback: '清空失败' })
@@ -541,7 +561,7 @@ onMounted(() => {
   width: 20px;
   height: 20px;
   border-radius: 6px;
-  background: var(--card-bg);
+  background: var(--surface-color-2);
   object-fit: contain;
 }
 
@@ -564,7 +584,7 @@ onMounted(() => {
   width: 16px;
   height: 16px;
   border-radius: 4px;
-  background: var(--card-bg);
+  background: var(--surface-color-2);
   object-fit: contain;
 }
 
