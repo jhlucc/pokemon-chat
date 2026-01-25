@@ -11,6 +11,7 @@ router = APIRouter()
 # Core routers (always enabled)
 from server.routers.base_router import base  # noqa: E402
 from server.routers.health_router import health  # noqa: E402
+from server.routers.provider_router import router as provider_router  # noqa: E402
 from server.routers.chat_router import chat  # noqa: E402
 from server.routers.data_router import data  # noqa: E402
 from server.routers.tool_router import router as tool  # noqa: E402
@@ -20,6 +21,7 @@ from server.routers.log_router import router as log_router  # noqa: E402
 
 router.include_router(base)
 router.include_router(health)
+router.include_router(provider_router)
 router.include_router(chat)
 router.include_router(data)
 router.include_router(tool)
@@ -53,4 +55,3 @@ try:
     router.include_router(memory_router)
 except Exception as e:
     _log.warning(f"Memory router disabled (import failed): {e}")
-

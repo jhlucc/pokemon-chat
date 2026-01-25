@@ -49,7 +49,15 @@ async def readyz():
     warnings: list[str] = []
 
     # Lightweight config warnings (no network calls).
-    if not (settings.llm.api_key or settings.get_api_key("siliconflow") or settings.get_api_key("openai")):
+    from src.core.provider_config import get_provider_api_key
+
+    if not (
+        settings.llm.api_key
+        or get_provider_api_key("siliconflow")
+        or get_provider_api_key("openai")
+        or get_provider_api_key("deepseek")
+        or get_provider_api_key("zhipu")
+    ):
         warnings.append("No LLM API key configured (llm_api_key / SILICONFLOW_API_KEY / OPENAI_API_KEY).")
     if settings.features.enable_web_search and not (settings.tavily.api_key):
         warnings.append("Web search is enabled but tavily_api_key is empty.")

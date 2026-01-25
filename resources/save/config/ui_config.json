@@ -1,4 +1,4 @@
 {
-  "model_provider": "mock",
-  "model_name": "offline"
+  "model_provider": "siliconflow",
+  "model_name": "Qwen/Qwen2.5-72B-Instruct"
 }

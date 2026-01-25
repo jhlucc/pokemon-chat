@@ -103,12 +103,23 @@ class OpenModel(OpenAIBase):
 class Bailian:
     """阿里云百炼平台模型调用封装"""
 
-    def __init__(self, model_name: str = "qwen-turbo-latest") -> None:
-        self.api_key = os.getenv("BAI_LIAN_API_KEY")
-        if not self.api_key:
-            raise ValueError("BAI_LIAN_API_KEY environment variable not set")
+    def __init__(self, model_name: str = "qwen-turbo-latest", api_key: str | None = None, api_base: str | None = None) -> None:
+        # Prefer the unified provider config store (Settings UI), then env fallbacks.
+        from src.core.provider_config import get_provider_api_base, get_provider_api_key
 
-        self.base_url = "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions"
+        self.api_key = (
+            (api_key or "").strip()
+            or get_provider_api_key("dashscope")
+            or os.getenv("DASHSCOPE_API_KEY")
+            or os.getenv("BAI_LIAN_API_KEY")
+            or ""
+        )
+        if not self.api_key:
+            raise ValueError("DashScope API key not set (DASHSCOPE_API_KEY / BAI_LIAN_API_KEY).")
+
+        base = ((api_base or "").strip().rstrip("/") or get_provider_api_base("dashscope") or "").rstrip("/")
+        # DashScope compatible-mode uses OpenAI-like paths; requests client expects the full endpoint.
+        self.base_url = f"{base}/chat/completions" if base else "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions"
         self.model_name = model_name
 
         import requests

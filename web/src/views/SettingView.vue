@@ -61,6 +61,72 @@
               </a-row>
             </a-tab-pane>
 
+            <a-tab-pane key="providers" tab="供应商">
+              <a-card title="Provider 配置" :bordered="false" style="margin-bottom: 16px">
+                <a-space wrap>
+                  <a-button @click="refreshProviders" :loading="providersState.loading"
+                    >刷新 Provider 状态</a-button
+                  >
+                </a-space>
+                <a-alert
+                  style="margin-top: 12px"
+                  type="info"
+                  show-icon
+                  message="在这里配置各供应商的 API Key / Base URL"
+                  description="保存后会写入后端本地配置（resources/save/config/provider_secrets.json），前端不会回显明文 Key。"
+                />
+              </a-card>
+
+              <a-row :gutter="[16, 16]">
+                <a-col v-for="p in providerList" :key="p" :xs="24" :md="12" :lg="8">
+                  <a-card :bordered="false" class="provider-card">
+                    <template #title>
+                      <div class="provider-title">
+                        <img class="provider-icon" :src="getProviderIcon(p)" :alt="p" />
+                        <span class="provider-name">{{ modelCatalog[p]?.name || p }}</span>
+                        <StatusTag
+                          class="provider-status"
+                          :status="providersState.status?.[p]?.configured ? 'online' : 'offline'"
+                        />
+                      </div>
+                    </template>
+
+                    <a-form layout="vertical">
+                      <a-form-item label="API Base（可选）">
+                        <a-input
+                          v-model:value="providerForm[p].api_base"
+                          :placeholder="modelCatalog[p]?.base_url || 'https://.../v1'"
+                        />
+                      </a-form-item>
+                      <a-form-item label="API Key（可选）">
+                        <a-input-password
+                          v-model:value="providerForm[p].api_key"
+                          autocomplete="new-password"
+                          :placeholder="
+                            providersState.status?.[p]?.configured
+                              ? `已配置（${providersState.status?.[p]?.api_key_masked || '***'}）`
+                              : '未配置'
+                          "
+                        />
+                      </a-form-item>
+                      <a-space wrap>
+                        <a-button
+                          type="primary"
+                          :loading="Boolean(providersState.saving?.[p])"
+                          @click="saveProvider(p)"
+                        >
+                          保存
+                        </a-button>
+                        <a-button danger :loading="Boolean(providersState.saving?.[p])" @click="clearProvider(p)">
+                          清空
+                        </a-button>
+                      </a-space>
+                    </a-form>
+                  </a-card>
+                </a-col>
+              </a-row>
+            </a-tab-pane>
+
             <a-tab-pane key="model" tab="模型">
               <a-row :gutter="[16, 16]">
                 <a-col :xs="24" :md="12">
@@ -69,21 +135,31 @@
                       <a-form-item label="Provider">
                         <a-select v-model:value="modelProvider" @change="onProviderChange">
                           <a-select-option v-for="p in providerKeys" :key="p" :value="p">
-                            {{ modelCatalog[p]?.name || p }}
+                            <span class="provider-option">
+                              <img class="provider-option-icon" :src="getProviderIcon(p)" :alt="p" />
+                              <span>{{ modelCatalog[p]?.name || p }}</span>
+                            </span>
                           </a-select-option>
                         </a-select>
                       </a-form-item>
                       <a-form-item label="Model">
-                        <a-select v-model:value="modelName" @change="onModelChange">
+                        <a-select v-if="providerModels.length" v-model:value="modelName" @change="onModelChange">
                           <a-select-option v-for="m in providerModels" :key="m" :value="m">
                             {{ m }}
                           </a-select-option>
                         </a-select>
+                        <a-input
+                          v-else
+                          v-model:value="modelName"
+                          placeholder="输入模型名称（如 gpt-4o-mini）"
+                          @pressEnter="commitModelInput"
+                          @blur="commitModelInput"
+                        />
                       </a-form-item>
                       <a-alert
                         type="info"
                         show-icon
-                        message="提示：模型与 API Key 属于后端配置（.env / docker 环境变量）。这里选择的是“使用哪一个模型名”并会随请求发送给后端。"
+                        message="提示：这里选择的是“使用哪一个模型名”并会随请求发送给后端。API Key / Base URL 可在「供应商」页配置。"
                       />
                     </a-form>
                   </a-card>
@@ -214,7 +290,7 @@
 </template>
 
 <script setup>
-import { computed, reactive, ref, watch } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { message } from 'ant-design-vue'
 import HeaderComponent from '@/components/HeaderComponent.vue'
 import StatusTag from '@/components/StatusTag.vue'
@@ -279,13 +355,57 @@ watch(
 
 const providerModels = computed(() => modelCatalog.value?.[modelProvider.value]?.models || [])
 
+// Vite glob: use absolute `/src/...` (alias `@` may not work in glob patterns).
+const providerIcons = import.meta.glob('/src/assets/providers/*.png', {
+  eager: true,
+  import: 'default'
+})
+const providerIconAlias = {
+  zhipu: 'zhipuai',
+  togetherai: 'together.ai'
+}
+const getProviderIcon = (provider) => {
+  const p = providerIconAlias[provider] || provider
+  return providerIcons[`/src/assets/providers/${p}.png`] || providerIcons['/src/assets/providers/default.png']
+}
+
+const providersState = reactive({
+  loading: false,
+  saving: {},
+  status: {}
+})
+
+const providerForm = reactive({})
+const providerList = computed(() => {
+  const fromCatalog = providerKeys.value || []
+  const fromStatus = Object.keys(providersState.status || {})
+  const merged = Array.from(new Set([...fromCatalog, ...fromStatus])).filter((k) => k && k !== 'custom')
+  return merged
+})
+
+const ensureProviderForm = (p) => {
+  if (!providerForm[p]) {
+    providerForm[p] = { api_base: '', api_key: '' }
+  }
+  if (!providerForm[p].api_base) {
+    providerForm[p].api_base =
+      providersState.status?.[p]?.api_base || modelCatalog.value?.[p]?.base_url || ''
+  }
+}
+
 const onProviderChange = async (p) => {
-  const def = modelCatalog.value?.[p]?.default || providerModels.value?.[0] || ''
+  const models = modelCatalog.value?.[p]?.models || []
+  const def = modelCatalog.value?.[p]?.default || models?.[0] || modelName.value || ''
   await configStore.setConfigValues({ model_provider: p, ...(def ? { model_name: def } : {}) })
 }
 
 const onModelChange = async (m) => {
   await configStore.setConfigValue('model_name', m)
+}
+
+const commitModelInput = async () => {
+  if (!modelName.value) return
+  await configStore.setConfigValue('model_name', modelName.value)
 }
 
 const refreshAll = async () => {
@@ -308,6 +428,60 @@ const restartBackend = async () => {
   }
 }
 
+const refreshProviders = async () => {
+  providersState.loading = true
+  try {
+    const res = await apiFetch('/providers', { method: 'GET', timeoutMs: 8000 })
+    providersState.status = res?.providers || {}
+    providerList.value.forEach((p) => ensureProviderForm(p))
+  } catch (e) {
+    notifyApiError(e, { context: 'Provider 配置', fallback: '获取 Provider 状态失败' })
+  } finally {
+    providersState.loading = false
+  }
+}
+
+const saveProvider = async (provider) => {
+  ensureProviderForm(provider)
+  const form = providerForm[provider] || {}
+  const body = {
+    provider,
+    ...(form.api_base ? { api_base: form.api_base } : {}),
+    ...(form.api_key ? { api_key: form.api_key } : {})
+  }
+
+  providersState.saving[provider] = true
+  try {
+    const res = await apiFetch('/providers', { method: 'PATCH', body, timeoutMs: 10000 })
+    providersState.status = res?.providers || providersState.status
+    providerForm[provider].api_key = '' // never keep key in memory after save
+    message.success('已保存 Provider 配置')
+  } catch (e) {
+    notifyApiError(e, { context: 'Provider 配置', fallback: '保存失败' })
+  } finally {
+    providersState.saving[provider] = false
+  }
+}
+
+const clearProvider = async (provider) => {
+  ensureProviderForm(provider)
+  providersState.saving[provider] = true
+  try {
+    const res = await apiFetch('/providers', {
+      method: 'PATCH',
+      body: { provider, api_key: '', api_base: '' },
+      timeoutMs: 10000
+    })
+    providersState.status = res?.providers || providersState.status
+    providerForm[provider].api_key = ''
+    providerForm[provider].api_base = modelCatalog.value?.[provider]?.base_url || ''
+    message.success('已清空 Provider 配置')
+  } catch (e) {
+    notifyApiError(e, { context: 'Provider 配置', fallback: '清空失败' })
+  } finally {
+    providersState.saving[provider] = false
+  }
+}
 
 const onUiDensityChange = (v) => {
   uiDensity.value = setUiDensity(v)
@@ -318,6 +492,21 @@ const onThemePresetChange = (v) => {
   themePreset.value = setThemePreset(v)
   message.success(`已切换主题色：${THEME_PRESETS[themePreset.value]?.label || themePreset.value}`)
 }
+
+watch(
+  () => activeTab.value,
+  (tab) => {
+    if (tab === 'providers' && backendOnline.value && !providersState.loading) {
+      // Lazy load provider status when the tab is opened.
+      refreshProviders()
+    }
+  }
+)
+
+onMounted(() => {
+  // Ensure provider form has defaults even when backend is offline.
+  providerList.value.forEach((p) => ensureProviderForm(p))
+})
 </script>
 
 <style scoped>
@@ -336,6 +525,47 @@ const onThemePresetChange = (v) => {
   border-radius: 999px;
   border: 1px solid var(--border-color);
   margin-right: 8px;
+}
+
+.provider-card :deep(.ant-card-head-title) {
+  width: 100%;
+}
+
+.provider-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.provider-icon {
+  width: 20px;
+  height: 20px;
+  border-radius: 6px;
+  background: var(--card-bg);
+  object-fit: contain;
+}
+
+.provider-name {
+  font-weight: 600;
+  flex: 1;
+}
+
+.provider-status {
+  margin-left: auto;
+}
+
+.provider-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.provider-option-icon {
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+  background: var(--card-bg);
+  object-fit: contain;
 }
 
 </style>

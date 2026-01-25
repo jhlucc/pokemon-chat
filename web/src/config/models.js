@@ -15,6 +15,13 @@ export const MODEL_CATALOG = {
       'deepseek-ai/DeepSeek-R1-Distill-Qwen-14B'
     ]
   },
+  dashscope: {
+    name: 'DashScope (百炼)',
+    url: 'https://dashscope.aliyun.com/',
+    default: 'qwen-turbo-latest',
+    base_url: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
+    models: ['qwen-turbo-latest', 'qwen-plus', 'qwen-max']
+  },
   openai: {
     name: 'OpenAI',
     url: 'https://platform.openai.com/docs/models',
@@ -29,12 +36,50 @@ export const MODEL_CATALOG = {
     base_url: 'https://api.deepseek.com/v1',
     models: ['deepseek-chat', 'deepseek-reasoner']
   },
+  openrouterai: {
+    name: 'OpenRouter',
+    url: 'https://openrouter.ai/docs',
+    default: 'openai/gpt-4o-mini',
+    base_url: 'https://openrouter.ai/api/v1',
+    models: ['openai/gpt-4o-mini', 'anthropic/claude-3.5-sonnet', 'google/gemini-1.5-pro']
+  },
   zhipu: {
     name: '智谱AI',
     url: 'https://open.bigmodel.cn/dev/api',
     default: 'glm-4-flash',
-    base_url: 'https://open.bigmodel.cn/api/paas/v4/',
+    base_url: 'https://open.bigmodel.cn/api/paas/v4',
     models: ['glm-4', 'glm-4-plus', 'glm-4-air', 'glm-4-flash']
+  },
+  togetherai: {
+    name: 'Together AI',
+    url: 'https://docs.together.ai/docs/quickstart',
+    default: 'meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo',
+    base_url: 'https://api.together.xyz/v1',
+    models: ['meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo']
+  },
+  ark: {
+    name: 'ARK (Volcengine)',
+    url: '',
+    default: '',
+    // OpenAI-compatible endpoint (override in Settings if your region differs)
+    base_url: 'https://ark.cn-beijing.volces.com/api/v3',
+    models: []
+  },
+  qianfan: {
+    name: '千帆 (Baidu)',
+    url: '',
+    default: '',
+    // OpenAI-compatible endpoint
+    base_url: 'https://qianfan.baidubce.com/v2',
+    models: []
+  },
+  lingyiwanwu: {
+    name: '零一万物',
+    url: '',
+    default: '',
+    // OpenAI-compatible endpoint
+    base_url: 'https://api.01.ai/v1',
+    models: []
   },
   // Keep room for user-defined OpenAI-compatible models.
   custom: {
