@@ -94,10 +94,8 @@
           <div class="status-block">
             <div class="status-label">Backend</div>
             <a-space wrap>
-              <a-tag :color="backendStatus.color">{{ backendStatus.label }}</a-tag>
-              <a-tag :color="backendReady ? 'green' : 'orange'">{{
-                backendReady ? 'Ready' : 'Not Ready'
-              }}</a-tag>
+              <StatusTag :status="backendMock ? 'mock' : backendOnline ? 'online' : 'offline'" />
+              <StatusTag :status="backendReady ? 'ready' : 'not_ready'" />
               <a-tag v-if="offlineMode !== 'off'" color="blue">离线模式：{{ offlineMode }}</a-tag>
             </a-space>
           </div>
@@ -154,6 +152,7 @@ import {
   ToolOutlined
 } from '@ant-design/icons-vue'
 
+import StatusTag from '@/components/StatusTag.vue'
 import { useConfigStore } from '@/stores/config'
 import { APP_NAME, getBuildLabel } from '@/config/appMeta'
 import { getOfflineMode } from '@/utils/offlineMode'
@@ -185,12 +184,6 @@ const backendMock = computed(
   () => Boolean(configStore.config.backend?.mock) || offlineMode.value === 'on'
 )
 const backendReady = computed(() => Boolean(configStore.config.backend?.ready))
-
-const backendStatus = computed(() => {
-  if (backendMock.value) return { color: 'blue', label: 'Mock' }
-  if (backendOnline.value) return { color: 'green', label: 'Online' }
-  return { color: 'red', label: 'Offline' }
-})
 
 const apiDocsUrl = computed(() => `${window.location.origin}/api/docs`)
 

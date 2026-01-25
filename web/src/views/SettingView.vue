@@ -27,10 +27,8 @@
                     <div class="kv">
                       <span class="k">Backend</span>
                       <span class="v">
-                        <a-tag :color="backendStatus.color">{{ backendStatus.label }}</a-tag>
-                        <a-tag :color="backendReady ? 'green' : 'orange'">{{
-                          backendReady ? 'Ready' : 'Not Ready'
-                        }}</a-tag>
+                        <StatusTag :status="backendMock ? 'mock' : backendOnline ? 'online' : 'offline'" />
+                        <StatusTag :status="backendReady ? 'ready' : 'not_ready'" />
                       </span>
                     </div>
                     <div class="kv" v-if="configStore.config.backend?.last_error">
@@ -129,6 +127,28 @@
 
             <a-tab-pane key="ui" tab="界面">
               <a-card title="界面展示（前端）" :bordered="false">
+                <a-space wrap style="margin-bottom: 12px">
+                  <span class="muted">界面密度</span>
+                  <a-segmented
+                    v-model:value="uiDensity"
+                    :options="densityOptions"
+                    @change="onUiDensityChange"
+                  />
+                </a-space>
+                <a-space wrap style="margin-bottom: 12px">
+                  <span class="muted">主题色</span>
+                  <a-select
+                    v-model:value="themePreset"
+                    style="width: 180px"
+                    @change="onThemePresetChange"
+                  >
+                    <a-select-option v-for="(p, key) in THEME_PRESETS" :key="key" :value="key">
+                      <span class="preset-dot" :style="{ background: p.primary }"></span>
+                      {{ p.label }}
+                    </a-select-option>
+                  </a-select>
+                </a-space>
+                <a-divider style="margin: 12px 0" />
                 <a-space wrap>
                   <a-space>
                     <span class="muted">知识库</span>
@@ -232,11 +252,14 @@
 import { computed, reactive, ref, watch } from 'vue'
 import { message } from 'ant-design-vue'
 import HeaderComponent from '@/components/HeaderComponent.vue'
+import StatusTag from '@/components/StatusTag.vue'
 import { useConfigStore } from '@/stores/config'
 import { DEFAULT_CONFIG } from '@/config/defaultConfig'
 import { APP_NAME, APP_VERSION, BUILD_SHA, BUILD_TIME } from '@/config/appMeta'
 import { apiFetch } from '@/api/http'
 import { getOfflineMode, setOfflineMode } from '@/utils/offlineMode'
+import { getUiDensity, setUiDensity } from '@/utils/uiDensity'
+import { THEME_PRESETS, getThemePreset, setThemePreset } from '@/utils/themePreset'
 import { safeJsonParse } from '@/utils/storage'
 import { downloadJson } from '@/utils/download'
 import { notifyApiError } from '@/utils/notify'
@@ -253,15 +276,17 @@ const backendOnline = computed(() => Boolean(configStore.config.backend?.online)
 const backendMock = computed(() => Boolean(configStore.config.backend?.mock))
 const backendReady = computed(() => Boolean(configStore.config.backend?.ready))
 const backendRealOnline = computed(() => backendOnline.value && !backendMock.value)
-
-const backendStatus = computed(() => {
-  if (backendMock.value) return { color: 'blue', label: 'Mock' }
-  if (backendOnline.value) return { color: 'green', label: 'Online' }
-  return { color: 'red', label: 'Offline' }
-})
 const offlineMode = ref(getOfflineMode())
 const MOCK_CONFIG_KEY = 'pokemon_chat_mock_config_v1'
 const MOCK_STATE_KEY = 'pokemon_chat_mock_state_v1'
+
+const uiDensity = ref(getUiDensity())
+const densityOptions = [
+  { label: '舒适', value: 'comfortable' },
+  { label: '紧凑', value: 'compact' }
+]
+
+const themePreset = ref(getThemePreset())
 
 const modelCatalog = computed(() => configStore.config.model_names || {})
 const providerKeys = computed(() =>
@@ -382,6 +407,16 @@ const importMockData = async ({ file, onSuccess, onError }) => {
   }
 }
 
+const onUiDensityChange = (v) => {
+  uiDensity.value = setUiDensity(v)
+  message.success(`已切换界面密度：${uiDensity.value === 'compact' ? '紧凑' : '舒适'}`)
+}
+
+const onThemePresetChange = (v) => {
+  themePreset.value = setThemePreset(v)
+  message.success(`已切换主题色：${THEME_PRESETS[themePreset.value]?.label || themePreset.value}`)
+}
+
 const onOfflineModeChange = async (v) => {
   offlineMode.value = setOfflineMode(v)
   message.success(`已切换离线模式：${offlineMode.value}`)
@@ -396,6 +431,15 @@ const onOfflineModeChange = async (v) => {
 
 .setting-tabs :deep(.ant-tabs-nav) {
   margin: 0 0 12px;
+}
+
+.preset-dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  border: 1px solid var(--border-color);
+  margin-right: 8px;
 }
 
 .kv {

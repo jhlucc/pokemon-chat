@@ -1,16 +1,5 @@
 <template>
   <div class="database-container layout-container">
-    <a-alert
-      v-if="!canUseKb"
-      type="warning"
-      show-icon
-      :message="
-        configStore.config.backend?.online
-          ? '后端未启用知识库功能（enable_knowledge_base=false）'
-          : '后端未启动/不可用（离线模式）'
-      "
-      style="margin: 16px 24px"
-    />
     <HeaderComponent
       title="文档知识库"
       description="知识型数据库，主要是非结构化的文本组成，使用向量检索使用。如果出现问题，可以检查 saves/data/database.json 查看配置。"
@@ -27,10 +16,10 @@
       @ok="createDatabase"
       @cancel="newDatabase.open = false"
     >
-      <h3>知识库名称<span style="color: var(--error-color)">*</span></h3>
+      <h3 class="form-title">知识库名称 <span class="required">*</span></h3>
       <a-input v-model:value="newDatabase.name" placeholder="新建知识库名称" />
-      <h3 style="margin-top: 20px">知识库描述</h3>
-      <p style="color: var(--gray-700); font-size: 14px">
+      <h3 class="form-title form-title--spaced">知识库描述</h3>
+      <p class="form-hint">
         在智能体流程中，这里的描述会作为工具的描述。智能体会根据知识库的标题和描述来选择合适的工具。所以这里描述的越详细，智能体越容易选择到合适的工具。
       </p>
       <a-textarea
@@ -48,47 +37,66 @@
         >
       </template>
     </a-modal>
-    <div class="databases">
-      <div class="new-database dbcard ui-card" @click="newDatabase.open = true">
-        <div class="top">
-          <div class="icon"><PlusOutlined /></div>
-          <div class="info">
-            <h3>新建知识库</h3>
-          </div>
-        </div>
-        <p>导入您自己的文本数据或通过Webhook实时写入数据以增强 LLM 的上下文。</p>
-      </div>
 
-      <template v-if="state.loading">
-        <div v-for="n in 6" :key="n" class="dbcard ui-card dbcard--skeleton">
-          <a-skeleton active :title="{ width: '60%' }" :paragraph="{ rows: 2 }" />
-        </div>
-      </template>
-      <template v-else>
-        <div v-if="databases.length === 0" class="db-empty ui-muted">暂无知识库</div>
-        <div
-          v-for="database in databases"
-          :key="database.db_id"
-          class="database dbcard ui-card"
-          @click="navigateToDatabase(database.db_id)"
-        >
-          <div class="top">
-            <div class="icon"><ReadFilled /></div>
-            <div class="info">
-              <h3>{{ database.name }}</h3>
-              <p>
-                <span>{{ database.files ? Object.keys(database.files).length : 0 }} 文件</span>
-              </p>
+    <div class="ui-page">
+      <div class="ui-container">
+        <a-alert
+          v-if="!canUseKb"
+          type="warning"
+          show-icon
+          :message="
+            configStore.config.backend?.online
+              ? '后端未启用知识库功能（enable_knowledge_base=false）'
+              : '后端未启动/不可用（离线模式）'
+          "
+          style="margin-bottom: 12px"
+        />
+
+        <div class="databases">
+          <div class="new-database dbcard ui-card" @click="newDatabase.open = true">
+            <div class="top">
+              <div class="icon"><PlusOutlined /></div>
+              <div class="info">
+                <h3>新建知识库</h3>
+              </div>
             </div>
+            <p>导入您自己的文本数据或通过 Webhook 实时写入数据以增强 LLM 的上下文。</p>
           </div>
-          <p class="description">{{ database.description || '暂无描述' }}</p>
-          <div class="tags">
-            <a-tag color="blue" v-if="database.embed_model">{{ database.embed_model }}</a-tag>
-            <a-tag color="green" v-if="database.dimension">{{ database.dimension }}</a-tag>
-          </div>
-          <!-- <button @click="deleteDatabase(database.collection_name)">删除</button> -->
+
+          <template v-if="state.loading">
+            <div v-for="n in 6" :key="n" class="dbcard ui-card dbcard--skeleton">
+              <a-skeleton active :title="{ width: '60%' }" :paragraph="{ rows: 2 }" />
+            </div>
+          </template>
+          <template v-else>
+            <a-empty v-if="databases.length === 0" class="db-empty" description="暂无知识库">
+              <a-button type="primary" @click="newDatabase.open = true">新建知识库</a-button>
+            </a-empty>
+            <div
+              v-for="database in databases"
+              :key="database.db_id"
+              class="database dbcard ui-card"
+              @click="navigateToDatabase(database.db_id)"
+            >
+              <div class="top">
+                <div class="icon"><ReadFilled /></div>
+                <div class="info">
+                  <h3>{{ database.name }}</h3>
+                  <p>
+                    <span>{{ database.files ? Object.keys(database.files).length : 0 }} 文件</span>
+                  </p>
+                </div>
+              </div>
+              <p class="description">{{ database.description || '暂无描述' }}</p>
+              <div class="tags">
+                <a-tag color="blue" v-if="database.embed_model">{{ database.embed_model }}</a-tag>
+                <a-tag color="green" v-if="database.dimension">{{ database.dimension }}</a-tag>
+              </div>
+              <!-- <button @click="deleteDatabase(database.collection_name)">删除</button> -->
+            </div>
+          </template>
         </div>
-      </template>
+      </div>
     </div>
     <!-- <h2>图数据库 &nbsp; <a-spin v-if="graphloading" :indicator="indicator" /></h2>
     <p>基于 neo4j 构建的图数据库。</p>
@@ -209,23 +217,23 @@ onMounted(() => {
   margin-bottom: 20px;
 }
 .databases {
-  padding: 20px 24px;
+  padding: 0;
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
   gap: 16px;
 
   .new-database {
-    background-color: var(--gray-200);
+    border-style: dashed;
+    background: color-mix(in srgb, var(--main-500) 6%, var(--surface-color));
   }
 }
 
 .dbcard,
 .database {
   width: 100%;
-  padding: 10px;
-  border-radius: 12px;
-  height: 160px;
   padding: 20px;
+  border-radius: var(--radius-lg);
+  min-height: 160px;
   cursor: pointer;
 
   .top {
@@ -283,7 +291,31 @@ onMounted(() => {
 }
 
 .db-empty {
-  padding: 8px;
+  padding: 32px 0;
+
+  :deep(.ant-empty-description) {
+    color: var(--gray-600);
+  }
+}
+
+.form-title {
+  font-size: 14px;
+  font-weight: 650;
+  margin: 0 0 8px;
+}
+
+.form-title--spaced {
+  margin-top: 20px;
+}
+
+.form-hint {
+  color: var(--gray-600);
+  font-size: 13px;
+  margin: 8px 0 12px;
+}
+
+.required {
+  color: var(--error-color);
 }
 
 // 整个卡片是模糊的

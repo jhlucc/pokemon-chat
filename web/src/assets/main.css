@@ -8,6 +8,12 @@
   --content-max-width: 1280px;
 }
 
+:root[data-density='compact'] {
+  --header-height: 52px;
+  --page-padding-x: 16px;
+  --page-padding-y: 14px;
+}
+
 /* 页面主体布局容器 */
 .layout-container {
   width: 100%;

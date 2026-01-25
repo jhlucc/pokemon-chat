@@ -24,8 +24,7 @@ import {
   MenuFoldOutlined,
   MenuUnfoldOutlined
 } from '@ant-design/icons-vue'
-import { theme as antdTheme } from 'ant-design-vue'
-import { applyTheme, getSavedThemeMode, setThemeMode, themeConfig } from '@/assets/theme'
+import { applyTheme, getSavedThemeMode, setThemeMode } from '@/assets/theme'
 import { APP_NAME, BUILD_SHA, BUILD_TIME, getBuildLabel } from '@/config/appMeta'
 import { useConfigStore } from '@/stores/config'
 import { useDatabaseStore } from '@/stores/database'
@@ -124,11 +123,6 @@ const onThemeToggleKeydown = (e) => {
     toggleThemeMode()
   }
 }
-
-const antdThemeConfig = computed(() => ({
-  ...themeConfig,
-  ...(appliedIsDark.value ? { algorithm: antdTheme.darkAlgorithm } : {})
-}))
 
 const getRemoteConfig = () => {
   configStore.refreshConfig()
@@ -433,56 +427,49 @@ const mainList = computed(() => {
         }}</span>
       </RouterLink>
     </div>
-    <a-config-provider :theme="antdThemeConfig">
-      <div id="app-router-view">
-        <a-alert
-          v-if="offlineBanner"
-          class="offline-banner"
-          banner
-          show-icon
-          :type="offlineBanner.type"
-          :message="offlineBanner.message"
-        >
-          <template #action>
-            <a-button size="small" type="link" @click="offlineBanner.onAction">{{
-              offlineBanner.actionLabel
-            }}</a-button>
-          </template>
-        </a-alert>
+    <div id="app-router-view">
+      <a-alert
+        v-if="offlineBanner"
+        class="offline-banner"
+        banner
+        show-icon
+        :type="offlineBanner.type"
+        :message="offlineBanner.message"
+      >
+        <template #action>
+          <a-button size="small" type="link" @click="offlineBanner.onAction">{{
+            offlineBanner.actionLabel
+          }}</a-button>
+        </template>
+      </a-alert>
 
-        <router-view v-slot="{ Component, route }">
-          <keep-alive v-if="route.meta.keepAlive !== false">
-            <component :is="Component" />
-          </keep-alive>
-          <component :is="Component" v-else />
-        </router-view>
-      </div>
+      <router-view v-slot="{ Component, route }">
+        <keep-alive v-if="route.meta.keepAlive !== false">
+          <component :is="Component" />
+        </keep-alive>
+        <component :is="Component" v-else />
+      </router-view>
+    </div>
 
-      <a-back-top
-        :target="() => document.getElementById('app-router-view')"
-        :visibilityHeight="240"
+    <a-back-top :target="() => document.getElementById('app-router-view')" :visibilityHeight="240" />
+
+    <a-modal v-model:open="layoutSettings.showAbout" title="关于" :footer="null">
+      <a-descriptions size="small" :column="1" bordered>
+        <a-descriptions-item label="应用">{{ APP_NAME }}</a-descriptions-item>
+        <a-descriptions-item label="前端">{{ buildLabel || 'dev' }}</a-descriptions-item>
+        <a-descriptions-item v-if="BUILD_TIME" label="Build time">{{ BUILD_TIME }}</a-descriptions-item>
+        <a-descriptions-item v-if="BUILD_SHA" label="Commit">{{ BUILD_SHA }}</a-descriptions-item>
+        <a-descriptions-item label="API Docs">
+          <a :href="apiDocsUrl" target="_blank" rel="noopener noreferrer">{{ apiDocsUrl }}</a>
+        </a-descriptions-item>
+      </a-descriptions>
+      <a-alert
+        style="margin-top: 12px"
+        type="info"
+        show-icon
+        message="排查问题时请提供 Request ID（RID），可在错误提示或后端响应头 X-Request-ID 中找到。"
       />
-
-      <a-modal v-model:open="layoutSettings.showAbout" title="关于" :footer="null">
-        <a-descriptions size="small" :column="1" bordered>
-          <a-descriptions-item label="应用">{{ APP_NAME }}</a-descriptions-item>
-          <a-descriptions-item label="前端">{{ buildLabel || 'dev' }}</a-descriptions-item>
-          <a-descriptions-item v-if="BUILD_TIME" label="Build time">{{
-            BUILD_TIME
-          }}</a-descriptions-item>
-          <a-descriptions-item v-if="BUILD_SHA" label="Commit">{{ BUILD_SHA }}</a-descriptions-item>
-          <a-descriptions-item label="API Docs">
-            <a :href="apiDocsUrl" target="_blank" rel="noopener noreferrer">{{ apiDocsUrl }}</a>
-          </a-descriptions-item>
-        </a-descriptions>
-        <a-alert
-          style="margin-top: 12px"
-          type="info"
-          show-icon
-          message="排查问题时请提供 Request ID（RID），可在错误提示或后端响应头 X-Request-ID 中找到。"
-        />
-      </a-modal>
-    </a-config-provider>
+    </a-modal>
   </div>
 </template>
 

@@ -7,9 +7,10 @@
     >
       <template #actions>
         <div class="status-line">
-          <a-tag :color="backendStatus.color">
-            {{ backendStatus.label }}
-          </a-tag>
+          <StatusTag
+            :status="backendMock ? 'mock' : backendOnline ? 'online' : 'offline'"
+            :label="backendMock ? 'Mock' : backendOnline ? 'Backend Online' : 'Offline'"
+          />
           <a-tag :color="kgStatus.color">
             {{ kgStatus.label }}
           </a-tag>
@@ -112,6 +113,7 @@ import { computed, reactive, ref, onMounted, onUnmounted, watch } from 'vue'
 import { message } from 'ant-design-vue'
 import { useConfigStore } from '@/stores/config'
 import HeaderComponent from '@/components/HeaderComponent.vue'
+import StatusTag from '@/components/StatusTag.vue'
 import { apiFetch } from '@/api/http'
 import { notifyApiError } from '@/utils/notify'
 import demoGraph from '@/assets/mock/graph.sample.json'
@@ -173,12 +175,6 @@ const canUseGraph = computed(
   () =>
     (backendOnline.value && Boolean(configStore.config.enable_knowledge_graph)) || backendMock.value
 )
-
-const backendStatus = computed(() => {
-  if (backendMock.value) return { color: 'blue', label: 'Mock' }
-  if (backendOnline.value) return { color: 'green', label: 'Backend Online' }
-  return { color: 'red', label: 'Offline' }
-})
 
 const kgStatus = computed(() => {
   if (backendMock.value) return { color: 'blue', label: 'Demo' }

@@ -42,7 +42,7 @@
   --shadow-sm: 0 6px 18px rgba(0, 0, 0, 0.08);
   --shadow-md: 0 12px 30px rgba(0, 0, 0, 0.12);
 
-  --focus-ring: 0 0 0 3px rgba(44, 134, 168, 0.25);
+  --focus-ring: 0 0 0 3px color-mix(in srgb, var(--primary-color) 25%, transparent);
 
   /* 间距（用于统一留白，尽量用这些而不是散落的 magic number） */
   --space-1: 4px;
@@ -151,7 +151,7 @@
   --shadow-sm: 0 10px 22px rgba(0, 0, 0, 0.55);
   --shadow-md: 0 18px 36px rgba(0, 0, 0, 0.6);
 
-  --focus-ring: 0 0 0 3px rgba(44, 134, 168, 0.35);
+  --focus-ring: 0 0 0 3px color-mix(in srgb, var(--primary-color) 35%, transparent);
 
   /* 暗色下的主色调微调（用于 hover/弱背景） */
   --main-10: rgba(44, 134, 168, 0.18);

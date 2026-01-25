@@ -9,6 +9,8 @@ import router from './router'
 
 import './assets/main.css'
 import { initTheme } from './assets/theme'
+import { initUiDensity } from './utils/uiDensity'
+import { initThemePreset } from './utils/themePreset'
 import { ApiError } from './api/http'
 import { trackError } from './utils/telemetry'
 
@@ -69,4 +71,8 @@ window.addEventListener('error', (event) => {
 
 // Apply theme ASAP to avoid flash (mode is persisted in localStorage).
 initTheme()
+// Apply UI density ASAP to avoid layout flash.
+initUiDensity()
+// Apply theme preset ASAP (affects CSS vars + antd token).
+initThemePreset()
 app.mount('#app')

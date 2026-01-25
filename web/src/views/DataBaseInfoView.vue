@@ -26,20 +26,23 @@
         </a-button>
       </template>
     </HeaderComponent>
-    <a-alert
-      v-if="!canUseKb"
-      type="warning"
-      show-icon
-      :message="
-        configStore.config.backend?.online
-          ? '后端未启用知识库功能（enable_knowledge_base=false）'
-          : '后端未启动/不可用（离线模式）'
-      "
-      style="margin: 10px 20px"
-    />
-    <!--  <a-alert v-if="configStore.config.embed_model &&database.embed_model != configStore.config.embed_model" message="向量模型不匹配，请重新选择" type="warning" style="margin: 10px 20px;" />-->
-    <div class="db-main-container">
-      <a-tabs v-model:activeKey="state.curPage" class="atab-container" type="card">
+
+    <div class="ui-page">
+      <div class="ui-container">
+        <a-alert
+          v-if="!canUseKb"
+          type="warning"
+          show-icon
+          :message="
+            configStore.config.backend?.online
+              ? '后端未启用知识库功能（enable_knowledge_base=false）'
+              : '后端未启动/不可用（离线模式）'
+          "
+          style="margin-bottom: 12px"
+        />
+        <!--  <a-alert v-if="configStore.config.embed_model &&database.embed_model != configStore.config.embed_model" message="向量模型不匹配，请重新选择" type="warning" style="margin: 10px 20px;" />-->
+        <div class="db-main-container">
+          <a-tabs v-model:activeKey="state.curPage" class="atab-container" type="card">
         <a-tab-pane key="files">
           <template #tab
             ><span><ReadOutlined />文件列表</span></template
@@ -48,11 +51,23 @@
             <div class="actions">
               <a-button @click="handleRefresh" :loading="state.refrashing">刷新</a-button>
             </div>
+
+            <a-empty
+              v-if="Object.values(database.files || {}).length === 0"
+              style="padding: 24px 0"
+              description="暂无文件"
+            >
+              <a-button type="primary" @click="state.curPage = 'add'">添加文件</a-button>
+            </a-empty>
+
             <a-table
+              v-else
               :columns="columns"
               :data-source="Object.values(database.files || {})"
               row-key="file_id"
               class="my-table"
+              size="middle"
+              :pagination="{ pageSize: 10, hideOnSinglePage: true }"
             >
               <template #bodyCell="{ column, text, record }">
                 <template v-if="column.key === 'filename'">
@@ -317,7 +332,9 @@
         <!--        </div>-->
         <!--      </a-tab-pane>-->
         <!-- <a-tab-pane key="3" tab="Tab 3">Content of Tab Pane 3</a-tab-pane> -->
-      </a-tabs>
+          </a-tabs>
+        </div>
+      </div>
     </div>
   </div>
 </template>

@@ -2,12 +2,14 @@ export const themeConfig = {
   token: {
     colorPrimary: '#2C86A8',
     colorInfo: '#191919',
+    borderRadius: 12,
     fontFamily:
       "'HarmonyOS Sans SC', Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif"
   }
 }
 
 export const THEME_MODE_STORAGE_KEY = 'theme'
+export const THEME_MODE_CHANGED_EVENT = 'theme-mode-changed'
 
 export function normalizeThemeMode(mode) {
   // Migration note: older UI allowed "light". We now support only "system" | "dark".
@@ -45,6 +47,11 @@ export function setThemeMode(mode) {
     // ignore quota / private mode errors
   }
   applyTheme(getAppliedTheme(m))
+  try {
+    window.dispatchEvent(new Event(THEME_MODE_CHANGED_EVENT))
+  } catch {
+    // ignore in non-browser env
+  }
   return m
 }
 
