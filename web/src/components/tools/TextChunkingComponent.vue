@@ -81,7 +81,7 @@
 import { reactive, ref, computed } from 'vue'
 import { message } from 'ant-design-vue'
 import { apiFetch } from '@/api/http'
-import { getOfflineMode } from '@/utils/offlineMode'
+import { chunkPlainText } from '@/utils/chunking'
 
 const text = ref('')
 const state = reactive({
@@ -116,41 +116,61 @@ const estimatedTokenCount = computed(() => {
 })
 
 const chunkText = async () => {
-  let text_or_file = ''
-  if (state.useFile) {
-    if (fileList.value.length === 0) {
-      message.error('请上传文件')
-      return
-    }
-    const doneFile = fileList.value.find((f) => f.status === 'done')
-    const resp = doneFile?.response || {}
-    text_or_file = resp.file_content || resp.file_path || ''
-  } else {
-    if (text.value.length === 0) {
-      message.error('请输入文本')
-      return
-    }
-    text_or_file = text.value
-  }
-
   try {
     state.loading = true
+
+    // 1) Text mode: chunk in-browser
+    if (!state.useFile) {
+      if (!text.value) {
+        message.error('?????')
+        return
+      }
+
+      chunks.value = chunkPlainText(text.value, {
+        chunkSize: params.chunkSize,
+        chunkOverlap: params.chunkOverlap
+      }).map((c) => ({ text: c.text, meta: c.meta }))
+      return
+    }
+
+    // 2) File mode
+    if (fileList.value.length === 0) {
+      message.error('??????')
+      return
+    }
+
+    const doneFile = fileList.value.find((f) => f.status === 'done') || fileList.value[0]
+    const resp = doneFile?.response || {}
+
+    // Local fallback: if we only have file content, chunk in-browser.
+    if (resp.file_content) {
+      chunks.value = chunkPlainText(String(resp.file_content), {
+        chunkSize: params.chunkSize,
+        chunkOverlap: params.chunkOverlap
+      }).map((c) => ({ text: c.text, meta: c.meta }))
+      return
+    }
+
+    if (!resp.file_path) {
+      message.error('??????????')
+      return
+    }
+
     const data = await apiFetch('/tools/file-chunking', {
       method: 'POST',
       body: {
-        text: text_or_file,
-        params: {
-          chunk_size: params.chunkSize,
-          chunk_overlap: params.chunkOverlap,
-          use_parser: params.useParser
-        }
+        file: String(resp.file_path),
+        chunk_size: params.chunkSize,
+        chunk_overlap: params.chunkOverlap
       },
-      timeoutMs: 30000
+      timeoutMs: 60000
     })
-    chunks.value = data.nodes
-    state.loading = false
+
+    chunks.value = data?.chunks || data?.nodes || []
   } catch (error) {
     console.error('Error chunking text:', error)
+    message.error(error?.message || '????')
+  } finally {
     state.loading = false
   }
 }
@@ -158,10 +178,6 @@ const chunkText = async () => {
 const customUpload = async ({ file, onSuccess, onError }) => {
   state.uploading = true
   try {
-    const mode = getOfflineMode()
-    // Force local upload in offline mock mode; or fall back to local if backend upload fails.
-    const tryRemote = mode !== 'on'
-
     const readAsText = async () => {
       try {
         return await file.text()
@@ -170,20 +186,18 @@ const customUpload = async ({ file, onSuccess, onError }) => {
       }
     }
 
-    if (tryRemote) {
-      try {
-        const formData = new FormData()
-        formData.append('file', file)
-        const data = await apiFetch('/data/upload', {
-          method: 'POST',
-          body: formData,
-          timeoutMs: 60000
-        })
-        onSuccess?.(data, file)
-        return
-      } catch {
-        // fall through to local
-      }
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+      const data = await apiFetch('/data/upload', {
+        method: 'POST',
+        body: formData,
+        timeoutMs: 60000
+      })
+      onSuccess?.(data, file)
+      return
+    } catch {
+      // fall through to local
     }
 
     const content = await readAsText()

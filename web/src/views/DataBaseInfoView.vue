@@ -345,8 +345,6 @@ import { message, Modal } from 'ant-design-vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useConfigStore } from '@/stores/config'
 import { apiFetch } from '@/api/http'
-import { getOfflineMode } from '@/utils/offlineMode'
-import { chunkPlainText } from '@/utils/chunking'
 import HeaderComponent from '@/components/HeaderComponent.vue'
 import {
   ReadOutlined,
@@ -394,37 +392,17 @@ const handleDrop = (event) => {
 
 const customUpload = async ({ file, onSuccess, onError }) => {
   try {
-    const mode = getOfflineMode()
-    const tryRemote = mode !== 'on'
+    const formData = new FormData()
+    formData.append('file', file)
+    // Backend expects db_id as form field.
+    if (databaseId.value) formData.append('db_id', String(databaseId.value))
 
-    const readAsText = async () => {
-      try {
-        return await file.text()
-      } catch {
-        return ''
-      }
-    }
-
-    if (tryRemote) {
-      try {
-        const formData = new FormData()
-        formData.append('file', file)
-        // db_id is optional for backend; keep it for compatibility.
-        const data = await apiFetch('/data/upload', {
-          method: 'POST',
-          query: { db_id: databaseId.value },
-          body: formData,
-          timeoutMs: 60000
-        })
-        onSuccess?.(data, file)
-        return
-      } catch {
-        // fall through to local
-      }
-    }
-
-    const content = await readAsText()
-    onSuccess?.({ file_path: file.name, file_content: content }, file)
+    const data = await apiFetch('/data/upload', {
+      method: 'POST',
+      body: formData,
+      timeoutMs: 60000
+    })
+    onSuccess?.(data, file)
   } catch (e) {
     onError?.(e)
   }
@@ -616,24 +594,16 @@ const chunkFiles = () => {
   Promise.all(
     files.map(async (file) => {
       let nodes = []
-      // Offline-friendly: if we already have local file content, chunk in-browser.
-      if (file.file_content) {
-        nodes = chunkPlainText(file.file_content, {
-          chunkSize: chunkParams.value.chunk_size,
-          chunkOverlap: chunkParams.value.chunk_overlap
-        }).map((c) => ({ text: c.text, meta: c.meta }))
-      } else {
-        const data = await apiFetch('/data/file-to-chunk', {
-          method: 'POST',
-          body: {
-            file: file.file_path,
-            chunk_size: chunkParams.value.chunk_size,
-            chunk_overlap: chunkParams.value.chunk_overlap
-          },
-          timeoutMs: 60000
-        })
-        nodes = data?.chunks || []
-      }
+      const data = await apiFetch('/data/file-to-chunk', {
+        method: 'POST',
+        body: {
+          file: file.file_path,
+          chunk_size: chunkParams.value.chunk_size,
+          chunk_overlap: chunkParams.value.chunk_overlap
+        },
+        timeoutMs: 60000
+      })
+      nodes = data?.chunks || []
 
       return {
         filename: file.name,

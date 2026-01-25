@@ -94,9 +94,8 @@
           <div class="status-block">
             <div class="status-label">Backend</div>
             <a-space wrap>
-              <StatusTag :status="backendMock ? 'mock' : backendOnline ? 'online' : 'offline'" />
+              <StatusTag :status="backendOnline ? 'online' : 'offline'" />
               <StatusTag :status="backendReady ? 'ready' : 'not_ready'" />
-              <a-tag v-if="offlineMode !== 'off'" color="blue">离线模式：{{ offlineMode }}</a-tag>
             </a-space>
           </div>
 
@@ -155,7 +154,6 @@ import {
 import StatusTag from '@/components/StatusTag.vue'
 import { useConfigStore } from '@/stores/config'
 import { APP_NAME, getBuildLabel } from '@/config/appMeta'
-import { getOfflineMode } from '@/utils/offlineMode'
 
 const router = useRouter()
 const configStore = useConfigStore()
@@ -173,16 +171,9 @@ const refreshStatus = async () => {
   }
 }
 
-const offlineMode = ref(getOfflineMode())
-const onOfflineModeChanged = () => {
-  offlineMode.value = getOfflineMode()
-}
 
 const ui = computed(() => configStore.config?.ui || {})
 const backendOnline = computed(() => Boolean(configStore.config.backend?.online))
-const backendMock = computed(
-  () => Boolean(configStore.config.backend?.mock) || offlineMode.value === 'on'
-)
 const backendReady = computed(() => Boolean(configStore.config.backend?.ready))
 
 const apiDocsUrl = computed(() => `${window.location.origin}/api/docs`)
@@ -192,11 +183,9 @@ const go = (path: string) => router.push(path)
 onMounted(async () => {
   // Keep homepage informative even before entering AppLayout.
   await refreshStatus()
-  window.addEventListener('offline-mode-changed', onOfflineModeChanged)
 })
 
 onUnmounted(() => {
-  window.removeEventListener('offline-mode-changed', onOfflineModeChanged)
 })
 </script>
 

@@ -13,7 +13,7 @@ export const DEFAULT_CONFIG = {
 
   // --- UI feature visibility (frontend-controlled) ---
   // These control what the frontend *shows*. Backend capability flags below only control
-  // whether actions call the real backend or are disabled / mocked.
+  // whether actions call the real backend or are disabled.
   ui: {
     show_knowledge_base: true,
     show_knowledge_graph: true,

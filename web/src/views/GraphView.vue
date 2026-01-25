@@ -8,8 +8,8 @@
       <template #actions>
         <div class="status-line">
           <StatusTag
-            :status="backendMock ? 'mock' : backendOnline ? 'online' : 'offline'"
-            :label="backendMock ? 'Mock' : backendOnline ? 'Backend Online' : 'Offline'"
+            :status="backendOnline ? 'online' : 'offline'"
+            :label="backendOnline ? 'Backend Online' : 'Offline'"
           />
           <a-tag :color="kgStatus.color">
             {{ kgStatus.label }}
@@ -20,22 +20,14 @@
 
     <div class="ui-page">
       <div class="ui-container">
-
     <a-alert
-      v-if="backendMock"
-      type="info"
-      show-icon
-      message="当前为 Mock 演示图谱：数据来自本地 Demo / Mock API。"
-      class="graph-alert"
-    />
-    <a-alert
-      v-else-if="!canUseGraph"
+      v-if="!canUseGraph"
       type="warning"
       show-icon
       :message="
         backendOnline
-          ? '后端未启用知识图谱（enable_knowledge_graph=false）'
-          : '后端未启动/不可用：已切换为离线 Demo 图谱'
+          ? 'Knowledge graph is disabled on backend (enable_knowledge_graph=false)'
+          : 'Backend offline'
       "
       class="graph-alert"
     />
@@ -58,7 +50,6 @@
             检索
           </a-button>
         </a-space-compact>
-        <a-button @click="loadDemoGraph">加载 Demo</a-button>
       </a-space>
 
       <a-space wrap :size="12">
@@ -122,8 +113,6 @@ import HeaderComponent from '@/components/HeaderComponent.vue'
 import StatusTag from '@/components/StatusTag.vue'
 import { apiFetch } from '@/api/http'
 import { notifyApiError } from '@/utils/notify'
-import demoGraph from '@/assets/mock/graph.sample.json'
-
 const configStore = useConfigStore()
 
 const container = ref(null)
@@ -176,20 +165,14 @@ const cssVar = (name, fallback) => {
 }
 
 const backendOnline = computed(() => Boolean(configStore.config.backend?.online))
-const backendMock = computed(() => Boolean(configStore.config.backend?.mock))
-const canUseGraph = computed(
-  () =>
-    (backendOnline.value && Boolean(configStore.config.enable_knowledge_graph)) || backendMock.value
-)
+const canUseGraph = computed(() => backendOnline.value && Boolean(configStore.config.enable_knowledge_graph))
 
 const kgStatus = computed(() => {
-  if (backendMock.value) return { color: 'blue', label: 'Demo' }
   if (backendOnline.value && Boolean(configStore.config.enable_knowledge_graph))
     return { color: 'green', label: 'KG Enabled' }
   if (backendOnline.value) return { color: 'orange', label: 'KG Disabled' }
-  return { color: 'orange', label: 'KG Offline' }
+  return { color: 'red', label: 'Offline' }
 })
-
 const graphInfo = ref({})
 
 const selectedNode = computed(() => {
@@ -222,7 +205,7 @@ const loadGraphInfo = async () => {
     if (!canUseGraph.value) {
       graphInfo.value = {
         status: backendOnline.value ? 'closed' : 'offline',
-        graph_name: backendOnline.value ? 'neo4j' : 'demo',
+        graph_name: 'neo4j',
         entity_count: graphData.nodes.length,
         relationship_count: graphData.edges.length
       }
@@ -237,17 +220,8 @@ const loadGraphInfo = async () => {
   }
 }
 
-const loadDemoGraph = () => {
-  graphData.nodes = demoGraph.nodes
-  graphData.edges = demoGraph.edges
-  state.selectedNodeId = null
-  state.detailOpen = false
-  loadGraphInfo()
-  setTimeout(() => void renderGraph(), 0)
-}
-
 const loadSampleNodes = async () => {
-  if (!canUseGraph.value) return loadDemoGraph()
+  if (!canUseGraph.value) return
   state.fetching = true
   try {
     const data = await apiFetch('/data/graph/nodes', {
@@ -269,7 +243,7 @@ const loadSampleNodes = async () => {
 
 const onSearch = async () => {
   if (!state.searchInput) return message.error('请输入要查询的实体')
-  if (!canUseGraph.value) return loadDemoGraph()
+  if (!canUseGraph.value) return
 
   state.searchLoading = true
   try {
@@ -412,10 +386,6 @@ const graphDescription = computed(() => {
 })
 
 onMounted(() => {
-  // In offline/mock mode, show a demo graph by default so the page is not empty.
-  if (configStore.config?.backend?.mock || !backendOnline.value) {
-    loadDemoGraph()
-  }
 
   // Resize graph when the container resizes (e.g. drawer open/close, window resize).
   watch(

@@ -34,15 +34,9 @@ import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import AgentChatComponent from '@/components/AgentChatComponent.vue'
 import { apiFetch } from '@/api/http'
-import { useConfigStore } from '@/stores/config'
-import { getOfflineMode } from '@/utils/offlineMode'
 
 const route = useRoute()
 const agentId = computed(() => route.params.agent_id)
-const configStore = useConfigStore()
-const shouldBypassToken = computed(
-  () => getOfflineMode() === 'on' || Boolean(configStore.config.backend?.mock)
-)
 
 // Token验证相关状态
 const tokenModalVisible = ref(false)
@@ -109,11 +103,6 @@ const checkVerification = async () => {
 
 // 组件挂载时检查验证状态
 onMounted(() => {
-  if (shouldBypassToken.value) {
-    isVerified.value = true
-    tokenModalVisible.value = false
-    return
-  }
   checkVerification()
 })
 </script>

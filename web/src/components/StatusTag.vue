@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 
-type StatusKey = 'online' | 'mock' | 'offline' | 'ready' | 'not_ready' | 'info'
+type StatusKey = 'online' | 'offline' | 'ready' | 'not_ready' | 'info'
 
 const props = defineProps<{
   status: StatusKey
@@ -10,8 +10,6 @@ const props = defineProps<{
 
 const color = computed(() => {
   switch (props.status) {
-    case 'mock':
-      return 'blue'
     case 'online':
       return 'green'
     case 'offline':
@@ -28,8 +26,6 @@ const color = computed(() => {
 const text = computed(() => {
   if (props.label) return props.label
   switch (props.status) {
-    case 'mock':
-      return 'Mock'
     case 'online':
       return 'Online'
     case 'offline':
@@ -55,4 +51,3 @@ const text = computed(() => {
   user-select: none;
 }
 </style>
-

@@ -46,7 +46,6 @@
 import { reactive, ref, computed } from 'vue'
 import { message } from 'ant-design-vue'
 import { apiFetch } from '@/api/http'
-import { getOfflineMode } from '@/utils/offlineMode'
 
 const state = reactive({
   loading: false,
@@ -120,9 +119,6 @@ const convertPdfToText = async () => {
 const customUpload = async ({ file, onSuccess, onError }) => {
   state.uploading = true
   try {
-    const mode = getOfflineMode()
-    const tryRemote = mode !== 'on'
-
     const readAsText = async () => {
       try {
         return await file.text()
@@ -131,20 +127,18 @@ const customUpload = async ({ file, onSuccess, onError }) => {
       }
     }
 
-    if (tryRemote) {
-      try {
-        const formData = new FormData()
-        formData.append('file', file)
-        const data = await apiFetch('/data/upload', {
-          method: 'POST',
-          body: formData,
-          timeoutMs: 60000
-        })
-        onSuccess?.(data, file)
-        return
-      } catch {
-        // fall through to local
-      }
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+      const data = await apiFetch('/data/upload', {
+        method: 'POST',
+        body: formData,
+        timeoutMs: 60000
+      })
+      onSuccess?.(data, file)
+      return
+    } catch {
+      // fall through to local
     }
 
     // Local fallback: keep file content for txt/md preview; PDF content is binary so we skip.

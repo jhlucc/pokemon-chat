@@ -29,16 +29,11 @@ import { APP_NAME, BUILD_SHA, BUILD_TIME, getBuildLabel } from '@/config/appMeta
 import { useConfigStore } from '@/stores/config'
 import { useDatabaseStore } from '@/stores/database'
 import DebugComponent from '@/components/DebugComponent.vue'
-import { getOfflineMode, setOfflineMode } from '@/utils/offlineMode'
 
 const configStore = useConfigStore()
 const databaseStore = useDatabaseStore()
 const preferredDark = usePreferredDark()
 
-const offlineMode = ref(getOfflineMode())
-const onOfflineModeChanged = () => {
-  offlineMode.value = getOfflineMode()
-}
 
 const buildLabel = getBuildLabel()
 
@@ -79,12 +74,6 @@ const toggleSider = () => {
 const scrollContainer = ref<HTMLElement | null>(null)
 const backTopTarget = () => scrollContainer.value || document.body
 
-const setOffline = (mode) => {
-  setOfflineMode(mode)
-  offlineMode.value = getOfflineMode()
-  // Refresh status line so UI stays informative after switching modes.
-  configStore.refreshConfig()
-}
 
 const layoutSettings = reactive({
   showDebug: false,
@@ -142,11 +131,9 @@ onMounted(() => {
   getRemoteConfig()
   getRemoteDatabase()
 
-  window.addEventListener('offline-mode-changed', onOfflineModeChanged)
 })
 
 onUnmounted(() => {
-  window.removeEventListener('offline-mode-changed', onOfflineModeChanged)
 })
 
 // 打印当前页面的路由信息，使用vue3的setup composition API
@@ -159,34 +146,11 @@ const apiDocsUrl = computed(() => {
 
 const backendMode = computed(() => {
   const backend = configStore.config?.backend || {}
-  const isMock = Boolean(backend.mock) || offlineMode.value === 'on'
   const isOnline = Boolean(backend.online)
-  if (isMock) return { key: 'mock', short: 'MOCK', label: 'Mock（离线演示）' }
   if (isOnline) return { key: 'online', short: 'API', label: 'Backend Online' }
   return { key: 'offline', short: 'OFF', label: 'Backend Offline' }
 })
 
-const offlineBanner = computed(() => {
-  if (offlineMode.value === 'on') {
-    return {
-      type: 'info',
-      message: '离线演示模式已开启：接口将优先使用 Mock 数据。',
-      actionLabel: '关闭',
-      onAction: () => setOffline('off')
-    }
-  }
-
-  if (offlineMode.value === 'auto' && backendMode.value.key === 'offline') {
-    return {
-      type: 'warning',
-      message: '后端不可用：已进入自动回退模式（能回退的接口会使用 Mock）。',
-      actionLabel: '强制 Mock',
-      onAction: () => setOffline('on')
-    }
-  }
-
-  return null
-})
 
 // 下面是导航菜单部分，添加智能体项
 const mainList = computed(() => {
@@ -326,32 +290,19 @@ const mainList = computed(() => {
         </a-tooltip>
       </div>
 
-      <a-dropdown placement="rightTop" trigger="click">
-        <div
-          class="nav-item mode-indicator"
-          aria-label="运行模式"
-          role="button"
-          tabindex="0"
-          @keydown.enter.prevent="$event.currentTarget?.click?.()"
-          @keydown.space.prevent="$event.currentTarget?.click?.()"
-        >
-          <a-tooltip placement="right">
-            <template #title>
-              <div>{{ backendMode.label }}</div>
-              <div>离线模式：{{ offlineMode }}</div>
-              <div style="opacity: 0.75">点击切换</div>
-            </template>
-            <span class="mode-pill" :class="backendMode.key">{{ backendMode.short }}</span>
-          </a-tooltip>
-        </div>
-        <template #overlay>
-          <a-menu :selectedKeys="[offlineMode]" @click="({ key }) => setOffline(key)">
-            <a-menu-item key="auto">Auto：失败回退 Mock</a-menu-item>
-            <a-menu-item key="off">Off：强制真实后端</a-menu-item>
-            <a-menu-item key="on">On：强制 Mock 演示</a-menu-item>
-          </a-menu>
-        </template>
-      </a-dropdown>
+      <div
+        class="nav-item mode-indicator"
+        aria-label="????"
+        role="status"
+      >
+        <a-tooltip placement="right">
+          <template #title>
+            <div>{{ backendMode.label }}</div>
+          </template>
+          <span class="mode-pill" :class="backendMode.key">{{ backendMode.short }}</span>
+        </a-tooltip>
+      </div>
+
 
       <div class="nav-item api-docs">
         <a-tooltip placement="right">
@@ -432,20 +383,6 @@ const mainList = computed(() => {
       </RouterLink>
     </div>
     <div id="app-router-view" ref="scrollContainer" tabindex="-1" role="main">
-      <a-alert
-        v-if="offlineBanner"
-        class="offline-banner"
-        banner
-        show-icon
-        :type="offlineBanner.type"
-        :message="offlineBanner.message"
-      >
-        <template #action>
-          <a-button size="small" type="link" @click="offlineBanner.onAction">{{
-            offlineBanner.actionLabel
-          }}</a-button>
-        </template>
-      </a-alert>
 
       <router-view v-slot="{ Component, route }">
         <keep-alive v-if="route.meta.keepAlive !== false">
@@ -712,12 +649,6 @@ div.header,
       user-select: none;
     }
 
-    .mode-pill.mock {
-      color: var(--main-600);
-      border-color: color-mix(in srgb, var(--main-500) 35%, var(--border-color));
-      background: color-mix(in srgb, var(--main-500) 14%, var(--surface-color));
-    }
-
     .mode-pill.online {
       color: var(--success-color);
       border-color: color-mix(in srgb, var(--success-color) 35%, var(--border-color));
@@ -914,12 +845,6 @@ div.header,
         letter-spacing: 0.3px;
         color: var(--gray-700);
         pointer-events: none;
-      }
-
-      .mode-badge.mock {
-        color: var(--main-600);
-        border-color: color-mix(in srgb, var(--main-500) 35%, var(--border-color));
-        background: color-mix(in srgb, var(--main-500) 14%, var(--surface-color));
       }
 
       .mode-badge.online {
