@@ -1,5 +1,7 @@
 /* === 基础亮色模式（默认） === */
 :root {
+  color-scheme: light;
+  accent-color: var(--primary-color);
   /* 主背景、文字、边框 */
   --background-color: #ffffff;
   --text-color: #212121;
@@ -97,6 +99,7 @@
 
 /* === 暗黑模式 === */
 :root[data-theme='dark'] {
+  color-scheme: dark;
   /* 主背景、文字、边框 */
   --background-color: #181818;
   --input-background-color: #1e1e1e;
@@ -173,6 +176,10 @@
   box-sizing: border-box;
   margin: 0;
   padding: 0;
+}
+
+html {
+  background-color: var(--background-color);
 }
 
 body {

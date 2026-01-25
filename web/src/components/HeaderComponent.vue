@@ -122,22 +122,26 @@ defineProps({
   display: flex;
   gap: 8px;
   flex: 0 0 auto;
-}
-</style>
-
-<style lang="less">
-/* 这里是非 scoped，定义主题色变量 */
-:root {
-  --header-bg: rgba(255, 255, 255, 0.8);
-  --header-border: #f0f0f0;
-  --header-title: rgba(0, 0, 0, 0.85);
-  --header-desc: rgba(0, 0, 0, 0.45);
+  flex-wrap: wrap;
 }
 
-:root[data-theme='dark'] {
-  --header-bg: rgba(30, 30, 30, 0.8);
-  --header-border: #333333;
-  --header-title: rgba(255, 255, 255, 0.85);
-  --header-desc: rgba(255, 255, 255, 0.45);
+@media (max-width: 520px) {
+  .header-container {
+    padding: 12px 14px;
+  }
+
+  .header-content {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .header-title .header-title-row {
+    flex-wrap: wrap;
+    row-gap: 8px;
+  }
+
+  .header-actions {
+    justify-content: flex-start;
+  }
 }
 </style>

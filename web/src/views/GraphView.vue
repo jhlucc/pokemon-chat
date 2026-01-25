@@ -18,12 +18,15 @@
       </template>
     </HeaderComponent>
 
+    <div class="ui-page">
+      <div class="ui-container">
+
     <a-alert
       v-if="backendMock"
       type="info"
       show-icon
       message="当前为 Mock 演示图谱：数据来自本地 Demo / Mock API。"
-      style="margin: 0 24px 16px"
+      class="graph-alert"
     />
     <a-alert
       v-else-if="!canUseGraph"
@@ -34,10 +37,10 @@
           ? '后端未启用知识图谱（enable_knowledge_graph=false）'
           : '后端未启动/不可用：已切换为离线 Demo 图谱'
       "
-      style="margin: 0 24px 16px"
+      class="graph-alert"
     />
 
-    <div class="toolbar">
+    <div class="toolbar ui-toolbar ui-card graph-toolbar">
       <a-space wrap :size="12">
         <a-space-compact>
           <a-input
@@ -73,11 +76,14 @@
       </a-space>
     </div>
 
-    <div class="canvas-wrap">
+    <div class="canvas-wrap ui-card graph-canvas">
       <a-spin :spinning="state.vizLoading" tip="加载图谱渲染器...">
         <div class="main" ref="container" v-show="graphData.nodes.length > 0"></div>
         <a-empty v-show="graphData.nodes.length === 0" style="padding: 4rem 0" />
       </a-spin>
+    </div>
+
+      </div>
     </div>
 
     <a-drawer v-model:open="state.detailOpen" placement="right" width="380" title="节点详情">
@@ -469,39 +475,40 @@ onUnmounted(() => {
   align-items: center;
 }
 
+.graph-alert {
+  margin-bottom: 12px;
+}
+
 .toolbar {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  flex-wrap: wrap;
-  margin: 16px 0;
-  padding: 0 24px;
-  gap: 12px;
+  margin: 0 0 12px;
+  padding: 12px 14px;
+}
+
+.graph-toolbar:hover {
+  /* Toolbar is a surface, not a lift-on-hover card */
+  transform: none;
+  background: var(--surface-color);
+  box-shadow: var(--shadow-xs);
 }
 
 .canvas-wrap {
-  padding: 0 24px 24px;
+  padding: 10px;
+  border-radius: var(--radius-lg);
+}
+
+.graph-canvas:hover {
+  transform: none;
+  background: var(--surface-color);
+  box-shadow: var(--shadow-xs);
 }
 
 .main {
-  background: var(--surface-color);
-  border-radius: 16px;
+  background: transparent;
+  border-radius: var(--radius-md);
   width: 100%;
-  height: calc(100vh - 240px);
+  height: min(72vh, 720px);
+  min-height: 420px;
   overflow: hidden;
-}
-
-.kv {
-  display: flex;
-  justify-content: space-between;
-  margin: 6px 0;
-
-  .k {
-    color: var(--gray-700);
-  }
-  .v {
-    font-weight: 600;
-  }
 }
 
 .section-title {
@@ -513,7 +520,4 @@ onUnmounted(() => {
   cursor: pointer;
 }
 
-.muted {
-  color: var(--gray-600);
-}
 </style>

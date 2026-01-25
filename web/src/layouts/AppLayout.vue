@@ -236,6 +236,7 @@ const mainList = computed(() => {
 
 <template>
   <div class="app-layout" :class="{ 'use-top-bar': layoutSettings.useTopBar }">
+    <a class="skip-link" href="#app-router-view">Skip to content</a>
     <div class="debug-panel">
       <a-float-button
         @click="layoutSettings.showDebug = !layoutSettings.showDebug"
@@ -427,7 +428,7 @@ const mainList = computed(() => {
         }}</span>
       </RouterLink>
     </div>
-    <div id="app-router-view">
+    <div id="app-router-view" tabindex="-1" role="main">
       <a-alert
         v-if="offlineBanner"
         class="offline-banner"
@@ -480,6 +481,26 @@ const mainList = computed(() => {
   width: 100%;
   height: 100vh;
   min-width: var(--min-width);
+
+  .skip-link {
+    position: fixed;
+    left: 12px;
+    top: 12px;
+    padding: 8px 12px;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-color);
+    background: var(--surface-color);
+    color: var(--text-color);
+    box-shadow: var(--shadow-sm);
+    text-decoration: none;
+    z-index: 4000;
+    transform: translateY(-200%);
+    transition: transform 0.2s ease;
+  }
+
+  .skip-link:focus {
+    transform: translateY(0);
+  }
 
   .header-mobile {
     display: none;

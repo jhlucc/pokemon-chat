@@ -96,16 +96,20 @@
           <component :is="opts.showPanel ? FolderOpenOutlined : FolderOutlined" />
           <span class="text">选项</span>
         </div>
-        <div v-if="opts.showPanel" class="my-panal r0 top100 swing-in-top-fwd" ref="panel">
-          <div class="flex-center" @click="meta.stream = !meta.stream">
+        <div
+          v-if="opts.showPanel"
+          class="options-panel options-panel--right swing-in-top-fwd"
+          ref="panel"
+        >
+          <div class="options-row" @click="meta.stream = !meta.stream">
             流式输出
             <div @click.stop><a-switch v-model:checked="meta.stream" /></div>
           </div>
-          <div class="flex-center" @click="meta.summary_title = !meta.summary_title">
+          <div class="options-row" @click="meta.summary_title = !meta.summary_title">
             总结对话标题
             <div @click.stop><a-switch v-model:checked="meta.summary_title" /></div>
           </div>
-          <div class="flex-center">
+          <div class="options-row">
             最大历史轮数
             <a-input-number
               id="inputNumber"
@@ -114,7 +118,7 @@
               :max="50"
             />
           </div>
-          <div class="flex-center">
+          <div class="options-row">
             字体大小
             <a-select v-model:value="meta.fontSize" style="width: 100px" placeholder="选择字体大小">
               <a-select-option value="smaller">更小</a-select-option>
@@ -122,7 +126,7 @@
               <a-select-option value="larger">更大</a-select-option>
             </a-select>
           </div>
-          <div class="flex-center" @click="meta.wideScreen = !meta.wideScreen">
+          <div class="options-row" @click="meta.wideScreen = !meta.wideScreen">
             宽屏模式
             <div @click.stop><a-switch v-model:checked="meta.wideScreen" /></div>
           </div>
@@ -978,19 +982,19 @@ const selectModel = (provider, name) => {
   gap: 8px;
 }
 
-.my-panal {
+.options-panel {
   position: absolute;
   margin-top: 5px;
   background-color: var(--surface-color);
   border: 1px solid var(--border-color);
-  box-shadow: 0px 0px 10px 1px rgba(0, 0, 0, 0.05);
-  border-radius: 12px;
+  box-shadow: var(--shadow-sm);
+  border-radius: var(--radius-md);
   padding: 12px;
   z-index: 11;
   width: 280px;
-  transition: transform 0.3s ease, opacity 0.3s ease;
+  transition: transform 0.2s ease, opacity 0.2s ease;
 
-  .flex-center {
+  .options-row {
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -1001,7 +1005,7 @@ const selectModel = (provider, name) => {
     transition: background-color 0.3s;
 
     &:hover {
-      background-color: var(--main-light-3);
+      background-color: var(--hover-bg);
     }
 
     .anticon {
@@ -1017,12 +1021,12 @@ const selectModel = (provider, name) => {
   }
 }
 
-.my-panal.r0.top100 {
+.options-panel--right {
   top: 100%;
   right: 0;
 }
 
-.my-panal.l0.top100 {
+.options-panel--left {
   top: 100%;
   left: 0;
 }
@@ -1308,7 +1312,7 @@ const selectModel = (provider, name) => {
   }
 
   .chat-container .chat .chat-header {
-    background: var(--main-light-4);
+    background: var(--header-bg-color);
 
     .header__left,
     .header__right {
@@ -1321,7 +1325,7 @@ const selectModel = (provider, name) => {
 
       &:hover {
         background-color: transparent;
-        color: black;
+        color: var(--text-color);
       }
 
       .text {
@@ -1398,37 +1402,6 @@ const selectModel = (provider, name) => {
   }
 }
 
-.model-select {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 12px;
-  background-color: var(--gray-100);
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
-  cursor: pointer;
-  font-size: 14px;
-  transition: background-color 0.2s ease;
-
-  &:hover {
-    background-color: var(--gray-200);
-  }
-
-  .icon {
-    font-size: 16px;
-    width: 16px;
-    height: 16px;
-    color: var(--primary-color);
-  }
-
-  .text {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    max-width: 160px;
-    color: var(--text-color);
-  }
-}
 </style>
 
 <style lang="less">

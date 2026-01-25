@@ -62,6 +62,11 @@
 :root {
   --layout-bg-color: var(--gray-100); /* 浅色时背景色 */
   --header-bg-color: rgba(255, 255, 255, 0.8);
+  /* HeaderComponent tokens (centralized) */
+  --header-bg: var(--header-bg-color);
+  --header-border: var(--border-color);
+  --header-title: var(--text-color);
+  --header-desc: var(--gray-600);
   --input-bg-color: var(--input-background-color);
   --input-border-color: var(--gray-300);
   --button-bg-color: var(--main-500);
@@ -71,6 +76,10 @@
 :root[data-theme='dark'] {
   --layout-bg-color: var(--background-color); /* 暗色时背景色 */
   --header-bg-color: rgba(30, 30, 30, 0.8);
+  --header-bg: var(--header-bg-color);
+  --header-border: var(--border-color);
+  --header-title: var(--text-color);
+  --header-desc: var(--gray-600);
   --input-bg-color: var(--input-background-color);
   --input-border-color: var(--border-color);
   --button-bg-color: var(--main-400);
@@ -132,6 +141,72 @@ button.ant-btn-icon-only:hover {
   background: var(--surface-color-2);
   box-shadow: var(--shadow-sm);
   transform: translateY(-1px);
+}
+
+.ui-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.ui-section {
+  margin-top: var(--space-4);
+}
+
+.ui-kv {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  margin: 8px 0;
+}
+
+.ui-k {
+  color: var(--gray-700);
+}
+
+.ui-v {
+  font-weight: 600;
+  text-align: right;
+}
+
+/* Legacy aliases used across existing views */
+.kv {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  margin: 8px 0;
+}
+
+.kv .k {
+  color: var(--gray-700);
+}
+
+.kv .v {
+  font-weight: 600;
+  text-align: right;
+}
+
+.muted {
+  color: var(--gray-600);
+}
+
+/* Ant Design polish: keep surfaces consistent with app tokens */
+:where(.ant-card),
+:where(.ant-modal-content),
+:where(.ant-drawer-content),
+:where(.ant-popover-inner),
+:where(.ant-dropdown-menu) {
+  border-radius: var(--radius-md);
+}
+
+:where(.ant-modal-content),
+:where(.ant-drawer-content),
+:where(.ant-popover-inner) {
+  background: var(--surface-color);
 }
 
 @media (max-width: 520px) {

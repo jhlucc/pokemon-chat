@@ -85,6 +85,11 @@
             class="conversation"
             :class="{ active: curConvId === item.index }"
             @click="goToConversation(item.index)"
+            role="button"
+            tabindex="0"
+            :aria-current="curConvId === item.index ? 'page' : undefined"
+            @keydown.enter.prevent="goToConversation(item.index)"
+            @keydown.space.prevent="goToConversation(item.index)"
           >
             <div class="conversation__title"><CommentOutlined /> &nbsp;{{ item.conv.title }}</div>
             <a-popconfirm
@@ -107,6 +112,12 @@
       </div>
     </div>
     <!--    聊天组件（ChatComponent） 渲染右边聊天内容区域。  把当前选中的对话 (convs[curConvId]) 作为 prop 传给 ChatComponent,传递状态对象 state-->
+    <div
+      v-if="state.isSidebarOpen"
+      class="sidebar-mask"
+      @click="state.isSidebarOpen = false"
+      aria-hidden="true"
+    />
     <ChatComponent
       :conv="convs[curConvId]"
       :state="state"
@@ -340,6 +351,10 @@ watch(convs, () => persistConvs(), { deep: true })
   position: relative;
 }
 
+.sidebar-mask {
+  display: none;
+}
+
 .conversations {
   width: 230px;
   max-width: 230px;
@@ -428,11 +443,13 @@ watch(convs, () => persistConvs(), { deep: true })
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 16px;
+    padding: 12px 12px;
+    margin: 4px 8px;
     cursor: pointer;
-    width: 100%;
     user-select: none;
-    transition: background-color 0.2s ease-in-out;
+    border-radius: var(--radius-md);
+    border: 1px solid transparent;
+    transition: background-color 0.2s ease-in-out, border-color 0.2s ease-in-out;
 
     &__title {
       color: var(--gray-700);
@@ -454,8 +471,9 @@ watch(convs, () => persistConvs(), { deep: true })
 
     &.active {
       border-right: 3px solid var(--main-500);
-      padding-right: 13px;
-      background-color: var(--gray-200);
+      padding-right: 9px;
+      background-color: var(--surface-color);
+      border-color: color-mix(in srgb, var(--main-500) 18%, var(--border-color));
 
       & .conversation__title {
         color: var(--gray-1000);
@@ -463,11 +481,21 @@ watch(convs, () => persistConvs(), { deep: true })
     }
 
     &:not(.active):hover {
-      background-color: var(--main-light-3);
+      background-color: var(--hover-bg);
+      border-color: var(--border-color);
 
       & .conversation__delete {
         display: block;
       }
+    }
+
+    &:focus-visible {
+      background-color: var(--hover-bg);
+      border-color: var(--border-color);
+    }
+
+    &:focus-within .conversation__delete {
+      display: block;
     }
   }
 
@@ -506,6 +534,14 @@ watch(convs, () => persistConvs(), { deep: true })
 }
 
 @media (max-width: 520px) {
+  .sidebar-mask {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.28);
+    z-index: 100;
+  }
+
   .conversations {
     position: absolute;
     z-index: 101;

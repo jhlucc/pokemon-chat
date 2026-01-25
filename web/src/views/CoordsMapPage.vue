@@ -1,21 +1,29 @@
 <template>
-  <div class="coords-page">
-    <HeaderComponent title="📍 PokéMap" />
+  <div class="coords-page layout-container">
+    <HeaderComponent
+      title="地图"
+      description="坐标查询与可视化"
+      :breadcrumbs="[{ label: '首页', to: '/' }, { label: '地图' }]"
+    />
 
-    <div class="search-bar">
-      <a-input-search
-        v-model:value="place"
-        placeholder="输入地点 / 宝可梦名，例如：皮卡丘"
-        enter-button="搜索"
-        @search="handleSearch"
-        :loading="loading"
-        style="max-width: 500px"
-      />
+    <div class="ui-page">
+      <div class="ui-container">
+        <div class="search-bar">
+          <a-input-search
+            v-model:value="place"
+            placeholder="输入地点 / 宝可梦名，例如：皮卡丘"
+            enter-button="搜索"
+            @search="handleSearch"
+            :loading="loading"
+            style="max-width: 500px"
+          />
+        </div>
+
+        <a-spin :spinning="leafletLoading" tip="加载地图组件...">
+          <div id="map" class="map-container ui-card map-card"></div>
+        </a-spin>
+      </div>
     </div>
-
-    <a-spin :spinning="leafletLoading" tip="加载地图组件...">
-      <div id="map" class="map-container"></div>
-    </a-spin>
   </div>
 </template>
 
@@ -130,17 +138,13 @@ function renderCoords(coords) {
 
 <style scoped>
 .coords-page {
-  width: 100%;
-  height: 100vh;
-  display: flex;
-  flex-direction: column;
-  background-color: var(--layout-bg-color);
+  padding: 0;
 }
 
 .search-bar {
-  padding: 24px;
   display: flex;
   justify-content: center;
+  margin-bottom: 12px;
 }
 
 .search-bar > .ant-input-search {
@@ -155,13 +159,18 @@ function renderCoords(coords) {
 }
 
 .map-container {
-  flex: 1;
-  border-top: 1px solid var(--border-color);
-  min-height: 500px;
+  width: 100%;
+  height: min(72vh, 720px);
+  min-height: 420px;
   border-radius: var(--radius-lg);
   overflow: hidden;
   background: var(--surface-color);
-  box-shadow: inset 0 0 6px rgba(0, 0, 0, 0.05);
+}
+
+.map-card:hover {
+  transform: none;
+  background: var(--surface-color);
+  box-shadow: var(--shadow-xs);
 }
 
 .leaflet-popup-content-wrapper {

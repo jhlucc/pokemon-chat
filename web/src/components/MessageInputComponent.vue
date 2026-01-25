@@ -200,15 +200,15 @@ const handleSendOrStop = () => {
   height: auto;
   margin: 0 auto;
   padding: 0.4rem 0.75rem;
-  border: 2px solid var(--gray-200);
-  border-radius: 0.8rem;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-xs);
   transition: all 0.3s ease;
 
   &:focus-within {
-    border-color: var(--main-500);
+    border-color: color-mix(in srgb, var(--main-500) 32%, var(--border-color));
     background: var(--surface-color);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    box-shadow: var(--focus-ring), var(--shadow-sm);
   }
 
   .input-area {
@@ -249,7 +249,7 @@ const handleSendOrStop = () => {
     display: flex;
     padding: 8px 0 0;
     margin-top: 6px;
-    border-top: 1px solid var(--gray-100);
+    border-top: 1px solid color-mix(in srgb, var(--border-color) 70%, transparent);
 
     .options__left,
     .options__right {
@@ -298,7 +298,7 @@ button.ant-btn-icon-only {
   height: 32px;
   width: 32px;
   cursor: pointer;
-  background-color: var(--main-500);
+  background-color: var(--button-bg-color);
   border-radius: 50%;
   border: none;
   transition: all 0.2s ease;
@@ -311,7 +311,7 @@ button.ant-btn-icon-only {
   font-size: 14px;
 
   &:hover {
-    background-color: var(--main-600);
+    background-color: var(--button-hover-bg-color);
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
     color: white;
   }

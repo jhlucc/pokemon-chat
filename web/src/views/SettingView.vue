@@ -442,18 +442,4 @@ const onOfflineModeChange = async (v) => {
   margin-right: 8px;
 }
 
-.kv {
-  display: flex;
-  justify-content: space-between;
-  margin: 8px 0;
-}
-.k {
-  color: var(--gray-700);
-}
-.v {
-  font-weight: 600;
-}
-.muted {
-  color: var(--gray-600);
-}
 </style>

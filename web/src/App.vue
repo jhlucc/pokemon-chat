@@ -1,6 +1,7 @@
 <template>
   <AppErrorBoundary>
     <a-config-provider :theme="antdThemeConfig" :component-size="antdComponentSize">
+      <RouteProgress />
       <router-view />
     </a-config-provider>
   </AppErrorBoundary>
@@ -12,6 +13,7 @@ import { usePreferredDark } from '@vueuse/core'
 import { theme as antdTheme } from 'ant-design-vue'
 
 import AppErrorBoundary from '@/components/AppErrorBoundary.vue'
+import RouteProgress from '@/components/RouteProgress.vue'
 import { THEME_MODE_CHANGED_EVENT, getSavedThemeMode, themeConfig } from '@/assets/theme'
 import { getUiDensity } from '@/utils/uiDensity'
 import { getThemePreset, getThemePresetToken } from '@/utils/themePreset'
