@@ -76,6 +76,9 @@ const toggleSider = () => {
   siderCollapsed.value = !siderCollapsed.value
 }
 
+const scrollContainer = ref<HTMLElement | null>(null)
+const backTopTarget = () => scrollContainer.value || document.body
+
 const setOffline = (mode) => {
   setOfflineMode(mode)
   offlineMode.value = getOfflineMode()
@@ -428,7 +431,7 @@ const mainList = computed(() => {
         }}</span>
       </RouterLink>
     </div>
-    <div id="app-router-view" tabindex="-1" role="main">
+    <div id="app-router-view" ref="scrollContainer" tabindex="-1" role="main">
       <a-alert
         v-if="offlineBanner"
         class="offline-banner"
@@ -452,7 +455,7 @@ const mainList = computed(() => {
       </router-view>
     </div>
 
-    <a-back-top :target="() => document.getElementById('app-router-view')" :visibilityHeight="240" />
+    <a-back-top :target="backTopTarget" :visibilityHeight="240" />
 
     <a-modal v-model:open="layoutSettings.showAbout" title="关于" :footer="null">
       <a-descriptions size="small" :column="1" bordered>
