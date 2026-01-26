@@ -1,4 +1,4 @@
-# LangChain 1.x compatible dependencies (Verified PyPI versions Jan 2026)
+# LangChain 1.x
 langchain==1.2.6
 langchain-core==1.2.7
 langchain-community==0.4.1
@@ -9,7 +9,6 @@ lightrag-hku==1.4.9
 langchain-ollama==1.0.1
 langchain-experimental==0.4.1
 langgraph==1.0.6
-# langgraph 1.x requires langgraph-checkpoint >=2.1.0; use checkpoint-sqlite 2.x to avoid dependency conflicts.
 langgraph-checkpoint-sqlite>=2.0.11,<3.0.0
 
 # Vector & Graph databases
