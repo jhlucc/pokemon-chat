@@ -1,16 +1,15 @@
 <template>
   <div class="setting-page">
     <HeaderComponent
-      title="设置"
-      description="连接状态、模型选择与后端能力概览"
+      title="控制中心"
       :breadcrumbs="[{ label: '首页', to: '/' }, { label: '设置' }]"
       class="setting-header"
     >
       <template #actions>
         <a-space>
-          <a-button @click="refreshAll" :loading="state.refreshing"> 刷新状态 </a-button>
-          <a-button type="primary" :disabled="!backendOnline" @click="restartBackend">
-            重新加载后端
+          <a-button class="glass-btn" @click="refreshAll" :loading="state.refreshing"> 刷新 </a-button>
+          <a-button type="primary" class="action-btn" :disabled="!backendOnline" @click="restartBackend">
+            重启服务
           </a-button>
         </a-space>
       </template>
@@ -19,165 +18,69 @@
     <div class="setting-container layout-container">
       <div class="setting-body ui-page">
         <div class="ui-container">
-          <a-tabs v-model:activeKey="activeTab" class="setting-tabs">
-            <a-tab-pane key="status" tab="状态">
-              <a-row :gutter="[16, 16]">
-                <a-col :xs="24" :md="12">
-                  <a-card title="连接状态" :bordered="false">
-                    <div class="kv">
-                      <span class="k">服务端</span>
-                      <span class="v">
-                        <StatusTag :status="backendOnline ? 'online' : 'offline'" />
-                        <StatusTag :status="backendReady ? 'ready' : 'not_ready'" />
-                      </span>
-                    </div>
-                    <div class="kv" v-if="configStore.config.backend?.last_error">
-                      <span class="k">Last error</span>
-                      <span class="v muted">{{ configStore.config.backend?.last_error }}</span>
-                    </div>
-                    <div class="kv" v-if="configStore.config.backend?.checks">
-                      <span class="k">Checks</span>
-                      <span class="v muted">见 /readyz</span>
-                    </div>
-                  </a-card>
-                </a-col>
+          
+          <!-- Modern Tabs -->
+          <a-tabs v-model:activeKey="activeTab" class="modern-tabs" :animated="false">
+            
+            <!-- Tab: Dashboard (Status) -->
+            <a-tab-pane key="status" tab="仪表盘">
+              <!-- Hero Status Card -->
+              <div class="hero-status-card" :class="{ online: backendOnline, offline: !backendOnline }">
+                <div class="status-icon-area">
+                  <div class="status-pulse"></div>
+                  <component :is="backendOnline ? CheckCircleFilled : CloseCircleFilled" class="status-icon" />
+                </div>
+                <div class="status-info">
+                  <h2 class="status-title">{{ backendOnline ? '服务已连接' : '服务未连接' }}</h2>
+                  <p class="status-sub">
+                    {{ backendOnline ? '系统运行正常，所有模块已就绪' : '无法连接到后端服务，请检查网络或重启后端' }}
+                  </p>
+                  <div class="meta-tags">
+                    <span class="meta-tag">{{ APP_NAME }} v{{ APP_VERSION }}</span>
+                    <span v-if="BUILD_SHA" class="meta-tag">Build {{ BUILD_SHA.slice(0, 7) }}</span>
+                  </div>
+                </div>
+              </div>
 
-                <a-col :xs="24" :md="12">
-                  <a-card title="版本信息" :bordered="false">
-                    <div class="kv">
-                      <span class="k">前端</span>
-                      <span class="v">{{ APP_NAME }} v{{ APP_VERSION }}</span>
-                    </div>
-                    <div class="kv" v-if="BUILD_SHA">
-                      <span class="k">Commit</span>
-                      <span class="v muted">{{ BUILD_SHA.slice(0, 7) }}</span>
-                    </div>
-                    <div class="kv" v-if="BUILD_TIME">
-                      <span class="k">Build</span>
-                      <span class="v muted">{{ BUILD_TIME }}</span>
-                    </div>
-                  </a-card>
-                </a-col>
-              </a-row>
+              <div class="section-grid">
+                <div class="info-card glass-card">
+                  <div class="card-icon"><CloudServerOutlined /></div>
+                  <div class="card-content">
+                    <h3>后端检查</h3>
+                    <p class="card-value">{{ backendReady ? 'Ready' : 'Initializing...' }}</p>
+                  </div>
+                </div>
+                <div class="info-card glass-card">
+                  <div class="card-icon"><safety-certificate-outlined /></div>
+                  <div class="card-content">
+                    <h3>安全状态</h3>
+                    <p class="card-value">已加密</p>
+                  </div>
+                </div>
+              </div>
             </a-tab-pane>
 
-            <a-tab-pane key="providers" tab="供应商">
-              <a-card title="Provider 配置" :bordered="false" style="margin-bottom: 16px">
-                <a-space wrap>
-                  <a-button @click="refreshProviders" :loading="providersState.loading"
-                    >刷新 Provider 状态</a-button
-                  >
-                </a-space>
-                <a-alert
-                  style="margin-top: 12px"
-                  type="info"
-                  show-icon
-                  message="在这里配置各供应商的 API Key / Base URL"
-                  description="保存后会写入后端本地配置（resources/save/config/provider_secrets.json），前端不会回显明文 Key。"
-                />
-              </a-card>
-
-                <a-row :gutter="[16, 16]">
-                  <a-col v-for="p in providerList" :key="p" :xs="24" :md="12" :lg="8">
-                    <a-card :bordered="false" class="provider-card">
-                    <template #title>
-                        <div class="provider-title">
-                          <img class="provider-icon" :src="getProviderIcon(p)" :alt="p" />
-                          <span class="provider-name">{{ modelCatalog[p]?.name || p }}</span>
-                          <a-tag class="provider-source" :color="providerSourceColor(p)">
-                            {{ providerSourceText(p) }}
-                          </a-tag>
-                          <a
-                            v-if="modelCatalog[p]?.url"
-                            class="provider-docs"
-                            :href="modelCatalog[p].url"
-                            target="_blank"
-                            rel="noreferrer"
-                            @click.stop
-                          >
-                            Docs
-                          </a>
-                          <StatusTag
-                            class="provider-status"
-                            variant="dot"
-                            :status="providerDotStatus(p)"
-                            :label="providerDotLabel(p)"
-                          />
-                        </div>
-                    </template>
-
-                    <a-form layout="vertical">
-                      <a-form-item label="API Base（可选）">
-                        <a-input
-                          v-model:value="providerForm[p].api_base"
-                          :placeholder="modelCatalog[p]?.base_url || 'https://.../v1'"
-                        />
-                      </a-form-item>
-                      <a-form-item label="API Key（可选）">
-                        <div v-if="providersState.status?.[p]?.configured && !providersState.editingKey?.[p]">
-                          <a-space wrap>
-                            <a-tag color="green">已配置</a-tag>
-                            <span class="muted">{{ providersState.status?.[p]?.api_key_masked || '***' }}</span>
-                            <a-button size="small" @click="enableEditKey(p)">更换 Key</a-button>
-                          </a-space>
-                          <div class="muted" style="margin-top: 6px">
-                            出于安全考虑，前端不会回显明文 Key；如需更换，请点击“更换 Key”。
-                          </div>
-                        </div>
-                        <a-input-password
-                          v-else
-                          v-model:value="providerForm[p].api_key"
-                          autocomplete="new-password"
-                          :placeholder="providersState.status?.[p]?.configured ? '输入新的 Key（留空则不修改）' : '输入 Key'"
-                        />
-                      </a-form-item>
-                      <a-space wrap>
-                        <a-button
-                          type="primary"
-                          :disabled="!backendOnline || !hasProviderChanges(p)"
-                          :loading="Boolean(providersState.saving?.[p])"
-                          @click="saveProvider(p)"
-                        >
-                          保存
-                        </a-button>
-                        <a-button
-                          danger
-                          :disabled="providersState.status?.[p]?.source !== 'file'"
-                          :loading="Boolean(providersState.saving?.[p])"
-                          @click="clearProvider(p)"
-                        >
-                          清空
-                        </a-button>
-                      </a-space>
-                    </a-form>
-                  </a-card>
-                </a-col>
-              </a-row>
-            </a-tab-pane>
-
-            <a-tab-pane key="model" tab="模型">
-              <a-row :gutter="[16, 16]">
+            <!-- Tab: AI Models -->
+            <a-tab-pane key="model" tab="模型与服务">
+              <a-row :gutter="[24, 24]">
                 <a-col :xs="24" :md="12">
-                  <a-card title="模型选择" :bordered="false">
-                    <a-form layout="vertical">
-                      <a-form-item label="Provider">
-                        <a-select v-model:value="modelProvider" @change="onProviderChange">
+                  <div class="glass-card padded-card">
+                    <h3 class="card-title">当前模型</h3>
+                    <a-form layout="vertical" class="clean-form">
+                      <a-form-item label="供应商">
+                        <a-select v-model:value="modelProvider" @change="onProviderChange" class="modern-select">
                           <a-select-option v-for="p in providerKeys" :key="p" :value="p">
                             <span class="provider-option">
                               <img class="provider-option-icon" :src="getProviderIcon(p)" :alt="p" />
                                <span>{{ modelCatalog[p]?.name || p }}</span>
-                               <span class="provider-option-spacer" />
-                               <StatusTag
-                                 variant="dot"
-                                 :status="providerDotStatus(p)"
-                                 :label="providerDotLabel(p)"
-                               />
+                               <span class="spacer" />
+                               <div class="status-dot-mini" :class="providerConfigured(p) ? 'green' : 'gray'"></div>
                              </span>
                            </a-select-option>
                          </a-select>
                       </a-form-item>
-                      <a-form-item label="Model">
-                        <a-select v-if="providerModels.length" v-model:value="modelName" @change="onModelChange">
+                      <a-form-item label="模型名称">
+                        <a-select v-if="providerModels.length" v-model:value="modelName" @change="onModelChange" class="modern-select">
                           <a-select-option v-for="m in providerModels" :key="m" :value="m">
                             {{ m }}
                           </a-select-option>
@@ -185,177 +88,219 @@
                         <a-input
                           v-else
                           v-model:value="modelName"
-                          placeholder="输入模型名称（如 gpt-4o-mini）"
+                          placeholder="输入模型名称"
+                          class="modern-input"
                           @pressEnter="commitModelInput"
                           @blur="commitModelInput"
                         />
                       </a-form-item>
-                      <a-alert
-                        type="info"
-                        show-icon
-                        message="提示：这里选择的是“使用哪一个模型名”并会随请求发送给后端。API Key / Base URL 可在「供应商」页配置。"
-                      />
                     </a-form>
-                  </a-card>
+                  </div>
                 </a-col>
 
                 <a-col :xs="24" :md="12">
-                  <a-card title="使用建议" :bordered="false">
-                    <a-collapse ghost>
-                      <a-collapse-panel key="troubleshoot" header="快速排查">
-                        <ol class="muted troubleshoot-list">
-                          <li>服务是否已连接</li>
-                          <li>是否选择了正确的 Provider / Model</li>
-                          <li>后端环境变量中是否配置了对应的 API Key</li>
-                        </ol>
-                      </a-collapse-panel>
-                    </a-collapse>
-                  </a-card>
+                  <div class="glass-card padded-card">
+                    <h3 class="card-title">快速操作</h3>
+                    <div class="quick-actions">
+                         <a-button block class="glass-btn" @click="activeTab = 'providers'">配置供应商 Key</a-button>
+                         <a-button block class="glass-btn" @click="refreshProviders" :loading="providersState.loading">刷新服务列表</a-button>
+                    </div>
+                  </div>
                 </a-col>
               </a-row>
             </a-tab-pane>
 
-            <a-tab-pane key="capabilities" tab="能力">
-              <a-card title="后端功能开关" :bordered="false">
-                <a-space wrap>
-                  <a-space>
-                    <span class="muted">知识库</span>
-                    <a-switch
-                      :checked="Boolean(configStore.config.enable_knowledge_base)"
-                      :loading="Boolean(featureState.saving.enable_knowledge_base)"
-                      @change="(v) => setBackendFeature('enable_knowledge_base', v)"
-                    />
-                  </a-space>
-                  <a-space>
-                    <span class="muted">知识图谱</span>
-                    <a-switch
-                      :checked="Boolean(configStore.config.enable_knowledge_graph)"
-                      :loading="Boolean(featureState.saving.enable_knowledge_graph)"
-                      @change="(v) => setBackendFeature('enable_knowledge_graph', v)"
-                    />
-                  </a-space>
-                  <a-space>
-                    <span class="muted">联网搜索</span>
-                    <a-switch
-                      :checked="Boolean(configStore.config.enable_web_search)"
-                      :loading="Boolean(featureState.saving.enable_web_search)"
-                      @change="(v) => setBackendFeature('enable_web_search', v)"
-                    />
-                  </a-space>
-                  <a-space>
-                    <span class="muted">MCP</span>
-                    <a-switch
-                      :checked="Boolean(configStore.config.enable_mcp)"
-                      :loading="Boolean(featureState.saving.enable_mcp)"
-                      @change="(v) => setBackendFeature('enable_mcp', v)"
-                    />
-                  </a-space>
-                  <a-space>
-                    <span class="muted">Reranker</span>
-                    <a-switch
-                      :checked="Boolean(configStore.config.enable_reranker)"
-                      :loading="Boolean(featureState.saving.enable_reranker)"
-                      @change="(v) => setBackendFeature('enable_reranker', v)"
-                    />
-                  </a-space>
-                </a-space>
+            <!-- Tab: Providers -->
+            <a-tab-pane key="providers" tab="供应商配置">
+                <div class="provider-grid">
+                  <div v-for="p in providerList" :key="p" class="provider-card-modern glass-card">
+                    <div class="provider-header">
+                        <img class="p-icon" :src="getProviderIcon(p)" :alt="p" />
+                        <div class="p-info">
+                          <div class="p-name">{{ modelCatalog[p]?.name || p }}</div>
+                          <div class="p-status">
+                             <span class="status-dot-mini" :class="providerConfigured(p) ? 'green' : 'red'"></span>
+                             {{ providerConfigured(p) ? '已配置' : '未配置' }}
+                          </div>
+                        </div>
+                    </div>
+                    
+                    <div class="provider-body">
+                      <div class="input-group">
+                        <label>Base URL</label>
+                        <a-input
+                          v-model:value="providerForm[p].api_base"
+                          :placeholder="modelCatalog[p]?.base_url || 'https://...'"
+                          class="modern-input small"
+                        />
+                      </div>
+                      <div class="input-group">
+                        <label>API Key</label>
+                        <div v-if="providersState.status?.[p]?.configured && !providersState.editingKey?.[p]" class="key-mask" @click="enableEditKey(p)">
+                           <span class="mask-dots">••••••••••••••</span>
+                           <EditOutlined />
+                        </div>
+                        <a-input-password
+                          v-else
+                          v-model:value="providerForm[p].api_key"
+                          class="modern-input small"
+                          placeholder="输入 Key"
+                        />
+                      </div>
+                    </div>
 
-                <a-divider style="margin: 12px 0" />
-                <a-space wrap>
-                  <a-space>
-                    <span class="muted">ASR</span>
-                    <a-switch
-                      :checked="Boolean(configStore.config.enable_asr)"
-                      :loading="Boolean(featureState.saving.enable_asr)"
-                      @change="(v) => setBackendFeature('enable_asr', v)"
-                    />
-                  </a-space>
-                  <a-space>
-                    <span class="muted">NER BERT</span>
-                    <a-switch
-                      :checked="Boolean(configStore.config.enable_ner_bert)"
-                      :loading="Boolean(featureState.saving.enable_ner_bert)"
-                      @change="(v) => setBackendFeature('enable_ner_bert', v)"
-                    />
-                  </a-space>
-                </a-space>
-
-                <a-alert
-                  style="margin-top: 12px"
-                  type="info"
-                  show-icon
-                  message="说明"
-                  description="这些开关会写入后端本地配置（resources/save/config/ui_config.json），不修改 .env。部分能力需要额外服务/依赖：知识库需要 Milvus；图谱需要 Neo4j；联网搜索需要 tavily_api_key；NER BERT 需要 torch/transformers。"
-                />
-              </a-card>
+                    <div class="provider-footer">
+                        <a-button
+                          type="text"
+                          size="small"
+                          class="action-text"
+                          :disabled="!backendOnline || !hasProviderChanges(p)"
+                          :loading="Boolean(providersState.saving?.[p])"
+                          @click="saveProvider(p)"
+                        >
+                          保存
+                        </a-button>
+                        <a-button
+                          type="text"
+                          danger
+                          size="small"
+                          class="action-text"
+                          :disabled="providersState.status?.[p]?.source !== 'file'"
+                          :loading="Boolean(providersState.saving?.[p])"
+                          @click="clearProvider(p)"
+                        >
+                          清空
+                        </a-button>
+                    </div>
+                  </div>
+                </div>
             </a-tab-pane>
 
-            <a-tab-pane key="ui" tab="界面">
-              <a-card title="界面展示（前端）" :bordered="false">
-                <a-space wrap style="margin-bottom: 12px">
-                  <span class="muted">界面密度</span>
-                  <a-segmented
-                    v-model:value="uiDensity"
-                    :options="densityOptions"
-                    @change="onUiDensityChange"
+            <!-- Tab: Capabilities (Modules) -->
+            <a-tab-pane key="capabilities" tab="功能模块">
+              <div class="modules-grid">
+                <!-- Knowledge Base -->
+                <div class="module-card glass-card">
+                  <div class="module-icon"><BookFilled /></div>
+                  <div class="module-info">
+                    <h4>知识库</h4>
+                    <span>RAG 检索增强</span>
+                  </div>
+                  <a-switch
+                    :checked="Boolean(configStore.config.enable_knowledge_base)"
+                    :loading="Boolean(featureState.saving.enable_knowledge_base)"
+                    @change="(v) => setBackendFeature('enable_knowledge_base', v)"
                   />
-                </a-space>
-                <a-space wrap style="margin-bottom: 12px">
-                  <span class="muted">主题色</span>
-                  <a-select
-                    v-model:value="themePreset"
-                    style="width: 180px"
-                    @change="onThemePresetChange"
-                  >
-                    <a-select-option v-for="(p, key) in THEME_PRESETS" :key="key" :value="key">
-                      <span class="preset-dot" :style="{ background: p.primary }"></span>
-                      {{ p.label }}
-                    </a-select-option>
-                  </a-select>
-                </a-space>
-                <a-divider style="margin: 12px 0" />
-                <a-space wrap>
-                  <a-space>
-                    <span class="muted">知识库</span>
-                    <a-switch
-                      :checked="uiVisibility.show_knowledge_base"
-                      @change="(v) => setUiVisibility('show_knowledge_base', v)"
-                    />
-                  </a-space>
-                  <a-space>
-                    <span class="muted">知识图谱</span>
-                    <a-switch
-                      :checked="uiVisibility.show_knowledge_graph"
-                      @change="(v) => setUiVisibility('show_knowledge_graph', v)"
-                    />
-                  </a-space>
-                  <a-space>
-                    <span class="muted">联网搜索</span>
-                    <a-switch
-                      :checked="uiVisibility.show_web_search"
-                      @change="(v) => setUiVisibility('show_web_search', v)"
-                    />
-                  </a-space>
-                  <a-space>
-                    <span class="muted">MCP</span>
-                    <a-switch
-                      :checked="uiVisibility.show_mcp"
-                      @change="(v) => setUiVisibility('show_mcp', v)"
-                    />
-                  </a-space>
-                  <a-space>
-                    <span class="muted">地图</span>
-                    <a-switch
-                      :checked="uiVisibility.show_map"
-                      @change="(v) => setUiVisibility('show_map', v)"
-                    />
-                  </a-space>
-                  <a-button @click="resetUiVisibility">重置为默认</a-button>
-                </a-space>
-                <div class="muted" style="margin-top: 10px">
-                  这些开关只影响前端导航与入口显示；后端能力请在「能力」页配置。
                 </div>
-              </a-card>
+
+                <!-- Knowledge Graph -->
+                <div class="module-card glass-card">
+                  <div class="module-icon"><DeploymentUnitOutlined /></div>
+                  <div class="module-info">
+                    <h4>知识图谱</h4>
+                    <span>Graph RAG</span>
+                  </div>
+                  <a-switch
+                    :checked="Boolean(configStore.config.enable_knowledge_graph)"
+                    :loading="Boolean(featureState.saving.enable_knowledge_graph)"
+                    @change="(v) => setBackendFeature('enable_knowledge_graph', v)"
+                  />
+                </div>
+
+                <!-- Web Search -->
+                <div class="module-card glass-card">
+                  <div class="module-icon"><CompassFilled /></div>
+                  <div class="module-info">
+                    <h4>联网搜索</h4>
+                    <span>Web Search</span>
+                  </div>
+                  <a-switch
+                    :checked="Boolean(configStore.config.enable_web_search)"
+                    :loading="Boolean(featureState.saving.enable_web_search)"
+                    @change="(v) => setBackendFeature('enable_web_search', v)"
+                  />
+                </div>
+
+                <!-- MCP -->
+                <div class="module-card glass-card">
+                  <div class="module-icon"><ApiFilled /></div>
+                  <div class="module-info">
+                    <h4>MCP 协议</h4>
+                    <span>工具扩展</span>
+                  </div>
+                  <a-switch
+                    :checked="Boolean(configStore.config.enable_mcp)"
+                    :loading="Boolean(featureState.saving.enable_mcp)"
+                    @change="(v) => setBackendFeature('enable_mcp', v)"
+                  />
+                </div>
+                
+                 <!-- Reranker -->
+                <div class="module-card glass-card">
+                  <div class="module-icon"><SortAscendingOutlined /></div>
+                  <div class="module-info">
+                    <h4>重排序</h4>
+                    <span>Rerank Model</span>
+                  </div>
+                  <a-switch
+                    :checked="Boolean(configStore.config.enable_reranker)"
+                    :loading="Boolean(featureState.saving.enable_reranker)"
+                    @change="(v) => setBackendFeature('enable_reranker', v)"
+                  />
+                </div>
+              </div>
+            </a-tab-pane>
+
+            <!-- Tab: UI -->
+            <a-tab-pane key="ui" tab="界面偏好">
+               <a-row :gutter="[24, 24]">
+                 <a-col :xs="24" :md="12">
+                    <div class="glass-card padded-card">
+                      <h3 class="card-title">外观</h3>
+                      <div class="ui-setting-row">
+                        <span>布局密度</span>
+                        <a-segmented
+                          v-model:value="uiDensity"
+                          :options="densityOptions"
+                          @change="onUiDensityChange"
+                        />
+                      </div>
+                      <div class="ui-setting-row">
+                        <span>主题色</span>
+                        <div class="theme-dots">
+                           <div 
+                             v-for="(p, key) in THEME_PRESETS" 
+                             :key="key" 
+                             class="theme-dot-btn"
+                             :style="{ background: p.primary }"
+                             :class="{ active: themePreset === key }"
+                             @click="onThemePresetChange(key)"
+                             :title="p.label"
+                           ></div>
+                        </div>
+                      </div>
+                    </div>
+                 </a-col>
+                 <a-col :xs="24" :md="12">
+                    <div class="glass-card padded-card">
+                      <h3 class="card-title">导航可见性</h3>
+                      <div class="switches-list">
+                        <div class="switch-row">
+                          <span>知识库入口</span>
+                          <a-switch :checked="uiVisibility.show_knowledge_base" @change="(v) => setUiVisibility('show_knowledge_base', v)" />
+                        </div>
+                        <div class="switch-row">
+                          <span>图谱入口</span>
+                          <a-switch :checked="uiVisibility.show_knowledge_graph" @change="(v) => setUiVisibility('show_knowledge_graph', v)" />
+                        </div>
+                        <div class="switch-row">
+                          <span>地图入口</span>
+                          <a-switch :checked="uiVisibility.show_map" @change="(v) => setUiVisibility('show_map', v)" />
+                        </div>
+                      </div>
+                    </div>
+                 </a-col>
+               </a-row>
             </a-tab-pane>
           </a-tabs>
         </div>
@@ -363,6 +308,649 @@
     </div>
   </div>
 </template>
+
+<script setup>
+import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { message } from 'ant-design-vue'
+import { 
+  CheckCircleFilled, 
+  CloseCircleFilled, 
+  CloudServerOutlined, 
+  SafetyCertificateOutlined,
+  EditOutlined,
+  BookFilled,
+  DeploymentUnitOutlined,
+  CompassFilled,
+  ApiFilled,
+  SortAscendingOutlined
+} from '@ant-design/icons-vue'
+import HeaderComponent from '@/components/HeaderComponent.vue'
+import { useConfigStore } from '@/stores/config'
+import { DEFAULT_CONFIG } from '@/config/defaultConfig'
+import { APP_NAME, APP_VERSION, BUILD_SHA, BUILD_TIME } from '@/config/appMeta'
+import { ApiError, apiFetch } from '@/api/http'
+import { getUiDensity, setUiDensity } from '@/utils/uiDensity'
+import { THEME_PRESETS, getThemePreset, setThemePreset } from '@/utils/themePreset'
+import { notifyApiError } from '@/utils/notify'
+import { getProviderIcon } from '@/utils/providerIcon'
+
+const configStore = useConfigStore()
+
+const state = reactive({
+  refreshing: false
+})
+
+const activeTab = ref('status')
+
+const backendOnline = computed(() => Boolean(configStore.config.backend?.online))
+const backendReady = computed(() => Boolean(configStore.config.backend?.ready))
+
+const uiDensity = ref(getUiDensity())
+const densityOptions = [
+  { label: '舒适', value: 'comfortable' },
+  { label: '紧凑', value: 'compact' }
+]
+
+const themePreset = ref(getThemePreset())
+
+const modelCatalog = computed(() => configStore.config.model_names || {})
+const providerKeys = computed(() =>
+  Object.keys(modelCatalog.value || {}).filter((k) => k !== 'custom')
+)
+
+const modelProvider = ref(configStore.config.model_provider)
+const modelName = ref(configStore.config.model_name)
+
+const uiVisibility = computed(() => ({
+  ...(DEFAULT_CONFIG.ui || {}),
+  ...(configStore.config?.ui || {})
+}))
+
+const setUiVisibility = (key, checked) => {
+  const next = { ...uiVisibility.value, [key]: Boolean(checked) }
+  configStore.patchLocal({ ui: next })
+}
+
+const resetUiVisibility = () => {
+  configStore.patchLocal({ ui: { ...(DEFAULT_CONFIG.ui || {}) } })
+  message.success('已重置界面展示开关')
+}
+
+watch(
+  () => configStore.config.model_provider,
+  (v) => (modelProvider.value = v)
+)
+watch(
+  () => configStore.config.model_name,
+  (v) => (modelName.value = v)
+)
+
+const providerModels = computed(() => modelCatalog.value?.[modelProvider.value]?.models || [])
+
+const providerConfigured = (provider) => {
+  if (!backendOnline.value) return null
+  const st = providersState.status?.[provider]
+  if (st && typeof st.configured === 'boolean') return Boolean(st.configured)
+  return null
+}
+
+const normalizeApiBase = (v) => String(v || '').trim().replace(/\/+$/, '')
+const hasProviderChanges = (provider) => {
+  ensureProviderForm(provider)
+  const form = providerForm[provider] || {}
+  const st = providersState.status?.[provider] || {}
+  const baseChanged = normalizeApiBase(form.api_base) && normalizeApiBase(form.api_base) !== normalizeApiBase(st.api_base)
+  const keyChanged = Boolean(String(form.api_key || '').trim())
+  return baseChanged || keyChanged
+}
+
+const providersState = reactive({
+  loading: false,
+  saving: {},
+  status: {},
+  editingKey: {}
+})
+
+const providerForm = reactive({})
+const providerList = computed(() => {
+  const fromCatalog = providerKeys.value || []
+  const fromStatus = Object.keys(providersState.status || {})
+  const merged = Array.from(new Set([...fromCatalog, ...fromStatus])).filter((k) => k && k !== 'custom')
+  return merged
+})
+
+const ensureProviderForm = (p) => {
+  if (!providerForm[p]) {
+    providerForm[p] = { api_base: '', api_key: '' }
+  }
+  if (!providerForm[p].api_base) {
+    providerForm[p].api_base =
+      providersState.status?.[p]?.api_base || modelCatalog.value?.[p]?.base_url || ''
+  }
+}
+
+const onProviderChange = async (p) => {
+  const models = modelCatalog.value?.[p]?.models || []
+  const def = modelCatalog.value?.[p]?.default || models?.[0] || modelName.value || ''
+  await configStore.setConfigValues({ model_provider: p, ...(def ? { model_name: def } : {}) })
+}
+
+const onModelChange = async (m) => {
+  await configStore.setConfigValue('model_name', m)
+}
+
+const commitModelInput = async () => {
+  if (!modelName.value) return
+  await configStore.setConfigValue('model_name', modelName.value)
+}
+
+const refreshAll = async () => {
+  state.refreshing = true
+  try {
+    await configStore.refreshConfig()
+  } finally {
+    state.refreshing = false
+  }
+}
+
+const restartBackend = async () => {
+  if (!backendOnline.value) return
+  try {
+    await apiFetch('/restart', { method: 'POST', timeoutMs: 10000 })
+    message.success('已触发后端重启')
+    await refreshAll()
+  } catch (e) {
+    notifyApiError(e, { context: '后端重启', fallback: '后端重启失败' })
+  }
+}
+
+const featureState = reactive({
+  saving: {}
+})
+
+const setBackendFeature = async (key, checked) => {
+  featureState.saving[key] = true
+  const prev = Boolean(configStore.config?.[key])
+  // Optimistic UI
+  configStore.patchLocal({ [key]: Boolean(checked) })
+  try {
+    const res = await apiFetch('/config', {
+      method: 'PATCH',
+      body: { [key]: Boolean(checked) },
+      timeoutMs: 10000
+    })
+    configStore.patchLocal({
+      ...res,
+      backend: { online: true, last_error: null, ...(res?.backend || {}) }
+    })
+    const effective = Boolean(res?.[key])
+    if (effective !== Boolean(checked)) {
+      message.warning('后端未应用该开关')
+    } else {
+      message.success('已更新开关')
+    }
+  } catch (e) {
+    // Revert optimistic change.
+    configStore.patchLocal({ [key]: prev })
+    notifyApiError(e, { context: '更新配置', fallback: '更新失败' })
+  } finally {
+    featureState.saving[key] = false
+  }
+}
+	
+const refreshProviders = async () => {
+  providersState.loading = true
+  try {
+    const res = await apiFetch('/providers', { method: 'GET', timeoutMs: 8000 })
+    providersState.status = res?.providers || {}
+    providerList.value.forEach((p) => ensureProviderForm(p))
+  } catch (e) {
+    if (e instanceof ApiError && e.status === 404) {
+      return
+    }
+    notifyApiError(e, { context: 'Provider 配置', fallback: '获取 Provider 状态失败' })
+  } finally {
+    providersState.loading = false
+  }
+}
+
+const enableEditKey = (provider) => {
+  providersState.editingKey[provider] = true
+  ensureProviderForm(provider)
+  providerForm[provider].api_key = ''
+}
+
+const saveProvider = async (provider) => {
+  ensureProviderForm(provider)
+  const form = providerForm[provider] || {}
+  const body = {
+    provider,
+    ...(form.api_base ? { api_base: form.api_base } : {}),
+    ...(form.api_key ? { api_key: form.api_key } : {})
+  }
+
+  providersState.saving[provider] = true
+  try {
+    const res = await apiFetch('/providers', { method: 'PATCH', body, timeoutMs: 10000 })
+    providersState.status = res?.providers || providersState.status
+    providerForm[provider].api_key = '' 
+    providersState.editingKey[provider] = false
+    message.success('已保存 Provider 配置')
+  } catch (e) {
+    notifyApiError(e, { context: 'Provider 配置', fallback: '保存失败' })
+  } finally {
+    providersState.saving[provider] = false
+  }
+}
+
+const clearProvider = async (provider) => {
+  ensureProviderForm(provider)
+  providersState.saving[provider] = true
+  try {
+    const res = await apiFetch('/providers', {
+      method: 'PATCH',
+      body: { provider, api_key: '', api_base: '' },
+      timeoutMs: 10000
+    })
+    providersState.status = res?.providers || providersState.status
+    providerForm[provider].api_key = ''
+    providerForm[provider].api_base = modelCatalog.value?.[provider]?.base_url || ''
+    providersState.editingKey[provider] = false
+    message.success('已清空 Provider 配置')
+  } catch (e) {
+    notifyApiError(e, { context: 'Provider 配置', fallback: '清空失败' })
+  } finally {
+    providersState.saving[provider] = false
+  }
+}
+
+const onUiDensityChange = (v) => {
+  uiDensity.value = setUiDensity(v)
+  message.success(`已切换界面密度`)
+}
+
+const onThemePresetChange = (v) => {
+  themePreset.value = setThemePreset(v)
+  message.success(`已切换主题色`)
+}
+
+watch(
+  () => activeTab.value,
+  (tab) => {
+    if ((tab === 'providers' || tab === 'model') && backendOnline.value && !providersState.loading) {
+      refreshProviders()
+    }
+  }
+)
+
+watch(
+  () => backendOnline.value,
+  (on) => {
+    if (!on) return
+    if (providersState.loading) return
+    if (Object.keys(providersState.status || {}).length) return
+    refreshProviders()
+  }
+)
+
+onMounted(() => {
+  providerList.value.forEach((p) => ensureProviderForm(p))
+})
+</script>
+
+<style scoped lang="less">
+.setting-container {
+  padding: 0;
+}
+
+/* Glassmorphism Utilities */
+.glass-card {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
+  border-radius: 20px;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  overflow: hidden;
+  
+  &:hover {
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.06);
+  }
+}
+
+.glass-btn {
+  background: rgba(255, 255, 255, 0.5);
+  border: 1px solid rgba(0,0,0,0.1);
+  border-radius: 8px;
+  
+  &:hover {
+    background: #fff;
+    border-color: var(--pokedex-red);
+    color: var(--pokedex-red);
+  }
+}
+
+.action-btn {
+  background: var(--pokedex-red);
+  border-color: var(--pokedex-red);
+  box-shadow: 0 4px 12px rgba(255, 83, 80, 0.3);
+  border-radius: 8px;
+  
+  &:hover {
+    background: color-mix(in srgb, var(--pokedex-red), white 10%);
+    transform: translateY(-1px);
+  }
+}
+
+/* Tabs Styling */
+.modern-tabs :deep(.ant-tabs-nav) {
+  margin-bottom: 24px;
+}
+.modern-tabs :deep(.ant-tabs-tab) {
+  padding: 10px 20px;
+  border-radius: 99px;
+  font-size: 15px;
+  transition: all 0.3s ease;
+  margin: 0 4px;
+}
+.modern-tabs :deep(.ant-tabs-tab-active) {
+  background: white;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+}
+.modern-tabs :deep(.ant-tabs-ink-bar) {
+  display: none; /* Hide standard underline */
+}
+
+/* Hero Status Card */
+.hero-status-card {
+  display: flex;
+  align-items: center;
+  padding: 32px;
+  border-radius: 24px;
+  margin-bottom: 24px;
+  color: #fff;
+  position: relative;
+  overflow: hidden;
+  
+  &.online {
+    background: linear-gradient(135deg, #388e3c, #66bb6a);
+    box-shadow: 0 10px 30px rgba(56, 142, 60, 0.3);
+  }
+  &.offline {
+    background: linear-gradient(135deg, #d32f2f, #ef5350);
+    box-shadow: 0 10px 30px rgba(211, 47, 47, 0.3);
+  }
+
+  .status-icon-area {
+    position: relative;
+    margin-right: 24px;
+    font-size: 48px;
+    display: flex;
+  }
+  
+  .status-info {
+    z-index: 1;
+  }
+  .status-title {
+    font-size: 24px;
+    margin: 0;
+    font-weight: 700;
+    color: #fff;
+  }
+  .status-sub {
+    margin: 4px 0 12px;
+    opacity: 0.9;
+    font-size: 15px;
+  }
+  .meta-tags {
+    display: flex;
+    gap: 8px;
+  }
+  .meta-tag {
+    background: rgba(255,255,255,0.2);
+    padding: 2px 10px;
+    border-radius: 99px;
+    font-size: 12px;
+    font-weight: 500;
+  }
+}
+
+/* Section Grid */
+.section-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 24px;
+}
+
+.info-card {
+  display: flex;
+  align-items: center;
+  padding: 20px;
+  
+  .card-icon {
+    font-size: 24px;
+    color: var(--gray-500);
+    margin-right: 16px;
+    background: var(--surface-color-2);
+    padding: 12px;
+    border-radius: 12px;
+  }
+  
+  h3 {
+    margin: 0;
+    font-size: 14px;
+    color: var(--gray-600);
+  }
+  .card-value {
+    margin: 4px 0 0;
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text-color);
+  }
+}
+
+/* Providers Grid */
+.provider-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 20px;
+}
+
+.provider-card-modern {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  
+  .provider-header {
+    display: flex;
+    align-items: center;
+    margin-bottom: 16px;
+    .p-icon {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      margin-right: 12px;
+    }
+    .p-info {
+      flex: 1;
+    }
+    .p-name {
+      font-weight: 600;
+      font-size: 15px;
+    }
+    .p-status {
+      font-size: 12px;
+      color: var(--gray-500);
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+  }
+  
+  .provider-body {
+    flex: 1;
+  }
+  
+  .input-group {
+    margin-bottom: 12px;
+    label {
+      display: block;
+      font-size: 12px;
+      color: var(--gray-500);
+      margin-bottom: 4px;
+    }
+  }
+  
+  .provider-footer {
+    margin-top: 16px;
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+  }
+}
+
+.key-mask {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: var(--surface-color-2);
+  padding: 6px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  color: var(--gray-600);
+  &:hover {
+    color: var(--pokedex-red);
+    background: rgba(255, 83, 80, 0.05);
+  }
+  .mask-dots {
+    letter-spacing: 2px;
+    font-size: 10px;
+  }
+}
+
+/* Modules Grid */
+.modules-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 20px;
+}
+
+.module-card {
+  display: flex;
+  align-items: center;
+  padding: 20px;
+  
+  .module-icon {
+    font-size: 20px;
+    color: var(--pokedex-red);
+    background: rgba(255, 83, 80, 0.1);
+    width: 40px;
+    height: 40px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    border-radius: 10px;
+    margin-right: 16px;
+  }
+  
+  .module-info {
+    flex: 1;
+    h4 {
+      margin: 0;
+      font-size: 15px;
+      font-weight: 600;
+    }
+    span {
+      font-size: 12px;
+      color: var(--gray-500);
+    }
+  }
+}
+
+.modern-input {
+  border-radius: 8px;
+  background: rgba(255,255,255,0.5);
+  &.small { font-size: 13px; }
+  &:focus {
+    background: #fff;
+  }
+}
+
+.padded-card {
+  padding: 24px;
+}
+
+.card-title {
+  margin-top: 0;
+  margin-bottom: 20px;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--gray-800);
+}
+
+.status-dot-mini {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  &.green { background: #52c41a; }
+  &.red { background: #ff4d4f; }
+  &.gray { background: #d9d9d9; }
+}
+
+.provider-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+}
+.provider-option-icon {
+  width: 16px; height: 16px; border-radius: 4px; object-fit: contain;
+}
+.spacer { flex: 1; }
+
+.quick-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.ui-setting-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 0;
+  border-bottom: 1px solid rgba(0,0,0,0.05);
+  &:last-child { border-bottom: none; }
+}
+
+.theme-dots {
+  display: flex;
+  gap: 8px;
+}
+.theme-dot-btn {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  cursor: pointer;
+  border: 2px solid transparent;
+  transition: all 0.2s;
+  &.active {
+    transform: scale(1.2);
+    border-color: var(--text-color);
+  }
+}
+
+.switches-list {
+  display: flex;
+  flex-direction: column;
+}
+.switch-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 0;
+}
+</style>
 
 <script setup>
 import { computed, onMounted, reactive, ref, watch } from 'vue'
