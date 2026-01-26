@@ -378,9 +378,10 @@ onMounted(() => refreshProviders())
 .setting-container { padding: 0; }
 
 .bento-wrapper {
-  max-width: 1100px;
-  margin: 0 auto;
-  padding: 0 var(--space-4) 40px;
+  /* Full-width layout (avoid the "centered block" look). */
+  max-width: none;
+  margin: 0;
+  padding: 0 0 40px;
   position: relative;
   z-index: 1;
 }
