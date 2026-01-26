@@ -173,6 +173,8 @@ python scripts/import_pokemon_map.py
    npm run dev
    ```
 
+> 可选：后端环境变量在项目根目录 `.env`，可从 `.env.template` 复制。常用项：`llm_api_key`、`enable_knowledge_base`、`enable_reranker`、`LOG_LEVEL`、`tavily_api_key`。
+
 > 可选：前端环境变量（Vite）在 `web/.env`，可从 `web/.env.example` 复制。常用项：`VITE_API_URL`（开发代理后端地址）、`VITE_API_BASE_PATH`、`VITE_APP_TITLE`。
 
 > 提示：如果你只想体验/开发前端 UI（不启动后端），可以进入「设置」把“离线演示模式”切到“强制 Mock”。

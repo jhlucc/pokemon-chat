@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import json
 import os
 import shutil
@@ -128,6 +129,8 @@ async def chat_post(
     
     base_system_prompt = meta.get("system_prompt", "")
     enhanced_system_prompt = base_system_prompt + preference_injection if preference_injection else base_system_prompt
+    prompt_sha = hashlib.sha256(enhanced_system_prompt.encode("utf-8")).hexdigest()[:12] if enhanced_system_prompt else ""
+    cache_meta = {"model_provider": model_provider, "model_name": model_name, "system_prompt_sha": prompt_sha}
     
     history_manager = HistoryManager(system_prompt=enhanced_system_prompt)
     # Load client-provided history into the prompt context (system prompt is managed server-side).
@@ -155,7 +158,7 @@ async def chat_post(
         
         # 1. Check Semantic Cache FIRST ----------------------------------------
         cache = get_semantic_cache()
-        cached_response = cache.get(query)
+        cached_response = cache.get(query, meta=cache_meta)
         if cached_response:
             yield make_chunk(meta, content=cached_response, status="finished")
             return
@@ -215,7 +218,7 @@ async def chat_post(
             
             # 5. Cache the response (only cache non-retrieval queries for now)
             if content and not need_retrieve(meta):
-                cache.set(query, content)
+                cache.set(query, content, meta=cache_meta)
             
             # 6. Log AI response and periodically extract preferences
             memory.add_conversation_turn(user_id, "assistant", content)
@@ -293,7 +296,7 @@ async def call(query: str = Body(...), meta: Optional[Dict[str, Any]] = Body(Non
     if model is None:
         raise HTTPException(status_code=500, detail="模型不可用")
 
-    loop = asyncio.get_event_loop()
+    loop = asyncio.get_running_loop()
     response = await loop.run_in_executor(executor, model.predict, query)
     logger.debug(f"query: {query}, response: {response.content}")
     return {"response": response.content}
@@ -311,7 +314,7 @@ async def call_lite(query: str = Body(...), meta: Optional[Dict[str, Any]] = Bod
         model = select_model(model_provider=model_provider, model_name=model_name)
         if model is None:
             raise HTTPException(status_code=500, detail="Lite 模型不可用")
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         return await loop.run_in_executor(executor, model.predict, q)
 
     response = await _predict_async(query)

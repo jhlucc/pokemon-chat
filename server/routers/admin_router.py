@@ -111,3 +111,27 @@ async def verify_agent_token(
     return {"success": True, "message": "Token verified"}
 
 
+# ---------------------------------------------------------------------------
+# Cache admin endpoints (best-effort, no auth in this demo project)
+# ---------------------------------------------------------------------------
+
+
+@admin.get("/cache/semantic")
+async def get_semantic_cache_stats():
+    """Inspect semantic cache status (size/ttl/threshold)."""
+    from src.knowledge.cache.cache import get_semantic_cache
+
+    cache = get_semantic_cache()
+    return {"cache": cache.stats()}
+
+
+@admin.post("/cache/semantic/clear")
+async def clear_semantic_cache():
+    """Clear semantic cache entries."""
+    from src.knowledge.cache.cache import get_semantic_cache
+
+    cache = get_semantic_cache()
+    cache.clear()
+    return {"success": True, "cache": cache.stats()}
+
+

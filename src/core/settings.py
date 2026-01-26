@@ -228,6 +228,12 @@ class FeatureSettings(BaseSettings):
         default=False,
         validation_alias=AliasChoices("enable_knowledge_graph", "ENABLE_KNOWLEDGE_GRAPH"),
     )
+    # Safety: allow executing potentially dangerous graph queries (GraphCypherQAChain).
+    # Default is False; enable only in trusted environments.
+    allow_dangerous_graph_requests: bool = Field(
+        default=False,
+        validation_alias=AliasChoices("allow_dangerous_graph_requests", "ALLOW_DANGEROUS_GRAPH_REQUESTS"),
+    )
     enable_web_search: bool = Field(
         default=False,
         validation_alias=AliasChoices("enable_web_search", "ENABLE_WEB_SEARCH"),

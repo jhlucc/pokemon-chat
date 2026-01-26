@@ -4,6 +4,7 @@
 import contextvars
 import logging
 import os
+import sys
 import time
 from typing import Optional
 
@@ -80,6 +81,15 @@ class HourlyFileHandler(logging.Handler):
 _setup_done = False
 
 
+def _parse_log_level(value: str | None, default: int = logging.DEBUG) -> int:
+    if not value:
+        return default
+    s = str(value).strip().upper()
+    if not s:
+        return default
+    return int(getattr(logging, s, default))
+
+
 def setup_global_logging() -> None:
     """Configure root logging once (console + hourly files)."""
 
@@ -87,8 +97,14 @@ def setup_global_logging() -> None:
     if _setup_done:
         return
 
+    # During tests, avoid noisy "Logging error" tracebacks from third-party handlers.
+    # pytest captures/tears down streams aggressively; logging should never fail tests.
+    if "pytest" in sys.modules or os.getenv("PYTEST_CURRENT_TEST"):
+        logging.raiseExceptions = False
+
     root_logger = logging.getLogger()
-    root_logger.setLevel(logging.DEBUG)
+    log_level = _parse_log_level(os.getenv("LOG_LEVEL"), default=logging.DEBUG)
+    root_logger.setLevel(log_level)
 
     # Avoid duplicated handlers on reload.
     for h in list(root_logger.handlers):
@@ -106,15 +122,17 @@ def setup_global_logging() -> None:
     request_id_filter = RequestIdFilter()
 
     console_handler = logging.StreamHandler()
-    console_handler.setLevel(logging.DEBUG)
+    console_handler.setLevel(log_level)
     console_handler.setFormatter(formatter)
     console_handler.addFilter(request_id_filter)
     root_logger.addHandler(console_handler)
 
-    file_handler = HourlyFileHandler(log_dir)
-    file_handler.setLevel(logging.DEBUG)
-    file_handler.addFilter(request_id_filter)
-    root_logger.addHandler(file_handler)
+    # Skip file logging during tests (faster, avoids FS churn).
+    if "pytest" not in sys.modules and not os.getenv("DISABLE_FILE_LOGS"):
+        file_handler = HourlyFileHandler(log_dir)
+        file_handler.setLevel(log_level)
+        file_handler.addFilter(request_id_filter)
+        root_logger.addHandler(file_handler)
 
     # Reduce noisy third-party logging.
     logging.getLogger("httpx").setLevel(logging.WARNING)
@@ -163,4 +181,3 @@ if __name__ == "__main__":
 
     legacy = LogManager()
     legacy.info("Testing legacy LogManager")
-

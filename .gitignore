@@ -6,6 +6,11 @@
 __pycache__/
 *.py[cod]
 *.pkl
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+coverage/
 
 # Env
 .env
@@ -52,3 +57,14 @@ Thumbs.db
 # Python virtual envs
 venv/
 ENV/
+.venv/
+
+# Node
+node_modules/
+web/node_modules/
+web/dist/
+web/.vite/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*

@@ -44,4 +44,8 @@ class GraphStore:
         """Returns the structured schema of the graph."""
         if not self.graph:
             return {}
-        return self.graph.get_structured_schema
+        val = getattr(self.graph, "get_structured_schema", None)
+        try:
+            return val() if callable(val) else (val or {})
+        except Exception:
+            return {}

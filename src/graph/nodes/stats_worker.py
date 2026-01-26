@@ -1,17 +1,11 @@
 from typing import Dict, Any
 from langchain_core.prompts import ChatPromptTemplate
-from langchain_openai import ChatOpenAI
-from src.core.settings import settings
+from src.core.llm_factory import build_chat_llm
 from src.graph.state import AgentState
 
 class StatsWorker:
     def __init__(self):
-        self.llm = ChatOpenAI(
-            model=settings.llm.model_name,
-            api_key=settings.llm.api_key,
-            base_url=settings.llm.api_base,
-            temperature=0
-        )
+        self.llm = build_chat_llm(temperature=0.0)
 
     def analyze(self, query: str) -> str:
         # TODO: Implement structured data analysis (e.g. Pandas/SQL)

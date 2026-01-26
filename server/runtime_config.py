@@ -81,6 +81,12 @@ def patch_ui_overrides(patch: Dict[str, Any]) -> Dict[str, Any]:
             clear_feature_cache()
         except Exception:
             pass
+        try:
+            from src.core.llm_factory import clear_ui_overrides_cache
+
+            clear_ui_overrides_cache()
+        except Exception:
+            pass
         return cur
 
 

@@ -1,11 +1,10 @@
 from typing import List, Literal, Optional
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
-from langchain_openai import ChatOpenAI
 from langchain_core.output_parsers.openai_functions import JsonOutputFunctionsParser
 from langchain_core.messages import SystemMessage
 from pydantic import BaseModel
 
-from src.core.settings import settings
+from src.core.llm_factory import build_chat_llm
 from src.graph.state import AgentState
 
 # Define the set of workers
@@ -64,11 +63,8 @@ class RouteResponse(BaseModel):
 
 class SupervisorNode:
     def __init__(self):
-        self.llm = ChatOpenAI(
-            model=settings.llm.model_name,
-            api_key=settings.llm.api_key,
-            base_url=settings.llm.api_base
-        )
+        # Deterministic routing: keep temperature at 0.
+        self.llm = build_chat_llm(temperature=0.0)
         
     def __call__(self, state: AgentState):
         chain = (

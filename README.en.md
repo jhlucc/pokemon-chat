@@ -169,6 +169,8 @@ If you wish to run backend/frontend code locally for development:
    npm run dev
    ```
 
+> Optional: backend env vars live in the repo root `.env` (copy from `.env.template`). Common keys: `llm_api_key`, `enable_knowledge_base`, `enable_reranker`, `LOG_LEVEL`, `tavily_api_key`.
+
 > Tip: If you only want to work on the frontend UI (without starting the backend), go to **Settings** and switch **Offline Demo Mode** to **Force Mock**.
 > The frontend will simulate backend APIs with local mock data, so it can render all pages/features without relying on backend `base.yaml`.
 >

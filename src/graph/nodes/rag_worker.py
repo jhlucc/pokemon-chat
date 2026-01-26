@@ -1,8 +1,8 @@
 from typing import Dict, Any, List
 from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
 from langchain_core.prompts import ChatPromptTemplate
-from langchain_openai import ChatOpenAI
 
+from src.core.llm_factory import build_chat_llm
 from src.core.settings import settings
 from src.core.feature_flags import feature_enabled
 from src.graph.state import AgentState
@@ -12,21 +12,13 @@ from src.graph.nodes.crag import get_crag_evaluator
 from src.knowledge.core.query_decomposer import get_query_decomposer
 from src.knowledge.core.self_rag import get_self_rag
 from src.utils.logger import get_logger
-from src.utils.http_client import get_safe_httpx_client
 
 logger = get_logger(__name__)
 
 class RagWorker:
     def __init__(self):
         # Initialize LLM
-        self.llm = ChatOpenAI(
-            model=settings.llm.model_name,
-            api_key=settings.llm.api_key,
-            base_url=settings.llm.api_base,
-            temperature=0.3,
-            openai_proxy=None,
-            http_client=get_safe_httpx_client(),
-        )
+        self.llm = build_chat_llm(temperature=0.3)
         # Initialize Vector Store (Lazy load possible, but init here for now)
         self.vector_store = VectorStore(
             collection_name=settings.database.milvus_collection_name or "pokemon_knowledge",
@@ -116,7 +108,10 @@ class RagWorker:
         """Perform web search and return context."""
         try:
             from tavily import TavilyClient
-            client = TavilyClient(api_key=settings.web_search.tavily_api_key)
+            api_key = (settings.tavily.api_key or "").strip()
+            if not api_key:
+                return ""
+            client = TavilyClient(api_key=api_key)
             response = client.search(query, max_results=3)
             if response and "results" in response:
                 return "\n\n".join([f"[Web {i+1}] {r.get('content', '')}" for i, r in enumerate(response["results"])])

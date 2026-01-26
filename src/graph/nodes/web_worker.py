@@ -1,22 +1,20 @@
 from typing import Dict, Any
 from langchain_core.prompts import ChatPromptTemplate
-from langchain_openai import ChatOpenAI
+from src.core.llm_factory import build_chat_llm
 from src.core.settings import settings
 from src.graph.state import AgentState
 from tavily import TavilyClient
 
 class WebWorker:
     def __init__(self):
-        self.llm = ChatOpenAI(
-            model=settings.llm.model_name,
-            api_key=settings.llm.api_key,
-            base_url=settings.llm.api_base,
-            temperature=0.5
-        )
-        self.tavily = TavilyClient(api_key=settings.tavily.api_key)
+        self.llm = build_chat_llm(temperature=0.5)
+        api_key = (settings.tavily.api_key or "").strip()
+        self.tavily = TavilyClient(api_key=api_key) if api_key else None
 
     def search(self, query: str) -> str:
         try:
+            if self.tavily is None:
+                return "Web search is not configured (tavily_api_key is empty)."
             # Simple Tavily search context
             response = self.tavily.search(query=query, search_depth="basic", max_results=3)
             results = response.get("results", [])

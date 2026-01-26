@@ -4,15 +4,13 @@ import asyncio
 import threading
 from typing import Any, Dict, List
 
-from langchain_openai import ChatOpenAI
-
+from src.core.llm_factory import build_chat_llm
 from src.core.settings import settings
 from src.core.feature_flags import feature_enabled
 from src.knowledge.core.operators import HyDEOperator
 from src.knowledge.core.prompts import knowbase_qa_template, rewritten_query_prompt_template, keywords_prompt_template
 from src.models.reranker_model import RerankerWrapper
 from src.runtime import get_kb, get_kg_agent, get_mcp_client
-from src.utils.http_client import get_safe_httpx_client
 from src.utils.logger import get_logger
 
 _log = get_logger(__name__)
@@ -40,15 +38,19 @@ class Retriever:
             self._kg_agent = get_kg_agent()
         return self._kg_agent
 
-    def _get_llm(self):
-        return ChatOpenAI(
-            model=settings.llm.model_name,
-            api_key=settings.llm.api_key,
-            base_url=settings.llm.api_base,
+    def _get_llm(self, meta: Dict[str, Any] | None = None):
+        """
+        Return an OpenAI-compatible LLM for internal retrieval steps.
+
+        Prefer the request-selected model (meta['model_provider'/'model_name']) when available
+        so retriever-side rewrites/NER stay aligned with the chat model.
+        """
+        meta = meta or {}
+        return build_chat_llm(
+            model_provider=meta.get("model_provider"),
+            model_name=meta.get("model_name"),
             temperature=settings.llm.temperature,
             max_tokens=settings.llm.max_tokens,
-            openai_proxy=None,
-            http_client=get_safe_httpx_client(),
         )
 
     def _load_models(self):
@@ -296,7 +298,7 @@ class Retriever:
 
     def rewrite_query(self, query, history, refs):
         """重写查询"""
-        model = self._get_llm()
+        model = self._get_llm(refs.get("meta"))
         if refs["meta"].get("mode") == "search":  # 如果是搜索模式，就使用 meta 的配置，否则就使用全局的配置
             rewrite_query_span = refs["meta"].get("use_rewrite_query", "off")
         else:
@@ -320,7 +322,7 @@ class Retriever:
     def reco_entities(self, query, history, refs):
         """识别句子中的实体"""
         query = refs.get("rewritten_query", query)
-        model = self._get_llm()
+        model = self._get_llm(refs.get("meta"))
 
         entities = []
         if refs["meta"].get("use_graph"):

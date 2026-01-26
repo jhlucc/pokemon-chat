@@ -17,9 +17,25 @@ from pathlib import Path
 import numpy as np
 
 from src.core.settings import settings
+from src.core.provider_config import get_provider_api_base, get_provider_api_key
 from src.utils.logger import get_logger
 
 logger = get_logger(__name__)
+
+_EMBEDDINGS_SUFFIX = "/embeddings"
+
+
+def _normalize_openai_api_base(url: str) -> str:
+    """
+    Normalize OpenAI-compatible base URL for LangChain's OpenAIEmbeddings.
+
+    Users sometimes configure `embedding_api_base` as the full embeddings endpoint
+    (e.g. `.../v1/embeddings`). LangChain expects the *API base* (e.g. `.../v1`).
+    """
+    u = (url or "").strip().rstrip("/")
+    if u.lower().endswith(_EMBEDDINGS_SUFFIX):
+        u = u[: -len(_EMBEDDINGS_SUFFIX)]
+    return u.rstrip("/")
 
 
 @dataclass(frozen=True)
@@ -27,6 +43,7 @@ class _CacheEntry:
     embedding: np.ndarray
     response: str
     created_at_s: float
+    meta: Dict[str, str]
 
 
 class SemanticCache:
@@ -48,7 +65,10 @@ class SemanticCache:
         if cache_dir is None:
             provider = (settings.embedding.provider or "").strip().lower()
             model_name = (settings.embedding.model_name or "").strip()
-            api_base = (settings.embedding.api_base or "").strip()
+            api_base = _normalize_openai_api_base(
+                (settings.embedding.api_base or "").strip()
+                or (get_provider_api_base(provider) or "").strip()
+            )
             ns = hashlib.sha256(f"{provider}:{model_name}:{api_base}".encode("utf-8")).hexdigest()[:12]
             cache_dir = settings.paths.cache_dir / "semantic_cache" / ns
 
@@ -62,6 +82,7 @@ class SemanticCache:
         # In-memory index: {query_hash: (embedding, response)}
         self._index: Dict[str, _CacheEntry] = {}
         self._embedding_model = None
+        self._embedding_disabled = False
         self._lock = Lock()
         
         self._load_cache()
@@ -69,18 +90,76 @@ class SemanticCache:
     @property
     def embedding_model(self):
         """Lazy load embedding model."""
+        if self._embedding_disabled:
+            return None
+
         if self._embedding_model is None:
             from langchain_openai import OpenAIEmbeddings
+
+            provider = (settings.embedding.provider or "").strip().lower()
+            api_key = (
+                (settings.embedding.api_key or "").strip()
+                or (get_provider_api_key(provider) or "").strip()
+                or (settings.get_api_key(provider) or "").strip()
+                or (settings.llm.api_key or "").strip()
+            )
+            api_base = _normalize_openai_api_base(
+                (settings.embedding.api_base or "").strip()
+                or (get_provider_api_base(provider) or "").strip()
+                or (settings.llm.api_base or "").strip()
+            )
+
+            if not api_key:
+                self._embedding_disabled = True
+                logger.warning("Semantic cache disabled: embedding api_key is empty.")
+                return None
+
             self._embedding_model = OpenAIEmbeddings(
                 model=settings.embedding.model_name,
-                openai_api_key=settings.embedding.api_key,
-                openai_api_base=settings.embedding.api_base,
+                openai_api_key=api_key,
+                openai_api_base=api_base,
             )
         return self._embedding_model
     
     def _get_query_hash(self, query: str) -> str:
-        """Generate a hash for a query."""
         return hashlib.md5(query.strip().lower().encode()).hexdigest()
+
+    def _normalize_meta(self, meta: Optional[Dict[str, Any]]) -> Dict[str, str]:
+        """
+        Normalize cache meta so comparisons are stable and keys remain small.
+
+        We only keep a small allowlist to prevent the cache key from exploding.
+        """
+        meta = meta or {}
+        out: Dict[str, str] = {}
+        for k in ("model_provider", "model_name", "system_prompt_sha"):
+            v = meta.get(k, None)
+            if v is None:
+                continue
+            s = str(v).strip()
+            if s:
+                out[k] = s
+        return out
+
+    def _meta_key(self, meta: Optional[Dict[str, Any]]) -> str:
+        norm = self._normalize_meta(meta)
+        if not norm:
+            return ""
+        # Stable serialization for hashing & comparisons
+        return json.dumps(norm, sort_keys=True, ensure_ascii=False, separators=(",", ":"))
+
+    def _get_entry_hash(self, query: str, meta: Optional[Dict[str, Any]]) -> str:
+        """
+        Hash for a cache entry.
+
+        Backward compatible:
+        - If meta is empty, this is identical to the legacy query hash.
+        - If meta is present, we isolate entries per meta namespace.
+        """
+        mk = self._meta_key(meta)
+        if not mk:
+            return self._get_query_hash(query)
+        return hashlib.md5(f"{mk}::{query.strip().lower()}".encode("utf-8")).hexdigest()
     
     def _cosine_similarity(self, a: np.ndarray, b: np.ndarray) -> float:
         """Compute cosine similarity between two vectors."""
@@ -109,13 +188,19 @@ class SemanticCache:
 
                     # Backward compatible format:
                     # - old: {hash: "response"}
-                    # - new: {hash: {"response": "...", "created_at_s": 123.4}}
+                    # - new: {hash: {"response": "...", "created_at_s": 123.4, "meta": {...}}}
                     if isinstance(payload, str):
                         response = payload
                         created_at_s = 0.0
+                        meta = {}
                     elif isinstance(payload, dict):
                         response = str(payload.get("response", ""))
                         created_at_s = float(payload.get("created_at_s", 0.0))
+                        meta = payload.get("meta") or {}
+                        if not isinstance(meta, dict):
+                            meta = {}
+                        # Keep storage normalized for comparisons.
+                        meta = self._normalize_meta(meta)
                     else:
                         continue
 
@@ -127,6 +212,7 @@ class SemanticCache:
                         embedding=np.array(embeddings[query_hash]),
                         response=response,
                         created_at_s=created_at_s or now,
+                        meta=meta,
                     )
                     loaded += 1
                 
@@ -143,7 +229,7 @@ class SemanticCache:
         
         try:
             cache_data = {
-                h: {"response": entry.response, "created_at_s": entry.created_at_s}
+                h: {"response": entry.response, "created_at_s": entry.created_at_s, "meta": entry.meta}
                 for h, entry in self._index.items()
             }
             embeddings = {h: entry.embedding for h, entry in self._index.items()}
@@ -171,7 +257,7 @@ class SemanticCache:
             except Exception:
                 pass
     
-    def get(self, query: str) -> Optional[str]:
+    def get(self, query: str, meta: Optional[Dict[str, Any]] = None) -> Optional[str]:
         """
         Try to get a cached response for a similar query.
         
@@ -182,14 +268,36 @@ class SemanticCache:
                 return None
         
         try:
+            model = self.embedding_model
+            if model is None:
+                return None
+
+            # Only match within the same meta namespace.
+            norm_meta = self._normalize_meta(meta)
+
+            # Fast path: exact match (no embedding call).
+            now = time.time()
+            query_hash = self._get_entry_hash(query, norm_meta)
+            with self._lock:
+                entry = self._index.get(query_hash)
+                if entry is not None and entry.meta == norm_meta:
+                    if self.ttl_seconds > 0 and entry.created_at_s and (now - entry.created_at_s) > self.ttl_seconds:
+                        self._index.pop(query_hash, None)
+                    else:
+                        # LRU bump
+                        self._index.pop(query_hash, None)
+                        self._index[query_hash] = entry
+                        logger.info("Cache HIT (exact)")
+                        return entry.response
+
             # Get query embedding
-            query_embedding = np.array(self.embedding_model.embed_query(query))
+            query_embedding = np.array(model.embed_query(query))
             
             # Find most similar cached query
+            best_hash: Optional[str] = None
             best_match = None
             best_similarity = 0.0
             
-            now = time.time()
             with self._lock:
                 # Drop expired entries opportunistically.
                 if self.ttl_seconds > 0:
@@ -202,14 +310,23 @@ class SemanticCache:
 
                 items = list(self._index.items())
 
-            for _, entry in items:
+            for h, entry in items:
+                if entry.meta != norm_meta:
+                    continue
                 similarity = self._cosine_similarity(query_embedding, entry.embedding)
                 if similarity > best_similarity:
                     best_similarity = similarity
+                    best_hash = h
                     best_match = entry.response
             
             if best_similarity >= self.similarity_threshold:
                 logger.info(f"Cache HIT: similarity={best_similarity:.3f}")
+                # LRU bump for the matched entry.
+                if best_hash:
+                    with self._lock:
+                        e = self._index.pop(best_hash, None)
+                        if e is not None:
+                            self._index[best_hash] = e
                 return best_match
             else:
                 logger.debug(f"Cache MISS: best similarity={best_similarity:.3f}")
@@ -219,16 +336,23 @@ class SemanticCache:
             logger.error(f"Cache lookup failed: {e}")
             return None
     
-    def set(self, query: str, response: str):
+    def set(self, query: str, response: str, meta: Optional[Dict[str, Any]] = None):
         """
         Cache a query-response pair.
         """
         try:
-            query_hash = self._get_query_hash(query)
+            model = self.embedding_model
+            if model is None:
+                return
+            norm_meta = self._normalize_meta(meta)
+            query_hash = self._get_entry_hash(query, norm_meta)
             
             # Check if already exists
             with self._lock:
                 if query_hash in self._index:
+                    # LRU bump
+                    entry = self._index.pop(query_hash)
+                    self._index[query_hash] = entry
                     return
             
             # Enforce max size (LRU-like: remove oldest)
@@ -238,9 +362,14 @@ class SemanticCache:
                     del self._index[oldest_key]
             
             # Get embedding and store
-            embedding = np.array(self.embedding_model.embed_query(query))
+            embedding = np.array(model.embed_query(query))
             with self._lock:
-                self._index[query_hash] = _CacheEntry(embedding=embedding, response=response, created_at_s=time.time())
+                self._index[query_hash] = _CacheEntry(
+                    embedding=embedding,
+                    response=response,
+                    created_at_s=time.time(),
+                    meta=norm_meta,
+                )
             
             # Persist to disk
             with self._lock:
@@ -257,6 +386,19 @@ class SemanticCache:
             self._index.clear()
             self._save_cache()
         logger.info("Cache cleared")
+
+    def stats(self) -> Dict[str, Any]:
+        """Return lightweight cache stats for admin/debug endpoints."""
+        with self._lock:
+            size = len(self._index)
+        return {
+            "size": size,
+            "max_cache_size": self.max_cache_size,
+            "ttl_seconds": self.ttl_seconds,
+            "similarity_threshold": self.similarity_threshold,
+            "cache_dir": str(self.cache_dir),
+            "embedding_disabled": bool(self._embedding_disabled),
+        }
 
 
 # Global instance

@@ -1,12 +1,12 @@
 from typing import Dict, Any, List
 from langchain_core.prompts.prompt import PromptTemplate
 from langchain_community.chains.graph_qa.cypher import GraphCypherQAChain
-from langchain_openai import ChatOpenAI
+
+from src.core.llm_factory import build_chat_llm
 from src.core.settings import settings
 from src.graph.state import AgentState
 from src.knowledge.store.graph import GraphStore
 from src.utils.logger import get_logger
-from src.utils.http_client import get_safe_httpx_client
 
 logger = get_logger(__name__)
 
@@ -33,14 +33,7 @@ class GraphWorker:
     def __init__(self):
         self.graph_store = GraphStore()
         
-        self.llm = ChatOpenAI(
-            model=settings.llm.model_name,
-            api_key=settings.llm.api_key,
-            base_url=settings.llm.api_base,
-            temperature=0,
-            openai_proxy=None,
-            http_client=get_safe_httpx_client(),
-        )
+        self.llm = build_chat_llm(temperature=0.0)
         
         if self.graph_store.graph:
             self.chain = GraphCypherQAChain.from_llm(
@@ -48,7 +41,7 @@ class GraphWorker:
                 graph=self.graph_store.graph,
                 verbose=True,
                 cypher_prompt=CYPHER_GENERATION_PROMPT,
-                allow_dangerous_requests=True,
+                allow_dangerous_requests=bool(getattr(settings.features, "allow_dangerous_graph_requests", False)),
                 return_intermediate_steps=True
             )
         else:
