@@ -201,6 +201,27 @@
           @keydown="handleKeyDown"
         >
           <template #options-left>
+            <a-tooltip :title="canAgent ? '开启总 Agent（supervisor_agent）统一编排' : '后端离线/不可用'">
+              <div
+                :class="{
+                  switch: true,
+                  'opt-item': true,
+                  active: meta.use_agent,
+                  disabled: !canAgent
+                }"
+                @click="toggleAgent"
+                role="button"
+                tabindex="0"
+                aria-label="切换 Agent"
+                @keydown.enter.prevent="toggleAgent"
+                @keydown.space.prevent="toggleAgent"
+              >
+                <RobotOutlined style="margin-right: 3px" />
+                Agent
+              </div>
+            </a-tooltip>
+
+            <template v-if="!meta.use_agent">
             <a-tooltip
               v-if="configStore.config?.ui?.show_web_search !== false"
               :title="canWebSearch ? '' : backendOnline ? '后端未启用联网搜索' : '后端离线/不可用'"
@@ -302,6 +323,7 @@
                 </template>
               </a-dropdown>
             </a-tooltip>
+            </template>
           </template>
         </MessageInputComponent>
         <p class="note">
@@ -323,6 +345,7 @@ import {
   FolderOpenOutlined,
   DeploymentUnitOutlined,
   DatabaseOutlined,
+  RobotOutlined,
   DownOutlined
 } from '@ant-design/icons-vue'
 import { onClickOutside, useDebounceFn } from '@vueuse/core'
@@ -348,6 +371,7 @@ const { conv, state } = toRefs(props)
 const chatContainer = ref(null)
 
 const backendOnline = computed(() => Boolean(configStore.config.backend?.online))
+const canAgent = computed(() => backendOnline.value)
 const canWebSearch = computed(
   () => backendOnline.value && Boolean(configStore.config.enable_web_search)
 )
@@ -384,6 +408,14 @@ const toggleMcp = () => {
   meta.mcp_id = meta.use_mcp ? 'default' : null
 }
 
+const toggleAgent = () => {
+  if (!canAgent.value) {
+    message.info('后端离线/不可用')
+    return
+  }
+  meta.use_agent = !meta.use_agent
+}
+
 const isStreaming = ref(false)
 const activeChatAbortController = ref(null)
 const activeStreamId = ref(0)
@@ -415,6 +447,7 @@ const META_STORAGE_KEY = 'pokemon-chat-meta-v1'
 
 function defaultMeta() {
   return {
+    use_agent: false,
     use_graph: false,
     use_web: false,
     use_mcp: false,
@@ -668,12 +701,26 @@ const fetchChatResponse = async (user_input, cur_res_id) => {
   const controller = new AbortController()
   activeChatAbortController.value = controller
 
-  const params = {
-    query: user_input,
-    history: getHistory().slice(0, -1), // 去掉最后一条刚添加的用户消息
-    meta,
-    cur_res_id
-  }
+  const isAgentMode = Boolean(meta.use_agent)
+  const params = isAgentMode
+    ? {
+        query: user_input,
+        history: getHistory().slice(0, -1), // 去掉最后一条刚添加的用户消息
+        meta,
+        cfg: {
+          // Keep thread stable per conversation so the backend agent can checkpoint.
+          thread_id: conv.value?.id || undefined,
+          // Align stream message id with the placeholder assistant message.
+          msg_id: cur_res_id,
+          request_id: cur_res_id
+        }
+      }
+    : {
+        query: user_input,
+        history: getHistory().slice(0, -1), // 去掉最后一条刚添加的用户消息
+        meta,
+        cur_res_id
+      }
 
   // If the user disables streaming output, we still call the streaming endpoint
   // (so refs/metadata remain available) but buffer content and render it at the end.
@@ -684,7 +731,8 @@ const fetchChatResponse = async (user_input, cur_res_id) => {
   let bufferedMeta = null
 
   try {
-    const response = await apiRequest('/chat/', {
+    const endpoint = isAgentMode ? '/chat/agent/supervisor_agent' : '/chat/'
+    const response = await apiRequest(endpoint, {
       method: 'POST',
       body: params,
       signal: controller.signal,
@@ -703,6 +751,7 @@ const fetchChatResponse = async (user_input, cur_res_id) => {
             reasoning_content: data.reasoning_content,
             status: data.status,
             meta: data.meta,
+            message: data.message || data.error,
             ...data
           })
         } else {
@@ -717,6 +766,7 @@ const fetchChatResponse = async (user_input, cur_res_id) => {
             status: data.status,
             meta: data.meta,
             refs: data.refs,
+            message: data.message || data.error,
             ...data,
             content: '' // never stream partial content
           })
