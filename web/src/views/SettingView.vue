@@ -370,17 +370,33 @@ onMounted(() => refreshProviders())
 </script>
 
 <style scoped lang="less">
+.setting-page {
+  min-height: 100vh;
+  background: var(--background-color);
+}
+
 .setting-container { padding: 0; }
-.bento-wrapper { max-width: 900px; margin: 0 auto; padding-bottom: 40px; position: relative; z-index: 1; }
+
+.bento-wrapper {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 0 var(--space-4) 40px;
+  position: relative;
+  z-index: 1;
+}
 
 .tech-bg {
-  position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-  background-color: var(--background-color);
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
   background-image:
-    radial-gradient(color-mix(in srgb, var(--text-color) 6%, transparent) 1px, transparent 1px);
-  background-size: 20px 20px;
+    radial-gradient(color-mix(in srgb, var(--text-color) 4%, transparent) 1px, transparent 1px);
+  background-size: 24px 24px;
   z-index: 0;
   pointer-events: none;
+  opacity: 0.6;
 }
 
 .mono { font-family: 'JetBrains Mono', 'SF Mono', Consolas, monospace; }
