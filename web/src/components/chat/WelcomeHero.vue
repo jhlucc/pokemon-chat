@@ -162,14 +162,29 @@ const quickActions = [
   .bg-image {
     position: absolute;
     width: 100%;
-    max-width: 800px;
-    height: auto;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    opacity: 0.15;
-    object-fit: contain;
+    height: 100%;
+    top: 0;
+    left: 0;
+    object-fit: cover;
+    object-position: center;
+    opacity: 0.35;
+    mask-image: linear-gradient(
+      to bottom,
+      rgba(0, 0, 0, 0.6) 0%,
+      rgba(0, 0, 0, 0.4) 50%,
+      rgba(0, 0, 0, 0.1) 100%
+    );
+    -webkit-mask-image: linear-gradient(
+      to bottom,
+      rgba(0, 0, 0, 0.6) 0%,
+      rgba(0, 0, 0, 0.4) 50%,
+      rgba(0, 0, 0, 0.1) 100%
+    );
   }
+}
+
+:root[data-theme='dark'] .hero-bg-decor .bg-image {
+  opacity: 0.25;
 }
 
 /* Hero Section */
