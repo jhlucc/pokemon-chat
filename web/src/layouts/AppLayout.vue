@@ -9,7 +9,6 @@ import {
   SettingFilled,
   BookOutlined,
   BookFilled,
-  BugOutlined,
   ProjectFilled,
   ProjectOutlined,
   RedoOutlined,
@@ -24,7 +23,6 @@ import { applyTheme, getSavedThemeMode, setThemeMode } from '@/assets/theme'
 import { APP_NAME, BUILD_SHA, BUILD_TIME, getBuildLabel } from '@/config/appMeta'
 import { useConfigStore } from '@/stores/config'
 import { useDatabaseStore } from '@/stores/database'
-import DebugComponent from '@/components/DebugComponent.vue'
 
 const configStore = useConfigStore()
 const databaseStore = useDatabaseStore()
@@ -72,7 +70,6 @@ const backTopTarget = () => scrollContainer.value || document.body
 
 
 const layoutSettings = reactive({
-  showDebug: false,
   useTopBar: false, // 是否使用顶栏
   showAbout: false
 })
@@ -186,28 +183,6 @@ const mainList = computed(() => {
 <template>
   <div class="app-layout" :class="{ 'use-top-bar': layoutSettings.useTopBar }">
     <a class="skip-link" href="#app-router-view">Skip to content</a>
-    <div class="debug-panel">
-      <a-float-button
-        @click="layoutSettings.showDebug = !layoutSettings.showDebug"
-        tooltip="调试面板"
-        :style="{
-          right: '12px'
-        }"
-      >
-        <template #icon>
-          <BugOutlined />
-        </template>
-      </a-float-button>
-      <a-drawer
-        v-model:open="layoutSettings.showDebug"
-        title="调试面板"
-        width="800"
-        :contentWrapperStyle="{ maxWidth: '100%' }"
-        placement="right"
-      >
-        <DebugComponent />
-      </a-drawer>
-    </div>
     <div
       class="header"
       :class="{
@@ -427,15 +402,6 @@ const mainList = computed(() => {
 
   .header-mobile {
     display: none;
-  }
-
-  .debug-panel {
-    position: absolute;
-    z-index: 100;
-    right: 0;
-    bottom: 50px;
-    border-radius: 20px 0 0 20px;
-    cursor: pointer;
   }
 }
 
@@ -770,10 +736,6 @@ div.header,
 
     div.header {
       display: none;
-    }
-
-    .debug-panel {
-      bottom: 10rem;
     }
   }
   .app-layout div.header-mobile {
