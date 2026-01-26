@@ -1077,29 +1077,50 @@ const selectModel = (provider, name) => {
   }
 
   .prompt-card {
+    position: relative;
     text-align: left;
-    /* Data Chip Style */
-    background: rgba(255, 255, 255, 0.6);
-    backdrop-filter: blur(4px);
-    border: 1px solid rgba(0,0,0,0.08);
-    
+    /* Rich Tech Data Chip Style */
+    background: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(0, 0, 0, 0.05);
     color: var(--gray-800);
     border-radius: 16px;
     padding: 16px 20px;
     cursor: pointer;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
     transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
     font-weight: 500;
+    overflow: hidden;
+
+    /* Accent Strip */
+    &::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 4px;
+      background: var(--pokedex-red);
+      opacity: 0.6;
+      transition: all 0.3s ease;
+    }
 
     &:hover {
       background: #fff;
-      border-color: var(--primary-color);
+      border-color: var(--pokedex-red);
       box-shadow: 0 8px 24px rgba(255, 83, 80, 0.15);
-      transform: translateY(-4px);
+      transform: translateY(-2px);
+
+      &::before {
+        opacity: 1;
+        width: 6px;
+        box-shadow: 0 0 8px var(--pokedex-red);
+      }
     }
 
     &:active {
-      transform: translateY(-1px);
+      transform: translateY(0);
+      box-shadow: 0 2px 8px rgba(255, 83, 80, 0.1);
     }
   }
 }

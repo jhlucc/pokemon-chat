@@ -255,33 +255,17 @@ const mainList = computed(() => {
       </div>
       <div class="fill" style="flex-grow: 1"></div>
 
-      <div
-        v-if="!layoutSettings.useTopBar"
-        class="nav-item collapse-toggle"
-        @click="toggleSider"
-        role="button"
-        tabindex="0"
-        aria-label="Toggle sidebar"
-        @keydown.enter.prevent="toggleSider"
-        @keydown.space.prevent="toggleSider"
-      >
-        <a-tooltip placement="right">
-          <template #title>{{ siderCollapsed ? 'Expand sidebar' : 'Collapse sidebar' }}</template>
-          <component class="icon" :is="siderCollapsed ? MenuUnfoldOutlined : MenuFoldOutlined" />
-          <span class="text">{{ siderCollapsed ? 'Expand' : 'Collapse' }}</span>
-        </a-tooltip>
-      </div>
-
+      <!-- Status Indicator: Simple Dot -->
       <div
         class="nav-item mode-indicator"
-        aria-label="????"
+        aria-label="Status"
         role="status"
       >
         <a-tooltip placement="right">
           <template #title>
             <div>{{ backendMode.label }}</div>
           </template>
-          <span class="mode-pill" :class="backendMode.key">{{ backendMode.short }}</span>
+          <span class="mode-dot" :class="backendMode.key"></span>
         </a-tooltip>
       </div>
 
@@ -609,38 +593,43 @@ div.header,
       background-color: var(--surface-color);
     }
 
+    .icon {
+      /* Rich Icon Style */
+      filter: drop-shadow(0 2px 2px rgba(0,0,0,0.05));
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    /* Active Icon Glow */
+    &.active .icon {
+      filter: drop-shadow(0 0 4px var(--pokedex-red));
+      color: var(--pokedex-red);
+    }
+
     .text {
       font-size: 12px;
       margin-top: 4px;
       text-align: center;
     }
 
-    .mode-pill {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      min-width: 44px;
-      padding: 4px 8px;
-      border-radius: 999px;
-      border: 1px solid var(--border-color);
-      background: var(--surface-color);
-      color: var(--gray-700);
-      font-size: 11px;
-      font-weight: 700;
-      letter-spacing: 0.4px;
-      user-select: none;
+    /* Simple Status Dot */
+    .mode-dot {
+      display: inline-block;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--gray-400);
+      box-shadow: 0 0 0 2px var(--surface-color), 0 0 0 3px var(--border-color);
+      transition: all 0.3s ease;
     }
 
-    .mode-pill.online {
-      color: var(--success-color);
-      border-color: color-mix(in srgb, var(--success-color) 35%, var(--border-color));
-      background: color-mix(in srgb, var(--success-color) 12%, var(--surface-color));
+    .mode-dot.online {
+      background: var(--success-color);
+      box-shadow: 0 0 0 2px var(--surface-color), 0 0 0 3px var(--success-color), 0 0 8px var(--success-color);
     }
 
-    .mode-pill.offline {
-      color: var(--danger-600);
-      border-color: color-mix(in srgb, var(--danger-600) 35%, var(--border-color));
-      background: color-mix(in srgb, var(--danger-600) 10%, var(--surface-color));
+    .mode-dot.offline {
+      background: var(--danger-600);
+      box-shadow: 0 0 0 2px var(--surface-color), 0 0 0 3px var(--danger-600);
     }
   }
 
