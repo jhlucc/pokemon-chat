@@ -70,7 +70,7 @@
     <div class="canvas-wrap ui-card graph-canvas">
       <a-spin :spinning="state.vizLoading" tip="加载图谱渲染器...">
         <div class="main" ref="container" v-show="graphData.nodes.length > 0"></div>
-        <a-empty v-show="graphData.nodes.length === 0" class="graph-empty" :image="null">
+        <a-empty v-show="graphData.nodes.length === 0" class="graph-empty">
           <template #image>
             <img src="/empty-chat.png" alt="暂无数据" class="empty-image" />
           </template>

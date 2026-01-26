@@ -11,11 +11,14 @@ let pendingRefresh = null
 let lastRefreshTime = 0
 
 export const useConfigStore = defineStore('config', () => {
-  const config = ref(loadLocalConfig() || structuredClone(DEFAULT_CONFIG))
+  const config = ref(normalizeLocalConfig(loadLocalConfig()))
 
   function saveLocalConfig() {
     try {
-      localStorage.setItem(LOCAL_CONFIG_KEY, JSON.stringify(config.value))
+      // Do not persist large static catalogs; keep storage forward-compatible.
+      const toStore = { ...(config.value || {}) }
+      delete toStore.model_names
+      localStorage.setItem(LOCAL_CONFIG_KEY, JSON.stringify(toStore))
     } catch {
       // ignore quota / private mode errors
     }
@@ -23,6 +26,8 @@ export const useConfigStore = defineStore('config', () => {
 
   function setConfig(newConfig) {
     config.value = { ...structuredClone(DEFAULT_CONFIG), ...(newConfig || {}) }
+    // Always restore static model catalog (avoid stale localStorage payloads).
+    config.value.model_names = DEFAULT_CONFIG.model_names
     saveLocalConfig()
   }
 
@@ -129,4 +134,18 @@ function loadLocalConfig() {
   } catch {
     return null
   }
+}
+
+function normalizeLocalConfig(raw) {
+  // Merge with defaults so older localStorage snapshots don't break new UI fields.
+  const merged = { ...structuredClone(DEFAULT_CONFIG), ...(raw || {}) }
+
+  // Static catalog should always come from the build, not localStorage.
+  merged.model_names = DEFAULT_CONFIG.model_names
+
+  // Ensure nested objects exist (older snapshots may miss them).
+  merged.backend = { ...(structuredClone(DEFAULT_CONFIG.backend) || {}), ...(merged.backend || {}) }
+  merged.ui = { ...(structuredClone(DEFAULT_CONFIG.ui) || {}), ...(merged.ui || {}) }
+
+  return merged
 }

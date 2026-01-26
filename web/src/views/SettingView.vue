@@ -391,12 +391,13 @@ onMounted(() => refreshProviders())
   left: 0;
   width: 100%;
   height: 100%;
-  background-image:
-    radial-gradient(color-mix(in srgb, var(--text-color) 4%, transparent) 1px, transparent 1px);
-  background-size: 24px 24px;
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--primary-color) 3%, var(--background-color)) 0%,
+    var(--background-color) 100%
+  );
   z-index: 0;
   pointer-events: none;
-  opacity: 0.6;
 }
 
 .mono { font-family: 'JetBrains Mono', 'SF Mono', Consolas, monospace; }

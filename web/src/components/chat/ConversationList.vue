@@ -126,7 +126,7 @@
         </div>
       </template>
 
-      <a-empty v-else class="empty-state" :image="null">
+      <a-empty v-else class="empty-state">
         <template #image>
           <img src="/empty-chat.png" alt="暂无对话" class="empty-image" />
         </template>
