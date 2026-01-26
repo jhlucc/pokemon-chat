@@ -1,10 +1,13 @@
 <template>
-  <div class="input-box" :class="customClasses">
+  <div class="input-box" :class="[customClasses, { 'is-focused': isFocused }]">
     <div class="input-area">
       <a-textarea
+        ref="textareaRef"
         class="user-input"
         v-model:value="inputValue"
         @keydown="handleKeyPress"
+        @focus="isFocused = true"
+        @blur="isFocused = false"
         :placeholder="placeholder"
         :disabled="disabled"
         :auto-size="autoSize"
@@ -15,21 +18,43 @@
         <slot name="options-left"></slot>
       </div>
       <div class="options__right">
+        <!-- 快捷键提示 -->
+        <div class="input-hints">
+          <kbd>Shift + Enter</kbd>
+          <span>换行</span>
+        </div>
+
+        <!-- 字符计数 -->
+        <div
+          v-if="showCharCount"
+          class="char-count"
+          :class="{ 'near-limit': charPercent > 90, 'at-limit': charPercent >= 100 }"
+        >
+          {{ charCount }} / {{ maxLength }}
+        </div>
+
         <a-tooltip :title="isRecording ? '点击停止录音' : '点击开始语音输入'">
           <a-button
-            type="link"
+            type="text"
+            class="icon-btn"
             @click="toggleRecording"
-            :style="{ color: isRecording ? 'red' : '' }"
+            :class="{ recording: isRecording }"
           >
             <template #icon>
               <component :is="isRecording ? LoadingOutlined : AudioOutlined" />
             </template>
           </a-button>
         </a-tooltip>
-        <a-tooltip :title="isLoading ? '停止回答' : ''">
-          <a-button @click="handleSendOrStop" :disabled="sendButtonDisabled" type="link">
+        <a-tooltip :title="isLoading ? '停止生成' : '发送消息'">
+          <a-button
+            @click="handleSendOrStop"
+            :disabled="sendButtonDisabled && !isLoading"
+            type="primary"
+            class="send-btn"
+            :class="{ 'is-loading': isLoading }"
+          >
             <template #icon>
-              <component :is="getIcon" class="send-btn" />
+              <component :is="getIcon" />
             </template>
           </a-button>
         </a-tooltip>
@@ -51,7 +76,9 @@ import { message } from 'ant-design-vue'
 import { apiFetch } from '@/api/http'
 
 const isRecording = ref(false)
-const isRecordingLocked = ref(false) // ✅ 新增锁
+const isRecordingLocked = ref(false)
+const isFocused = ref(false)
+const textareaRef = ref(null)
 
 let mediaRecorder = null
 let audioChunks = []
@@ -88,6 +115,14 @@ const props = defineProps({
   customClasses: {
     type: Object,
     default: () => ({})
+  },
+  maxLength: {
+    type: Number,
+    default: 4000
+  },
+  showCharCount: {
+    type: Boolean,
+    default: true
   }
 })
 
@@ -181,6 +216,10 @@ const inputValue = computed({
   set: (val) => emit('update:modelValue', val)
 })
 
+// 字符计数
+const charCount = computed(() => inputValue.value?.length || 0)
+const charPercent = computed(() => (charCount.value / props.maxLength) * 100)
+
 // 处理键盘事件
 const handleKeyPress = (e) => {
   emit('keydown', e)
@@ -199,15 +238,15 @@ const handleSendOrStop = () => {
   width: 100%;
   height: auto;
   margin: 0 auto;
-  padding: 0.4rem 0.75rem;
+  padding: var(--space-3) var(--space-4);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-lg);
+  background: var(--surface-color);
   box-shadow: var(--shadow-xs);
-  transition: all 0.3s ease;
+  transition: all var(--duration-base) var(--ease-default);
 
-  &:focus-within {
-    border-color: color-mix(in srgb, var(--main-500) 32%, var(--border-color));
-    background: var(--surface-color);
+  &.is-focused {
+    border-color: color-mix(in srgb, var(--primary-color) 40%, var(--border-color));
     box-shadow: var(--focus-ring), var(--shadow-sm);
   }
 
@@ -215,72 +254,77 @@ const handleSendOrStop = () => {
     display: flex;
     align-items: flex-end;
     gap: 8px;
-    margin-bottom: 4px;
   }
 
   .user-input {
     flex: 1;
     min-height: 44px;
-    padding: 0.5rem 0;
+    padding: var(--space-2) 0;
     background-color: transparent;
     border: none;
     margin: 0;
     color: var(--text-color);
-    font-size: 14px;
+    font-size: var(--font-size-base);
+    font-family: var(--font-family-base);
     outline: none;
     resize: none;
-    line-height: 1.6;
+    line-height: var(--line-height-relaxed);
 
     &:focus {
       outline: none;
       box-shadow: none;
     }
 
-    &:active {
-      outline: none;
-    }
-
     &::placeholder {
-      color: var(--gray-600);
+      color: var(--gray-500);
     }
   }
 
   .input-options {
     display: flex;
-    padding: 8px 0 0;
-    margin-top: 6px;
-    border-top: 1px solid color-mix(in srgb, var(--border-color) 70%, transparent);
+    justify-content: space-between;
+    align-items: center;
+    padding-top: var(--space-2);
+    margin-top: var(--space-2);
+    border-top: 1px solid color-mix(in srgb, var(--border-color) 50%, transparent);
 
     .options__left,
     .options__right {
       display: flex;
       align-items: center;
-      gap: 10px;
+      gap: var(--space-3);
     }
 
     .options__right {
-      width: fit-content;
+      flex-shrink: 0;
     }
 
     .options__left {
       flex: 1;
+      overflow-x: auto;
+
+      &::-webkit-scrollbar {
+        height: 0;
+      }
 
       :deep(.opt-item) {
         display: inline-flex;
         align-items: center;
-        border-radius: 12px;
-        border: 1px solid var(--gray-300);
-        padding: 8px 12px;
-        min-height: 36px;
+        border-radius: var(--radius-sm);
+        border: 1px solid var(--gray-200);
+        padding: 6px 12px;
+        min-height: 32px;
         cursor: pointer;
-        font-size: 12px;
-        color: var(--gray-700);
-        transition: all 0.2s ease;
+        font-size: var(--font-size-xs);
+        color: var(--gray-600);
+        transition: all var(--duration-fast) var(--ease-default);
         user-select: none;
+        white-space: nowrap;
 
         &:hover {
           background-color: var(--main-10);
-          color: var(--main-600);
+          color: var(--primary-color);
+          border-color: var(--primary-color);
         }
 
         &:focus-visible {
@@ -289,59 +333,143 @@ const handleSendOrStop = () => {
         }
 
         &.active {
-          color: var(--main-600);
-          border: 1px solid var(--main-500);
+          color: var(--primary-color);
+          border-color: var(--primary-color);
           background-color: var(--main-10);
         }
 
         &.disabled {
-          opacity: 0.55;
+          opacity: 0.5;
           cursor: not-allowed;
+          pointer-events: none;
         }
       }
     }
   }
 }
 
-button.ant-btn-icon-only {
-  height: 32px;
-  width: 32px;
-  cursor: pointer;
-  background-color: var(--button-bg-color);
-  border-radius: 50%;
-  border: none;
-  transition: all 0.2s ease;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
-  color: white;
-  padding: 0;
+/* 快捷键提示 */
+.input-hints {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--font-size-xs);
+  color: var(--gray-400);
+
+  kbd {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 6px;
+    font-size: 11px;
+    font-family: var(--font-family-mono);
+    background: var(--gray-100);
+    border: 1px solid var(--gray-200);
+    border-radius: 4px;
+    color: var(--gray-600);
+  }
+
+  span {
+    margin-left: 2px;
+  }
+}
+
+/* 字符计数 */
+.char-count {
+  font-size: var(--font-size-xs);
+  color: var(--gray-400);
+  font-family: var(--font-family-mono);
+  transition: color var(--duration-fast) var(--ease-default);
+
+  &.near-limit {
+    color: var(--warning-color);
+  }
+
+  &.at-limit {
+    color: var(--error-color);
+    font-weight: 600;
+  }
+}
+
+/* 图标按钮 */
+.icon-btn {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 14px;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  color: var(--gray-500);
+  transition: all var(--duration-fast) var(--ease-default);
 
   &:hover {
-    background-color: var(--button-hover-bg-color);
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
-    color: white;
+    background: var(--gray-100);
+    color: var(--gray-700);
   }
 
-  &:active {
+  &.recording {
+    color: var(--error-color);
+    animation: pulse 1.5s infinite;
+  }
+}
+
+/* 发送按钮 */
+.send-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--primary-color);
+  border: none;
+  color: white;
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-default);
+  box-shadow: 0 2px 8px rgba(255, 83, 80, 0.3);
+
+  &:hover:not(:disabled) {
+    background: var(--main-600);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(255, 83, 80, 0.4);
+  }
+
+  &:active:not(:disabled) {
     transform: translateY(0);
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   }
 
   &:disabled {
-    background-color: var(--gray-400);
+    background: var(--gray-300);
     cursor: not-allowed;
-    transform: none;
     box-shadow: none;
+  }
+
+  &.is-loading {
+    background: var(--error-color);
+
+    &:hover:not(:disabled) {
+      background: var(--danger-600);
+    }
+  }
+}
+
+/* 响应式 */
+@media (max-width: 640px) {
+  .input-box {
+    padding: var(--space-2) var(--space-3);
+  }
+
+  .input-hints {
+    display: none;
+  }
+
+  .char-count {
+    display: none;
   }
 }
 
 @media (max-width: 520px) {
   .input-box {
-    border-radius: 15px;
-    padding: 0.625rem 0.875rem;
+    border-radius: var(--radius-md);
   }
 }
 </style>

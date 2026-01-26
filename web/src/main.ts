@@ -8,6 +8,7 @@ import App from './App.vue'
 import router from './router'
 
 import './assets/main.css'
+import './assets/animations.css'
 import { initTheme } from './assets/theme'
 import { initUiDensity } from './utils/uiDensity'
 import { initThemePreset } from './utils/themePreset'

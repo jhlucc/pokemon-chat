@@ -149,23 +149,10 @@
         'font-larger': meta.fontSize === 'larger'
       }"
     >
-      <div v-if="conv.messages.length === 0" class="chat-empty">
-        <div class="chat-empty__hero">
-          <h1>你好，我是可萌</h1>
-          <p>一个基于宝可梦知识图谱的智能助手</p>
-        </div>
-        <div class="chat-empty__prompts">
-          <button
-            v-for="(exp, key) in examples"
-            :key="key"
-            type="button"
-            class="prompt-card"
-            @click="conv.inputText = exp"
-          >
-            {{ exp }}
-          </button>
-        </div>
-      </div>
+      <WelcomeHero
+        v-if="conv.messages.length === 0"
+        @select="(prompt) => { conv.inputText = prompt }"
+      />
       <MessageComponent
         v-for="message in conv.messages"
         :message="message"
@@ -247,6 +234,7 @@ import { onClickOutside, useDebounceFn } from '@vueuse/core'
 import { useConfigStore } from '@/stores/config'
 import { message } from 'ant-design-vue'
 import ChatCapabilityBar from '@/components/chat/ChatCapabilityBar.vue'
+import WelcomeHero from '@/components/chat/WelcomeHero.vue'
 import MessageInputComponent from '@/components/MessageInputComponent.vue'
 import MessageComponent from '@/components/MessageComponent.vue'
 import { readNdjsonStream } from '@/utils/ndjsonStream'
@@ -331,7 +319,6 @@ const userIsScrolling = ref(false)
 const shouldAutoScroll = ref(true)
 
 const panel = ref(null)
-const examples = ref(['喜欢小智吗？', '今天常州天气怎么样？', '介绍一下皮卡丘', '今天星期几？'])
 
 const opts = reactive({
   showPanel: false,

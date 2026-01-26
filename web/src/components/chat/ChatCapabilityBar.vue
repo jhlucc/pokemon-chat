@@ -1,9 +1,11 @@
 <template>
   <div class="capability-bar">
+    <!-- Agent 模式主开关 -->
     <a-tooltip :title="agentTooltip">
       <div
         :class="{
-          'opt-item': true,
+          'capability-chip': true,
+          'capability-chip--agent': true,
           active: useAgent,
           disabled: !canAgent
         }"
@@ -15,56 +17,63 @@
         @keydown.enter.prevent="emit('toggle-agent')"
         @keydown.space.prevent="emit('toggle-agent')"
       >
-        <RobotOutlined style="margin-right: 3px" />
-        Agent 模式
+        <RobotOutlined class="chip-icon" />
+        <span class="chip-label">智能模式</span>
+        <span class="chip-status" :class="{ on: useAgent }">
+          {{ useAgent ? 'ON' : 'OFF' }}
+        </span>
       </div>
     </a-tooltip>
 
+    <!-- 分隔线 (Agent 关闭时显示) -->
+    <div v-if="!useAgent && hasAnyCapability" class="capability-divider"></div>
+
+    <!-- 手动配置选项 (Agent 关闭时显示) -->
     <template v-if="!useAgent">
       <a-tooltip v-if="showWebSearch" :title="webTooltip">
         <div
           :class="{
-            'opt-item': true,
+            'capability-chip': true,
             active: useWeb,
             disabled: !canWebSearch
           }"
           role="button"
           :tabindex="canWebSearch ? 0 : -1"
           :aria-disabled="!canWebSearch"
-          aria-label="切换 联网搜索"
+          aria-label="切换联网搜索"
           @click="emit('toggle-web')"
           @keydown.enter.prevent="emit('toggle-web')"
           @keydown.space.prevent="emit('toggle-web')"
         >
-          <CompassOutlined style="margin-right: 3px" />
-          联网搜索
+          <GlobalOutlined class="chip-icon" />
+          <span class="chip-label">联网</span>
         </div>
       </a-tooltip>
 
       <a-tooltip v-if="showKnowledgeGraph" :title="graphTooltip">
         <div
           :class="{
-            'opt-item': true,
+            'capability-chip': true,
             active: useGraph,
             disabled: !canGraph
           }"
           role="button"
           :tabindex="canGraph ? 0 : -1"
           :aria-disabled="!canGraph"
-          aria-label="切换 知识图谱"
+          aria-label="切换知识图谱"
           @click="emit('toggle-graph')"
           @keydown.enter.prevent="emit('toggle-graph')"
           @keydown.space.prevent="emit('toggle-graph')"
         >
-          <DeploymentUnitOutlined style="margin-right: 3px" />
-          知识图谱
+          <ApartmentOutlined class="chip-icon" />
+          <span class="chip-label">图谱</span>
         </div>
       </a-tooltip>
 
       <a-tooltip v-if="showMcp" :title="mcpTooltip">
         <div
           :class="{
-            'opt-item': true,
+            'capability-chip': true,
             active: useMcp,
             disabled: !canMcp
           }"
@@ -76,39 +85,53 @@
           @keydown.enter.prevent="emit('toggle-mcp')"
           @keydown.space.prevent="emit('toggle-mcp')"
         >
-          <DatabaseOutlined style="margin-right: 3px" />
-          MCP
+          <ApiOutlined class="chip-icon" />
+          <span class="chip-label">MCP</span>
         </div>
       </a-tooltip>
 
       <a-tooltip v-if="showKnowledgeBase" :title="kbTooltip">
         <a-dropdown
           :disabled="!canKb || databases.length === 0"
-          :class="{
-            'opt-item': true,
-            active: selectedKbIndex !== null,
-            disabled: !canKb || databases.length === 0
-          }"
+          placement="topLeft"
         >
-          <a class="ant-dropdown-link" @click.prevent aria-label="选择知识库">
-            <BookOutlined style="margin-right: 3px" />
-            <span class="text">
-              {{
-                selectedKbIndex === null
-                  ? databases.length > 0
-                    ? '不使用知识库'
-                    : '暂无知识库'
-                  : databases[selectedKbIndex]?.name
-              }}
+          <div
+            :class="{
+              'capability-chip': true,
+              'capability-chip--dropdown': true,
+              active: selectedKbIndex !== null,
+              disabled: !canKb || databases.length === 0
+            }"
+            role="button"
+            :tabindex="canKb ? 0 : -1"
+            aria-label="选择知识库"
+          >
+            <BookOutlined class="chip-icon" />
+            <span class="chip-label">
+              {{ selectedKbIndex === null ? '知识库' : databases[selectedKbIndex]?.name }}
             </span>
-          </a>
+            <DownOutlined class="chip-caret" />
+          </div>
           <template #overlay>
-            <a-menu>
-              <a-menu-item v-for="(db, index) in databases" :key="index" :disabled="!canKb" @click="emit('select-kb', index)">
-                <a href="javascript:;">{{ db.name }}</a>
+            <a-menu class="kb-menu">
+              <a-menu-item
+                v-for="(db, index) in databases"
+                :key="index"
+                :class="{ 'is-selected': selectedKbIndex === index }"
+                @click="emit('select-kb', index)"
+              >
+                <div class="kb-menu-item">
+                  <BookOutlined />
+                  <span>{{ db.name }}</span>
+                  <CheckOutlined v-if="selectedKbIndex === index" class="check-icon" />
+                </div>
               </a-menu-item>
-              <a-menu-item :disabled="!canKb" @click="emit('select-kb', null)">
-                <a href="javascript:;">不使用</a>
+              <a-menu-divider />
+              <a-menu-item @click="emit('select-kb', null)">
+                <div class="kb-menu-item">
+                  <CloseCircleOutlined />
+                  <span>不使用知识库</span>
+                </div>
               </a-menu-item>
             </a-menu>
           </template>
@@ -122,10 +145,13 @@
 import { computed } from 'vue'
 import {
   BookOutlined,
-  CompassOutlined,
-  DatabaseOutlined,
-  DeploymentUnitOutlined,
-  RobotOutlined
+  GlobalOutlined,
+  ApiOutlined,
+  ApartmentOutlined,
+  RobotOutlined,
+  DownOutlined,
+  CheckOutlined,
+  CloseCircleOutlined
 } from '@ant-design/icons-vue'
 
 const props = defineProps<{
@@ -160,27 +186,31 @@ const showKnowledgeGraph = computed(() => props.showKnowledgeGraph !== false)
 const showMcp = computed(() => props.showMcp !== false)
 const showKnowledgeBase = computed(() => props.showKnowledgeBase !== false)
 
+const hasAnyCapability = computed(
+  () => showWebSearch.value || showKnowledgeGraph.value || showMcp.value || showKnowledgeBase.value
+)
+
 const agentTooltip = computed(() =>
   !props.canAgent
     ? '服务未连接'
     : props.useAgent
-      ? 'Agent 模式已开启：由 supervisor_agent 自动路由到子 worker（无需手动选择）'
-      : '开启总 Agent（supervisor_agent）统一编排'
+      ? '智能模式：AI 自动选择最佳检索策略'
+      : '开启智能模式（推荐）'
 )
 const webTooltip = computed(() => {
-  if (props.canWebSearch) return ''
+  if (props.canWebSearch) return props.useWeb ? '已启用联网搜索' : '启用联网搜索'
   return props.backendOnline ? '后端未启用联网搜索' : '服务未连接'
 })
 const graphTooltip = computed(() => {
-  if (props.canGraph) return ''
+  if (props.canGraph) return props.useGraph ? '已启用知识图谱' : '启用知识图谱'
   return props.backendOnline ? '后端未启用知识图谱' : '服务未连接'
 })
 const mcpTooltip = computed(() => {
-  if (props.canMcp) return ''
+  if (props.canMcp) return props.useMcp ? '已启用 MCP' : '启用 MCP 服务'
   return props.backendOnline ? '后端未启用 MCP' : '服务未连接'
 })
 const kbTooltip = computed(() => {
-  if (props.canKb) return ''
+  if (props.canKb) return '选择知识库'
   return props.backendOnline ? '后端未启用知识库' : '服务未连接'
 })
 </script>
@@ -189,11 +219,149 @@ const kbTooltip = computed(() => {
 .capability-bar {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: var(--space-2);
   flex-wrap: wrap;
 }
 
-.ant-dropdown-link {
-  color: inherit;
+.capability-divider {
+  width: 1px;
+  height: 20px;
+  background: var(--gray-200);
+  margin: 0 var(--space-1);
+}
+
+.capability-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--gray-200);
+  background: var(--surface-color);
+  font-size: var(--font-size-xs);
+  color: var(--gray-600);
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-default);
+  user-select: none;
+  white-space: nowrap;
+
+  .chip-icon {
+    font-size: 14px;
+    opacity: 0.8;
+  }
+
+  .chip-label {
+    font-weight: 500;
+  }
+
+  .chip-caret {
+    font-size: 10px;
+    opacity: 0.6;
+    margin-left: 2px;
+  }
+
+  &:hover:not(.disabled) {
+    border-color: var(--primary-color);
+    color: var(--primary-color);
+    background: var(--main-5);
+  }
+
+  &:focus-visible {
+    outline: none;
+    box-shadow: var(--focus-ring);
+  }
+
+  &.active {
+    border-color: var(--primary-color);
+    color: var(--primary-color);
+    background: var(--main-10);
+
+    .chip-icon {
+      opacity: 1;
+    }
+  }
+
+  &.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    pointer-events: none;
+  }
+
+  /* Agent 模式特殊样式 */
+  &.capability-chip--agent {
+    background: linear-gradient(135deg, var(--surface-color), var(--gray-50));
+    border-color: var(--gray-300);
+
+    .chip-status {
+      font-size: 10px;
+      font-weight: 700;
+      padding: 2px 6px;
+      border-radius: 4px;
+      background: var(--gray-200);
+      color: var(--gray-500);
+      margin-left: 4px;
+      transition: all var(--duration-fast) var(--ease-default);
+
+      &.on {
+        background: var(--primary-color);
+        color: white;
+      }
+    }
+
+    &.active {
+      background: linear-gradient(135deg, var(--main-5), var(--main-10));
+      border-color: var(--primary-color);
+      box-shadow: 0 2px 8px rgba(255, 83, 80, 0.15);
+    }
+  }
+}
+
+/* 知识库下拉菜单 */
+.kb-menu {
+  min-width: 180px;
+
+  .kb-menu-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+
+    .check-icon {
+      margin-left: auto;
+      color: var(--primary-color);
+    }
+  }
+
+  :deep(.ant-dropdown-menu-item) {
+    &.is-selected {
+      background: var(--main-5);
+      color: var(--primary-color);
+    }
+  }
+}
+
+/* 响应式 */
+@media (max-width: 640px) {
+  .capability-chip {
+    padding: 4px 8px;
+
+    .chip-label {
+      display: none;
+    }
+
+    &.capability-chip--agent .chip-label {
+      display: inline;
+    }
+
+    &.capability-chip--dropdown .chip-label {
+      display: inline;
+      max-width: 60px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+  }
+
+  .capability-divider {
+    display: none;
+  }
 }
 </style>
