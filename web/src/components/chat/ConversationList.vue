@@ -574,17 +574,17 @@ const escapeRegExp = (string) => {
 .empty-state {
   padding: var(--space-8) var(--space-4);
 
-  .empty-icon {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 48px;
-    height: 48px;
-    margin: 0 auto var(--space-4);
-    border-radius: 50%;
-    background: var(--gray-100);
-    color: var(--gray-400);
-    font-size: 24px;
+  .empty-image {
+    width: 120px;
+    height: 120px;
+    object-fit: contain;
+    margin-bottom: var(--space-4);
+    opacity: 0.9;
+  }
+
+  .empty-text {
+    color: var(--gray-500);
+    font-size: var(--font-size-sm);
   }
 
   :deep(.ant-empty-description) {
