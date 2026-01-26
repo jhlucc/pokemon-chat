@@ -27,6 +27,10 @@ export default defineConfig(({ mode }) => {
       // Enable sourcemaps only when explicitly requested (useful for staging).
       sourcemap: env.VITE_SOURCEMAP === 'true',
       chunkSizeWarningLimit: 1500,
+      // CSS 代码分割
+      cssCodeSplit: true,
+      // 小于 4KB 的资源内联为 base64
+      assetsInlineLimit: 4096,
       rollupOptions: {
         output: {
           // Split large vendor bundles for better caching and faster initial load.

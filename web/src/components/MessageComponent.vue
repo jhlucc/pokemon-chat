@@ -2,8 +2,10 @@
   <div
     class="message-wrapper hover-reveal-trigger"
     :class="{ 'from-user': isUser, 'from-ai': !isUser }"
+    role="article"
+    :aria-label="isUser ? '用户消息' : '助手消息'"
   >
-    <img class="avatar" :src="`/${avatar}`" alt="avatar" />
+    <img class="avatar" :src="`/${avatar}`" :alt="isUser ? '用户头像' : '助手头像'" />
     <div class="message-box" :class="message.role">
       <!-- 用户消息 -->
       <template v-if="isUser">
@@ -290,20 +292,20 @@ const filteredRefs = computed(() => {
   &.from-user {
     flex-direction: row-reverse;
     .message-box {
-      background: linear-gradient(135deg, var(--pokedex-red), #ff706d);
-      color: #ffffff;
+      background: var(--gradient-primary);
+      color: var(--message-user-text);
       border: none;
-      box-shadow: 0 4px 12px rgba(255, 83, 80, 0.2);
-      border-radius: var(--radius-md) var(--radius-md) var(--radius-xs) var(--radius-md);
-      max-width: min(600px, 85%);
+      box-shadow: var(--message-user-shadow);
+      border-radius: var(--message-user-radius);
+      max-width: var(--message-max-width);
 
-      :deep(a) { color: #fff; text-decoration: underline; }
+      :deep(a) { color: var(--message-user-text); text-decoration: underline; }
     }
 
     .avatar {
       margin-left: var(--space-3);
       margin-right: 0;
-      box-shadow: 0 4px 12px rgba(255, 83, 80, 0.15);
+      box-shadow: var(--message-user-shadow);
     }
   }
 
@@ -553,7 +555,7 @@ const filteredRefs = computed(() => {
 .message-toolbar {
   display: flex;
   align-items: center;
-  gap: 2px;
+  gap: var(--toolbar-gap);
   margin-bottom: var(--space-2);
   transition: opacity var(--duration-fast) var(--ease-default);
 }
@@ -562,15 +564,15 @@ const filteredRefs = computed(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 30px;
-  height: 30px;
+  width: var(--toolbar-btn-size);
+  height: var(--toolbar-btn-size);
   border: none;
   border-radius: var(--radius-sm);
   background: transparent;
   color: var(--gray-500);
   cursor: pointer;
   transition: all var(--duration-fast) var(--ease-default);
-  font-size: 14px;
+  font-size: var(--font-size-base);
 
   &:hover {
     background: var(--hover-bg);
@@ -579,7 +581,7 @@ const filteredRefs = computed(() => {
 
   &.active {
     color: var(--primary-color);
-    background: var(--main-5);
+    background: color-mix(in srgb, var(--primary-color) 5%, transparent);
   }
 }
 
@@ -701,7 +703,7 @@ const filteredRefs = computed(() => {
     text-decoration: none;
   }
   a:hover {
-    color: var(--main-400);
+    color: var(--primary-light-color);
     text-decoration: underline;
   }
   code {

@@ -65,7 +65,12 @@
     </div>
 
     <!-- Conversation List -->
-    <div class="conversation-list" ref="listRef">
+    <div
+      class="conversation-list"
+      ref="listRef"
+      role="listbox"
+      aria-label="对话列表"
+    >
       <template v-if="groupedConversations.length > 0">
         <div
           v-for="group in groupedConversations"
@@ -83,9 +88,10 @@
             class="conversation-item"
             :class="{ active: activeIndex === item.index }"
             @click="emit('select', item.index)"
-            role="button"
+            role="option"
             tabindex="0"
-            :aria-current="activeIndex === item.index ? 'page' : undefined"
+            :aria-selected="activeIndex === item.index"
+            :aria-label="item.conv.title || '未命名对话'"
             @keydown.enter.prevent="emit('select', item.index)"
             @keydown.space.prevent="emit('select', item.index)"
           >
@@ -361,13 +367,13 @@ const escapeRegExp = (string) => {
 
   &--primary {
     background: var(--primary-color);
-    color: white;
-    box-shadow: 0 2px 8px rgba(255, 83, 80, 0.3);
+    color: var(--message-user-text);
+    box-shadow: var(--message-user-shadow);
 
     &:hover {
-      background: var(--main-600);
+      background: var(--primary-light-color);
       transform: scale(1.05);
-      box-shadow: 0 4px 12px rgba(255, 83, 80, 0.4);
+      box-shadow: 0 4px 12px color-mix(in srgb, var(--primary-color) 40%, transparent);
     }
   }
 }
@@ -440,10 +446,10 @@ const escapeRegExp = (string) => {
   }
 
   .group-count {
-    background: var(--gray-100);
+    background: var(--surface-color-2);
     padding: 2px 6px;
-    border-radius: 8px;
-    font-size: 10px;
+    border-radius: var(--radius-sm);
+    font-size: var(--font-size-xs);
     color: var(--gray-500);
   }
 }
@@ -470,7 +476,7 @@ const escapeRegExp = (string) => {
   }
 
   &.active {
-    background: var(--main-5);
+    background: color-mix(in srgb, var(--primary-color) 8%, transparent);
     border-color: var(--primary-color);
 
     &::before {
@@ -527,7 +533,7 @@ const escapeRegExp = (string) => {
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  font-size: 11px;
+  font-size: var(--font-size-xs);
   color: var(--gray-400);
 
   .item-time {

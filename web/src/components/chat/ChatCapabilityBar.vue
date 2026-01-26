@@ -233,8 +233,8 @@ const kbTooltip = computed(() => {
 .capability-chip {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 6px 12px;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
   border-radius: var(--radius-sm);
   border: 1px solid var(--gray-200);
   background: var(--surface-color);
@@ -246,7 +246,7 @@ const kbTooltip = computed(() => {
   white-space: nowrap;
 
   .chip-icon {
-    font-size: 14px;
+    font-size: var(--font-size-sm);
     opacity: 0.8;
   }
 
@@ -255,15 +255,15 @@ const kbTooltip = computed(() => {
   }
 
   .chip-caret {
-    font-size: 10px;
+    font-size: var(--font-size-xs);
     opacity: 0.6;
-    margin-left: 2px;
+    margin-left: var(--space-1);
   }
 
   &:hover:not(.disabled) {
     border-color: var(--primary-color);
     color: var(--primary-color);
-    background: var(--main-5);
+    background: color-mix(in srgb, var(--primary-color) 5%, transparent);
   }
 
   &:focus-visible {
@@ -274,7 +274,7 @@ const kbTooltip = computed(() => {
   &.active {
     border-color: var(--primary-color);
     color: var(--primary-color);
-    background: var(--main-10);
+    background: color-mix(in srgb, var(--primary-color) 10%, transparent);
 
     .chip-icon {
       opacity: 1;
@@ -282,7 +282,7 @@ const kbTooltip = computed(() => {
   }
 
   &.disabled {
-    opacity: 0.5;
+    opacity: var(--opacity-disabled);
     cursor: not-allowed;
     pointer-events: none;
   }
@@ -293,25 +293,25 @@ const kbTooltip = computed(() => {
     border-color: var(--gray-300);
 
     .chip-status {
-      font-size: 10px;
+      font-size: var(--font-size-xs);
       font-weight: 700;
-      padding: 2px 6px;
-      border-radius: 4px;
+      padding: var(--space-1) var(--space-2);
+      border-radius: var(--radius-xs);
       background: var(--gray-200);
       color: var(--gray-500);
-      margin-left: 4px;
+      margin-left: var(--space-1);
       transition: all var(--duration-fast) var(--ease-default);
 
       &.on {
         background: var(--primary-color);
-        color: white;
+        color: var(--message-user-text);
       }
     }
 
     &.active {
-      background: linear-gradient(135deg, var(--main-5), var(--main-10));
+      background: linear-gradient(135deg, color-mix(in srgb, var(--primary-color) 5%, transparent), color-mix(in srgb, var(--primary-color) 10%, transparent));
       border-color: var(--primary-color);
-      box-shadow: 0 2px 8px rgba(255, 83, 80, 0.15);
+      box-shadow: 0 2px 8px color-mix(in srgb, var(--primary-color) 15%, transparent);
     }
   }
 }
@@ -323,7 +323,7 @@ const kbTooltip = computed(() => {
   .kb-menu-item {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: var(--space-2);
 
     .check-icon {
       margin-left: auto;
@@ -333,7 +333,7 @@ const kbTooltip = computed(() => {
 
   :deep(.ant-dropdown-menu-item) {
     &.is-selected {
-      background: var(--main-5);
+      background: color-mix(in srgb, var(--primary-color) 5%, transparent);
       color: var(--primary-color);
     }
   }
@@ -342,7 +342,7 @@ const kbTooltip = computed(() => {
 /* 响应式 */
 @media (max-width: 640px) {
   .capability-chip {
-    padding: 4px 8px;
+    padding: var(--space-1) var(--space-2);
 
     .chip-label {
       display: none;

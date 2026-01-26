@@ -1,4 +1,5 @@
 @import './base.css';
+@import './tokens.css';
 
 /* layout */
 :root {
@@ -69,8 +70,8 @@
   --header-desc: var(--gray-600);
   --input-bg-color: var(--input-background-color);
   --input-border-color: var(--gray-300);
-  --button-bg-color: var(--main-500);
-  --button-hover-bg-color: var(--main-600);
+  --button-bg-color: var(--primary-color);
+  --button-hover-bg-color: var(--primary-light-color);
 }
 
 :root[data-theme='dark'] {
@@ -82,8 +83,8 @@
   --header-desc: var(--gray-600);
   --input-bg-color: var(--input-background-color);
   --input-border-color: var(--border-color);
-  --button-bg-color: var(--main-400);
-  --button-hover-bg-color: var(--main-300);
+  --button-bg-color: var(--primary-light-color);
+  --button-hover-bg-color: var(--primary-color);
 }
 
 /* 具体区域应用变量 */

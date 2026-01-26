@@ -144,6 +144,9 @@
     </div>
     <div
       class="chat-box"
+      role="log"
+      aria-live="polite"
+      aria-label="聊天消息"
       :class="{
         'wide-screen': meta.wideScreen,
         'font-smaller': meta.fontSize === 'smaller',
@@ -865,23 +868,23 @@ const selectModel = (provider, name) => {
     position: sticky;
     top: 0;
     z-index: 10;
-    
+
     /* Glassmorphism Header */
-    background: rgba(255, 255, 255, 0.7);
-    backdrop-filter: blur(12px);
-    border-bottom: 1px solid rgba(0,0,0,0.05);
-    
+    background: var(--glass-bg);
+    backdrop-filter: blur(var(--blur-md));
+    border-bottom: 1px solid var(--border-color);
+
     height: var(--header-height);
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 12px 24px;
+    padding: var(--space-3) var(--space-6);
 
     .header__left,
     .header__right {
       display: flex;
       align-items: center;
-      gap: 12px;
+      gap: var(--space-3);
     }
 
     .header__left {
@@ -892,19 +895,19 @@ const selectModel = (provider, name) => {
   }
 
   .nav-btn {
-    height: 2.5rem;
+    height: var(--button-height-lg);
     display: flex;
     justify-content: center;
     align-items: center;
-    border-radius: 12px;
+    border-radius: var(--radius-sm);
     color: var(--text-color);
     cursor: pointer;
     width: auto;
-    transition: all 0.3s;
-    padding: 0.5rem 0.75rem;
+    transition: all var(--duration-slow);
+    padding: var(--space-2) var(--space-3);
 
     .text {
-      margin-left: 8px;
+      margin-left: var(--space-2);
       font-weight: 500;
     }
 
@@ -917,36 +920,36 @@ const selectModel = (provider, name) => {
   .model-select {
     display: inline-flex;
     align-items: center;
-    gap: 8px;
-    padding: 6px 16px;
-    border-radius: 20px;
+    gap: var(--space-2);
+    padding: 6px var(--space-4);
+    border-radius: var(--radius-lg);
     /* Tech Pill Style */
     border: 1px solid var(--border-color);
-    background: rgba(255,255,255,0.5);
-    backdrop-filter: blur(4px);
-    
+    background: color-mix(in srgb, var(--glass-bg) 70%, transparent);
+    backdrop-filter: blur(var(--blur-sm));
+
     color: var(--text-color);
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition: all var(--duration-base) ease;
     max-width: 300px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.02);
+    box-shadow: var(--shadow-xs);
 
     &:hover {
-      background: #fff;
+      background: var(--surface-color);
       border-color: var(--primary-color);
-      box-shadow: 0 4px 12px rgba(255, 83, 80, 0.15);
+      box-shadow: var(--shadow-sm);
       transform: translateY(-1px);
     }
 
     .text {
       font-weight: 500;
-      font-size: 0.9rem;
+      font-size: var(--font-size-sm);
     }
 
     .model-select-icon {
       width: 18px;
       height: 18px;
-      border-radius: 4px;
+      border-radius: var(--radius-xs);
       object-fit: contain;
     }
 
@@ -990,26 +993,26 @@ const selectModel = (provider, name) => {
 
 .options-panel {
   position: absolute;
-  margin-top: 8px;
-  background-color: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(10px);
+  margin-top: var(--space-2);
+  background-color: color-mix(in srgb, var(--surface-color) 95%, transparent);
+  backdrop-filter: blur(var(--blur-md));
   border: 1px solid var(--border-color);
-  box-shadow: 0 8px 32px rgba(0,0,0,0.12);
-  border-radius: 16px;
-  padding: 16px;
+  box-shadow: var(--shadow-md);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
   z-index: 11;
   width: 300px;
-  transition: transform 0.2s ease, opacity 0.2s ease;
+  transition: transform var(--duration-base) ease, opacity var(--duration-base) ease;
 
   .options-row {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    gap: 10px;
-    padding: 10px 12px;
-    border-radius: 8px;
+    gap: var(--space-2);
+    padding: var(--space-2) var(--space-3);
+    border-radius: var(--radius-sm);
     cursor: pointer;
-    transition: background-color 0.2s;
+    transition: background-color var(--duration-base);
     font-weight: 500;
     color: var(--gray-700);
 
@@ -1017,8 +1020,8 @@ const selectModel = (provider, name) => {
       background-color: var(--hover-bg);
       color: var(--primary-color);
     }
-    
-    .anticon { margin-right: 8px; }
+
+    .anticon { margin-right: var(--space-2); }
   }
 }
 
@@ -1039,27 +1042,27 @@ const selectModel = (provider, name) => {
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  gap: 32px;
+  gap: var(--space-8);
   text-align: center;
-  padding: 32px 0;
+  padding: var(--space-8) 0;
   z-index: 1;
 
   .chat-empty__hero {
     max-width: 720px;
     h1 {
-      margin: 0 0 12px;
-      font-size: 28px;
+      margin: 0 0 var(--space-3);
+      font-size: var(--font-size-3xl);
       font-weight: 800;
       color: var(--gray-900);
       letter-spacing: -0.5px;
-      background: linear-gradient(120deg, var(--pokedex-red), #ff8a88);
+      background: var(--gradient-hero);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
     }
     p {
       margin: 0;
       color: var(--gray-600);
-      font-size: 16px;
+      font-size: var(--font-size-lg);
     }
   }
 
@@ -1068,22 +1071,22 @@ const selectModel = (provider, name) => {
     max-width: 680px;
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 16px;
+    gap: var(--space-4);
   }
 
   .prompt-card {
     position: relative;
     text-align: left;
     /* Rich Tech Data Chip Style */
-    background: rgba(255, 255, 255, 0.7);
-    backdrop-filter: blur(10px);
-    border: 1px solid rgba(0, 0, 0, 0.05);
+    background: var(--glass-bg);
+    backdrop-filter: blur(var(--blur-md));
+    border: 1px solid var(--border-color);
     color: var(--gray-800);
-    border-radius: 16px;
-    padding: 16px 20px;
+    border-radius: var(--radius-md);
+    padding: var(--space-4) var(--space-5);
     cursor: pointer;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
-    transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+    box-shadow: var(--shadow-xs);
+    transition: all var(--duration-slow) var(--ease-default);
     font-weight: 500;
     overflow: hidden;
 
@@ -1097,13 +1100,13 @@ const selectModel = (provider, name) => {
       width: 4px;
       background: var(--pokedex-red);
       opacity: 0.6;
-      transition: all 0.3s ease;
+      transition: all var(--duration-slow) ease;
     }
 
     &:hover {
-      background: #fff;
+      background: var(--surface-color);
       border-color: var(--pokedex-red);
-      box-shadow: 0 8px 24px rgba(255, 83, 80, 0.15);
+      box-shadow: var(--shadow-sm);
       transform: translateY(-2px);
 
       &::before {
@@ -1115,7 +1118,7 @@ const selectModel = (provider, name) => {
 
     &:active {
       transform: translateY(0);
-      box-shadow: 0 2px 8px rgba(255, 83, 80, 0.1);
+      box-shadow: var(--shadow-xs);
     }
   }
 }
@@ -1151,7 +1154,7 @@ const selectModel = (provider, name) => {
   bottom: 0;
   width: 100%;
   margin: 0 auto;
-  padding: 12px 2rem 24px 2rem;
+  padding: var(--space-3) 2rem var(--space-6) 2rem;
   /* Gradient fade at bottom to mask content scrolling behind input */
   background: linear-gradient(to top, var(--background-color) 60%, transparent);
   z-index: 20;
@@ -1160,21 +1163,21 @@ const selectModel = (provider, name) => {
     width: 100%;
     max-width: 800px;
     margin: 0 auto;
-    
+
     /* Command Terminal Style */
-    background-color: rgba(255, 255, 255, 0.9);
-    backdrop-filter: blur(10px);
-    border-radius: 24px;
-    box-shadow: 0 8px 30px rgba(0,0,0,0.08);
-    border: 1px solid rgba(255, 255, 255, 0.5);
-    
-    padding: 4px;
-    animation: width 0.3s ease-in-out;
-    transition: all 0.3s ease;
-    
+    background-color: color-mix(in srgb, var(--surface-color) 90%, transparent);
+    backdrop-filter: blur(var(--blur-md));
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+    border: 1px solid var(--border-color);
+
+    padding: var(--space-1);
+    animation: width var(--duration-slow) ease-in-out;
+    transition: all var(--duration-slow) ease;
+
     &:focus-within {
-      box-shadow: 0 12px 40px rgba(255, 83, 80, 0.15);
-      border-color: rgba(255, 83, 80, 0.3);
+      box-shadow: var(--input-shadow-focus);
+      border-color: color-mix(in srgb, var(--primary-color) 30%, transparent);
     }
 
     &.wide-screen {
@@ -1183,11 +1186,11 @@ const selectModel = (provider, name) => {
 
     .note {
       width: 100%;
-      font-size: 12px;
+      font-size: var(--font-size-xs);
       text-align: center;
       padding: 0;
       color: var(--gray-500);
-      margin-top: 8px;
+      margin-top: var(--space-2);
       margin-bottom: 0;
       user-select: none;
     }
@@ -1203,26 +1206,26 @@ const selectModel = (provider, name) => {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 8px 16px;
-  font-size: 14px;
+  padding: var(--space-2) var(--space-4);
+  font-size: var(--font-size-base);
   font-weight: 500;
-  color: #fff;
+  color: var(--message-user-text);
   /* Primary Action Button */
-  background: linear-gradient(135deg, var(--pokedex-red), #ff8a88);
+  background: var(--gradient-primary);
   border: none;
-  border-radius: 20px;
+  border-radius: var(--radius-lg);
   cursor: pointer;
-  box-shadow: 0 4px 12px rgba(255, 83, 80, 0.3);
-  transition: all 0.2s ease;
+  box-shadow: var(--message-user-shadow);
+  transition: all var(--duration-base) ease;
 
   &:hover {
     transform: translateY(-1px);
-    box-shadow: 0 6px 16px rgba(255, 83, 80, 0.4);
-    background: linear-gradient(135deg, #ff6b69, #ff9e9c);
+    box-shadow: var(--shadow-sm);
+    background: var(--gradient-primary-hover);
   }
 
   .icon {
-    font-size: 16px;
+    font-size: var(--font-size-lg);
   }
 
   .text {

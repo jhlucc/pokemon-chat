@@ -1,0 +1,89 @@
+/* ============================================
+   Pokemon-Chat Design Tokens
+   统一管理设计令牌，消除硬编码值
+   ============================================ */
+
+:root {
+  /* === 扩展圆角令牌 === */
+  /* 用于替换组件中的 12px, 20px 等硬编码值 */
+  --radius-xl: 32px;
+  --radius-full: 9999px;
+
+  /* === 渐变色令牌 === */
+  /* 用于替换组件中分散的渐变定义 */
+  --gradient-primary: linear-gradient(135deg, var(--pokedex-red), #ff8a88);
+  --gradient-primary-hover: linear-gradient(135deg, var(--primary-light-color), #ffb3b0);
+  --gradient-hero: linear-gradient(120deg, var(--pokedex-red), #ff8a88);
+
+  /* === 消息气泡专用令牌 === */
+  --message-user-bg: var(--gradient-primary);
+  --message-user-text: #ffffff;
+  --message-user-shadow: 0 4px 12px rgba(255, 83, 80, 0.2);
+  --message-user-radius: var(--radius-md) var(--radius-md) var(--radius-xs) var(--radius-md);
+
+  --message-assistant-bg: var(--surface-color);
+  --message-assistant-text: var(--text-color);
+  --message-assistant-radius: var(--radius-md) var(--radius-md) var(--radius-md) var(--radius-xs);
+
+  /* === 卡片和面板令牌 === */
+  --card-bg: var(--surface-color);
+  --card-border: 1px solid var(--border-color);
+  --card-radius: var(--radius-md);
+  --card-shadow: var(--shadow-xs);
+  --card-shadow-hover: var(--shadow-sm);
+
+  /* === 输入框令牌 === */
+  --input-radius: var(--radius-lg);
+  --input-border: 1px solid var(--border-color);
+  --input-shadow-focus: 0 0 0 3px rgba(255, 83, 80, 0.15);
+
+  /* === 按钮令牌 === */
+  --btn-radius: var(--radius-sm);
+  --btn-radius-lg: var(--radius-md);
+  --btn-padding: var(--space-2) var(--space-4);
+  --btn-padding-sm: var(--space-1) var(--space-2);
+
+  /* === 工具栏令牌 === */
+  --toolbar-btn-size: 30px;
+  --toolbar-gap: var(--space-1);
+
+  /* === 头像尺寸令牌 === */
+  --avatar-size-sm: 32px;
+  --avatar-size-md: 40px;
+  --avatar-size-lg: 64px;
+  --avatar-size-xl: 80px;
+
+  /* === 容器宽度令牌 === */
+  --message-max-width: min(600px, 85%);
+  --content-max-width: 1280px;
+  --sidebar-width: 280px;
+
+  /* === 响应式断点 (用于 JS 引用) === */
+  --breakpoint-xs: 400px;
+  --breakpoint-sm: 520px;
+  --breakpoint-md: 640px;
+  --breakpoint-lg: 768px;
+  --breakpoint-xl: 1024px;
+  --breakpoint-2xl: 1280px;
+
+  /* === 透明度令牌 === */
+  --opacity-disabled: 0.5;
+  --opacity-hover: 0.8;
+  --opacity-backdrop: 0.5;
+
+  /* === 模糊效果令牌 === */
+  --blur-sm: 8px;
+  --blur-md: 12px;
+  --blur-lg: 20px;
+}
+
+/* === 暗色模式覆盖 === */
+:root[data-theme='dark'] {
+  /* 消息气泡暗色模式 */
+  --message-user-text: #000000;
+  --message-user-shadow: 0 4px 12px rgba(255, 107, 105, 0.3);
+
+  /* 渐变暗色调整 */
+  --gradient-primary: linear-gradient(135deg, var(--pokedex-red), #ff9a98);
+  --gradient-primary-hover: linear-gradient(135deg, #ffb5b3, #ffc8c6);
+}

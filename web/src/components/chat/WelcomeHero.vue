@@ -2,13 +2,13 @@
   <div class="welcome-hero animate-fade-in">
     <!-- Background Decoration -->
     <div class="hero-bg-decor">
-      <img src="/welcome-bg.png" alt="" class="bg-image" />
+      <img src="/welcome-bg.png" alt="" class="bg-image" loading="lazy" decoding="async" />
     </div>
 
     <!-- Hero Section -->
     <div class="hero-section">
       <div class="hero-avatar">
-        <img :src="avatarSrc" alt="可萌" class="avatar-image animate-float" />
+        <img :src="avatarSrc" alt="可萌" class="avatar-image animate-float" loading="lazy" />
       </div>
 
       <div class="hero-content">
