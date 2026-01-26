@@ -266,17 +266,26 @@ const handleSendOrStop = () => {
       flex: 1;
 
       :deep(.opt-item) {
+        display: inline-flex;
+        align-items: center;
         border-radius: 12px;
         border: 1px solid var(--gray-300);
-        padding: 5px 10px;
+        padding: 8px 12px;
+        min-height: 36px;
         cursor: pointer;
         font-size: 12px;
         color: var(--gray-700);
         transition: all 0.2s ease;
+        user-select: none;
 
         &:hover {
           background-color: var(--main-10);
           color: var(--main-600);
+        }
+
+        &:focus-visible {
+          outline: none;
+          box-shadow: var(--focus-ring);
         }
 
         &.active {

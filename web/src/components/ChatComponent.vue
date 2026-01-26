@@ -201,129 +201,29 @@
           @keydown="handleKeyDown"
         >
           <template #options-left>
-            <a-tooltip :title="canAgent ? '开启总 Agent（supervisor_agent）统一编排' : '后端离线/不可用'">
-              <div
-                :class="{
-                  switch: true,
-                  'opt-item': true,
-                  active: meta.use_agent,
-                  disabled: !canAgent
-                }"
-                @click="toggleAgent"
-                role="button"
-                tabindex="0"
-                aria-label="切换 Agent"
-                @keydown.enter.prevent="toggleAgent"
-                @keydown.space.prevent="toggleAgent"
-              >
-                <RobotOutlined style="margin-right: 3px" />
-                Agent
-              </div>
-            </a-tooltip>
-
-            <template v-if="!meta.use_agent">
-            <a-tooltip
-              v-if="configStore.config?.ui?.show_web_search !== false"
-              :title="canWebSearch ? '' : backendOnline ? '后端未启用联网搜索' : '后端离线/不可用'"
-            >
-              <div
-                :class="{
-                  switch: true,
-                  'opt-item': true,
-                  active: meta.use_web,
-                  disabled: !canWebSearch
-                }"
-                @click="toggleWebSearch"
-                role="button"
-                tabindex="0"
-                aria-label="切换联网搜索"
-                @keydown.enter.prevent="toggleWebSearch"
-                @keydown.space.prevent="toggleWebSearch"
-              >
-                <CompassOutlined style="margin-right: 3px" />
-                联网搜索
-              </div>
-            </a-tooltip>
-            <a-tooltip
-              v-if="configStore.config?.ui?.show_knowledge_graph !== false"
-              :title="canGraph ? '' : backendOnline ? '后端未启用知识图谱' : '后端离线/不可用'"
-            >
-              <div
-                :class="{
-                  switch: true,
-                  'opt-item': true,
-                  active: meta.use_graph,
-                  disabled: !canGraph
-                }"
-                @click="toggleGraph"
-                role="button"
-                tabindex="0"
-                aria-label="切换知识图谱"
-                @keydown.enter.prevent="toggleGraph"
-                @keydown.space.prevent="toggleGraph"
-              >
-                <DeploymentUnitOutlined style="margin-right: 3px" />
-                知识图谱
-              </div>
-            </a-tooltip>
-            <a-tooltip
-              v-if="configStore.config?.ui?.show_mcp !== false"
-              :title="canMcp ? '' : backendOnline ? '后端未启用 MCP' : '后端离线/不可用'"
-            >
-              <div
-                :class="{ switch: true, 'opt-item': true, active: meta.use_mcp, disabled: !canMcp }"
-                @click="toggleMcp"
-                role="button"
-                tabindex="0"
-                aria-label="切换 MCP"
-                @keydown.enter.prevent="toggleMcp"
-                @keydown.space.prevent="toggleMcp"
-              >
-                <DatabaseOutlined style="margin-right: 3px" />MCP
-              </div>
-            </a-tooltip>
-            <a-tooltip
-              v-if="configStore.config?.ui?.show_knowledge_base !== false"
-              :title="canKb ? '' : backendOnline ? '后端未启用知识库' : '后端离线/不可用'"
-            >
-              <a-dropdown
-                :disabled="!canKb || opts.databases.length === 0"
-                :class="{
-                  'opt-item': true,
-                  active: meta.selectedKB !== null,
-                  disabled: !canKb || opts.databases.length === 0
-                }"
-              >
-                <a class="ant-dropdown-link" @click.prevent>
-                  <BookOutlined style="margin-right: 3px" />
-                  <span class="text">
-                    {{
-                      meta.selectedKB === null
-                        ? opts.databases.length > 0
-                          ? '不使用知识库'
-                          : '暂无知识库'
-                        : opts.databases[meta.selectedKB]?.name
-                    }}
-                  </span>
-                </a>
-                <template #overlay>
-                  <a-menu>
-                    <a-menu-item
-                      v-for="(db, index) in opts.databases"
-                      :key="index"
-                      :disabled="!canKb"
-                      @click="useDatabase(index)"
-                    >
-                      <a href="javascript:;">{{ db.name }}</a>
-                    </a-menu-item>
-                    <a-menu-item :disabled="!canKb" @click="useDatabase(null)">
-                      <a href="javascript:;">不使用</a>
-                    </a-menu-item>
-                  </a-menu>
-                </template>
-              </a-dropdown>
-            </a-tooltip>
-            </template>
+            <ChatCapabilityBar
+              :backend-online="backendOnline"
+              :use-agent="meta.use_agent"
+              :can-agent="canAgent"
+              :use-web="meta.use_web"
+              :can-web-search="canWebSearch"
+              :use-graph="meta.use_graph"
+              :can-graph="canGraph"
+              :use-mcp="meta.use_mcp"
+              :can-mcp="canMcp"
+              :selected-kb-index="meta.selectedKB"
+              :can-kb="canKb"
+              :databases="opts.databases"
+              :show-web-search="configStore.config?.ui?.show_web_search"
+              :show-knowledge-graph="configStore.config?.ui?.show_knowledge_graph"
+              :show-mcp="configStore.config?.ui?.show_mcp"
+              :show-knowledge-base="configStore.config?.ui?.show_knowledge_base"
+              @toggle-agent="toggleAgent"
+              @toggle-web="toggleWebSearch"
+              @toggle-graph="toggleGraph"
+              @toggle-mcp="toggleMcp"
+              @select-kb="useDatabase"
+            />
           </template>
         </MessageInputComponent>
         <p class="note">
@@ -338,19 +238,15 @@
 <script setup>
 import { reactive, ref, onMounted, toRefs, nextTick, onUnmounted, watch, computed } from 'vue'
 import {
-  BookOutlined,
-  CompassOutlined,
   PlusCircleOutlined,
   FolderOutlined,
   FolderOpenOutlined,
-  DeploymentUnitOutlined,
-  DatabaseOutlined,
-  RobotOutlined,
   DownOutlined
 } from '@ant-design/icons-vue'
 import { onClickOutside, useDebounceFn } from '@vueuse/core'
 import { useConfigStore } from '@/stores/config'
 import { message } from 'ant-design-vue'
+import ChatCapabilityBar from '@/components/chat/ChatCapabilityBar.vue'
 import MessageInputComponent from '@/components/MessageInputComponent.vue'
 import MessageComponent from '@/components/MessageComponent.vue'
 import { readNdjsonStream } from '@/utils/ndjsonStream'
@@ -413,7 +309,19 @@ const toggleAgent = () => {
     message.info('后端离线/不可用')
     return
   }
-  meta.use_agent = !meta.use_agent
+  const next = !meta.use_agent
+  meta.use_agent = next
+
+  // Agent mode is handled server-side (supervisor_agent routes to workers).
+  // Keep client meta deterministic by clearing manual retrieval toggles when entering Agent mode.
+  if (next) {
+    meta.use_web = false
+    meta.use_graph = false
+    meta.use_mcp = false
+    meta.mcp_id = null
+    meta.selectedKB = null
+    meta.db_id = null
+  }
 }
 
 const isStreaming = ref(false)
