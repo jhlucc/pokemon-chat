@@ -220,6 +220,8 @@
                   <div class="checkbox-group">
                     <a-checkbox :checked="uiVisibility.show_knowledge_base" @change="(e) => setUiVisibility('show_knowledge_base', e.target.checked)">知识库</a-checkbox>
                     <a-checkbox :checked="uiVisibility.show_knowledge_graph" @change="(e) => setUiVisibility('show_knowledge_graph', e.target.checked)">图谱</a-checkbox>
+                    <a-checkbox :checked="uiVisibility.show_web_search" @change="(e) => setUiVisibility('show_web_search', e.target.checked)">联网搜索</a-checkbox>
+                    <a-checkbox :checked="uiVisibility.show_mcp" @change="(e) => setUiVisibility('show_mcp', e.target.checked)">MCP</a-checkbox>
                     <a-checkbox :checked="uiVisibility.show_map" @change="(e) => setUiVisibility('show_map', e.target.checked)">地图</a-checkbox>
                   </div>
                 </div>

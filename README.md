@@ -182,6 +182,24 @@ python scripts/import_pokemon_map.py
 > - 工具箱 `/tools` -> 知识库 `/database`（RAG 工作台标签页，兼容 `/database/workbench`）
 > - Agent `/agent` -> 对话 `/chat`（输入框左侧“Agent 模式”开关启用，总 Agent = `supervisor_agent`）
 
+### 🧰 常见问题（本地环境）
+
+1) **直接运行后端脚本时报 `No module named 'src'`**
+- 推荐：`python -m server.main`
+- 或：`cd server && python main.py`
+- 现在也支持：在项目根目录直接 `python server/main.py`（已自动补齐 `PYTHONPATH`）
+
+2) **`CXXABI_1.3.15 not found` / `libicui18n.so.78` / `sqlite3` 导入失败**
+- 这通常是 **conda 环境的动态库** 被系统库覆盖（常见原因：手动设置了 `LD_LIBRARY_PATH`）。
+- 解决思路：
+  - 确保使用 conda 环境的 Python：`which python` / `python -V`
+  - 尝试临时清空：`unset LD_LIBRARY_PATH`
+  - 或强制用 conda 执行：`conda run -n <你的环境名> python -m server.main`
+
+3) **pip 提示大量依赖冲突（dependency conflicts）**
+- 该项目依赖已在 `requirements.txt` 中固定版本（LangChain 1.x / OpenAI 2.x）。
+- 建议用“干净”的虚拟环境安装，不要在同一个环境里混装 `llama-index` / `streamlit` / `langchain-neo4j` 等可能要求不同主版本的包。
+
 ---
 
 ## 🔭 参考项目

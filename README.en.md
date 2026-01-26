@@ -176,6 +176,24 @@ If you wish to run backend/frontend code locally for development:
 > - Toolbox `/tools` -> Knowledge Base `/database` (RAG Workbench tab, compatible with `/database/workbench`)
 > - Agent `/agent` -> Chat `/chat` (enable via the “Agent Mode” toggle; backend runs `supervisor_agent`)
 
+### 🧰 Troubleshooting (Local Env)
+
+1) **`No module named 'src'` when launching the backend**
+- Recommended: `python -m server.main`
+- Or: `cd server && python main.py`
+- Also supported: run from repo root `python server/main.py` (auto injects repo root into `PYTHONPATH`)
+
+2) **`CXXABI_1.3.15 not found` / `libicui18n.so.78` / `sqlite3` import fails**
+- Usually caused by conda runtime libraries being overridden by system libs (often due to a custom `LD_LIBRARY_PATH`).
+- Try:
+  - Ensure you’re using the conda env Python (`which python`, `python -V`)
+  - Temporarily clear it: `unset LD_LIBRARY_PATH`
+  - Or force conda execution: `conda run -n <env> python -m server.main`
+
+3) **Lots of `pip` dependency conflict warnings**
+- This project pins versions in `requirements.txt` (LangChain 1.x / OpenAI 2.x).
+- Use a clean virtual env, and avoid mixing packages that require incompatible majors (e.g. `llama-index`, `streamlit`, `langchain-neo4j`) in the same env.
+
 ---
 
 ## 🔭 Reference Projects
