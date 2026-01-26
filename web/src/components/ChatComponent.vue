@@ -746,13 +746,13 @@ const fetchChatResponse = async (user_input, cur_res_id) => {
 
         if (streamOutput) {
           updateMessage({
+            ...data,
             id: cur_res_id,
             content: data.response,
             reasoning_content: data.reasoning_content,
             status: data.status,
             meta: data.meta,
-            message: data.message || data.error,
-            ...data
+            message: data.message || data.error
           })
         } else {
           if (data.response) bufferedText += data.response
@@ -762,12 +762,12 @@ const fetchChatResponse = async (user_input, cur_res_id) => {
 
           // Update status/meta in-place without streaming tokens to the UI.
           updateMessage({
+            ...data,
             id: cur_res_id,
             status: data.status,
             meta: data.meta,
             refs: data.refs,
             message: data.message || data.error,
-            ...data,
             content: '' // never stream partial content
           })
         }

@@ -58,14 +58,14 @@ const routes: RouteRecordRaw[] = [
       {
         path: '',
         name: 'Database',
-        component: () => import('@/views/DataBaseView.vue'),
-        meta: { title: '知识库', keepAlive: true }
+        component: () => import('@/views/DatabaseHubView.vue'),
+        meta: { title: '知识库', keepAlive: true, databaseTab: 'list' }
       },
       {
         path: 'workbench',
         name: 'DatabaseWorkbench',
-        component: () => import('@/views/DatabaseWorkbenchView.vue'),
-        meta: { title: '知识库工作台', keepAlive: false }
+        component: () => import('@/views/DatabaseHubView.vue'),
+        meta: { title: '知识库工作台', keepAlive: true, databaseTab: 'workbench' }
       },
       {
         path: ':database_id',

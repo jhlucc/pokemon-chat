@@ -404,7 +404,11 @@ async def chat_agent(
     # ----------   streaming   ----------
     async def streamer():
         # 生成一个本轮 assistant 消息的固定 id
-        cur_msg_id = str(uuid.uuid4())
+        requested_msg_id = cfg.get("msg_id") or cfg.get("cur_res_id")
+        if isinstance(requested_msg_id, str) and requested_msg_id.strip():
+            cur_msg_id = requested_msg_id.strip()
+        else:
+            cur_msg_id = str(uuid.uuid4())
 
         # ① init
         yield make_agent_chunk(status="init", msg_id=cur_msg_id)
@@ -425,7 +429,10 @@ async def chat_agent(
                      # Structured Metadata (e.g. status update)
                      if "status" in part:
                          yield make_agent_chunk(
-                             status=part.get("status_text", "thinking"),
+                             # Keep status compatible with ChatComponent UI:
+                             # - do not emit arbitrary status strings (would be treated as error)
+                             # - keep "init" until we have actual tokens to render
+                             status="init",
                              msg_id=cur_msg_id,
                              data=part
                          )
@@ -450,7 +457,8 @@ async def chat_agent(
             }
 
             yield make_agent_chunk(
-                content=final_answer,
+                # Keep protocol aligned with /chat/: don't repeat the full answer in the final chunk.
+                content="",
                 status="finished",
                 msg_id=cur_msg_id,
                 history_resp=history_serializ,
