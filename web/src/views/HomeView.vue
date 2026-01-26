@@ -13,6 +13,7 @@
       </div>
 
       <a-space>
+        <ThemeToggle />
         <a-button :href="apiDocsUrl" target="_blank" rel="noopener noreferrer">
           <template #icon><ApiOutlined /></template>
           API 文档
@@ -132,6 +133,7 @@ import {
 } from '@ant-design/icons-vue'
 
 import StatusTag from '@/components/StatusTag.vue'
+import ThemeToggle from '@/components/common/ThemeToggle.vue'
 import { useConfigStore } from '@/stores/config'
 import { APP_NAME, getBuildLabel } from '@/config/appMeta'
 

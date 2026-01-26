@@ -375,9 +375,9 @@ onMounted(() => refreshProviders())
 
 .tech-bg {
   position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-  background-color: #f4f6f9;
-  background-image: 
-    radial-gradient(rgba(0,0,0,0.06) 1px, transparent 1px);
+  background-color: var(--background-color);
+  background-image:
+    radial-gradient(color-mix(in srgb, var(--text-color) 6%, transparent) 1px, transparent 1px);
   background-size: 20px 20px;
   z-index: 0;
   pointer-events: none;

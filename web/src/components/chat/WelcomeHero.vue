@@ -1,5 +1,10 @@
 <template>
   <div class="welcome-hero animate-fade-in">
+    <!-- Background Decoration -->
+    <div class="hero-bg-decor">
+      <img src="/welcome-bg.png" alt="" class="bg-image" />
+    </div>
+
     <!-- Hero Section -->
     <div class="hero-section">
       <div class="hero-avatar">
@@ -132,6 +137,7 @@ const quickActions = [
 
 <style lang="less" scoped>
 .welcome-hero {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -139,10 +145,37 @@ const quickActions = [
   min-height: 60vh;
   padding: var(--space-6) var(--space-4);
   gap: var(--space-6);
+  overflow: hidden;
+}
+
+/* Background Decoration */
+.hero-bg-decor {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  pointer-events: none;
+  z-index: 0;
+  overflow: hidden;
+
+  .bg-image {
+    position: absolute;
+    width: 100%;
+    max-width: 800px;
+    height: auto;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    opacity: 0.15;
+    object-fit: contain;
+  }
 }
 
 /* Hero Section */
 .hero-section {
+  position: relative;
+  z-index: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -196,6 +229,8 @@ const quickActions = [
 
 /* Capabilities Card */
 .capabilities-card {
+  position: relative;
+  z-index: 1;
   width: 100%;
   max-width: 480px;
   background: var(--surface-color);
@@ -262,6 +297,8 @@ const quickActions = [
 
 /* Quick Actions */
 .quick-actions {
+  position: relative;
+  z-index: 1;
   width: 100%;
   max-width: 640px;
 }

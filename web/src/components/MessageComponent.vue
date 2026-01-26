@@ -55,7 +55,7 @@
 
         <!-- 错误状态 -->
         <div v-else-if="message.status === 'error'" class="error-msg" @click="$emit('retry')">
-          <ExclamationCircleOutlined class="error-icon" />
+          <img src="/error-state.png" alt="" class="error-image" />
           <div class="error-content">
             <span class="error-text">请求出错，点击重试</span>
             <span v-if="message.message" class="error-detail">{{ message.message }}</span>
@@ -473,6 +473,13 @@ const filteredRefs = computed(() => {
   &:hover {
     background: color-mix(in srgb, var(--error-color) 12%, transparent);
     border-color: color-mix(in srgb, var(--error-color) 40%, transparent);
+  }
+
+  .error-image {
+    width: 48px;
+    height: 48px;
+    object-fit: contain;
+    flex-shrink: 0;
   }
 
   .error-icon {

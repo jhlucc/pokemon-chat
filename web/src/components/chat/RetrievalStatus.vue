@@ -107,13 +107,16 @@
 
         <!-- Progress Bar -->
         <div v-if="isActive" class="progress-section">
-          <div class="progress-bar">
-            <div
-              class="progress-fill"
-              :style="{ width: `${progressPercent}%` }"
-            ></div>
+          <img src="/loading-decor.png" alt="" class="loading-decor" />
+          <div class="progress-wrapper">
+            <div class="progress-bar">
+              <div
+                class="progress-fill"
+                :style="{ width: `${progressPercent}%` }"
+              ></div>
+            </div>
+            <span class="progress-text">{{ progressText }}</span>
           </div>
-          <span class="progress-text">{{ progressText }}</span>
         </div>
       </div>
     </transition>
@@ -466,8 +469,29 @@ const getStepResults = (step) => {
   border-top: 1px solid var(--border-color);
 }
 
-.progress-bar {
+.loading-decor {
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
+  flex-shrink: 0;
+  animation: bounce 1.2s ease-in-out infinite;
+}
+
+@keyframes bounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+
+.progress-wrapper {
   flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.progress-bar {
+  width: 100%;
   height: 4px;
   background: var(--gray-200);
   border-radius: 2px;
@@ -525,6 +549,11 @@ const getStepResults = (step) => {
 
   .step-result {
     display: none;
+  }
+
+  .loading-decor {
+    width: 24px;
+    height: 24px;
   }
 
   .progress-text {
