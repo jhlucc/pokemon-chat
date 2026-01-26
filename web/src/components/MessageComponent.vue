@@ -1,5 +1,8 @@
 <template>
-  <div class="message-wrapper" :class="{ 'from-user': isUser, 'from-ai': !isUser }">
+  <div
+    class="message-wrapper hover-reveal-trigger"
+    :class="{ 'from-user': isUser, 'from-ai': !isUser }"
+  >
     <img class="avatar" :src="`/${avatar}`" alt="avatar" />
     <div class="message-box" :class="message.role">
       <!-- 用户消息 -->
@@ -9,39 +12,58 @@
 
       <!-- 助手消息 -->
       <template v-else-if="message.role === 'assistant'">
-        <p v-if="debugMode">{{ message.status }}</p>
+        <p v-if="debugMode" class="debug-status">{{ message.status }}</p>
 
         <!-- 推理过程 -->
         <div v-if="message.reasoning_content" class="reasoning-box">
-          <a-collapse v-model:activeKey="reasoningActiveKey" :bordered="false">
-            <template #expandIcon="{ isActive }">
-              <caret-right-outlined :rotate="isActive ? 90 : 0" />
-            </template>
-            <a-collapse-panel
-              key="show"
-              :header="message.status == 'reasoning' ? '正在思考...' : '推理过程'"
-              class="reasoning-header"
-            >
+          <div class="reasoning-header" @click="reasoningOpen = !reasoningOpen">
+            <div class="reasoning-indicator">
+              <ThunderboltOutlined class="reasoning-icon" :class="{ active: message.status === 'reasoning' }" />
+              <span class="reasoning-title">
+                {{ message.status === 'reasoning' ? '正在思考...' : '推理过程' }}
+              </span>
+            </div>
+            <CaretRightOutlined class="reasoning-caret" :class="{ open: reasoningOpen }" />
+          </div>
+          <transition name="collapse">
+            <div v-if="reasoningOpen" class="reasoning-body">
               <p class="reasoning-content">{{ message.reasoning_content }}</p>
-            </a-collapse-panel>
-          </a-collapse>
+            </div>
+          </transition>
         </div>
 
-        <div v-if="isEmptyAndLoading" class="loading-dots">
-          <div></div>
-          <div></div>
-          <div></div>
-        </div>
-        <div v-else-if="message.status === 'searching' && isProcessing" class="searching-msg">
-          <i>正在检索……</i>
-        </div>
-        <div v-else-if="message.status === 'generating' && isProcessing" class="searching-msg">
-          <i>正在生成……</i>
-        </div>
-        <div v-else-if="message.status === 'error'" class="err-msg" @click="$emit('retry')">
-          请求错误，请重试。{{ message.message }}
+        <!-- 加载状态 -->
+        <div v-if="isEmptyAndLoading" class="loading-state">
+          <div class="typing-indicator">
+            <div class="typing-indicator__dot"></div>
+            <div class="typing-indicator__dot"></div>
+            <div class="typing-indicator__dot"></div>
+          </div>
         </div>
 
+        <!-- 检索状态 (详细进度) -->
+        <RetrievalStatus
+          v-else-if="showRetrievalStatus"
+          :status="message.status"
+          :refs="message.refs"
+          :active-step="message.meta?.active_step"
+          :show-knowledge-base="showKnowledgeBase"
+          :show-knowledge-graph="showKnowledgeGraph"
+          :show-web-search="showWebSearch"
+          :show-mcp="showMcp"
+        />
+
+        <!-- 错误状态 -->
+        <div v-else-if="message.status === 'error'" class="error-msg" @click="$emit('retry')">
+          <ExclamationCircleOutlined class="error-icon" />
+          <div class="error-content">
+            <span class="error-text">请求出错，点击重试</span>
+            <span v-if="message.message" class="error-detail">{{ message.message }}</span>
+          </div>
+          <ReloadOutlined class="error-retry" />
+        </div>
+
+        <!-- Markdown 内容 -->
         <MdPreview
           v-else-if="message.content"
           ref="editorRef"
@@ -54,23 +76,75 @@
         />
         <div v-else-if="message.reasoning_content" class="empty-block"></div>
 
+        <!-- 工具调用 -->
         <slot
           v-else-if="message.toolCalls && Object.keys(message.toolCalls).length > 0"
           name="tool-calls"
         ></slot>
-        <div v-else class="err-msg" @click="$emit('retry')">
-          请求错误，请重试。{{ message.message }}
+
+        <!-- 回退错误 -->
+        <div v-else class="error-msg" @click="$emit('retry')">
+          <ExclamationCircleOutlined class="error-icon" />
+          <div class="error-content">
+            <span class="error-text">请求出错，点击重试</span>
+            <span v-if="message.message" class="error-detail">{{ message.message }}</span>
+          </div>
+          <ReloadOutlined class="error-retry" />
         </div>
 
-        <div v-if="message.isStoppedByUser" class="retry-hint">
-          你停止生成了本次回答
-          <span class="retry-link" @click="emit('retryStoppedMessage', message.id)"
-            >重新编辑问题</span
-          >
+        <!-- 停止生成提示 -->
+        <div v-if="message.isStoppedByUser" class="stopped-hint">
+          <span class="stopped-text">已停止生成</span>
+          <a class="stopped-link" @click="emit('retryStoppedMessage', message.id)">重新编辑问题</a>
         </div>
 
-        <div v-if="message.status === 'finished' && showRefs">
-          <RefsComponent :message="message" :show-refs="showRefs" @retry="emit('retry')" />
+        <!-- 引用来源与工具栏 -->
+        <div v-if="message.status === 'finished'" class="message-footer">
+          <!-- 消息工具栏 (hover 显示) -->
+          <div class="message-toolbar hover-reveal">
+            <a-tooltip title="复制">
+              <button class="toolbar-btn" @click="copyContent">
+                <CopyOutlined />
+              </button>
+            </a-tooltip>
+            <a-tooltip title="重新生成">
+              <button class="toolbar-btn" @click="emit('retry')">
+                <ReloadOutlined />
+              </button>
+            </a-tooltip>
+            <span class="toolbar-divider"></span>
+            <a-tooltip title="有帮助">
+              <button
+                class="toolbar-btn"
+                :class="{ active: feedback === 'positive' }"
+                @click="setFeedback('positive')"
+              >
+                <LikeOutlined />
+              </button>
+            </a-tooltip>
+            <a-tooltip title="没帮助">
+              <button
+                class="toolbar-btn"
+                :class="{ active: feedback === 'negative' }"
+                @click="setFeedback('negative')"
+              >
+                <DislikeOutlined />
+              </button>
+            </a-tooltip>
+
+            <!-- 模型名和响应时间 -->
+            <span v-if="message.meta?.server_model_name" class="toolbar-meta">
+              {{ message.meta.server_model_name }}
+            </span>
+          </div>
+
+          <!-- 引用来源 -->
+          <RefsComponent
+            v-if="showRefs"
+            :message="message"
+            :show-refs="filteredRefs"
+            @retry="emit('retry')"
+          />
         </div>
       </template>
 
@@ -82,11 +156,22 @@
 
 <script setup>
 import { computed, defineAsyncComponent, ref } from 'vue'
-import { CaretRightOutlined } from '@ant-design/icons-vue'
+import { useClipboard } from '@vueuse/core'
+import { message as antdMessage } from 'ant-design-vue'
+import {
+  CaretRightOutlined,
+  ThunderboltOutlined,
+  LoadingOutlined,
+  ExclamationCircleOutlined,
+  ReloadOutlined,
+  CopyOutlined,
+  LikeOutlined,
+  DislikeOutlined
+} from '@ant-design/icons-vue'
 import RefsComponent from '@/components/RefsComponent.vue'
+import RetrievalStatus from '@/components/chat/RetrievalStatus.vue'
 
 // Lazy-load markdown preview to keep the initial chat bundle smaller.
-// This creates a separate chunk for md-editor-v3 (and its CSS) and loads it only when needed.
 const MdPreview = defineAsyncComponent({
   loader: async () => {
     const mod = await import('md-editor-v3')
@@ -98,22 +183,18 @@ const MdPreview = defineAsyncComponent({
 })
 
 const props = defineProps({
-  // 消息角色：'user'|'assistant'|'sent'|'received'
   message: {
     type: Object,
     required: true
   },
-  // 是否正在处理中
   isProcessing: {
     type: Boolean,
     default: false
   },
-  // 自定义类
   customClasses: {
     type: Object,
     default: () => ({})
   },
-  // 是否显示推理过程
   showRefs: {
     type: [Array, Boolean],
     default: () => false
@@ -121,221 +202,405 @@ const props = defineProps({
   debugMode: {
     type: Boolean,
     default: false
+  },
+  showKnowledgeBase: {
+    type: Boolean,
+    default: true
+  },
+  showKnowledgeGraph: {
+    type: Boolean,
+    default: true
+  },
+  showWebSearch: {
+    type: Boolean,
+    default: true
+  },
+  showMcp: {
+    type: Boolean,
+    default: false
   }
 })
 const isUser = computed(() => props.message.role === 'user' || props.message.role === 'sent')
-// ⚠️ 头像文件放在 public/images 下，或改成你的实际路径
 const avatar = computed(() => (isUser.value ? 'avatar.jpg' : 'user.png'))
 const editorRef = ref()
 
 const emit = defineEmits(['retry', 'retryStoppedMessage'])
 
 // 推理面板展开状态
-const reasoningActiveKey = ref(['show'])
+const reasoningOpen = ref(true)
 
-// 计算属性：内容为空且正在加载
+// 内容为空且正在加载
 const isEmptyAndLoading = computed(() => {
   const isEmpty = !props.message.content || props.message.content.length === 0
   const isLoading = props.message.status === 'init' && props.isProcessing
   return isEmpty && isLoading
 })
+
+// 显示检索状态组件
+const showRetrievalStatus = computed(() => {
+  const status = props.message.status
+  const isEmpty = !props.message.content || props.message.content.length === 0
+  const isSearching = status === 'searching' && props.isProcessing
+  const isGenerating = status === 'generating' && props.isProcessing && isEmpty
+  return isSearching || isGenerating
+})
+
+// 反馈状态
+const feedback = ref(null)
+const setFeedback = (type) => {
+  feedback.value = feedback.value === type ? null : type
+}
+
+// 复制功能
+const { copy, isSupported } = useClipboard()
+const copyContent = async () => {
+  if (!isSupported.value) {
+    antdMessage.error('当前浏览器不支持复制')
+    return
+  }
+  try {
+    await copy(props.message.content || '')
+    antdMessage.success('已复制到剪贴板')
+  } catch {
+    antdMessage.error('复制失败')
+  }
+}
+
+// 过滤掉工具栏中已有的操作 (copy, regenerate 已移到 toolbar)
+const filteredRefs = computed(() => {
+  if (props.showRefs === true) {
+    return ['subGraph', 'webSearch']
+  }
+  if (Array.isArray(props.showRefs)) {
+    return props.showRefs.filter(k => k !== 'copy' && k !== 'regenerate')
+  }
+  return props.showRefs
+})
 </script>
 
-<!-- =============== style scoped：气泡 & deepseek 胶囊 =============== -->
+<!-- =============== scoped styles =============== -->
 <style lang="less" scoped>
-/* ===== wrapper 布局 + 头像 + 气泡背景 ===== */
+/* ===== wrapper layout ===== */
 .message-wrapper {
   display: flex;
   align-items: flex-start;
-  margin-bottom: 24px;
-  animation: fadeInUp 0.3s ease-out;
+  margin-bottom: var(--space-6);
+  animation: fadeInUp var(--duration-slow) var(--ease-out);
 
   &.from-user {
     flex-direction: row-reverse;
     .message-box {
-      /* Pokedex User Bubble: Red Gradient */
       background: linear-gradient(135deg, var(--pokedex-red), #ff706d);
       color: #ffffff;
-      border: 1px solid rgba(0,0,0,0.05);
-      box-shadow: 0 4px 12px rgba(255, 83, 80, 0.25);
-      border-radius: 20px 20px 4px 20px; /* Speech bubble shape */
+      border: none;
+      box-shadow: 0 4px 12px rgba(255, 83, 80, 0.2);
+      border-radius: var(--radius-md) var(--radius-md) var(--radius-xs) var(--radius-md);
       max-width: min(600px, 85%);
-      
-      /* Make sure links in user bubble are white */
+
       :deep(a) { color: #fff; text-decoration: underline; }
     }
-    
+
     .avatar {
-      margin-left: 12px;
+      margin-left: var(--space-3);
       margin-right: 0;
-      box-shadow: 0 4px 12px rgba(255, 83, 80, 0.2);
+      box-shadow: 0 4px 12px rgba(255, 83, 80, 0.15);
     }
   }
 
   &.from-ai {
     flex-direction: row;
     .message-box {
-      /* AI Bubble: Glass Data Display */
-      background: rgba(255, 255, 255, 0.85);
-      backdrop-filter: blur(8px);
+      background: var(--surface-color);
       color: var(--chat-assistant-text);
-      border: 1px solid rgba(255, 255, 255, 0.6);
-      box-shadow: 0 4px 16px rgba(0,0,0,0.04);
-      border-radius: 4px 20px 20px 20px; /* Speech bubble shape */
+      border: 1px solid var(--border-color);
+      box-shadow: var(--shadow-xs);
+      border-radius: var(--radius-xs) var(--radius-md) var(--radius-md) var(--radius-md);
       max-width: 960px;
     }
-    
+
     .avatar {
-      margin-right: 12px;
+      margin-right: var(--space-3);
       margin-left: 0;
-      border: 2px solid #fff;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      border: 2px solid var(--surface-color);
+      box-shadow: var(--shadow-xs);
     }
   }
 
   .avatar {
-    width: 40px;
-    height: 40px;
+    width: 36px;
+    height: 36px;
     border-radius: 50%;
     object-fit: cover;
     flex-shrink: 0;
   }
 }
 
-/* ===== 公共文字 / loading / 提示 ===== */
-.retry-hint {
-  margin-top: 8px;
-  padding: 8px 16px;
-  color: var(--chat-muted-text);
-  font-size: 14px;
-  text-align: left;
-}
-.retry-link {
-  color: var(--main-600);
-  cursor: pointer;
-  margin-left: 4px;
-  &:hover {
-    text-decoration: underline;
-  }
-}
-.ant-btn-icon-only:has(.anticon-stop) {
-  background: var(--danger-600) !important;
-  &:hover {
-    background: var(--danger-500) !important;
-  }
-}
-.loading-dots {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  div {
-    width: 8px;
-    height: 8px;
-    margin: 0 4px;
-    background: var(--chat-muted-text);
-    border-radius: 50%;
-    opacity: 0.3;
-    animation: pulse 0.5s infinite both;
-    &:nth-child(1) {
-      animation-delay: -0.32s;
-    }
-    &:nth-child(2) {
-      animation-delay: -0.16s;
-    }
-  }
-}
-@keyframes pulse {
-  0%,
-  80%,
-  100% {
-    transform: scale(0.8);
-    opacity: 0.3;
-  }
-  40% {
-    transform: scale(1);
-    opacity: 1;
-  }
-}
-@keyframes fadeInUp {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-/* ===== message-box 内排版 ===== */
+/* ===== message box ===== */
 .message-box {
   display: inline-block;
-  /* Default styling overridden by specific classes above */
-  padding: 12px 20px;
+  padding: var(--space-3) var(--space-5);
   user-select: text;
   word-break: break-word;
-  font-size: 15px;
-  line-height: 1.6;
+  font-size: var(--font-size-md);
+  line-height: var(--line-height-relaxed);
   position: relative;
-  
+
   &.assistant,
   &.received {
-     /* Legacy classes support */
     display: block;
     width: 100%;
   }
+}
 
-  .err-msg {
-    color: var(--text-color);
-    border: 1px solid color-mix(in srgb, var(--danger-500) 45%, transparent);
-    padding: 0.5rem 1rem;
-    border-radius: var(--radius-sm);
-    background: color-mix(in srgb, var(--danger-500) 10%, transparent);
-    margin-bottom: 10px;
-    cursor: pointer;
+.debug-status {
+  font-size: var(--font-size-xs);
+  color: var(--gray-500);
+  margin: 0 0 var(--space-2);
+  font-family: var(--font-family-mono);
+}
+
+/* ===== reasoning box ===== */
+.reasoning-box {
+  margin: var(--space-2) 0 var(--space-3);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--surface-color-2) 80%, transparent);
+  overflow: hidden;
+}
+
+.reasoning-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-2) var(--space-3);
+  cursor: pointer;
+  transition: background var(--duration-fast) var(--ease-default);
+
+  &:hover {
+    background: var(--hover-bg);
   }
-  .searching-msg {
-    color: var(--chat-muted-text);
-    animation: opacityPulse 1s infinite ease-in-out;
-  }
-  .reasoning-box {
-    margin: 10px 0 15px;
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
-    background: rgba(0,0,0,0.02);
-    
-    .reasoning-content {
-      font-size: 13px;
-      color: var(--chat-muted-text);
-      white-space: pre-wrap;
-      margin: 0;
-      padding: 8px;
+}
+
+.reasoning-indicator {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+
+  .reasoning-icon {
+    font-size: 14px;
+    color: var(--gray-500);
+
+    &.active {
+      color: var(--warning-color);
+      animation: pulse 1.5s infinite;
     }
   }
-  :deep(.tool-calls-container) {
-    display: inline-flex !important;
-    flex-wrap: wrap;
-    gap: 8px;
-    width: auto !important;
-    margin-top: 10px;
-    background: transparent !important;
-    border: none !important;
-  }
-}
-@keyframes opacityPulse {
-  0% {
-    opacity: 0.7;
-  }
-  50% {
-    opacity: 1;
-  }
-  100% {
-    opacity: 0.7;
+
+  .reasoning-title {
+    font-size: var(--font-size-sm);
+    font-weight: 500;
+    color: var(--gray-600);
   }
 }
 
-/* ============ 关键修改：deepseek 胶囊自适应宽度 ============ */
-/* 1. container 变 inline-block */
+.reasoning-caret {
+  font-size: 12px;
+  color: var(--gray-400);
+  transition: transform var(--duration-fast) var(--ease-default);
+
+  &.open {
+    transform: rotate(90deg);
+  }
+}
+
+.reasoning-body {
+  padding: 0 var(--space-3) var(--space-3);
+}
+
+.reasoning-content {
+  font-size: var(--font-size-sm);
+  color: var(--gray-600);
+  white-space: pre-wrap;
+  margin: 0;
+  line-height: var(--line-height-relaxed);
+}
+
+.collapse-enter-active,
+.collapse-leave-active {
+  transition: all var(--duration-base) var(--ease-default);
+  max-height: 500px;
+  overflow: hidden;
+}
+
+.collapse-enter-from,
+.collapse-leave-to {
+  max-height: 0;
+  opacity: 0;
+}
+
+/* ===== loading & status states ===== */
+.loading-state {
+  padding: var(--space-2) 0;
+}
+
+.status-msg {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--gray-500);
+  font-size: var(--font-size-sm);
+  padding: var(--space-2) 0;
+  animation: pulse 1.5s infinite;
+
+  .status-icon {
+    font-size: 14px;
+    color: var(--primary-color);
+  }
+}
+
+/* ===== error state ===== */
+.error-msg {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--error-color) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--error-color) 25%, transparent);
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-default);
+
+  &:hover {
+    background: color-mix(in srgb, var(--error-color) 12%, transparent);
+    border-color: color-mix(in srgb, var(--error-color) 40%, transparent);
+  }
+
+  .error-icon {
+    color: var(--error-color);
+    font-size: 16px;
+    flex-shrink: 0;
+  }
+
+  .error-content {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-width: 0;
+  }
+
+  .error-text {
+    color: var(--text-color);
+    font-size: var(--font-size-sm);
+    font-weight: 500;
+  }
+
+  .error-detail {
+    color: var(--gray-600);
+    font-size: var(--font-size-xs);
+    margin-top: 2px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .error-retry {
+    color: var(--primary-color);
+    font-size: 14px;
+    flex-shrink: 0;
+  }
+}
+
+/* ===== stopped hint ===== */
+.stopped-hint {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  background: var(--surface-color-2);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-sm);
+
+  .stopped-text {
+    color: var(--gray-500);
+  }
+
+  .stopped-link {
+    color: var(--primary-color);
+    cursor: pointer;
+    font-weight: 500;
+
+    &:hover {
+      text-decoration: underline;
+    }
+  }
+}
+
+/* ===== message footer (toolbar + refs) ===== */
+.message-footer {
+  margin-top: var(--space-3);
+  padding-top: var(--space-2);
+}
+
+/* ===== message toolbar (hover reveal) ===== */
+.message-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin-bottom: var(--space-2);
+  transition: opacity var(--duration-fast) var(--ease-default);
+}
+
+.toolbar-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--gray-500);
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-default);
+  font-size: 14px;
+
+  &:hover {
+    background: var(--hover-bg);
+    color: var(--gray-700);
+  }
+
+  &.active {
+    color: var(--primary-color);
+    background: var(--main-5);
+  }
+}
+
+.toolbar-divider {
+  width: 1px;
+  height: 16px;
+  background: var(--gray-200);
+  margin: 0 var(--space-1);
+}
+
+.toolbar-meta {
+  margin-left: auto;
+  font-size: var(--font-size-xs);
+  color: var(--gray-400);
+  font-family: var(--font-family-mono);
+}
+
+/* ===== tool call capsules ===== */
+:deep(.tool-calls-container) {
+  display: inline-flex !important;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  width: auto !important;
+  margin-top: var(--space-3);
+  background: transparent !important;
+  border: none !important;
+}
+
 :deep(.tool-call-container) {
   display: inline-block !important;
   width: auto !important;
@@ -344,7 +609,6 @@ const isEmptyAndLoading = computed(() => {
   padding: 0 !important;
 }
 
-/* 2. 胶囊本体 inline-flex */
 :deep(.tool-call-display) {
   display: inline-flex !important;
   flex: 0 0 auto !important;
@@ -355,9 +619,8 @@ const isEmptyAndLoading = computed(() => {
   max-width: max-content !important;
   background: var(--surface-color-2);
   border: 1px solid var(--border-color);
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
 
-  /* 标题区域去掉 block 背景 & 边框 */
   .tool-header {
     background: transparent;
     border: none;
@@ -366,7 +629,6 @@ const isEmptyAndLoading = computed(() => {
     gap: 6px;
   }
 
-  /* 小图标配色 */
   .anticon {
     color: var(--gray-600);
     cursor: pointer;
@@ -376,7 +638,6 @@ const isEmptyAndLoading = computed(() => {
   }
 }
 
-/* D. 最里层 .tool-content 保险起见也设成 inline-flex */
 :deep(.tool-call-display > .tool-content) {
   display: inline-flex !important;
   width: auto !important;
@@ -388,13 +649,12 @@ const isEmptyAndLoading = computed(() => {
 }
 </style>
 
-<!-- =============== style (全局)：markdown / 字体 等 =============== -->
+<!-- =============== global styles: markdown / font =============== -->
 <style lang="less">
 .message-md.md-editor {
   height: auto;
   background-color: transparent;
   border: none;
-  /* Align md-editor internal tokens with our app theme tokens. */
   --md-color: var(--text-color);
   --md-hover-color: var(--text-color);
   --md-bk-color: transparent;
@@ -402,7 +662,7 @@ const isEmptyAndLoading = computed(() => {
   --md-bk-hover-color: var(--hover-bg);
   --md-border-color: var(--border-color);
   --md-border-hover-color: var(--border-color);
-  --md-border-active-color: var(--main-500);
+  --md-border-active-color: var(--primary-color);
   --md-scrollbar-bg-color: transparent;
   --md-scrollbar-thumb-color: var(--gray-400);
   --md-scrollbar-thumb-hover-color: var(--gray-500);
@@ -413,10 +673,9 @@ const isEmptyAndLoading = computed(() => {
   color: var(--text-color);
   max-width: 100%;
   padding: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei',
-    'Hiragino Sans GB', 'Courier New', monospace;
+  font-family: var(--font-family-base);
   #preview-only-preview {
-    font-size: 15px;
+    font-size: var(--font-size-md);
   }
   h1,
   h2 {
@@ -439,9 +698,9 @@ const isEmptyAndLoading = computed(() => {
     text-decoration: underline;
   }
   code {
-    font-size: 13px;
-    font-family: 'Menlo', 'Monaco', 'Consolas', 'Courier New', monospace;
-    line-height: 1.5;
+    font-size: var(--font-size-sm);
+    font-family: var(--font-family-mono);
+    line-height: var(--line-height-base);
     letter-spacing: 0.025em;
     tab-size: 4;
     -moz-tab-size: 4;
@@ -452,8 +711,8 @@ const isEmptyAndLoading = computed(() => {
   pre {
     background: var(--surface-color-2);
     border: 1px solid var(--border-color);
-    border-radius: var(--radius-md);
-    padding: 12px;
+    border-radius: var(--radius-sm);
+    padding: var(--space-3);
     overflow: auto;
   }
 
@@ -462,41 +721,23 @@ const isEmptyAndLoading = computed(() => {
   }
 }
 
-/* deepseek-chat 模型名单独行 → 改成 inline */
 .model-name {
   display: inline;
   font-weight: 600;
   margin-right: 0.5em;
 }
 
-/* 聊天字体缩放 */
+/* font size scaling */
 .chat-box.font-smaller #preview-only-preview {
-  font-size: 14px;
-  h1,
-  h2 {
-    font-size: 1.1rem;
-  }
-  h3,
-  h4 {
-    font-size: 1rem;
-  }
+  font-size: var(--font-size-base);
+  h1, h2 { font-size: 1.1rem; }
+  h3, h4 { font-size: 1rem; }
 }
 .chat-box.font-larger #preview-only-preview {
-  font-size: 16px;
-  h1,
-  h2 {
-    font-size: 1.3rem;
-  }
-  h3,
-  h4 {
-    font-size: 1.2rem;
-  }
-  h5,
-  h6 {
-    font-size: 1.1rem;
-  }
-  code {
-    font-size: 14px;
-  }
+  font-size: var(--font-size-lg);
+  h1, h2 { font-size: 1.3rem; }
+  h3, h4 { font-size: 1.2rem; }
+  h5, h6 { font-size: 1.1rem; }
+  code { font-size: var(--font-size-base); }
 }
 </style>

@@ -1,147 +1,59 @@
 <template>
   <div class="chat-container">
-    <!--    左边是侧边栏（对话列表 conversations）-->
-    <div class="conversations" :class="{ 'is-open': state.isSidebarOpen }">
-      <div class="actions">
-        <!-- <div class="action new" @click="addNewConv"><FormOutlined /></div> -->
-        <div class="actions-left">
-          <div
-            class="action new"
-            @click="addNewConv"
-            title="新建对话"
-            role="button"
-            tabindex="0"
-            aria-label="新建对话"
-            @keydown.enter.prevent="addNewConv"
-            @keydown.space.prevent="addNewConv"
-          >
-            <!-- 使用 PlusCircleOutlined 比较直观 -->
-            <PlusCircleOutlined />
-          </div>
-        </div>
-        <span class="header-title">对话历史</span>
-        <div class="actions-right">
-          <a-dropdown placement="bottomRight" trigger="click">
-            <div
-              class="action more"
-              title="更多操作"
-              role="button"
-              tabindex="0"
-              aria-label="更多操作"
-              @click.prevent
-              @keydown.enter.prevent="$event.currentTarget?.click?.()"
-              @keydown.space.prevent="$event.currentTarget?.click?.()"
-            >
-              <MoreOutlined />
-            </div>
-            <template #overlay>
-              <a-menu>
-                <a-menu-item @click="exportConversations">
-                  <DownloadOutlined /> 导出对话
-                </a-menu-item>
-                <a-menu-item @click="triggerImportConversations">
-                  <UploadOutlined /> 导入对话
-                </a-menu-item>
-                <a-menu-divider />
-                <a-menu-item danger @click="clearAllConversations">
-                  <ClearOutlined /> 清空所有对话
-                </a-menu-item>
-              </a-menu>
-            </template>
-          </a-dropdown>
+    <!-- Sidebar -->
+    <ConversationList
+      :conversations="convs"
+      :active-index="curConvId"
+      :is-open="state.isSidebarOpen"
+      @select="goToConversation"
+      @delete="delConv"
+      @new-conversation="addNewConv"
+      @close="state.isSidebarOpen = false"
+      @export="exportConversations"
+      @import="triggerImportConversations"
+      @clear-all="clearAllConversations"
+    />
 
-          <div
-            class="action close"
-            @click="state.isSidebarOpen = false"
-            role="button"
-            tabindex="0"
-            aria-label="关闭侧栏"
-            @keydown.enter.prevent="state.isSidebarOpen = false"
-            @keydown.space.prevent="state.isSidebarOpen = false"
-          >
-            <img
-              src="@/assets/icons/sidebar_left.svg"
-              class="iconfont icon-20 sidebar-icon"
-              alt="侧栏"
-            />
-          </div>
-        </div>
-      </div>
-      <input
-        ref="importInput"
-        type="file"
-        accept="application/json"
-        style="display: none"
-        @change="onImportConversationsFileChange"
-      />
-      <div class="conversation-search">
-        <a-input v-model:value="convSearch" allow-clear size="small" placeholder="搜索对话" />
-      </div>
-      <div class="conversation-list">
-        <template v-if="filteredConvs.length > 0">
-          <div
-            v-for="item in filteredConvs"
-            :key="item.conv.id || item.index"
-            class="conversation"
-            :class="{ active: curConvId === item.index }"
-            @click="goToConversation(item.index)"
-            role="button"
-            tabindex="0"
-            :aria-current="curConvId === item.index ? 'page' : undefined"
-            @keydown.enter.prevent="goToConversation(item.index)"
-            @keydown.space.prevent="goToConversation(item.index)"
-          >
-            <div class="conversation__title"><CommentOutlined /> &nbsp;{{ item.conv.title }}</div>
-            <a-popconfirm
-              title="确定删除该对话吗？"
-              ok-text="删除"
-              cancel-text="取消"
-              @confirm="delConv(item.index)"
-              @click.stop
-            >
-              <div class="conversation__delete" @click.stop><DeleteOutlined /></div>
-            </a-popconfirm>
-          </div>
-        </template>
-        <a-empty v-else class="conversation-empty" description="暂无对话">
-          <a-space>
-            <a-button size="small" type="primary" @click="addNewConv">新建对话</a-button>
-            <a-button size="small" @click="convSearch = ''">清除搜索</a-button>
-          </a-space>
-        </a-empty>
-      </div>
-    </div>
-    <!--    聊天组件（ChatComponent） 渲染右边聊天内容区域。  把当前选中的对话 (convs[curConvId]) 作为 prop 传给 ChatComponent,传递状态对象 state-->
+    <input
+      ref="importInput"
+      type="file"
+      accept="application/json"
+      style="display: none"
+      @change="onImportConversationsFileChange"
+    />
+
+    <!-- Sidebar Mask (Mobile) -->
     <div
       v-if="state.isSidebarOpen"
       class="sidebar-mask"
       @click="state.isSidebarOpen = false"
       aria-hidden="true"
     />
+
+    <!-- Chat Component -->
     <ChatComponent
+      ref="chatRef"
       :conv="convs[curConvId]"
       :state="state"
       @rename-title="renameTitle"
       @newconv="addNewConv"
     />
-    <!--  重命名对话&新建对话-->
+
+    <!-- Keyboard Shortcuts Help -->
+    <KeyboardShortcutsHelp
+      ref="shortcutsHelpRef"
+      :shortcuts="keyboardShortcuts"
+    />
   </div>
 </template>
 
 <script setup>
-import { reactive, ref, watch, computed } from 'vue'
+import { reactive, ref, watch, onMounted, onUnmounted } from 'vue'
 
 import ChatComponent from '@/components/ChatComponent.vue'
+import ConversationList from '@/components/chat/ConversationList.vue'
+import KeyboardShortcutsHelp from '@/components/common/KeyboardShortcutsHelp.vue'
 import { Modal, message } from 'ant-design-vue'
-import {
-  DeleteOutlined,
-  CommentOutlined,
-  PlusCircleOutlined,
-  MoreOutlined,
-  DownloadOutlined,
-  UploadOutlined,
-  ClearOutlined
-} from '@ant-design/icons-vue'
 import { useDebounceFn } from '@vueuse/core'
 import { randomId } from '@/utils/id'
 import { readJson, writeJson } from '@/utils/storage'
@@ -153,12 +65,15 @@ const MAX_CONVS_TO_STORE = 30
 const MAX_MESSAGES_PER_CONV = 200
 
 function makeEmptyConv() {
+  const now = Date.now()
   return {
     id: randomId(8),
     title: '新对话',
     history: [],
     messages: [],
-    inputText: ''
+    inputText: '',
+    createdAt: now,
+    updatedAt: now
   }
 }
 
@@ -229,16 +144,9 @@ watch(
 const curConvId = ref(0)
 const importInput = ref(null)
 
-const convSearch = ref('')
-const filteredConvs = computed(() => {
-  const q = (convSearch.value || '').trim().toLowerCase()
-  const list = Array.from(convs).map((conv, index) => ({ conv, index }))
-  if (!q) return list
-  return list.filter((item) => (item.conv?.title || '').toLowerCase().includes(q))
-})
-
 const renameTitle = (newTitle) => {
   convs[curConvId.value].title = newTitle
+  convs[curConvId.value].updatedAt = Date.now()
 }
 
 const goToConversation = (index) => {
@@ -250,13 +158,7 @@ const addNewConv = () => {
   if (convs.length > 0 && convs[0].messages.length === 0) {
     return
   }
-  convs.unshift({
-    id: randomId(8),
-    title: `新对话`,
-    history: [],
-    messages: [],
-    inputText: ''
-  })
+  convs.unshift(makeEmptyConv())
 }
 
 const delConv = (index) => {
@@ -341,6 +243,58 @@ const persistConvs = useDebounceFn(
 )
 
 watch(convs, () => persistConvs(), { deep: true })
+
+// Keyboard shortcuts
+const chatRef = ref(null)
+const shortcutsHelpRef = ref(null)
+
+const keyboardShortcuts = [
+  { key: 'n', ctrl: true, description: '新建对话' },
+  { key: 'b', ctrl: true, description: '切换侧边栏' },
+  { key: '/', ctrl: false, description: '聚焦输入框' },
+  { key: 'Escape', ctrl: false, description: '停止生成' }
+]
+
+const handleGlobalKeyDown = (e) => {
+  const target = e.target
+  const isInput =
+    target.tagName === 'INPUT' ||
+    target.tagName === 'TEXTAREA' ||
+    target.isContentEditable
+
+  // Ctrl/Cmd + N: New conversation
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'n') {
+    e.preventDefault()
+    addNewConv()
+    return
+  }
+
+  // Ctrl/Cmd + B: Toggle sidebar
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'b') {
+    e.preventDefault()
+    state.isSidebarOpen = !state.isSidebarOpen
+    return
+  }
+
+  // "/" to focus input (only when not in input)
+  if (!isInput && e.key === '/') {
+    e.preventDefault()
+    // Focus the input in ChatComponent
+    const inputEl = document.querySelector('.user-input textarea')
+    if (inputEl) {
+      inputEl.focus()
+    }
+    return
+  }
+}
+
+onMounted(() => {
+  window.addEventListener('keydown', handleGlobalKeyDown)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('keydown', handleGlobalKeyDown)
+})
 </script>
 
 <style lang="less" scoped>
@@ -355,237 +309,14 @@ watch(convs, () => persistConvs(), { deep: true })
   display: none;
 }
 
-.conversations {
-  width: 260px;
-  max-width: 260px;
-  background-color: var(--bg-sider);
-  border-right: 1px solid var(--border-color);
-  /* Use adaptive text color */
-  color: var(--text-color);
-  
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  white-space: nowrap;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-
-  &.is-open {
-    width: 260px;
-  }
-
-  &:not(.is-open) {
-    width: 0;
-    padding: 0;
-    overflow: hidden;
-  }
-  
-  /* --- Top Actions --- */
-  & .actions {
-    height: var(--header-height);
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 16px;
-    z-index: 9;
-    border-bottom: 1px solid var(--border-color);
-
-    .header-title {
-      font-weight: 600;
-      color: var(--text-color);
-      letter-spacing: 0.5px;
-      user-select: none;
-    }
-
-    .action {
-      font-size: 1.2rem;
-      width: 2.2rem;
-      height: 2.2rem;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      border-radius: 50%;
-      color: var(--gray-600);
-      cursor: pointer;
-      transition: all 0.2s;
-
-      &:hover {
-        background-color: var(--hover-bg);
-        color: var(--text-color);
-      }
-      
-      /* New Chat Button: Prominent Red Circle */
-      &.new {
-        background-color: var(--pokedex-red);
-        color: #fff;
-        box-shadow: 0 4px 12px rgba(255, 83, 80, 0.4);
-        
-        &:hover {
-          transform: scale(1.1) rotate(90deg);
-          box-shadow: 0 6px 16px rgba(255, 83, 80, 0.6);
-        }
-      }
-    }
-  }
-
-  /* --- Search Bar --- */
-  .conversation-search {
-    padding: 12px 16px;
-    border-bottom: 1px solid var(--border-color);
-    
-    :deep(.ant-input-affix-wrapper) {
-      background-color: var(--input-background-color);
-      border: 1px solid var(--border-color);
-      border-radius: 20px;
-      padding-left: 12px;
-      
-       input {
-          background-color: transparent !important;
-       }
-    }
-  }
-
-  /* --- List Items --- */
-  .conversation-list {
-    display: flex;
-    flex-direction: column;
-    overflow-y: auto;
-    flex: 1 1 auto;
-    padding-top: 8px;
-  }
-
-  .conversation-list .conversation {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 10px 14px;
-    margin: 4px 10px;
-    cursor: pointer;
-    user-select: none;
-    border-radius: 12px;
-    border: 1px solid transparent;
-    transition: all 0.2s ease-in-out;
-    position: relative;
-    color: var(--text-color);
-
-    &__title {
-      color: var(--gray-700);
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      font-size: 0.9rem;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      
-      .anticon {
-        font-size: 1.1em;
-        opacity: 0.7;
-      }
-    }
-
-    &__delete {
-      display: none;
-      color: var(--gray-500);
-      
-      &:hover {
-        color: var(--danger-500);
-      }
-    }
-
-    /* Hover State */
-    &:not(.active):hover {
-      background-color: var(--hover-bg);
-      
-      & .conversation__delete {
-        display: block;
-      }
-    }
-
-    /* Active State: Glowing Data Card */
-    &.active {
-      background: linear-gradient(90deg, rgba(255, 83, 80, 0.15) 0%, rgba(255, 83, 80, 0.05) 100%);
-      border: 1px solid rgba(255, 83, 80, 0.3);
-      
-      & .conversation__title {
-        color: var(--pokedex-red);
-        font-weight: 600;
-        
-        .anticon {
-           color: var(--pokedex-red);
-           opacity: 1;
-        }
-      }
-      
-      /* Active Indicator Bar */
-      &::before {
-        content: '';
-        position: absolute;
-        left: 0;
-        top: 15%;
-        bottom: 15%;
-        width: 3px;
-        background-color: var(--pokedex-red);
-        border-radius: 0 4px 4px 0;
-      }
-    }
-  }
-
-  .conversation-empty {
-    padding: 28px 12px;
-    :deep(.ant-empty-description) {
-      color: var(--gray-500);
-    }
-  }
-}
-
-.conversation-list::-webkit-scrollbar {
-  position: absolute;
-  width: 4px;
-}
-
-.conversation-list::-webkit-scrollbar-track {
-  background: transparent;
-  border-radius: 4px;
-}
-
-.conversation-list::-webkit-scrollbar-thumb {
-  background: var(--gray-400);
-  border-radius: 4px;
-}
-
-.conversation-list::-webkit-scrollbar-thumb:hover {
-  background: rgb(100, 100, 100);
-  border-radius: 4px;
-}
-
-.conversation-list::-webkit-scrollbar-thumb:active {
-  background: rgb(68, 68, 68);
-  border-radius: 4px;
-}
-
-@media (max-width: 520px) {
+@media (max-width: 640px) {
   .sidebar-mask {
     display: block;
     position: fixed;
     inset: 0;
-    background: rgba(0, 0, 0, 0.28);
-    z-index: 100;
-  }
-
-  .conversations {
-    position: absolute;
-    z-index: 101;
-    width: 300px;
-    height: 100%;
-    border-radius: 0 16px 16px 0;
-    box-shadow: 0 0 10px 1px rgba(0, 0, 0, 0.05);
-
-    &:not(.is-open) {
-      width: 0;
-      padding: 0;
-      overflow: hidden;
-    }
+    background: rgba(0, 0, 0, 0.4);
+    z-index: 999;
+    backdrop-filter: blur(2px);
   }
 }
 </style>

@@ -92,6 +92,7 @@
             </a-menu>
           </template>
         </a-dropdown>
+        <ThemeToggle />
         <div
           class="nav-btn text"
           @click="opts.showPanel = !opts.showPanel"
@@ -159,6 +160,10 @@
         :key="message.id"
         :is-processing="isStreaming"
         :show-refs="true"
+        :show-knowledge-base="configStore.config?.ui?.show_knowledge_base !== false"
+        :show-knowledge-graph="configStore.config?.ui?.show_knowledge_graph !== false"
+        :show-web-search="configStore.config?.ui?.show_web_search !== false"
+        :show-mcp="configStore.config?.ui?.show_mcp === true"
         @retry="retryMessage(message.id)"
         @retryStoppedMessage="retryStoppedMessage(message.id)"
       >
@@ -235,6 +240,7 @@ import { useConfigStore } from '@/stores/config'
 import { message } from 'ant-design-vue'
 import ChatCapabilityBar from '@/components/chat/ChatCapabilityBar.vue'
 import WelcomeHero from '@/components/chat/WelcomeHero.vue'
+import ThemeToggle from '@/components/common/ThemeToggle.vue'
 import MessageInputComponent from '@/components/MessageInputComponent.vue'
 import MessageComponent from '@/components/MessageComponent.vue'
 import { readNdjsonStream } from '@/utils/ndjsonStream'
@@ -473,6 +479,7 @@ const appendUserMessage = (msg) => {
     content: msg
   }
   conv.value.messages.push(data)
+  conv.value.updatedAt = Date.now()
   scrollToBottom()
 }
 
@@ -488,6 +495,7 @@ const appendAiMessage = (content, refs = null) => {
     meta: {},
     showThinking: 'show'
   })
+  conv.value.updatedAt = Date.now()
   scrollToBottom()
 }
 

@@ -1,111 +1,135 @@
 <template>
-  <div class="refs">
-    <div class="tags">
-      <span v-if="msg.meta?.server_model_name" class="item">
-        <BulbOutlined /> {{ msg.meta.server_model_name }}
-      </span>
+  <div class="refs-container">
+    <!-- 引用来源标签 -->
+    <div v-if="hasAnyRefs" class="refs-section">
+      <div class="refs-header">
+        <FolderOutlined class="refs-icon" />
+        <span class="refs-title">参考来源</span>
+        <span class="refs-count">{{ totalRefsCount }}</span>
+      </div>
 
-      <span v-if="showKey('copy')" class="item btn" @click="copyText(msg.content)" title="复制">
-        <CopyOutlined />
-      </span>
-
-      <span
-        v-if="showKey('regenerate')"
-        class="item btn"
-        @click="regenerateMessage()"
-        title="重新生成"
-      >
-        <ReloadOutlined />
-      </span>
-
-      <span
-        v-if="showKey('subGraph') && hasSubGraphData(msg)"
-        class="item btn"
-        @click="openSubGraph(msg)"
-      >
-        <DeploymentUnitOutlined /> 关系图
-      </span>
-
-      <span
-        v-if="showKey('webSearch') && msg.refs?.web_search?.results?.length > 0"
-        class="item btn"
-        @click="showWebResult(msg)"
-      >
-        <GlobalOutlined /> 网页搜索 {{ msg.refs.web_search.results.length }}
-      </span>
-
-      <span
-        class="filetag item btn"
-        v-for="(results, filename) in kbGroupedResults"
-        :key="filename"
-        @click="toggleDrawer(filename)"
-      >
-        <FileTextOutlined /> {{ filename }}
-        <a-drawer
-          v-model:open="openDetail[filename]"
-          :title="filename"
-          width="700"
-          :contentWrapperStyle="{ maxWidth: '100%' }"
-          placement="right"
-          class="retrieval-detail"
-          rootClassName="root"
+      <div class="refs-tags">
+        <!-- 知识图谱 -->
+        <button
+          v-if="showKey('subGraph') && hasSubGraphData(msg)"
+          class="ref-tag"
+          @click="openSubGraph(msg)"
         >
-          <div class="fileinfo">
-            <p><FileOutlined /> {{ results[0].file.type }}</p>
-            <p><ClockCircleOutlined /> {{ formatDate(results[0].file.created_at) }}</p>
-          </div>
-          <div class="results-list">
-            <div v-for="res in results" :key="res.id" class="result-item">
-              <div class="result-meta">
-                <div class="score-info">
-                  <span>
-                    <strong>相似度：</strong>
-                    <a-progress :percent="getPercent(res.distance)" />
-                  </span>
-                  <span v-if="res.rerank_score">
-                    <strong>重排序：</strong>
-                    <a-progress :percent="getPercent(res.rerank_score)" />
-                  </span>
-                </div>
-                <div class="result-id">ID: #{{ res.id }}</div>
-              </div>
-              <div class="result-text">{{ res.entity.text }}</div>
-            </div>
-          </div>
-        </a-drawer>
-      </span>
+          <ApartmentOutlined class="tag-icon" />
+          <span class="tag-label">关系图</span>
+        </button>
+
+        <!-- 网页搜索 -->
+        <button
+          v-if="showKey('webSearch') && webSearchCount > 0"
+          class="ref-tag"
+          @click="showWebResult(msg)"
+        >
+          <GlobalOutlined class="tag-icon" />
+          <span class="tag-label">网页搜索</span>
+          <span class="tag-count">{{ webSearchCount }}</span>
+        </button>
+
+        <!-- 知识库文件 -->
+        <button
+          v-for="(results, filename) in kbGroupedResults"
+          :key="filename"
+          class="ref-tag"
+          @click="toggleDrawer(filename)"
+        >
+          <FileTextOutlined class="tag-icon" />
+          <span class="tag-label">{{ truncateFilename(filename) }}</span>
+          <span class="tag-count">{{ results.length }}</span>
+        </button>
+      </div>
     </div>
 
-    <a-modal v-model:open="subGraphVisible" title="相关实体与关系" :width="800" :footer="null">
+    <!-- 知识图谱弹窗 -->
+    <a-modal
+      v-model:open="subGraphVisible"
+      title="相关实体与关系"
+      :width="800"
+      :footer="null"
+      class="graph-modal"
+    >
       <GraphContainer v-if="subGraphVisible && subGraphData" :graphData="subGraphData" />
     </a-modal>
 
+    <!-- 网页搜索结果抽屉 -->
     <a-drawer
       v-model:open="webResultVisible"
       title="网页搜索结果"
-      width="700"
+      width="600"
       :contentWrapperStyle="{ maxWidth: '100%' }"
       placement="right"
-      class="web-result-detail"
-      rootClassName="root"
+      class="refs-drawer"
     >
       <div class="results-list">
-        <div v-for="result in webResults" :key="result.url" class="result-item">
-          <div class="result-meta">
-            <div class="score-info">
-              <span>
-                <strong>相关度：</strong>
-                <a-progress :percent="getPercent(result.score)" />
-              </span>
+        <div v-for="result in webResults" :key="result.url" class="web-result-card">
+          <div class="web-result-header">
+            <div class="web-favicon">
+              <GlobalOutlined />
             </div>
-            <div class="result-url">
-              <a :href="result.url" target="_blank" rel="noopener noreferrer">{{ result.url }}</a>
+            <div class="web-meta">
+              <a class="web-title" :href="result.url" target="_blank" rel="noopener noreferrer">
+                {{ result.title }}
+              </a>
+              <span class="web-url">{{ formatUrl(result.url) }}</span>
+            </div>
+            <div class="web-score">
+              <span class="score-value">{{ (result.score * 100).toFixed(0) }}%</span>
+              <span class="score-label">相关度</span>
             </div>
           </div>
-          <div class="result-content">
-            <h3 class="result-title">{{ result.title }}</h3>
-            <div class="result-text">{{ result.content }}</div>
+          <div class="web-content">{{ truncateContent(result.content, 200) }}</div>
+        </div>
+      </div>
+    </a-drawer>
+
+    <!-- 知识库文件详情抽屉 -->
+    <a-drawer
+      v-for="(results, filename) in kbGroupedResults"
+      :key="`drawer-${filename}`"
+      v-model:open="openDetail[filename]"
+      :title="filename"
+      width="600"
+      :contentWrapperStyle="{ maxWidth: '100%' }"
+      placement="right"
+      class="refs-drawer"
+    >
+      <div class="file-info">
+        <div class="file-info-item">
+          <FileOutlined class="info-icon" />
+          <span>{{ results[0]?.file?.type || '未知类型' }}</span>
+        </div>
+        <div class="file-info-item">
+          <ClockCircleOutlined class="info-icon" />
+          <span>{{ formatDate(results[0]?.file?.created_at) }}</span>
+        </div>
+      </div>
+
+      <div class="results-list">
+        <div v-for="(res, idx) in results" :key="res.id" class="kb-result-card">
+          <div class="kb-result-header">
+            <span class="result-index">#{{ idx + 1 }}</span>
+            <div class="result-scores">
+              <div class="score-item">
+                <span class="score-label">相似度</span>
+                <div class="score-bar">
+                  <div class="score-fill" :style="{ width: `${res.distance * 100}%` }"></div>
+                </div>
+                <span class="score-value">{{ (res.distance * 100).toFixed(0) }}%</span>
+              </div>
+              <div v-if="res.rerank_score" class="score-item">
+                <span class="score-label">重排序</span>
+                <div class="score-bar">
+                  <div class="score-fill rerank" :style="{ width: `${res.rerank_score * 100}%` }"></div>
+                </div>
+                <span class="score-value">{{ (res.rerank_score * 100).toFixed(0) }}%</span>
+              </div>
+            </div>
           </div>
+          <div class="kb-result-text">{{ res.entity?.text }}</div>
         </div>
       </div>
     </a-drawer>
@@ -114,18 +138,15 @@
 
 <script setup>
 import { ref, reactive, computed, watch, defineAsyncComponent } from 'vue'
-import { useClipboard } from '@vueuse/core'
-import { message as antdMessage } from 'ant-design-vue'
 import {
   GlobalOutlined,
   FileTextOutlined,
-  CopyOutlined,
-  DeploymentUnitOutlined,
-  BulbOutlined,
+  ApartmentOutlined,
+  FolderOutlined,
   FileOutlined,
-  ClockCircleOutlined,
-  ReloadOutlined
+  ClockCircleOutlined
 } from '@ant-design/icons-vue'
+
 const GraphContainer = defineAsyncComponent(() => import('./GraphContainer.vue'))
 
 const emit = defineEmits(['retry'])
@@ -158,27 +179,29 @@ const kbGroupedResults = computed(() => {
     }, {})
 })
 
+const webSearchCount = computed(() => msg.value?.refs?.web_search?.results?.length || 0)
+
+const totalRefsCount = computed(() => {
+  let count = 0
+  if (hasSubGraphData(msg.value)) count++
+  count += webSearchCount.value
+  count += Object.keys(kbGroupedResults.value).length
+  return count
+})
+
+const hasAnyRefs = computed(() => {
+  return (
+    (showKey('subGraph') && hasSubGraphData(msg.value)) ||
+    (showKey('webSearch') && webSearchCount.value > 0) ||
+    Object.keys(kbGroupedResults.value).length > 0
+  )
+})
+
 const showKey = (key) => {
   if (displayKeys.value === true) return true
   if (Array.isArray(displayKeys.value)) return displayKeys.value.includes(key)
   return false
 }
-
-const { copy, isSupported } = useClipboard()
-const copyText = async (text) => {
-  if (!isSupported.value) {
-    antdMessage.error('当前浏览器不支持复制')
-    return
-  }
-  try {
-    await copy(text)
-    antdMessage.success('已复制到剪贴板')
-  } catch {
-    antdMessage.error('复制失败')
-  }
-}
-
-const regenerateMessage = () => emit('retry')
 
 const openDetail = reactive({})
 const ensureOpenDetailKeys = () => {
@@ -200,7 +223,7 @@ const toggleDrawer = (filename) => {
 }
 
 const hasSubGraphData = (msg) =>
-  msg.refs && msg.refs.graph_base && msg.refs.graph_base.results?.nodes?.length > 0
+  msg?.refs?.graph_base?.results?.nodes?.length > 0
 
 const subGraphVisible = ref(false)
 const subGraphData = ref(null)
@@ -214,204 +237,311 @@ const openSubGraph = (msg) => {
 const webResultVisible = ref(false)
 const webResults = ref(null)
 const showWebResult = (msg) => {
-  webResults.value = msg.refs.web_search.results
+  webResults.value = msg.refs?.web_search?.results || []
   webResultVisible.value = true
 }
 
-const formatDate = (timestamp) => new Date(timestamp * 1000).toLocaleString()
+const formatDate = (timestamp) => {
+  if (!timestamp) return '未知时间'
+  return new Date(timestamp * 1000).toLocaleString()
+}
 
-const getPercent = (value) => parseFloat((value * 100).toFixed(2))
-</script>
-
-<style lang="less" scoped>
-.refs {
-  display: flex;
-  margin-bottom: 20px;
-  //color: var(--gray-500);
-  background: transparent;
-  font-size: 13px;
-  gap: 10px;
-
-  .item {
-    color: var(--gray-700);
-    background: transparent; // ✅ 不要小气泡背景
-    padding: 2px 8px;
-    border-radius: 8px;
-    font-size: 13px;
-
-    user-select: none;
-
-    &.btn {
-      cursor: pointer;
-      &:hover {
-        background: var(--hover-bg);
-        color: var(--text-color);
-      }
-      &:active {
-        background: var(--gray-200);
-      }
-    }
-  }
-
-  .tags {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 10px;
-
-    .filetag {
-      display: flex;
-      align-items: center;
-      gap: 5px;
-    }
+const formatUrl = (url) => {
+  try {
+    const u = new URL(url)
+    return u.hostname
+  } catch {
+    return url
   }
 }
 
-.retrieval-detail {
-  .fileinfo {
-    display: flex;
-    justify-content: space-between;
-    padding: 12px 16px;
-    background-color: var(--surface-color-2);
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-sm);
-    margin-bottom: 16px;
+const truncateFilename = (filename, maxLen = 20) => {
+  if (!filename) return ''
+  if (filename.length <= maxLen) return filename
+  const ext = filename.split('.').pop()
+  const name = filename.slice(0, -(ext.length + 1))
+  return `${name.slice(0, maxLen - ext.length - 4)}...${ext}`
+}
 
-    p {
-      margin: 0;
-      color: var(--gray-700);
-    }
-  }
+const truncateContent = (content, maxLen = 200) => {
+  if (!content) return ''
+  if (content.length <= maxLen) return content
+  return content.slice(0, maxLen) + '...'
+}
+</script>
 
-  .score-info {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 2rem;
-    margin-bottom: 8px;
+<style lang="less" scoped>
+.refs-container {
+  margin-top: var(--space-2);
+}
 
-    span {
-      display: flex;
-      align-items: center;
+.refs-section {
+  margin-bottom: var(--space-2);
+}
 
-      strong {
-        margin-right: 8px;
-        white-space: nowrap;
-        color: var(--gray-700);
-      }
+.refs-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+  font-size: var(--font-size-sm);
+  color: var(--gray-600);
 
-      .ant-progress {
-        width: 170px;
-        margin-bottom: 0;
-        margin-inline: 10px;
-
-        .ant-progress-bg {
-          background-color: var(--main-500);
-        }
-      }
-    }
-  }
-
-  .result-id {
-    font-size: 12px;
-    color: var(--gray-600);
-    margin-bottom: 8px;
-  }
-
-  .result-text {
+  .refs-icon {
     font-size: 14px;
-    line-height: 1.6;
-    white-space: pre-wrap;
-    word-break: break-word;
-    background-color: var(--surface-color-2);
-    padding: 12px;
+  }
+
+  .refs-title {
+    font-weight: 500;
+  }
+
+  .refs-count {
+    padding: 2px 6px;
+    background: var(--gray-100);
+    border-radius: 10px;
+    font-size: var(--font-size-xs);
+    color: var(--gray-500);
+  }
+}
+
+.refs-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.ref-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: var(--surface-color-2);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-xs);
+  color: var(--gray-700);
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-default);
+
+  &:hover {
+    background: var(--main-5);
+    border-color: var(--primary-color);
+    color: var(--primary-color);
+  }
+
+  .tag-icon {
+    font-size: 14px;
+    opacity: 0.8;
+  }
+
+  .tag-label {
+    font-weight: 500;
+    max-width: 120px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .tag-count {
+    padding: 2px 6px;
+    background: var(--gray-200);
+    border-radius: 8px;
+    font-size: 11px;
+    color: var(--gray-600);
+  }
+}
+
+/* 抽屉样式 */
+.refs-drawer {
+  .file-info {
+    display: flex;
+    gap: var(--space-4);
+    padding: var(--space-3) var(--space-4);
+    background: var(--surface-color-2);
     border-radius: var(--radius-sm);
-    border: 1px solid var(--border-color);
+    margin-bottom: var(--space-4);
+  }
+
+  .file-info-item {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    font-size: var(--font-size-sm);
+    color: var(--gray-600);
+
+    .info-icon {
+      font-size: 14px;
+      color: var(--gray-500);
+    }
   }
 }
 
 .results-list {
-  .result-item {
-    border-bottom: 1px solid var(--border-color);
-    padding: 16px 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
 
-    &:last-child {
-      border-bottom: none;
-    }
-  }
+/* 网页搜索结果卡片 */
+.web-result-card {
+  padding: var(--space-4);
+  background: var(--surface-color);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  transition: all var(--duration-fast) var(--ease-default);
 
-  .result-meta {
-    margin-bottom: 12px;
+  &:hover {
+    border-color: var(--primary-color);
+    box-shadow: var(--shadow-xs);
   }
 }
 
-.web-result-detail {
-  .results-list {
-    .result-item {
-      border-bottom: 1px solid var(--border-color);
-      padding: 16px 0;
+.web-result-header {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
+}
 
-      &:last-child {
-        border-bottom: none;
-      }
-    }
+.web-favicon {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface-color-2);
+  border-radius: var(--radius-sm);
+  color: var(--gray-500);
+  flex-shrink: 0;
+}
 
-    .result-meta {
-      margin-bottom: 12px;
+.web-meta {
+  flex: 1;
+  min-width: 0;
+}
 
-      .score-info {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 2rem;
-        margin-bottom: 8px;
+.web-title {
+  display: block;
+  font-size: var(--font-size-base);
+  font-weight: 600;
+  color: var(--text-color);
+  text-decoration: none;
+  margin-bottom: 4px;
 
-        span {
-          display: flex;
-          align-items: center;
+  &:hover {
+    color: var(--primary-color);
+  }
+}
 
-          strong {
-            margin-right: 8px;
-            white-space: nowrap;
-            color: var(--gray-700);
-          }
+.web-url {
+  font-size: var(--font-size-xs);
+  color: var(--gray-500);
+}
 
-          .ant-progress {
-            width: 170px;
-            margin-bottom: 0;
-            margin-inline: 10px;
+.web-score {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: var(--space-2) var(--space-3);
+  background: var(--main-5);
+  border-radius: var(--radius-sm);
 
-            .ant-progress-bg {
-              background-color: var(--main-500);
-            }
-          }
-        }
-      }
+  .score-value {
+    font-size: var(--font-size-lg);
+    font-weight: 700;
+    color: var(--primary-color);
+  }
 
-      .result-url {
-        font-size: 12px;
-        color: var(--primary-color);
-        margin-bottom: 8px;
-        word-break: break-all;
-      }
-    }
+  .score-label {
+    font-size: var(--font-size-xs);
+    color: var(--gray-500);
+  }
+}
 
-    .result-content {
-      .result-title {
-        font-size: 16px;
-        font-weight: bold;
-        margin-bottom: 8px;
-        color: var(--text-color);
-      }
+.web-content {
+  font-size: var(--font-size-sm);
+  color: var(--gray-600);
+  line-height: var(--line-height-relaxed);
+}
 
-      .result-text {
-        font-size: 14px;
-        line-height: 1.6;
-        white-space: pre-wrap;
-        word-break: break-word;
-        background-color: var(--surface-color-2);
-        padding: 12px;
-        border-radius: var(--radius-sm);
-        border: 1px solid var(--border-color);
-      }
+/* 知识库结果卡片 */
+.kb-result-card {
+  padding: var(--space-4);
+  background: var(--surface-color);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+}
+
+.kb-result-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
+}
+
+.result-index {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--gray-500);
+  font-family: var(--font-family-mono);
+}
+
+.result-scores {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.score-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+
+  .score-label {
+    font-size: var(--font-size-xs);
+    color: var(--gray-500);
+    width: 48px;
+    flex-shrink: 0;
+  }
+
+  .score-bar {
+    flex: 1;
+    height: 6px;
+    background: var(--gray-100);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+
+  .score-fill {
+    height: 100%;
+    background: var(--primary-color);
+    border-radius: 3px;
+    transition: width var(--duration-slow) var(--ease-out);
+
+    &.rerank {
+      background: var(--holo-accent);
     }
   }
+
+  .score-value {
+    font-size: var(--font-size-xs);
+    font-weight: 600;
+    color: var(--gray-600);
+    width: 36px;
+    text-align: right;
+    font-family: var(--font-family-mono);
+  }
+}
+
+.kb-result-text {
+  font-size: var(--font-size-sm);
+  color: var(--text-color);
+  line-height: var(--line-height-relaxed);
+  white-space: pre-wrap;
+  word-break: break-word;
+  padding: var(--space-3);
+  background: var(--surface-color-2);
+  border-radius: var(--radius-sm);
 }
 </style>
