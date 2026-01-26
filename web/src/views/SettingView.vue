@@ -220,7 +220,7 @@ import {
 import HeaderComponent from '@/components/HeaderComponent.vue'
 import { useConfigStore } from '@/stores/config'
 import { DEFAULT_CONFIG } from '@/config/defaultConfig'
-import { APP_NAME, APP_VERSION, BUILD_SHA } from '@/config/appMeta'
+import { APP_VERSION } from '@/config/appMeta'
 import { ApiError, apiFetch } from '@/api/http'
 import { getUiDensity, setUiDensity } from '@/utils/uiDensity'
 import { THEME_PRESETS, getThemePreset, setThemePreset } from '@/utils/themePreset'
@@ -257,6 +257,11 @@ const modulesList = [
   { key: 'enable_asr', label: '语音识别', desc: 'ASR', icon: AudioFilled },
   { key: 'enable_ner_bert', label: '实体识别', desc: 'NER', icon: TagFilled },
 ]
+
+// Feature toggles UI state (per-switch saving indicator).
+const featureState = reactive({
+  saving: {}
+})
 
 // Providers Logic
 const providersState = reactive({
@@ -295,10 +300,6 @@ const providerConfigured = (provider) => {
 // Actions
 const setUiVisibility = (key, checked) => {
   configStore.patchLocal({ ui: { ...uiVisibility.value, [key]: Boolean(checked) } })
-}
-const resetUiVisibility = () => {
-  configStore.patchLocal({ ui: { ...(DEFAULT_CONFIG.ui || {}) } })
-  message.success('已重置')
 }
 const onProviderChange = async (p) => {
   const models = modelCatalog.value?.[p]?.models || []
@@ -347,18 +348,6 @@ const saveProvider = async (provider) => {
     providersState.editingId = null
     message.success('已保存')
   } catch (e) { notifyApiError(e, { context: '保存', fallback: '失败' }) }
-  finally { providersState.saving[provider] = false }
-}
-const clearProvider = async (provider) => {
-  providersState.saving[provider] = true
-  try {
-    const res = await apiFetch('/providers', { method: 'PATCH', body: { provider, api_key: '', api_base: '' }, timeoutMs: 10000 })
-    providersState.status = res?.providers || providersState.status
-    providerForm[provider].api_key = ''
-    providerForm[provider].api_base = modelCatalog.value?.[provider]?.base_url || ''
-    providersState.editingId = null
-    message.success('已清空')
-  } catch (e) { notifyApiError(e, { context: '清空', fallback: '失败' }) }
   finally { providersState.saving[provider] = false }
 }
 

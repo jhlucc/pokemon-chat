@@ -255,6 +255,23 @@ const mainList = computed(() => {
       </div>
       <div class="fill" style="flex-grow: 1"></div>
 
+      <div
+        v-if="!layoutSettings.useTopBar"
+        class="nav-item collapse-toggle"
+        @click="toggleSider"
+        role="button"
+        tabindex="0"
+        aria-label="Toggle sidebar"
+        @keydown.enter.prevent="toggleSider"
+        @keydown.space.prevent="toggleSider"
+      >
+        <a-tooltip placement="right">
+          <template #title>{{ siderCollapsed ? 'Expand sidebar' : 'Collapse sidebar' }}</template>
+          <component class="icon" :is="siderCollapsed ? MenuUnfoldOutlined : MenuFoldOutlined" />
+          <span class="text">{{ siderCollapsed ? 'Expand' : 'Collapse' }}</span>
+        </a-tooltip>
+      </div>
+
       <!-- Status Indicator: Simple Dot -->
       <div
         class="nav-item mode-indicator"
