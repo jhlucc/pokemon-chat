@@ -120,11 +120,12 @@
         </div>
       </template>
 
-      <a-empty v-else class="empty-state" description="暂无对话">
+      <a-empty v-else class="empty-state" :image="null">
         <template #image>
-          <div class="empty-icon">
-            <CommentOutlined />
-          </div>
+          <img src="/empty-chat.png" alt="暂无对话" class="empty-image" />
+        </template>
+        <template #description>
+          <span class="empty-text">暂无对话</span>
         </template>
         <a-space direction="vertical" :size="8">
           <a-button type="primary" @click="emit('new-conversation')">
