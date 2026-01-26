@@ -70,7 +70,15 @@
     <div class="canvas-wrap ui-card graph-canvas">
       <a-spin :spinning="state.vizLoading" tip="加载图谱渲染器...">
         <div class="main" ref="container" v-show="graphData.nodes.length > 0"></div>
-        <a-empty v-show="graphData.nodes.length === 0" style="padding: 4rem 0" />
+        <a-empty v-show="graphData.nodes.length === 0" class="graph-empty" :image="null">
+          <template #image>
+            <img src="/empty-chat.png" alt="暂无数据" class="empty-image" />
+          </template>
+          <template #description>
+            <span class="empty-text">暂无图谱数据</span>
+          </template>
+          <p class="empty-hint">输入实体名称进行检索，或点击"采样"随机加载节点</p>
+        </a-empty>
       </a-spin>
     </div>
 
@@ -488,6 +496,29 @@ onUnmounted(() => {
 
 .neighbor-item {
   cursor: pointer;
+}
+
+.graph-empty {
+  padding: 4rem 0;
+
+  .empty-image {
+    width: 120px;
+    height: 120px;
+    object-fit: contain;
+    opacity: 0.9;
+  }
+
+  .empty-text {
+    color: var(--gray-600);
+    font-size: var(--font-size-base);
+    font-weight: 500;
+  }
+
+  .empty-hint {
+    color: var(--gray-500);
+    font-size: var(--font-size-sm);
+    margin-top: var(--space-2);
+  }
 }
 
 </style>

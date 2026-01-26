@@ -393,22 +393,22 @@ onMounted(() => refreshProviders())
 }
 
 .bento-card {
-  background: rgba(255, 255, 255, 0.85);
+  background: color-mix(in srgb, var(--surface-color) 85%, transparent);
   backdrop-filter: blur(12px);
   border-radius: 16px;
-  box-shadow: 
-    0 4px 6px -1px rgba(0, 0, 0, 0.02), 
+  box-shadow:
+    0 4px 6px -1px rgba(0, 0, 0, 0.02),
     0 2px 4px -1px rgba(0, 0, 0, 0.02),
-    inset 0 1px 0 rgba(255,255,255,0.8);
-  border: 1px solid rgba(0,0,0,0.06);
+    inset 0 1px 0 color-mix(in srgb, var(--surface-color) 80%, transparent);
+  border: 1px solid var(--border-color);
   padding: 20px;
   transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
   overflow: hidden;
   position: relative;
-  
+
   &:hover {
     box-shadow: 0 12px 24px -4px rgba(0, 0, 0, 0.06);
-    border-color: rgba(0,0,0,0.1);
+    border-color: color-mix(in srgb, var(--border-color) 80%, var(--text-color) 10%);
     transform: translateY(-2px);
   }
 }
@@ -508,12 +508,12 @@ onMounted(() => refreshProviders())
 .providers-scroll::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 2px; }
 .provider-row {
   display: flex; justify-content: space-between; align-items: center; padding: 8px 10px; border-radius: 8px; cursor: pointer; transition: all 0.15s; border: 1px solid transparent; margin-bottom: 4px;
-  background: #fdfdfd;
-  &:hover { background: #fff; border-color: #e2e8f0; box-shadow: 0 2px 4px rgba(0,0,0,0.02); }
+  background: var(--surface-color);
+  &:hover { background: var(--surface-color-2); border-color: var(--border-color); box-shadow: 0 2px 4px rgba(0,0,0,0.02); }
 }
 .p-left { display: flex; align-items: center; gap: 10px; }
-.p-icon { width: 20px; height: 20px; border-radius: 5px; background: white; padding: 2px; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
-.p-name { font-weight: 600; color: #334155; font-size: 13px; }
+.p-icon { width: 20px; height: 20px; border-radius: 5px; background: var(--surface-color); padding: 2px; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
+.p-name { font-weight: 600; color: var(--text-color); font-size: 13px; }
 .status-pill {
   font-size: 10px; font-weight: 700; padding: 2px 6px; border-radius: 4px; letter-spacing: 0.05em; font-family: 'JetBrains Mono', monospace;
   &.active { background: #dcfce7; color: #166534; }
@@ -524,21 +524,21 @@ onMounted(() => refreshProviders())
 .capabilities-card { grid-column: span 12; }
 .modules-container { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 12px; }
 .module-tile {
-  background: white; border-radius: 12px; padding: 12px; display: flex; flex-direction: column; justify-content: space-between; height: 90px;
-  cursor: pointer; transition: all 0.2s ease; border: 1px solid #f1f5f9; position: relative; overflow: hidden;
-  
+  background: var(--surface-color); border-radius: 12px; padding: 12px; display: flex; flex-direction: column; justify-content: space-between; height: 90px;
+  cursor: pointer; transition: all 0.2s ease; border: 1px solid var(--border-color); position: relative; overflow: hidden;
+
   .tile-bg { position: absolute; inset: 0; opacity: 0; background: linear-gradient(135deg, rgba(255,83,80,0.05), transparent); transition: opacity 0.2s; }
   .tile-content { position: relative; z-index: 1; height: 100%; display: flex; flex-direction: column; justify-content: space-between; }
-  .tile-icon { font-size: 20px; color: #94a3b8; transition: color 0.2s; }
-  .tile-name { font-weight: 600; color: #475569; font-size: 12px; transition: color 0.2s; }
-  .tile-status { font-size: 10px; color: #cbd5e1; font-weight: 700; margin-top: 2px; }
-  .tile-bar { position: absolute; bottom: 0; left: 0; width: 100%; height: 3px; background: #e2e8f0; transition: background 0.2s; }
-  
+  .tile-icon { font-size: 20px; color: var(--gray-500); transition: color 0.2s; }
+  .tile-name { font-weight: 600; color: var(--gray-600); font-size: 12px; transition: color 0.2s; }
+  .tile-status { font-size: 10px; color: var(--gray-400); font-weight: 700; margin-top: 2px; }
+  .tile-bar { position: absolute; bottom: 0; left: 0; width: 100%; height: 3px; background: var(--gray-200); transition: background 0.2s; }
+
   &.active {
     border-color: rgba(255, 83, 80, 0.2); box-shadow: 0 4px 12px rgba(255, 83, 80, 0.05);
     .tile-bg { opacity: 1; }
     .tile-icon { color: var(--pokedex-red); }
-    .tile-name { color: #0f172a; }
+    .tile-name { color: var(--text-color); }
     .tile-status { color: var(--pokedex-red); }
     .tile-bar { background: var(--pokedex-red); }
   }
