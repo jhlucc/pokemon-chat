@@ -356,19 +356,22 @@ watch(convs, () => persistConvs(), { deep: true })
 }
 
 .conversations {
-  width: 230px;
-  max-width: 230px;
-  border-right: 1px solid var(--main-light-3);
+  width: 260px;
+  max-width: 260px;
   background-color: var(--bg-sider);
-  transition: all 0.3s ease;
-  white-space: nowrap; /* 防止文本换行 */
-  overflow: hidden; /* 确保内容不溢出 */
+  border-right: 1px solid var(--border-color);
+  /* Use adaptive text color */
+  color: var(--text-color);
+  
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  white-space: nowrap;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
   height: 100%;
 
   &.is-open {
-    width: 230px;
+    width: 260px;
   }
 
   &:not(.is-open) {
@@ -376,12 +379,8 @@ watch(convs, () => persistConvs(), { deep: true })
     padding: 0;
     overflow: hidden;
   }
-  .action.new {
-    color: var(--main-500);
-    &:hover {
-      background: var(--main-light-4);
-    }
-  }
+  
+  /* --- Top Actions --- */
   & .actions {
     height: var(--header-height);
     display: flex;
@@ -389,121 +388,153 @@ watch(convs, () => persistConvs(), { deep: true })
     align-items: center;
     padding: 16px;
     z-index: 9;
-    border-bottom: 1px solid var(--main-light-3);
-
-    .actions-left,
-    .actions-right {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
+    border-bottom: 1px solid var(--border-color);
 
     .header-title {
-      font-weight: bold;
+      font-weight: 600;
+      color: var(--text-color);
+      letter-spacing: 0.5px;
       user-select: none;
-      white-space: nowrap;
-      overflow: hidden;
     }
 
     .action {
       font-size: 1.2rem;
-      width: 2.5rem;
-      height: 2.5rem;
+      width: 2.2rem;
+      height: 2.2rem;
       display: flex;
       justify-content: center;
       align-items: center;
-      border-radius: 8px;
-      color: var(--gray-800);
+      border-radius: 50%;
+      color: var(--gray-600);
       cursor: pointer;
+      transition: all 0.2s;
 
       &:hover {
-        background-color: var(--main-light-3);
+        background-color: var(--hover-bg);
+        color: var(--text-color);
       }
-
-      .nav-btn-icon {
-        width: 1.2rem;
-        height: 1.2rem;
+      
+      /* New Chat Button: Prominent Red Circle */
+      &.new {
+        background-color: var(--pokedex-red);
+        color: #fff;
+        box-shadow: 0 4px 12px rgba(255, 83, 80, 0.4);
+        
+        &:hover {
+          transform: scale(1.1) rotate(90deg);
+          box-shadow: 0 6px 16px rgba(255, 83, 80, 0.6);
+        }
       }
     }
   }
 
+  /* --- Search Bar --- */
   .conversation-search {
-    padding: 10px 12px;
-    border-bottom: 1px solid var(--main-light-3);
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border-color);
+    
+    :deep(.ant-input-affix-wrapper) {
+      background-color: var(--input-background-color);
+      border: 1px solid var(--border-color);
+      border-radius: 20px;
+      padding-left: 12px;
+      
+       input {
+          background-color: transparent !important;
+       }
+    }
   }
 
+  /* --- List Items --- */
   .conversation-list {
     display: flex;
     flex-direction: column;
     overflow-y: auto;
     flex: 1 1 auto;
+    padding-top: 8px;
   }
 
   .conversation-list .conversation {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 12px 12px;
-    margin: 4px 8px;
+    padding: 10px 14px;
+    margin: 4px 10px;
     cursor: pointer;
     user-select: none;
-    border-radius: var(--radius-md);
+    border-radius: 12px;
     border: 1px solid transparent;
-    transition: background-color 0.2s ease-in-out, border-color 0.2s ease-in-out;
+    transition: all 0.2s ease-in-out;
+    position: relative;
+    color: var(--text-color);
 
     &__title {
       color: var(--gray-700);
-      white-space: nowrap; /* 禁止换行 */
-      overflow: hidden; /* 超出部分隐藏 */
-      text-overflow: ellipsis; /* 显示省略号 */
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      font-size: 0.9rem;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      
+      .anticon {
+        font-size: 1.1em;
+        opacity: 0.7;
+      }
     }
 
     &__delete {
       display: none;
       color: var(--gray-500);
-      transition: all 0.2s ease-in-out;
-
+      
       &:hover {
         color: var(--danger-500);
-        background-color: var(--hover-bg);
       }
     }
 
-    &.active {
-      border-right: 3px solid var(--main-500);
-      padding-right: 9px;
-      background-color: var(--surface-color);
-      border-color: color-mix(in srgb, var(--main-500) 18%, var(--border-color));
-
-      & .conversation__title {
-        color: var(--gray-1000);
-      }
-    }
-
+    /* Hover State */
     &:not(.active):hover {
       background-color: var(--hover-bg);
-      border-color: var(--border-color);
-
+      
       & .conversation__delete {
         display: block;
       }
     }
 
-    &:focus-visible {
-      background-color: var(--hover-bg);
-      border-color: var(--border-color);
-    }
-
-    &:focus-within .conversation__delete {
-      display: block;
+    /* Active State: Glowing Data Card */
+    &.active {
+      background: linear-gradient(90deg, rgba(255, 83, 80, 0.15) 0%, rgba(255, 83, 80, 0.05) 100%);
+      border: 1px solid rgba(255, 83, 80, 0.3);
+      
+      & .conversation__title {
+        color: var(--pokedex-red);
+        font-weight: 600;
+        
+        .anticon {
+           color: var(--pokedex-red);
+           opacity: 1;
+        }
+      }
+      
+      /* Active Indicator Bar */
+      &::before {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 15%;
+        bottom: 15%;
+        width: 3px;
+        background-color: var(--pokedex-red);
+        border-radius: 0 4px 4px 0;
+      }
     }
   }
 
   .conversation-empty {
     padding: 28px 12px;
-
     :deep(.ant-empty-description) {
-      color: var(--gray-600);
+      color: var(--gray-500);
     }
   }
 }

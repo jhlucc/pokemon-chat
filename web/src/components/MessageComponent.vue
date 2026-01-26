@@ -147,31 +147,58 @@ const isEmptyAndLoading = computed(() => {
 .message-wrapper {
   display: flex;
   align-items: flex-start;
-  margin-bottom: 1rem;
+  margin-bottom: 24px;
+  animation: fadeInUp 0.3s ease-out;
 
   &.from-user {
     flex-direction: row-reverse;
     .message-box {
-      background: var(--chat-user-bubble-bg);
-      color: var(--chat-user-bubble-text);
-      border: 1px solid color-mix(in srgb, var(--main-500) 18%, var(--border-color));
-      box-shadow: var(--shadow-xs);
-      max-width: min(560px, 82%);
+      /* Pokedex User Bubble: Red Gradient */
+      background: linear-gradient(135deg, var(--pokedex-red), #ff706d);
+      color: #ffffff;
+      border: 1px solid rgba(0,0,0,0.05);
+      box-shadow: 0 4px 12px rgba(255, 83, 80, 0.25);
+      border-radius: 20px 20px 4px 20px; /* Speech bubble shape */
+      max-width: min(600px, 85%);
+      
+      /* Make sure links in user bubble are white */
+      :deep(a) { color: #fff; text-decoration: underline; }
+    }
+    
+    .avatar {
+      margin-left: 12px;
+      margin-right: 0;
+      box-shadow: 0 4px 12px rgba(255, 83, 80, 0.2);
     }
   }
+
   &.from-ai {
     flex-direction: row;
     .message-box {
+      /* AI Bubble: Glass Data Display */
+      background: rgba(255, 255, 255, 0.85);
+      backdrop-filter: blur(8px);
       color: var(--chat-assistant-text);
+      border: 1px solid rgba(255, 255, 255, 0.6);
+      box-shadow: 0 4px 16px rgba(0,0,0,0.04);
+      border-radius: 4px 20px 20px 20px; /* Speech bubble shape */
       max-width: 960px;
     }
+    
+    .avatar {
+      margin-right: 12px;
+      margin-left: 0;
+      border: 2px solid #fff;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
   }
+
   .avatar {
-    width: 36px;
-    height: 36px;
+    width: 40px;
+    height: 40px;
     border-radius: 50%;
-    margin: 0 12px;
     object-fit: cover;
+    flex-shrink: 0;
   }
 }
 
@@ -243,27 +270,21 @@ const isEmptyAndLoading = computed(() => {
 /* ===== message-box 内排版 ===== */
 .message-box {
   display: inline-block;
-  border-radius: var(--radius-lg);
-  margin: 0.8rem 0;
-  padding: 0.625rem 1.25rem;
+  /* Default styling overridden by specific classes above */
+  padding: 12px 20px;
   user-select: text;
   word-break: break-word;
   font-size: 15px;
-  line-height: 24px;
-  max-width: 100%;
+  line-height: 1.6;
   position: relative;
+  
   &.assistant,
   &.received {
-    color: var(--chat-assistant-text);
-    width: 100%;
+     /* Legacy classes support */
     display: block;
-    text-align: left;
-    margin: 0 0 16px;
-    padding: 14px 16px;
-    background: var(--surface-color);
-    border: 1px solid var(--border-color);
-    box-shadow: var(--shadow-xs);
+    width: 100%;
   }
+
   .err-msg {
     color: var(--text-color);
     border: 1px solid color-mix(in srgb, var(--danger-500) 45%, transparent);
@@ -280,20 +301,23 @@ const isEmptyAndLoading = computed(() => {
   .reasoning-box {
     margin: 10px 0 15px;
     border: 1px solid var(--border-color);
-    border-radius: var(--radius-sm);
+    border-radius: 8px;
+    background: rgba(0,0,0,0.02);
+    
     .reasoning-content {
       font-size: 13px;
       color: var(--chat-muted-text);
       white-space: pre-wrap;
       margin: 0;
+      padding: 8px;
     }
   }
   :deep(.tool-calls-container) {
-    display: inline-flex !important; /* 横向摆放多枚胶囊 */
+    display: inline-flex !important;
     flex-wrap: wrap;
-    gap: 8px; /* 胶囊之间间距 */
+    gap: 8px;
     width: auto !important;
-    margin-top: 10px; /* 原来的外边距保留 */
+    margin-top: 10px;
     background: transparent !important;
     border: none !important;
   }

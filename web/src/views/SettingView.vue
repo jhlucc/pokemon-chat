@@ -25,7 +25,7 @@
                 <a-col :xs="24" :md="12">
                   <a-card title="连接状态" :bordered="false">
                     <div class="kv">
-                      <span class="k">Backend</span>
+                      <span class="k">服务端</span>
                       <span class="v">
                         <StatusTag :status="backendOnline ? 'online' : 'offline'" />
                         <StatusTag :status="backendReady ? 'ready' : 'not_ready'" />
@@ -204,7 +204,7 @@
                     <a-collapse ghost>
                       <a-collapse-panel key="troubleshoot" header="快速排查">
                         <ol class="muted troubleshoot-list">
-                          <li>后端是否 Online</li>
+                          <li>服务是否已连接</li>
                           <li>是否选择了正确的 Provider / Model</li>
                           <li>后端环境变量中是否配置了对应的 API Key</li>
                         </ol>
@@ -446,7 +446,7 @@ const providerDotStatus = (provider) => {
 
 const providerDotLabel = (provider) => {
   const configured = providerConfigured(provider)
-  if (configured === null) return backendOnline.value ? '未知' : '后端离线'
+  if (configured === null) return backendOnline.value ? '未知' : '断开连接'
   return configured ? '可用' : '不可用'
 }
 

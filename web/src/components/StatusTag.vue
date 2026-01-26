@@ -43,15 +43,15 @@ const text = computed(() => {
   if (props.label) return props.label
   switch (props.status) {
     case 'online':
-      return 'Online'
+      return '已连接'
     case 'offline':
-      return 'Offline'
+      return '断开'
     case 'ready':
-      return 'Ready'
+      return '已就绪'
     case 'not_ready':
-      return 'Not Ready'
+      return '未就绪'
     default:
-      return 'Info'
+      return '提示'
   }
 })
 </script>

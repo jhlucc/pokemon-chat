@@ -9,7 +9,7 @@
         <div class="status-line">
           <StatusTag
             :status="backendOnline ? 'online' : 'offline'"
-            :label="backendOnline ? 'Backend Online' : 'Offline'"
+            :label="backendOnline ? '服务已连接' : '已断开'"
           />
           <a-tag :color="kgStatus.color">
             {{ kgStatus.label }}
@@ -26,8 +26,8 @@
       show-icon
       :message="
         backendOnline
-          ? 'Knowledge graph is disabled on backend (enable_knowledge_graph=false)'
-          : 'Backend offline'
+          ? '后端未启用知识图谱 (enable_knowledge_graph=false)'
+          : '服务已断开'
       "
       class="graph-alert"
     />
@@ -169,9 +169,9 @@ const canUseGraph = computed(() => backendOnline.value && Boolean(configStore.co
 
 const kgStatus = computed(() => {
   if (backendOnline.value && Boolean(configStore.config.enable_knowledge_graph))
-    return { color: 'green', label: 'KG Enabled' }
-  if (backendOnline.value) return { color: 'orange', label: 'KG Disabled' }
-  return { color: 'red', label: 'Offline' }
+    return { color: 'green', label: '图谱已启用' }
+  if (backendOnline.value) return { color: 'orange', label: '图谱未启用' }
+  return { color: 'red', label: '已断开' }
 })
 const graphInfo = ref({})
 

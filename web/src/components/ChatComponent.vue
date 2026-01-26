@@ -856,8 +856,11 @@ const selectModel = (provider, name) => {
   display: flex;
   flex-direction: column;
   overflow-x: hidden;
-  background: var(--main-light-7);
-  position: relative;
+  
+  /* --- Rotom-Dex Screen Background --- */
+  background-color: var(--background-color);
+  /* Clean background as requested, grid removed */
+  
   box-sizing: border-box;
   flex: 5 5 200px;
   overflow-y: scroll;
@@ -867,19 +870,23 @@ const selectModel = (provider, name) => {
     position: sticky;
     top: 0;
     z-index: 10;
-    background-color: var(--header-bg-color);
-    backdrop-filter: blur(10px);
+    
+    /* Glassmorphism Header */
+    background: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid rgba(0,0,0,0.05);
+    
     height: var(--header-height);
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 12px 16px;
+    padding: 12px 24px;
 
     .header__left,
     .header__right {
       display: flex;
       align-items: center;
-      gap: 10px;
+      gap: 12px;
     }
 
     .header__left {
@@ -894,61 +901,63 @@ const selectModel = (provider, name) => {
     display: flex;
     justify-content: center;
     align-items: center;
-    border-radius: 8px;
+    border-radius: 12px;
     color: var(--text-color);
     cursor: pointer;
-    // font-size: 1rem;
     width: auto;
-    transition: background-color 0.3s;
+    transition: all 0.3s;
     padding: 0.5rem 0.75rem;
 
     .text {
-      margin-left: 10px;
+      margin-left: 8px;
+      font-weight: 500;
     }
 
     &:hover {
-      background-color: var(--main-light-3);
+      background-color: var(--hover-bg);
+      color: var(--primary-color);
     }
   }
 
   .model-select {
     display: inline-flex;
     align-items: center;
-    gap: 6px;
-    padding: 6px 12px;
-    border-radius: 999px;
+    gap: 8px;
+    padding: 6px 16px;
+    border-radius: 20px;
+    /* Tech Pill Style */
     border: 1px solid var(--border-color);
-    background: var(--surface-color);
+    background: rgba(255,255,255,0.5);
+    backdrop-filter: blur(4px);
+    
     color: var(--text-color);
     cursor: pointer;
-    transition: background-color 0.2s ease, border-color 0.2s ease;
+    transition: all 0.2s ease;
     max-width: 300px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.02);
 
     &:hover {
-      background: var(--surface-color-2);
-      border-color: color-mix(in srgb, var(--main-500) 22%, var(--border-color));
+      background: #fff;
+      border-color: var(--primary-color);
+      box-shadow: 0 4px 12px rgba(255, 83, 80, 0.15);
+      transform: translateY(-1px);
     }
 
     .text {
-      overflow: hidden;
-      text-overflow: ellipsis;
+      font-weight: 500;
+      font-size: 0.9rem;
     }
 
     .model-select-icon {
-      width: 16px;
-      height: 16px;
+      width: 18px;
+      height: 18px;
       border-radius: 4px;
-      background: var(--surface-color-2);
       object-fit: contain;
-      flex: 0 0 auto;
     }
 
     .model-select-caret {
-      font-size: 12px;
-      color: var(--gray-600);
+      font-size: 10px;
+      color: var(--gray-500);
     }
   }
 }
@@ -986,14 +995,15 @@ const selectModel = (provider, name) => {
 
 .options-panel {
   position: absolute;
-  margin-top: 5px;
-  background-color: var(--surface-color);
+  margin-top: 8px;
+  background-color: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
   border: 1px solid var(--border-color);
-  box-shadow: var(--shadow-sm);
-  border-radius: var(--radius-md);
-  padding: 12px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.12);
+  border-radius: 16px;
+  padding: 16px;
   z-index: 11;
-  width: 280px;
+  width: 300px;
   transition: transform 0.2s ease, opacity 0.2s ease;
 
   .options-row {
@@ -1001,25 +1011,19 @@ const selectModel = (provider, name) => {
     justify-content: space-between;
     align-items: center;
     gap: 10px;
-    padding: 8px 16px;
+    padding: 10px 12px;
     border-radius: 8px;
     cursor: pointer;
-    transition: background-color 0.3s;
+    transition: background-color 0.2s;
+    font-weight: 500;
+    color: var(--gray-700);
 
     &:hover {
       background-color: var(--hover-bg);
+      color: var(--primary-color);
     }
-
-    .anticon {
-      margin-right: 8px;
-      font-size: 16px;
-    }
-
-    .ant-switch {
-      &.ant-switch-checked {
-        background-color: var(--main-500);
-      }
-    }
+    
+    .anticon { margin-right: 8px; }
   }
 }
 
@@ -1040,54 +1044,62 @@ const selectModel = (provider, name) => {
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  gap: 20px;
+  gap: 32px;
   text-align: center;
   padding: 32px 0;
+  z-index: 1;
 
   .chat-empty__hero {
     max-width: 720px;
     h1 {
-      margin: 0 0 8px;
-      font-size: 22px;
-      font-weight: 700;
-      color: var(--text-color);
-      letter-spacing: 0.2px;
+      margin: 0 0 12px;
+      font-size: 28px;
+      font-weight: 800;
+      color: var(--gray-900);
+      letter-spacing: -0.5px;
+      background: linear-gradient(120deg, var(--pokedex-red), #ff8a88);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
     }
     p {
       margin: 0;
-      color: var(--gray-700);
-      font-size: 14px;
+      color: var(--gray-600);
+      font-size: 16px;
     }
   }
 
   .chat-empty__prompts {
     width: 100%;
-    max-width: 720px;
+    max-width: 680px;
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 12px;
+    gap: 16px;
   }
 
   .prompt-card {
     text-align: left;
-    border: 1px solid var(--border-color);
-    background: var(--surface-color);
-    color: var(--text-color);
-    border-radius: var(--radius-md);
-    padding: 12px 14px;
+    /* Data Chip Style */
+    background: rgba(255, 255, 255, 0.6);
+    backdrop-filter: blur(4px);
+    border: 1px solid rgba(0,0,0,0.08);
+    
+    color: var(--gray-800);
+    border-radius: 16px;
+    padding: 16px 20px;
     cursor: pointer;
-    box-shadow: var(--shadow-xs);
-    transition: transform 0.12s ease, box-shadow 0.12s ease, background-color 0.12s ease;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+    transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+    font-weight: 500;
 
     &:hover {
-      background: var(--surface-color-2);
-      box-shadow: var(--shadow-sm);
-      transform: translateY(-1px);
+      background: #fff;
+      border-color: var(--primary-color);
+      box-shadow: 0 8px 24px rgba(255, 83, 80, 0.15);
+      transform: translateY(-4px);
     }
 
     &:active {
-      transform: translateY(0);
-      box-shadow: var(--shadow-xs);
+      transform: translateY(-1px);
     }
   }
 }
@@ -1101,6 +1113,7 @@ const selectModel = (provider, name) => {
   display: flex;
   flex-direction: column;
   transition: max-width 0.3s ease;
+  z-index: 1;
 
   &.wide-screen {
     max-width: 1200px;
@@ -1108,18 +1121,12 @@ const selectModel = (provider, name) => {
 
   &.font-smaller {
     font-size: 14px;
-
-    .message-box {
-      font-size: 14px;
-    }
+    .message-box { font-size: 14px; }
   }
 
   &.font-larger {
     font-size: 16px;
-
-    .message-box {
-      font-size: 16px;
-    }
+    .message-box { font-size: 16px; }
   }
 }
 
@@ -1128,14 +1135,31 @@ const selectModel = (provider, name) => {
   bottom: 0;
   width: 100%;
   margin: 0 auto;
-  padding: 4px 2rem 0 2rem;
+  padding: 12px 2rem 24px 2rem;
+  /* Gradient fade at bottom to mask content scrolling behind input */
+  background: linear-gradient(to top, var(--background-color) 60%, transparent);
+  z-index: 20;
 
   .message-input-wrapper {
     width: 100%;
     max-width: 800px;
     margin: 0 auto;
-    background-color: var(--surface-color);
+    
+    /* Command Terminal Style */
+    background-color: rgba(255, 255, 255, 0.9);
+    backdrop-filter: blur(10px);
+    border-radius: 24px;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.08);
+    border: 1px solid rgba(255, 255, 255, 0.5);
+    
+    padding: 4px;
     animation: width 0.3s ease-in-out;
+    transition: all 0.3s ease;
+    
+    &:focus-within {
+      box-shadow: 0 12px 40px rgba(255, 83, 80, 0.15);
+      border-color: rgba(255, 83, 80, 0.3);
+    }
 
     &.wide-screen {
       max-width: 1200px;
@@ -1143,11 +1167,11 @@ const selectModel = (provider, name) => {
 
     .note {
       width: 100%;
-      font-size: small;
+      font-size: 12px;
       text-align: center;
       padding: 0;
-      color: var(--gray-600);
-      margin-top: 4px;
+      color: var(--gray-500);
+      margin-top: 8px;
       margin-bottom: 0;
       user-select: none;
     }
@@ -1163,147 +1187,65 @@ const selectModel = (provider, name) => {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 6px 12px;
+  padding: 8px 16px;
   font-size: 14px;
-  color: var(--text-color);
-  background-color: var(--gray-100);
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
+  font-weight: 500;
+  color: #fff;
+  /* Primary Action Button */
+  background: linear-gradient(135deg, var(--pokedex-red), #ff8a88);
+  border: none;
+  border-radius: 20px;
   cursor: pointer;
-  transition: background-color 0.2s ease;
+  box-shadow: 0 4px 12px rgba(255, 83, 80, 0.3);
+  transition: all 0.2s ease;
 
   &:hover {
-    background-color: var(--gray-200);
+    transform: translateY(-1px);
+    box-shadow: 0 6px 16px rgba(255, 83, 80, 0.4);
+    background: linear-gradient(135deg, #ff6b69, #ff9e9c);
   }
 
   .icon {
     font-size: 16px;
-    width: 16px;
-    height: 16px;
   }
 
   .text {
-    font-size: 14px;
     white-space: nowrap;
   }
 }
 
+/* Scrollbar Styling */
 .chat::-webkit-scrollbar {
-  position: absolute;
-  width: 4px;
+  width: 6px;
 }
-
 .chat::-webkit-scrollbar-track {
   background: transparent;
-  border-radius: 4px;
 }
-
 .chat::-webkit-scrollbar-thumb {
-  background: var(--gray-400);
-  border-radius: 4px;
+  background: rgba(0,0,0,0.1);
+  border-radius: 3px;
 }
-
 .chat::-webkit-scrollbar-thumb:hover {
-  background: rgb(100, 100, 100);
-  border-radius: 4px;
+  background: rgba(0,0,0,0.2);
 }
 
-.chat::-webkit-scrollbar-thumb:active {
-  background: rgb(68, 68, 68);
-  border-radius: 4px;
-}
-
-.loading-dots {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.loading-dots div {
-  width: 8px;
-  height: 8px;
-  margin: 0 4px;
-  background-color: var(--chat-muted-text);
-  border-radius: 50%;
-  opacity: 0.3;
-  animation: pulse 0.5s infinite ease-in-out both;
-}
-
-.loading-dots div:nth-child(1) {
-  animation-delay: -0.32s;
-}
-
-.loading-dots div:nth-child(2) {
-  animation-delay: -0.16s;
-}
-
-@keyframes pulse {
-  0%,
-  80%,
-  100% {
-    transform: scale(0.8);
-    opacity: 0.3;
-  }
-  40% {
-    transform: scale(1);
-    opacity: 1;
-  }
-}
-
-@keyframes loading {
-  0%,
-  80%,
-  100% {
-    transform: scale(0.5);
-  }
-  40% {
-    transform: scale(1);
-  }
-}
-
+/* Animations */
 .slide-out-left {
-  -webkit-animation: slide-out-left 0.2s cubic-bezier(0.55, 0.085, 0.68, 0.53) both;
   animation: slide-out-left 0.5s cubic-bezier(0.55, 0.085, 0.68, 0.53) both;
 }
-
 .swing-in-top-fwd {
-  -webkit-animation: swing-in-top-fwd 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) both;
   animation: swing-in-top-fwd 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) both;
 }
 
 @keyframes swing-in-top-fwd {
   0% {
-    -webkit-transform: rotateX(-100deg);
     transform: rotateX(-100deg);
-    -webkit-transform-origin: top;
     transform-origin: top;
     opacity: 0;
   }
   100% {
-    -webkit-transform: rotateX(0deg);
     transform: rotateX(0deg);
-    -webkit-transform-origin: top;
     transform-origin: top;
-    opacity: 1;
-  }
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-
-@keyframes slideInUp {
-  from {
-    transform: translateY(20px);
-    opacity: 0;
-  }
-  to {
-    transform: translateY(0);
     opacity: 1;
   }
 }
@@ -1314,38 +1256,20 @@ const selectModel = (provider, name) => {
   }
 
   .chat-container .chat .chat-header {
-    background: var(--header-bg-color);
+    background: rgba(255,255,255,0.9);
+    padding: 8px 16px;
 
     .header__left,
     .header__right {
-      gap: 24px;
-    }
-
-    .nav-btn {
-      font-size: 1.3rem;
-      padding: 0;
-
-      &:hover {
-        background-color: transparent;
-        color: var(--text-color);
-      }
-
-      .text {
-        display: none;
-      }
+      gap: 16px;
     }
   }
 
   .bottom {
-    padding: 0.5rem 0.5rem;
-
-    .input-box {
-      border-radius: 8px;
-      padding: 0.5rem;
-
-      textarea.user-input {
-        padding: 0.5rem 0;
-      }
+    padding: 0 1rem 1rem 1rem;
+    
+    .message-input-wrapper {
+        border-radius: 16px;
     }
 
     .note {
@@ -1354,13 +1278,12 @@ const selectModel = (provider, name) => {
   }
 
   .chat-box {
-    padding: 0.75rem 0.75rem;
+    padding: 1rem;
   }
 
   .chat-empty {
     min-height: 45vh;
     padding: 24px 0;
-
     .chat-empty__prompts {
       grid-template-columns: 1fr;
     }
@@ -1375,7 +1298,6 @@ const selectModel = (provider, name) => {
   display: flex;
   align-items: center;
   gap: 8px;
-
   .search-switch {
     margin-right: 8px;
   }
@@ -1384,24 +1306,9 @@ const selectModel = (provider, name) => {
 .scrollable-menu {
   max-height: 300px;
   overflow-y: auto;
-
-  &::-webkit-scrollbar {
-    width: 6px;
-  }
-
-  &::-webkit-scrollbar-track {
-    background: transparent;
-    border-radius: 3px;
-  }
-
-  &::-webkit-scrollbar-thumb {
-    background: var(--gray-400);
-    border-radius: 3px;
-  }
-
-  &::-webkit-scrollbar-thumb:hover {
-    background: var(--gray-500);
-  }
+  &::-webkit-scrollbar { width: 6px; }
+  &::-webkit-scrollbar-track { background: transparent; }
+  &::-webkit-scrollbar-thumb { background: var(--gray-400); border-radius: 3px; }
 }
 
 </style>

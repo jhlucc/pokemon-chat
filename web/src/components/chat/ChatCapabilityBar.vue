@@ -162,26 +162,26 @@ const showKnowledgeBase = computed(() => props.showKnowledgeBase !== false)
 
 const agentTooltip = computed(() =>
   !props.canAgent
-    ? '后端离线/不可用'
+    ? '服务未连接'
     : props.useAgent
       ? 'Agent 模式已开启：由 supervisor_agent 自动路由到子 worker（无需手动选择）'
       : '开启总 Agent（supervisor_agent）统一编排'
 )
 const webTooltip = computed(() => {
   if (props.canWebSearch) return ''
-  return props.backendOnline ? '后端未启用联网搜索' : '后端离线/不可用'
+  return props.backendOnline ? '后端未启用联网搜索' : '服务未连接'
 })
 const graphTooltip = computed(() => {
   if (props.canGraph) return ''
-  return props.backendOnline ? '后端未启用知识图谱' : '后端离线/不可用'
+  return props.backendOnline ? '后端未启用知识图谱' : '服务未连接'
 })
 const mcpTooltip = computed(() => {
   if (props.canMcp) return ''
-  return props.backendOnline ? '后端未启用 MCP' : '后端离线/不可用'
+  return props.backendOnline ? '后端未启用 MCP' : '服务未连接'
 })
 const kbTooltip = computed(() => {
   if (props.canKb) return ''
-  return props.backendOnline ? '后端未启用知识库' : '后端离线/不可用'
+  return props.backendOnline ? '后端未启用知识库' : '服务未连接'
 })
 </script>
 

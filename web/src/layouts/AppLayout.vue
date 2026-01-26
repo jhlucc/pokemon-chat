@@ -143,8 +143,8 @@ const apiDocsUrl = computed(() => {
 const backendMode = computed(() => {
   const backend = configStore.config?.backend || {}
   const isOnline = Boolean(backend.online)
-  if (isOnline) return { key: 'online', short: 'API', label: 'Backend Online' }
-  return { key: 'offline', short: 'OFF', label: 'Backend Offline' }
+  if (isOnline) return { key: 'online', short: '已连接', label: '服务已就绪' }
+  return { key: 'offline', short: '断开', label: '服务未连接' }
 })
 
 

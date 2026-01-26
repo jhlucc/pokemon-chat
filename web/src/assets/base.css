@@ -1,52 +1,61 @@
-/* === 基础亮色模式（默认） === */
+/* === Rotom-Dex OS Theme === */
 :root {
+  /* --- Core Palette (Pokedex Style) --- */
+  --pokedex-red: #ff5350;       /* Primary Action / Shell */
+  --pokedex-dark: #2b2b2b;      /* Hardware / Sidebar (Dark Mode) */
+  --pokedex-screen: #f4f6f9;    /* Screen Background */
+  --holo-blue: #e0f7fa;         /* Holographic Accent */
+  --holo-accent: #00bcd4;       /* Active State */
+  --tech-dark-blue: #1a237e;    /* Deep Tech Blue */
+  
+  /* --- Base Scheme --- */
   color-scheme: light;
-  accent-color: var(--primary-color);
-  /* 主背景、文字、边框 */
-  --background-color: #ffffff;
-  --text-color: #212121;
-  --subtext-color: #666666;
-  --border-color: #e0e0e0;
-  --input-background-color: #fafafa;
+  accent-color: var(--pokedex-red);
+  
+  --background-color: var(--pokedex-screen);
+  --text-color: #2c3e50;
+  --subtext-color: #546e7a;
+  --border-color: rgba(0,0,0,0.1);
+  --input-background-color: rgba(255,255,255,0.8);
 
-  /* 主色调 */
-  --primary-color: #2c86a8;
-  --primary-light-color: #8cc6e1;
-  --error-color: #ba1a1a;
-  --success-color: #52c41a;
-  --warning-color: #faad14;
+  /* --- Primary Colors (Mapped to Rotom) --- */
+  --primary-color: var(--pokedex-red);
+  --primary-light-color: #ff8a88;
+  --error-color: #d32f2f;
+  --success-color: #388e3c;
+  --warning-color: #fbc02d;
 
-  /* 语义色（用于 hover/边框/文本） */
-  --danger-500: #ff4d4f;
-  --danger-600: #d9363e;
+  /* --- Semantic Colors --- */
+  --danger-500: #d32f2f;
+  --danger-600: #b71c1c;
 
-  /* 徽章色（文件类型等小标签） */
-  --badge-file-pdf: #005f77;
-  --badge-file-txt: #068033;
-  --badge-file-doc: #2c59b7;
-  --badge-file-md: #020817;
-
-  /* 通用表面色/交互色（用于自定义组件的暗色适配） */
+  /* --- Surfaces & Interaction --- */
   --surface-color: #ffffff;
-  --surface-color-2: #fafafa;
-  --bg-sider: var(--gray-50);
-  --hover-bg: rgba(0, 0, 0, 0.04);
+  --surface-color-2: #f8f9fa;
+  
+  /* Sidebar: Light in Light Mode */
+  --bg-sider: #f9f9f9; 
+  
+  --hover-bg: rgba(0, 0, 0, 0.05);
   --min-width: 360px;
 
-  /* 尺寸/阴影（统一 UI 观感） */
-  --radius-xs: 6px;
+  /* --- UI Dimensions & Effects --- */
+  --radius-xs: 4px;
   --radius-sm: 8px;
-  --radius-md: 12px;
-  --radius-lg: 16px;
-  --radius-xl: 20px;
+  --radius-md: 16px; /* Rotom is round & friendly */
+  --radius-lg: 24px;
+  
+  --shadow-xs: 0 2px 4px rgba(0,0,0,0.05);
+  --shadow-sm: 0 4px 12px rgba(0,0,0,0.08);
+  --shadow-md: 0 8px 24px rgba(0,0,0,0.12);
+  
+  --glass-bg: rgba(255, 255, 255, 0.7);
+  --glass-border: 1px solid rgba(255, 255, 255, 0.6);
+  --glass-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.07);
 
-  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.05);
-  --shadow-sm: 0 6px 18px rgba(0, 0, 0, 0.08);
-  --shadow-md: 0 12px 30px rgba(0, 0, 0, 0.12);
+  --focus-ring: 0 0 0 3px rgba(255, 83, 80, 0.25);
 
-  --focus-ring: 0 0 0 3px color-mix(in srgb, var(--primary-color) 25%, transparent);
-
-  /* 间距（用于统一留白，尽量用这些而不是散落的 magic number） */
+  /* --- Spacing --- */
   --space-1: 4px;
   --space-2: 8px;
   --space-3: 12px;
@@ -55,238 +64,84 @@
   --space-6: 24px;
   --space-8: 32px;
 
-  /* 兼容旧样式变量（项目内大量使用 --main-* / --main-light-*） */
+  /* --- Legacy Compatibility --- */
   --main-color: var(--primary-color);
-  --main-700: #1d5f78;
-  --main-600: #24779a;
+  --main-700: #c62828;
+  --main-600: #d32f2f;
   --main-500: var(--primary-color);
-  --main-400: #4e99b9;
-  --main-300: var(--primary-light-color);
-  --main-10: rgba(44, 134, 168, 0.12);
-  --main-5: rgba(44, 134, 168, 0.06);
+  --main-400: #ff8a88;
+  --main-300: #ffcdd2;
+  --main-10: rgba(255, 83, 80, 0.1);
+  --main-5: rgba(255, 83, 80, 0.05);
 
-  --main-light-2: var(--gray-300);
-  --main-light-3: var(--gray-200);
-  --main-light-4: var(--gray-100);
-  --main-light-5: var(--gray-100);
-  --main-light-6: var(--gray-100);
-  --main-light-7: var(--gray-100);
+  --main-light-2: #e0e0e0;
+  --main-light-3: #eeeeee;
+  --main-light-4: #f5f5f5;
+  --main-light-5: #fafafa;
+  --main-light-6: #ffffff;
+  --main-light-7: var(--pokedex-screen);
 
-  /* 灰阶色 */
+  /* --- Grays --- */
   --gray-0: #ffffff;
-  --gray-10: #fcfcfc;
-  --gray-50: #fafafa;
-  --gray-100: #f5f5f5;
-  --gray-200: #eeeeee;
-  --gray-300: #e0e0e0;
-  --gray-400: #bdbdbd;
-  --gray-500: #9e9e9e;
-  --gray-600: #757575;
-  --gray-700: #616161;
-  --gray-800: #424242;
-  --gray-900: #212121;
+  --gray-10: #f8f9fa;
+  --gray-50: #f1f3f4;
+  --gray-100: #e8eaed;
+  --gray-200: #dadce0;
+  --gray-300: #bdc1c6;
+  --gray-400: #9aa0a6;
+  --gray-500: #80868b;
+  --gray-600: #5f6368;
+  --gray-700: #3c4043;
+  --gray-800: #202124;
+  --gray-900: #171717;
   --gray-1000: #000000;
 
-  /* 特殊：聊天区域 */
-  --chat-background-color: #ffffff;
-
-  /* 聊天：消息气泡/辅助色（用于 MessageComponent 等） */
-  --chat-user-bubble-bg: rgba(44, 134, 168, 0.12);
-  --chat-user-bubble-text: var(--gray-900);
-  --chat-assistant-text: var(--gray-900);
-  --chat-muted-text: var(--gray-600);
+  /* --- Chat Specific --- */
+  --chat-background-color: transparent;
+  --chat-user-bubble-bg: var(--pokedex-red);
+  --chat-user-bubble-text: #ffffff;
+  --chat-assistant-text: var(--text-color);
+  --chat-muted-text: var(--subtext-color);
 }
 
-/* === 暗黑模式 === */
+/* === Dark Mode (Stealth Mode) === */
 :root[data-theme='dark'] {
   color-scheme: dark;
-  /* 主背景、文字、边框 */
-  --background-color: #181818;
-  --input-background-color: #1e1e1e;
+  
+  /* Dark Tech Aesthetic */
+  --pokedex-red: #ff6b69;
+  --background-color: #121212;
+  --surface-color: #1e1e1e;
+  --surface-color-2: #2c2c2c;
+  
+  --bg-sider: #000000; /* Deep black for hardware in dark mode */
+  
+  --text-color: #e0e0e0;
+  --subtext-color: #a0a0a0;
   --border-color: #333;
-  --text-color: #eeeeee;
-  /* 主色调（不变，除非你想换暗色版主色） */
-  --primary-color: #2c86a8;
-  --primary-light-color: #4e99b9;
-  --error-color: #ba1a1a;
-  --success-color: #52c41a;
-  --warning-color: #faad14;
+  --input-background-color: #1e1e1e;
 
-  --danger-500: #ff7875;
-  --danger-600: #ff4d4f;
-
-  --badge-file-pdf: #005f77;
-  --badge-file-txt: #068033;
-  --badge-file-doc: #2c59b7;
-  --badge-file-md: #020817;
-
-  /* 灰阶色（重新定义深色环境下的灰度层次） */
+  /* Muted Grays for Dark Mode */
   --gray-0: #121212;
-  --gray-10: #151515;
-  --gray-50: #191919;
-  --gray-100: #1d1d1d;
-  --gray-200: #2a2a2a;
-  --gray-300: #424242;
-  --gray-400: #616161;
-  --gray-500: #757575;
-  --gray-600: #9e9e9e;
-  --gray-700: #bdbdbd;
-  --gray-800: #d3d3d3;
-  --gray-900: #eeeeee;
+  --gray-10: #1a1a1a;
+  --gray-50: #222;
+  --gray-100: #2c2c2c;
+  --gray-200: #3a3a3a;
+  --gray-300: #4a4a4a;
+  --gray-400: #666;
+  --gray-500: #888;
+  --gray-600: #aaa;
+  --gray-700: #ccc;
+  --gray-800: #ddd;
+  --gray-900: #eee;
   --gray-1000: #ffffff;
 
-  /* 特殊：聊天区域 */
-  --chat-background-color: #181818;
-
-  --chat-user-bubble-bg: rgba(44, 134, 168, 0.22);
-  --chat-user-bubble-text: var(--gray-900);
-  --chat-assistant-text: var(--gray-900);
-  --chat-muted-text: var(--gray-600);
-
-  /* 通用表面色/交互色 */
-  --surface-color: #1e1e1e;
-  --surface-color-2: #121212;
-  --bg-sider: var(--gray-50);
-  --hover-bg: rgba(255, 255, 255, 0.06);
-
-  /* 尺寸/阴影（暗色下更克制） */
-  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.5);
-  --shadow-sm: 0 10px 22px rgba(0, 0, 0, 0.55);
-  --shadow-md: 0 18px 36px rgba(0, 0, 0, 0.6);
-
-  --focus-ring: 0 0 0 3px color-mix(in srgb, var(--primary-color) 35%, transparent);
-
-  /* 暗色下的主色调微调（用于 hover/弱背景） */
-  --main-10: rgba(44, 134, 168, 0.18);
-  --main-5: rgba(44, 134, 168, 0.1);
-
-  /* main-light 变量在暗色下映射到更深的灰阶 */
-  --main-light-2: var(--gray-300);
-  --main-light-3: var(--gray-200);
-  --main-light-4: var(--gray-100);
-  --main-light-5: var(--gray-100);
-  --main-light-6: var(--gray-100);
-  --main-light-7: var(--gray-100);
-}
-
-/* === 全局重置 === */
-*,
-*::before,
-*::after {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-}
-
-html {
-  background-color: var(--background-color);
-}
-
-body {
-  min-height: 100vh;
-  background-color: var(--background-color);
-  color: var(--text-color);
-  font-family: -apple-system, BlinkMacSystemFont, 'Noto Sans SC', 'Roboto', 'HarmonyOS Sans SC',
-    'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
-  font-size: 15px;
-  line-height: 1.6;
-  transition: background-color 0.25s ease, color 0.25s ease; /* 主题切换平滑过渡 */
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
-
-/* 主题下的图片图标（如 svg <img>）适配：仅对明确标记的图标生效 */
-:root[data-theme='dark'] .sidebar-icon {
-  filter: invert(1);
-  opacity: 0.9;
-}
-
-/* 清晰的键盘焦点（避免“点哪都不知道”） */
-:focus-visible {
-  outline: none;
-  box-shadow: var(--focus-ring);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    animation-duration: 0.001ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.001ms !important;
-    scroll-behavior: auto !important;
-  }
-}
-
-/* === Scrollbar (WebKit) === */
-*::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-
-*::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-*::-webkit-scrollbar-thumb {
-  background: color-mix(in srgb, var(--text-color) 18%, transparent);
-  border-radius: 999px;
-}
-
-*::-webkit-scrollbar-thumb:hover {
-  background: color-mix(in srgb, var(--text-color) 28%, transparent);
-}
-
-/* === 通用组件 === */
-.input-box {
-  background-color: var(--input-background-color);
-  color: var(--text-color);
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
-  padding: 8px;
-  transition: all 0.3s ease;
-}
-
-.input-box textarea {
-  background-color: transparent;
-  color: var(--text-color);
-  border: none;
-  outline: none;
-}
-
-button {
-  background-color: var(--primary-color);
-  color: var(--gray-0);
-  border: none;
-  border-radius: 6px;
-  padding: 8px 16px;
-  cursor: pointer;
-  transition: background-color 0.3s ease;
-}
-
-button:hover {
-  background-color: var(--primary-light-color);
-}
-
-/* === 布局类容器 === */
-header,
-footer,
-aside {
-  background-color: var(--background-color);
-  color: var(--text-color);
-  transition: all 0.3s ease;
-}
-
-/* === 特别：聊天区域 ChatBox === */
-.chat-area {
-  background-color: var(--chat-background-color);
-  transition: background-color 0.3s ease;
-}
-
-/* === 特别：侧边栏 Sidebar（如果有） === */
-.sidebar {
-  background-color: var(--background-color);
-  border-right: 1px solid var(--border-color);
-  transition: all 0.3s ease;
+  --chat-user-bubble-bg: var(--pokedex-red);
+  --chat-user-bubble-text: #000; /* Contrast on bright red */
+  
+  --shadow-xs: 0 2px 4px rgba(0,0,0,0.5);
+  --shadow-sm: 0 4px 12px rgba(0,0,0,0.6);
+  
+  --glass-bg: rgba(30, 30, 30, 0.7);
+  --glass-border: 1px solid rgba(255, 255, 255, 0.1);
 }
