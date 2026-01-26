@@ -15,194 +15,201 @@
       style="margin-bottom: 12px"
     />
 
-    <div class="topbar ui-card">
-      <div class="topbar-left">
-        <div class="label">目标知识库</div>
-        <a-select
-          v-model:value="selectedDbId"
-          style="min-width: 260px"
-          :disabled="!backendOnline"
-          placeholder="选择一个知识库"
-          @change="onDatabaseChange"
-        >
-          <a-select-option v-for="db in databases" :key="db.db_id" :value="db.db_id">
-            {{ db.name }} ({{ db.db_id }})
-          </a-select-option>
-        </a-select>
-        <a-button size="small" @click="loadDatabases" :loading="state.loadingDatabases">刷新</a-button>
+    <div class="head ui-card">
+      <div class="head-row">
+        <div class="head-left">
+          <div class="label">目标知识库</div>
+          <a-select
+            v-model:value="selectedDbId"
+            style="min-width: 260px"
+            :disabled="!backendOnline"
+            placeholder="选择一个知识库"
+            @change="onDatabaseChange"
+          >
+            <a-select-option v-for="db in databases" :key="db.db_id" :value="db.db_id">
+              {{ db.name }} ({{ db.db_id }})
+            </a-select-option>
+          </a-select>
+          <a-button size="small" @click="loadDatabases" :loading="state.loadingDatabases">刷新</a-button>
+        </div>
+        <div class="head-right ui-muted">
+          <span v-if="selectedDb"
+            >向量模型：{{ selectedDb.embed_model || '-' }} · 维度：{{ selectedDb.dimension || '-' }}</span
+          >
+        </div>
       </div>
-      <div class="topbar-right ui-muted">
-        <span v-if="selectedDb">向量模型：{{ selectedDb.embed_model || '-' }} · 维度：{{ selectedDb.dimension || '-' }}</span>
+
+      <div class="head-steps">
+        <a-steps :current="currentStep" size="small" responsive>
+          <a-step title="选择知识库" />
+          <a-step title="上传文件" />
+          <a-step title="生成分块" />
+          <a-step title="写入索引" />
+        </a-steps>
       </div>
     </div>
 
-    <a-tabs v-model:activeKey="state.activeTab" type="card" class="workbench-tabs">
-      <a-tab-pane key="ingest">
-        <template #tab><span><CloudUploadOutlined /> 切块与索引</span></template>
+    <div class="ingest-grid">
+      <div class="panel ui-card">
+        <div class="panel-title">切块参数</div>
+        <a-form layout="vertical">
+          <a-form-item label="Chunk Size">
+            <a-input-number v-model:value="ingestParams.chunkSize" :min="50" :max="10000" style="width: 100%" />
+            <div class="hint ui-muted">每个分块的最大字符数</div>
+          </a-form-item>
+          <a-form-item label="Chunk Overlap">
+            <a-input-number v-model:value="ingestParams.chunkOverlap" :min="0" :max="2000" style="width: 100%" />
+            <div class="hint ui-muted">相邻分块的重叠字符数</div>
+          </a-form-item>
+          <a-form-item>
+            <a-space>
+              <a-switch v-model:checked="ingestParams.doOcr" :disabled="!backendOnline" />
+              <span>启用 OCR（PDF/图片扫描件）</span>
+            </a-space>
+          </a-form-item>
 
-        <div class="ingest-grid">
-          <div class="panel ui-card">
-            <div class="panel-title">切块参数</div>
-            <a-form layout="vertical">
-              <a-form-item label="Chunk Size">
-                <a-input-number v-model:value="ingestParams.chunkSize" :min="50" :max="10000" style="width: 100%" />
-                <div class="hint ui-muted">每个分块的最大字符数</div>
-              </a-form-item>
-              <a-form-item label="Chunk Overlap">
-                <a-input-number v-model:value="ingestParams.chunkOverlap" :min="0" :max="2000" style="width: 100%" />
-                <div class="hint ui-muted">相邻分块的重叠字符数</div>
-              </a-form-item>
-              <a-form-item>
-                <a-space>
-                  <a-switch v-model:checked="ingestParams.doOcr" :disabled="!backendOnline" />
-                  <span>启用 OCR（PDF/图片扫描件）</span>
-                </a-space>
-              </a-form-item>
+          <a-divider style="margin: 12px 0" />
 
-              <a-divider style="margin: 12px 0" />
-
-              <a-space wrap>
-                <a-button
-                  type="primary"
-                  @click="chunkFiles"
-                  :loading="state.chunking"
-                  :disabled="uploadedFiles.length === 0"
-                >
-                  生成分块
-                </a-button>
-                <a-button @click="resetIngest" :disabled="uploadedFiles.length === 0 && chunkResults.length === 0">
-                  清空
-                </a-button>
-              </a-space>
-            </a-form>
-          </div>
-
-          <div class="panel ui-card">
-            <div class="panel-title">上传文件</div>
-            <a-upload-dragger
-              v-model:fileList="fileList"
-              name="file"
-              :multiple="true"
-              :disabled="state.uploading"
-              :customRequest="customUpload"
+          <a-space wrap>
+            <a-button
+              type="primary"
+              @click="chunkFiles"
+              :loading="state.chunking"
+              :disabled="uploadedFiles.length === 0"
             >
-              <p class="ant-upload-text">点击或拖拽文件到这里上传</p>
-              <p class="ant-upload-hint">支持 .pdf/.txt/.md 等。上传完成后点击“生成分块”。</p>
-            </a-upload-dragger>
+              生成分块
+            </a-button>
+            <a-button @click="resetIngest" :disabled="uploadedFiles.length === 0 && chunkResults.length === 0">
+              清空
+            </a-button>
+          </a-space>
+        </a-form>
+      </div>
 
-            <div class="ingest-actions">
-              <a-space wrap>
-                <a-button
-                  type="primary"
-                  @click="indexToDatabase"
-                  :loading="state.indexing"
-                  :disabled="!canIndex"
-                >
-                  写入索引
-                </a-button>
-                <span class="ui-muted" v-if="chunkResults.length > 0">
-                  {{ chunkResults.length }} 个文件 · {{ totalChunks }} 个分块
-                </span>
-              </a-space>
+      <div class="panel ui-card">
+        <div class="panel-title">上传文件</div>
+        <a-upload-dragger
+          v-model:fileList="fileList"
+          name="file"
+          :multiple="true"
+          :disabled="state.uploading"
+          :customRequest="customUpload"
+        >
+          <p class="ant-upload-text">点击或拖拽文件到这里上传</p>
+          <p class="ant-upload-hint">支持 .pdf/.txt/.md 等。上传完成后点击“生成分块”。</p>
+        </a-upload-dragger>
+
+        <div class="ingest-actions">
+          <a-space wrap>
+            <a-button
+              type="primary"
+              @click="indexToDatabase"
+              :loading="state.indexing"
+              :disabled="!canIndex"
+            >
+              写入索引
+            </a-button>
+            <span class="ui-muted" v-if="chunkResults.length > 0">
+              {{ chunkResults.length }} 个文件 · {{ totalChunks }} 个分块
+            </span>
+          </a-space>
+        </div>
+      </div>
+    </div>
+
+    <div v-if="chunkResults.length > 0" class="preview ui-card">
+      <div class="preview-title">
+        分块预览
+        <span class="ui-muted">（点击文件展开查看）</span>
+      </div>
+      <a-collapse v-model:activeKey="activeFileKeys">
+        <a-collapse-panel
+          v-for="file in chunkResults"
+          :key="file.file_id"
+          :header="`${file.filename}（${file.nodes.length}）`"
+        >
+          <div class="chunk-grid">
+            <div v-for="(node, idx) in file.nodes" :key="idx" class="chunk-card">
+              <div class="chunk-meta">#{{ idx + 1 }}</div>
+              <div class="chunk-text">{{ node.text }}</div>
             </div>
           </div>
-        </div>
+        </a-collapse-panel>
+      </a-collapse>
+    </div>
 
-        <div v-if="chunkResults.length > 0" class="preview ui-card">
-          <div class="preview-title">
-            分块预览
-            <span class="ui-muted">（点击文件展开查看）</span>
+    <div class="advanced ui-card">
+      <div class="advanced-title">高级工具（可选）</div>
+      <a-collapse v-model:activeKey="advancedKeys">
+        <a-collapse-panel key="pdf" header="PDF 转文本（用于检查解析质量）">
+          <div class="advanced-grid">
+            <div class="panel ui-card">
+              <div class="panel-title">上传 PDF</div>
+              <a-upload-dragger
+                v-model:fileList="pdfFileList"
+                name="file"
+                :max-count="1"
+                :disabled="state.pdfUploading"
+                :customRequest="customPdfUpload"
+              >
+                <p class="ant-upload-text">点击或拖拽 PDF 文件到这里上传</p>
+                <p class="ant-upload-hint">用于检查解析质量（OCR/抽取）。</p>
+              </a-upload-dragger>
+
+              <div class="pdf-actions">
+                <a-space wrap>
+                  <a-button type="primary" @click="convertPdf" :loading="state.converting" :disabled="pdfFileList.length === 0">
+                    开始转换
+                  </a-button>
+                  <a-button @click="resetPdf" :disabled="pdfFileList.length === 0 && !pdfText">清空</a-button>
+                </a-space>
+              </div>
+            </div>
+
+            <div class="panel ui-card">
+              <div class="panel-title">输出文本</div>
+              <a-textarea :value="pdfText" :auto-size="{ minRows: 10, maxRows: 22 }" readonly />
+              <div class="hint ui-muted" style="margin-top: 8px">
+                字符数：{{ pdfText.length }} · Token 估算：{{ estimateTokens(pdfText) }}
+              </div>
+            </div>
           </div>
-          <a-collapse v-model:activeKey="activeFileKeys">
-            <a-collapse-panel
-              v-for="file in chunkResults"
-              :key="file.file_id"
-              :header="`${file.filename}（${file.nodes.length}）`"
-            >
-              <div class="chunk-grid">
-                <div v-for="(node, idx) in file.nodes" :key="idx" class="chunk-card">
+        </a-collapse-panel>
+
+        <a-collapse-panel key="text" header="文本试切块（离线可用）">
+          <div class="advanced-grid">
+            <div class="panel ui-card">
+              <div class="panel-title">输入文本</div>
+              <a-textarea v-model:value="plainText" :auto-size="{ minRows: 8, maxRows: 16 }" placeholder="粘贴一段文本用于试切块（离线可用）" />
+              <div class="hint ui-muted" style="margin-top: 8px">
+                字符数：{{ plainText.length }} · Token 估算：{{ estimateTokens(plainText) }}
+              </div>
+            </div>
+            <div class="panel ui-card">
+              <div class="panel-title">预览</div>
+              <a-space wrap style="margin-bottom: 10px">
+                <a-button type="primary" @click="chunkPlainTextNow" :disabled="!plainText">生成分块</a-button>
+                <a-button @click="resetPlainText" :disabled="!plainText && plainChunks.length === 0">清空</a-button>
+                <span class="ui-muted" v-if="plainChunks.length > 0">{{ plainChunks.length }} 个分块</span>
+              </a-space>
+              <div class="chunk-grid" v-if="plainChunks.length > 0">
+                <div v-for="(c, idx) in plainChunks" :key="idx" class="chunk-card">
                   <div class="chunk-meta">#{{ idx + 1 }}</div>
-                  <div class="chunk-text">{{ node.text }}</div>
+                  <div class="chunk-text">{{ c.text }}</div>
                 </div>
               </div>
-            </a-collapse-panel>
-          </a-collapse>
-        </div>
-      </a-tab-pane>
-
-      <a-tab-pane key="pdf">
-        <template #tab><span><FilePdfOutlined /> PDF 转文本</span></template>
-
-        <div class="pdf-grid">
-          <div class="panel ui-card">
-            <div class="panel-title">上传 PDF</div>
-            <a-upload-dragger
-              v-model:fileList="pdfFileList"
-              name="file"
-              :max-count="1"
-              :disabled="state.pdfUploading"
-              :customRequest="customPdfUpload"
-            >
-              <p class="ant-upload-text">点击或拖拽 PDF 文件到这里上传</p>
-              <p class="ant-upload-hint">用于检查解析质量（OCR/抽取）。</p>
-            </a-upload-dragger>
-
-            <div class="pdf-actions">
-              <a-space wrap>
-                <a-button type="primary" @click="convertPdf" :loading="state.converting" :disabled="pdfFileList.length === 0">
-                  开始转换
-                </a-button>
-                <a-button @click="resetPdf" :disabled="pdfFileList.length === 0 && !pdfText">清空</a-button>
-              </a-space>
+              <a-empty v-else description="暂无分块" />
             </div>
           </div>
-
-          <div class="panel ui-card">
-            <div class="panel-title">输出文本</div>
-            <a-textarea :value="pdfText" :auto-size="{ minRows: 10, maxRows: 22 }" readonly />
-            <div class="hint ui-muted" style="margin-top: 8px">
-              字符数：{{ pdfText.length }} · Token 估算：{{ estimateTokens(pdfText) }}
-            </div>
-          </div>
-        </div>
-      </a-tab-pane>
-
-      <a-tab-pane key="text">
-        <template #tab><span><ScissorOutlined /> 文本试切块</span></template>
-
-        <div class="text-grid">
-          <div class="panel ui-card">
-            <div class="panel-title">输入文本</div>
-            <a-textarea v-model:value="plainText" :auto-size="{ minRows: 8, maxRows: 16 }" placeholder="粘贴一段文本用于试切块（离线可用）" />
-            <div class="hint ui-muted" style="margin-top: 8px">
-              字符数：{{ plainText.length }} · Token 估算：{{ estimateTokens(plainText) }}
-            </div>
-          </div>
-          <div class="panel ui-card">
-            <div class="panel-title">预览</div>
-            <a-space wrap style="margin-bottom: 10px">
-              <a-button type="primary" @click="chunkPlainTextNow" :disabled="!plainText">生成分块</a-button>
-              <a-button @click="resetPlainText" :disabled="!plainText && plainChunks.length === 0">清空</a-button>
-              <span class="ui-muted" v-if="plainChunks.length > 0">{{ plainChunks.length }} 个分块</span>
-            </a-space>
-            <div class="chunk-grid" v-if="plainChunks.length > 0">
-              <div v-for="(c, idx) in plainChunks" :key="idx" class="chunk-card">
-                <div class="chunk-meta">#{{ idx + 1 }}</div>
-                <div class="chunk-text">{{ c.text }}</div>
-              </div>
-            </div>
-            <a-empty v-else description="暂无分块" />
-          </div>
-        </div>
-      </a-tab-pane>
-    </a-tabs>
+        </a-collapse-panel>
+      </a-collapse>
+    </div>
   </div>
 </template>
 
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
 import { message } from 'ant-design-vue'
-import { CloudUploadOutlined, FilePdfOutlined, ScissorOutlined } from '@ant-design/icons-vue'
 import { apiFetch } from '@/api/http'
 import { useConfigStore } from '@/stores/config'
 import { chunkPlainText } from '@/utils/chunking'
@@ -219,7 +226,6 @@ const state = reactive({
   uploading: false,
   chunking: false,
   indexing: false,
-  activeTab: 'ingest',
 
   pdfUploading: false,
   converting: false
@@ -277,6 +283,13 @@ const canIndex = computed(() => {
   if (!canUseKb.value) return false
   if (!selectedDbId.value) return false
   return (chunkResults.value || []).length > 0
+})
+
+const currentStep = computed(() => {
+  if (!selectedDbId.value) return 0
+  if (uploadedFiles.value.length === 0) return 1
+  if (chunkResults.value.length === 0) return 2
+  return 3
 })
 
 const customUpload = async ({ file, onSuccess, onError }) => {
@@ -504,6 +517,8 @@ const estimateTokens = (text) => {
 onMounted(() => {
   loadDatabases()
 })
+
+const advancedKeys = ref([])
 </script>
 
 <style scoped lang="less">
@@ -513,15 +528,21 @@ onMounted(() => {
   gap: 12px;
 }
 
-.topbar {
+.head {
+  display: flex;
+  padding: 12px;
+  gap: 10px;
+  flex-direction: column;
+}
+
+.head-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px;
   gap: 12px;
 }
 
-.topbar-left {
+.head-left {
   display: flex;
   align-items: center;
   gap: 10px;
@@ -532,8 +553,12 @@ onMounted(() => {
   }
 }
 
-.workbench-tabs :deep(.ant-tabs-content) {
-  padding-top: 8px;
+.head-right {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  min-width: 0;
+  text-align: right;
 }
 
 .ingest-grid {
@@ -542,8 +567,7 @@ onMounted(() => {
   gap: 12px;
 }
 
-.pdf-grid,
-.text-grid {
+.advanced-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 12px;
@@ -573,6 +597,15 @@ onMounted(() => {
 
 .preview {
   padding: 12px;
+}
+
+.advanced {
+  padding: 12px;
+}
+
+.advanced-title {
+  font-weight: 650;
+  margin-bottom: 10px;
 }
 
 .preview-title {
@@ -610,8 +643,7 @@ onMounted(() => {
   .ingest-grid {
     grid-template-columns: 1fr;
   }
-  .pdf-grid,
-  .text-grid {
+  .advanced-grid {
     grid-template-columns: 1fr;
   }
 }

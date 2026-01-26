@@ -150,7 +150,13 @@
                       </a-form-item>
                       <div class="form-actions">
                         <a-button @click="clearProvider(state.editingProvider)" danger ghost>清空</a-button>
-                        <a-button type="primary" @click="saveProvider(state.editingProvider)" :loading="providersState.saving[state.editingProvider]">保存</a-button>
+                        <a-button
+                          type="primary"
+                          @click="saveProvider(state.editingProvider)"
+                          :loading="Boolean(providersState?.saving?.[state.editingProvider])"
+                        >
+                          保存
+                        </a-button>
                       </div>
                    </a-form>
                 </div>
@@ -179,7 +185,9 @@
                     </div>
                   </div>
                   <div class="tile-bar"></div>
-                  <div class="tile-spinner" v-if="featureState.saving[mod.key]"><LoadingOutlined /></div>
+                  <div class="tile-spinner" v-if="Boolean(featureState?.saving?.[mod.key])">
+                    <LoadingOutlined />
+                  </div>
                 </div>
               </div>
             </div>
@@ -308,6 +316,7 @@ const restartBackend = async () => { if(!backendOnline.value) return; try { awai
 
 const featureState = reactive({ saving: {} })
 const setBackendFeature = async (key, checked) => {
+  if (!featureState.saving) featureState.saving = {}
   featureState.saving[key] = true
   try {
     const res = await apiFetch('/config', { method: 'PATCH', body: { [key]: checked } })
@@ -326,6 +335,7 @@ const refreshProviders = async () => {
 }
 
 const saveProvider = async (p) => {
+  if (!providersState.saving) providersState.saving = {}
   providersState.saving[p] = true
   try {
     const body = { provider: p, ...(providerForm[p].api_base ? {api_base: providerForm[p].api_base} : {}), ...(providerForm[p].api_key ? {api_key: providerForm[p].api_key} : {}) }

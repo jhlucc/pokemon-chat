@@ -7,6 +7,8 @@
     >
       <template #actions>
         <a-space wrap>
+          <a-button v-if="activeTab !== 'workbench'" @click="onTabChange('workbench')">RAG 工作台</a-button>
+          <a-button v-else @click="onTabChange('list')">知识库列表</a-button>
           <a-button @click="refresh" :loading="state.loading" :disabled="!backendOnline"
             >刷新</a-button
           >

@@ -1,3 +1,4 @@
+import sys
 import uuid
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -8,8 +9,13 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.requests import Request
 
+# Ensure repo root is on sys.path even when running `python server/main.py`.
+_REPO_ROOT = Path(__file__).resolve().parents[1]
+if str(_REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(_REPO_ROOT))
+
 # Load `.env` early so feature flags / provider keys are available during import time.
-load_dotenv(Path(__file__).resolve().parents[1] / ".env")
+load_dotenv(_REPO_ROOT / ".env")
 
 from src.core.settings import settings  # noqa: E402
 from src.runtime import aclose_all  # noqa: E402
