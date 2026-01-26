@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import sys
 from copy import deepcopy
 from functools import lru_cache
 from pathlib import Path
@@ -48,6 +49,9 @@ def load_overrides() -> Dict[str, Any]:
     - This file is written by `/config` PATCH.
     - It may include feature flags that should affect backend behavior.
     """
+    # Keep tests deterministic/offline-safe: never read local UI state from disk.
+    if "pytest" in sys.modules:
+        return {}
     with _lock:
         return deepcopy(_load_overrides_cached())
 
@@ -87,4 +91,3 @@ def feature_enabled(key: str) -> bool:
     # Fallback to settings defaults.
     default = bool(getattr(settings.features, key, False))
     return default
-

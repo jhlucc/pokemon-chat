@@ -86,11 +86,13 @@ class FileChunkPayload(BaseModel):
 async def file_to_chunk(payload: FileChunkPayload):
     from src.knowledge.core.indexing import chunk_file
     try:
-        docs = chunk_file(
+        # CPU/IO-bound parsing: run in a worker thread to avoid blocking the event loop.
+        docs = await asyncio.to_thread(
+            chunk_file,
             payload.file,
             chunk_size=payload.chunk_size,
             chunk_overlap=payload.chunk_overlap,
-            do_ocr=payload.do_ocr
+            do_ocr=payload.do_ocr,
         )
         return {
             "chunks": [{"text": d.page_content, "meta": d.metadata} for d in docs]
@@ -104,6 +106,8 @@ async def add_by_chunks(
     file_chunks: Dict[str, Dict[str, Any]] = Body(...)
 ):
     try:
+        # Ensure Milvus + embedding runtime are initialized before touching `kb.client`.
+        kb._ensure_ready()
         # 补：确保 Milvus 中有该 Collection（防止前端绕过 /data POST 创建数据库）
         if not kb.client.has_collection(db_id):
             dim = kb.db_manager.get_database(db_id)['dimension']
@@ -267,6 +271,8 @@ async def delete_document(db_id: str = Body(...), file_id: str = Body(...)):
     from pymilvus import Collection, MilvusException, connections
 
     try:
+        # Ensure Milvus client exists before touching `kb.client`.
+        kb._ensure_ready()
         dim = kb.db_manager.get_database(db_id)['dimension']
 
         # 若 Collection 不存在则先建

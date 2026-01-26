@@ -162,7 +162,24 @@ class Retriever:
         # 加入网络搜索结果
         web_res = refs.get("web_search", {}).get("results", [])
         if web_res:
-            web_text = "\n".join(f"{r['title']}:\n{r['content']}" for r in web_res)
+            def _web_item_to_text(item: Any) -> str:
+                if item is None:
+                    return ""
+                if isinstance(item, dict):
+                    title = (item.get("title") or "").strip()
+                    content = (item.get("content") or item.get("content_snippet") or item.get("snippet") or "").strip()
+                else:
+                    title = str(getattr(item, "title", "") or "").strip()
+                    content = str(
+                        getattr(item, "content", None)
+                        or getattr(item, "content_snippet", None)
+                        or ""
+                    ).strip()
+                if not (title or content):
+                    return ""
+                return f"{title}:\n{content}" if title else content
+
+            web_text = "\n".join(t for t in (_web_item_to_text(r) for r in web_res) if t)
             external_parts.append("网络搜索信息:\n" + web_text)
         mcp_tes=refs.get("mysql_mcp", {}).get("answer", [])
         if mcp_tes:
@@ -183,24 +200,29 @@ class Retriever:
         raise NotImplementedError
 
     def query_graph(self, query, history, refs):
+        empty = {"nodes": [], "edges": []}
         if not (refs["meta"].get("use_graph") and feature_enabled("enable_knowledge_graph")):
-            return {"answer": None, "subgraph": {"nodes": [], "edges": []}}
+            # Frontend expects `results` for visualization.
+            return {"answer": None, "results": empty, "subgraph": empty}
 
         try:
             agent = self._get_kg_agent()
             if agent is None:
-                return {"answer": None, "subgraph": {"nodes": [], "edges": []}}
+                return {"answer": None, "results": empty, "subgraph": empty}
 
             # 调用 KGQueryAgent.query，传hops参数
             result = agent.query(
                 query,
                 hops=refs["meta"].get("graphHops", 2)
             )
-            # result = {"answer": "...", "subgraph": {nodes{},edges}}
-            return result
+            # Normalize shape for the frontend: `graph_base.results.{nodes,edges}`
+            if isinstance(result, dict):
+                subgraph = result.get("results") or result.get("subgraph") or empty
+                return {**result, "results": subgraph, "subgraph": subgraph}
+            return {"answer": None, "results": empty, "subgraph": empty, "message": "Invalid graph response"}
         except Exception as e:
             _log.error(f"Graph query error: {e}")
-            return {"answer": None, "subgraph": {"nodes": [], "edges": []}, "message": str(e)}
+            return {"answer": None, "results": empty, "subgraph": empty, "message": str(e)}
 
     def query_knowledgebase(self, query, history, refs):
         response = {
@@ -244,12 +266,33 @@ class Retriever:
                 # Feature might be toggled on at runtime; lazy init here.
                 from src.agents.tools.websearch.websearcher import LiteBaseSearcher
                 self.web_searcher = LiteBaseSearcher()
-            search_results = self.web_searcher.search(query, top_k=5)
+            raw_results = self.web_searcher.search(query, top_k=5)
         except Exception as e:
             _log.error(f"Web search error: {e}")
             return {"results": [], "message": f"Web search error: {e}"}
 
-        return {"results": search_results}
+        # Frontend expects each result shape: {title, url, content, score}.
+        results: list[dict[str, Any]] = []
+        for item in (raw_results or []):
+            if item is None:
+                continue
+            if isinstance(item, dict):
+                title = (item.get("title") or "").strip()
+                url = (item.get("url") or item.get("link") or "").strip()
+                content = (item.get("content") or item.get("content_snippet") or item.get("snippet") or "").strip()
+                score = item.get("score", 1.0)
+            else:
+                title = str(getattr(item, "title", "") or "").strip()
+                url = str(getattr(item, "url", "") or "").strip()
+                content = str(getattr(item, "content", None) or getattr(item, "content_snippet", None) or "").strip()
+                score = getattr(item, "score", 1.0)
+            try:
+                score_f = float(score) if score is not None else 0.0
+            except Exception:
+                score_f = 0.0
+            results.append({"title": title, "url": url, "content": content, "score": score_f})
+
+        return {"results": results}
 
     def rewrite_query(self, query, history, refs):
         """重写查询"""

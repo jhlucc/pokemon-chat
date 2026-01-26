@@ -125,7 +125,8 @@ def _provider_env_base(provider: str) -> Optional[str]:
 
 
 def get_provider_api_key(provider: str) -> str:
-    provider = _canonical_provider(provider)
+    raw = (provider or "").strip().lower()
+    provider = _canonical_provider(raw)
     secrets = load_provider_secrets()
     key = (secrets.get(provider, {}) or {}).get("api_key") or ""
     if not key and raw and raw != provider:

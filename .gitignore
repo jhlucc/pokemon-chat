@@ -24,6 +24,7 @@ resources/models/
 # Runtime config (may contain secrets)
 resources/save/config/base.yaml
 resources/save/config/provider_secrets.json
+resources/save/config/ui_config.json
 
 # SQLite and DB files
 *.sqlite3
