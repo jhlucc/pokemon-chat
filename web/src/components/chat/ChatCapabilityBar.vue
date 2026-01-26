@@ -8,7 +8,8 @@
           disabled: !canAgent
         }"
         role="button"
-        tabindex="0"
+        :tabindex="canAgent ? 0 : -1"
+        :aria-disabled="!canAgent"
         aria-label="切换 Agent 模式"
         @click="emit('toggle-agent')"
         @keydown.enter.prevent="emit('toggle-agent')"
@@ -28,7 +29,8 @@
             disabled: !canWebSearch
           }"
           role="button"
-          tabindex="0"
+          :tabindex="canWebSearch ? 0 : -1"
+          :aria-disabled="!canWebSearch"
           aria-label="切换 联网搜索"
           @click="emit('toggle-web')"
           @keydown.enter.prevent="emit('toggle-web')"
@@ -47,7 +49,8 @@
             disabled: !canGraph
           }"
           role="button"
-          tabindex="0"
+          :tabindex="canGraph ? 0 : -1"
+          :aria-disabled="!canGraph"
           aria-label="切换 知识图谱"
           @click="emit('toggle-graph')"
           @keydown.enter.prevent="emit('toggle-graph')"
@@ -66,7 +69,8 @@
             disabled: !canMcp
           }"
           role="button"
-          tabindex="0"
+          :tabindex="canMcp ? 0 : -1"
+          :aria-disabled="!canMcp"
           aria-label="切换 MCP"
           @click="emit('toggle-mcp')"
           @keydown.enter.prevent="emit('toggle-mcp')"

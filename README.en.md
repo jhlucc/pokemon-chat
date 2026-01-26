@@ -171,6 +171,10 @@ If you wish to run backend/frontend code locally for development:
 
 > Tip: If you only want to work on the frontend UI (without starting the backend), go to **Settings** and switch **Offline Demo Mode** to **Force Mock**.
 > The frontend will simulate backend APIs with local mock data, so it can render all pages/features without relying on backend `base.yaml`.
+>
+> Note: Legacy pages have been merged (backward-compatible redirects remain)
+> - Toolbox `/tools` -> Knowledge Base `/database` (RAG Workbench tab, compatible with `/database/workbench`)
+> - Agent `/agent` -> Chat `/chat` (enable via the “Agent Mode” toggle; backend runs `supervisor_agent`)
 
 ---
 

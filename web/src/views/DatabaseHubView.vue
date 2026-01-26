@@ -131,7 +131,7 @@
   </div>
 </template>
 
-<script setup lang="ts">
+<script setup>
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { message } from 'ant-design-vue'
@@ -142,13 +142,11 @@ import DatabaseRagWorkbench from '@/components/database/DatabaseRagWorkbench.vue
 import { apiFetch } from '@/api/http'
 import { useConfigStore } from '@/stores/config'
 
-type HubTabKey = 'list' | 'workbench'
-
 const route = useRoute()
 const router = useRouter()
 const configStore = useConfigStore()
 
-const databases = ref<any[]>([])
+const databases = ref([])
 const state = reactive({ loading: false })
 
 const backendOnline = computed(() => Boolean(configStore.config.backend?.online))
@@ -156,14 +154,14 @@ const canUseKb = computed(
   () => Boolean(configStore.config.backend?.online) && Boolean(configStore.config.enable_knowledge_base)
 )
 
-const inferTabFromRoute = (): HubTabKey => {
+const inferTabFromRoute = () => {
   const metaKey = route.meta?.databaseTab
   if (metaKey === 'workbench') return 'workbench'
   if (metaKey === 'list') return 'list'
   return route.path.startsWith('/database/workbench') ? 'workbench' : 'list'
 }
 
-const activeTab = ref<HubTabKey>(inferTabFromRoute())
+const activeTab = ref(inferTabFromRoute())
 
 watch(
   () => route.fullPath,
@@ -172,8 +170,8 @@ watch(
   }
 )
 
-const onTabChange = (key: string) => {
-  const nextKey = (key === 'workbench' ? 'workbench' : 'list') as HubTabKey
+const onTabChange = (key) => {
+  const nextKey = key === 'workbench' ? 'workbench' : 'list'
   const nextPath = nextKey === 'workbench' ? '/database/workbench' : '/database'
   if (route.path !== nextPath) router.push(nextPath)
 }
@@ -196,7 +194,7 @@ const loadDatabases = async () => {
   try {
     const data = await apiFetch('/data/', { method: 'GET' })
     databases.value = data?.databases || []
-  } catch (err: any) {
+  } catch (err) {
     databases.value = []
     // Avoid spamming errors in offline mode when users just browse UI.
     if (backendOnline.value) message.error(err?.message || '获取知识库列表失败')
@@ -240,7 +238,7 @@ const createDatabase = async () => {
   }
 }
 
-const navigateToDatabase = (databaseId: string) => {
+const navigateToDatabase = (databaseId) => {
   router.push({ path: `/database/${databaseId}` })
 }
 
@@ -366,4 +364,3 @@ onMounted(async () => {
   color: var(--danger-500);
 }
 </style>
-

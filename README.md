@@ -177,6 +177,10 @@ python scripts/import_pokemon_map.py
 
 > 提示：如果你只想体验/开发前端 UI（不启动后端），可以进入「设置」把“离线演示模式”切到“强制 Mock”。
 > 这样前端会用本地 Mock 数据模拟后端接口，不依赖后端的 `base.yaml` 也能完整展示各页面与功能入口。
+>
+> 说明：旧版页面已合并（保留路径兼容跳转）
+> - 工具箱 `/tools` -> 知识库 `/database`（RAG 工作台标签页，兼容 `/database/workbench`）
+> - Agent `/agent` -> 对话 `/chat`（输入框左侧“Agent 模式”开关启用，总 Agent = `supervisor_agent`）
 
 ---
 

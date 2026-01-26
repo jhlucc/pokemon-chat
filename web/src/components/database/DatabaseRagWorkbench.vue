@@ -290,7 +290,7 @@ const customUpload = async ({ file, onSuccess, onError }) => {
     const data = await apiFetch('/data/upload', { method: 'POST', body: formData, timeoutMs: 60000 })
     onSuccess?.(data, file)
     return
-  } catch (e) {
+  } catch {
     // Local fallback (text files only).
     try {
       const content = await file.text()
@@ -417,7 +417,7 @@ const customPdfUpload = async ({ file, onSuccess, onError }) => {
     const data = await apiFetch('/data/upload', { method: 'POST', body: formData, timeoutMs: 60000 })
     onSuccess?.(data, file)
     return
-  } catch (e) {
+  } catch {
     // Local fallback: only for non-pdf text preview
     try {
       const isPdf = String(file.name || '').toLowerCase().endsWith('.pdf')
@@ -616,4 +616,3 @@ onMounted(() => {
   }
 }
 </style>
-
