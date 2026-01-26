@@ -9,8 +9,6 @@ import {
   SettingFilled,
   BookOutlined,
   BookFilled,
-  ToolFilled,
-  ToolOutlined,
   BugOutlined,
   ProjectFilled,
   ProjectOutlined,
@@ -19,8 +17,6 @@ import {
   InfoCircleOutlined,
   BulbFilled,
   DesktopOutlined,
-  RobotOutlined,
-  RobotFilled,
   MenuFoldOutlined,
   MenuUnfoldOutlined
 } from '@ant-design/icons-vue'
@@ -152,7 +148,7 @@ const backendMode = computed(() => {
 })
 
 
-// 下面是导航菜单部分，添加智能体项
+// Sidebar navigation
 const mainList = computed(() => {
   const ui = configStore.config?.ui || {}
   return [
@@ -175,20 +171,6 @@ const mainList = computed(() => {
       icon: BookOutlined,
       activeIcon: BookFilled,
       hidden: ui.show_knowledge_base === false
-    },
-    {
-      name: '工具',
-      path: '/tools',
-      icon: ToolOutlined,
-      activeIcon: ToolFilled,
-      hidden: ui.show_tools === false
-    },
-    {
-      name: '智能体',
-      path: '/agent',
-      icon: RobotOutlined,
-      activeIcon: RobotFilled,
-      hidden: ui.show_agents === false
     },
     {
       name: '地图',

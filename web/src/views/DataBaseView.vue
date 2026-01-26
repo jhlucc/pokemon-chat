@@ -63,6 +63,16 @@
             <p>导入您自己的文本数据或通过 Webhook 实时写入数据以增强 LLM 的上下文。</p>
           </div>
 
+          <div class="workbench dbcard ui-card" @click="navigateToWorkbench">
+            <div class="top">
+              <div class="icon"><ExperimentOutlined /></div>
+              <div class="info">
+                <h3>知识库工作台</h3>
+              </div>
+            </div>
+            <p>切块、解析、索引写入等 RAG 工具集中在这里。</p>
+          </div>
+
           <template v-if="state.loading">
             <div v-for="n in 6" :key="n" class="dbcard ui-card dbcard--skeleton">
               <a-skeleton active :title="{ width: '60%' }" :paragraph="{ rows: 2 }" />
@@ -122,7 +132,7 @@
 import { ref, onMounted, reactive, watch, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { message } from 'ant-design-vue'
-import { ReadFilled, PlusOutlined } from '@ant-design/icons-vue'
+import { ExperimentOutlined, ReadFilled, PlusOutlined } from '@ant-design/icons-vue'
 import { useConfigStore } from '@/stores/config'
 import HeaderComponent from '@/components/HeaderComponent.vue'
 import { apiFetch } from '@/api/http'
@@ -191,6 +201,10 @@ const createDatabase = () => {
 
 const navigateToDatabase = (databaseId) => {
   router.push({ path: `/database/${databaseId}` })
+}
+
+const navigateToWorkbench = () => {
+  router.push({ path: `/database/workbench` })
 }
 
 watch(

@@ -19,8 +19,6 @@ export const DEFAULT_CONFIG = {
     show_knowledge_graph: true,
     show_web_search: true,
     show_mcp: true,
-    show_tools: true,
-    show_agents: true,
     show_map: true
   },
 

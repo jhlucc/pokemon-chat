@@ -30,22 +30,14 @@ const routes: RouteRecordRaw[] = [
     ]
   },
   {
+    // Backward compatible: agent UI is merged into /chat.
     path: '/agent',
-    component: AppLayout,
-    children: [
-      {
-        path: '',
-        name: 'Agent',
-        component: () => import('@/views/AgentView.vue'),
-        meta: { title: '智能体', keepAlive: true }
-      },
-      {
-        path: ':agent_id',
-        name: 'AgentSinglePage',
-        component: () => import('@/views/AgentSingleView.vue'),
-        meta: { title: '智能体详情', keepAlive: false }
-      }
-    ]
+    redirect: '/chat'
+  },
+  {
+    // Backward compatible: any old agent sub-routes redirect to /chat.
+    path: '/agent/:pathMatch(.*)*',
+    redirect: '/chat'
   },
   {
     path: '/graph',
@@ -70,6 +62,12 @@ const routes: RouteRecordRaw[] = [
         meta: { title: '知识库', keepAlive: true }
       },
       {
+        path: 'workbench',
+        name: 'DatabaseWorkbench',
+        component: () => import('@/views/DatabaseWorkbenchView.vue'),
+        meta: { title: '知识库工作台', keepAlive: false }
+      },
+      {
         path: ':database_id',
         name: 'DatabaseInfo',
         component: () => import('@/views/DataBaseInfoView.vue'),
@@ -90,33 +88,14 @@ const routes: RouteRecordRaw[] = [
     ]
   },
   {
+    // Backward compatible: tools are merged into the database workbench.
     path: '/tools',
-    component: AppLayout,
-    children: [
-      {
-        path: '',
-        name: 'Tools',
-        component: () => import('@/views/ToolsView.vue'),
-        meta: { title: '工具', keepAlive: true }
-      },
-      {
-        path: 'file-chunking',
-        name: 'FileChunking',
-        component: () => import('@/components/tools/TextChunkingComponent.vue'),
-        meta: { title: '文件切分', keepAlive: false }
-      },
-      {
-        path: 'pdf2txt',
-        name: 'PDF_to_TXT',
-        component: () => import('@/components/tools/ConvertToTxtComponent.vue'),
-        meta: { title: 'PDF 转 TXT', keepAlive: false }
-      },
-      {
-        path: 'agent',
-        name: 'AgentRedirect',
-        redirect: '/agent'
-      }
-    ]
+    redirect: '/database/workbench'
+  },
+  {
+    // Backward compatible: any old tools sub-routes redirect to the workbench.
+    path: '/tools/:pathMatch(.*)*',
+    redirect: '/database/workbench'
   },
   {
     path: '/setting',

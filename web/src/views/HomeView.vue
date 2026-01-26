@@ -57,24 +57,6 @@
           </a-card>
         </a-col>
 
-        <a-col v-if="ui.show_agents" :xs="24" :md="12" :xl="8">
-          <a-card class="entry-card" hoverable @click="go('/agent')">
-            <template #title>
-              <a-space><RobotOutlined /> 智能体</a-space>
-            </template>
-            <div class="muted">专业子代理：图鉴、数值、训练、深度研究</div>
-          </a-card>
-        </a-col>
-
-        <a-col v-if="ui.show_tools" :xs="24" :md="12" :xl="8">
-          <a-card class="entry-card" hoverable @click="go('/tools')">
-            <template #title>
-              <a-space><ToolOutlined /> 工具</a-space>
-            </template>
-            <div class="muted">文本切分、格式转换等辅助能力</div>
-          </a-card>
-        </a-col>
-
         <a-col v-if="ui.show_map" :xs="24" :md="12" :xl="8">
           <a-card class="entry-card" hoverable @click="go('/coords')">
             <template #title>
@@ -146,9 +128,7 @@ import {
   EnvironmentOutlined,
   MessageOutlined,
   ProjectOutlined,
-  RobotOutlined,
   SettingOutlined,
-  ToolOutlined
 } from '@ant-design/icons-vue'
 
 import StatusTag from '@/components/StatusTag.vue'
