@@ -99,23 +99,6 @@
           class="options-panel options-panel--right swing-in-top-fwd"
           ref="panel"
         >
-          <div class="options-row" @click="meta.stream = !meta.stream">
-            流式输出
-            <div @click.stop><a-switch v-model:checked="meta.stream" /></div>
-          </div>
-          <div class="options-row" @click="meta.summary_title = !meta.summary_title">
-            总结对话标题
-            <div @click.stop><a-switch v-model:checked="meta.summary_title" /></div>
-          </div>
-          <div class="options-row">
-            最大历史轮数
-            <a-input-number
-              id="inputNumber"
-              v-model:value="meta.history_round"
-              :min="1"
-              :max="50"
-            />
-          </div>
           <div class="options-row">
             字体大小
             <a-select v-model:value="meta.fontSize" style="width: 100px" placeholder="选择字体大小">
@@ -125,8 +108,25 @@
             </a-select>
           </div>
           <div class="options-row" @click="meta.wideScreen = !meta.wideScreen">
-            宽屏模式
-            <div @click.stop><a-switch v-model:checked="meta.wideScreen" /></div>
+            内容宽度
+            <div @click.stop><a-switch v-model:checked="meta.wideScreen" :checked-children="'宽'" :un-checked-children="'窄'" /></div>
+          </div>
+          <div class="options-row" @click="meta.summary_title = !meta.summary_title">
+            自动命名对话
+            <div @click.stop><a-switch v-model:checked="meta.summary_title" /></div>
+          </div>
+          <div class="options-row">
+            历史轮数
+            <a-input-number
+              id="inputNumber"
+              v-model:value="meta.history_round"
+              :min="1"
+              :max="50"
+            />
+          </div>
+          <div class="options-row" @click="meta.stream = !meta.stream">
+            流式输出
+            <div @click.stop><a-switch v-model:checked="meta.stream" /></div>
           </div>
         </div>
       </div>

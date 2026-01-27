@@ -1,8 +1,9 @@
 export const THEME_PRESETS = {
-  ocean: { label: 'Ocean', primary: '#2C86A8', primaryLight: '#8CC6E1' },
-  blue: { label: 'Blue', primary: '#1677FF', primaryLight: '#69B1FF' },
-  violet: { label: 'Violet', primary: '#722ED1', primaryLight: '#B37FEB' },
-  green: { label: 'Green', primary: '#2F9E44', primaryLight: '#69DB7C' }
+  coral: { label: '珊瑚红', primary: '#FF5350', primaryLight: '#FF8A88' },
+  ocean: { label: '海洋蓝', primary: '#2C86A8', primaryLight: '#8CC6E1' },
+  blue: { label: '天空蓝', primary: '#1677FF', primaryLight: '#69B1FF' },
+  violet: { label: '紫罗兰', primary: '#722ED1', primaryLight: '#B37FEB' },
+  green: { label: '森林绿', primary: '#2F9E44', primaryLight: '#69DB7C' }
 } as const
 
 export type ThemePresetKey = keyof typeof THEME_PRESETS
@@ -14,7 +15,7 @@ export function normalizeThemePreset(value: unknown): ThemePresetKey {
   if (value && typeof value === 'string' && value in THEME_PRESETS) {
     return value as ThemePresetKey
   }
-  return 'ocean'
+  return 'coral'
 }
 
 export function getThemePreset(): ThemePresetKey {

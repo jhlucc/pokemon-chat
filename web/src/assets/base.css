@@ -5,7 +5,7 @@
   --pokedex-dark: #2b2b2b;      /* Hardware / Sidebar (Dark Mode) */
   --pokedex-screen: #f4f6f9;    /* Screen Background */
   --holo-blue: #e0f7fa;         /* Holographic Accent */
-  --holo-accent: #00bcd4;       /* Active State */
+  --holo-accent: var(--pokedex-red); /* Active State - now warm! */
   --tech-dark-blue: #1a237e;    /* Deep Tech Blue */
   
   /* --- Base Scheme --- */
