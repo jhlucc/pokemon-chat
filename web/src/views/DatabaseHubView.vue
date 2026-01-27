@@ -51,18 +51,6 @@
 
     <div class="ui-page">
       <div class="ui-container">
-        <a-alert
-          v-if="activeTab === 'workbench' && !canUseKb"
-          type="warning"
-          show-icon
-          :message="
-            backendOnline
-              ? '后端未启用知识库功能（enable_knowledge_base=false），无法写入索引'
-              : '后端未启动/不可用（离线模式）'
-          "
-          style="margin-bottom: 16px"
-        />
-
         <!-- 分段控制器 Tab -->
         <div class="segmented-tabs">
           <button

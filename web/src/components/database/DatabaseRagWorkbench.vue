@@ -1,18 +1,20 @@
 <template>
   <div class="workbench">
-    <!-- 警告提示 -->
+    <!-- 警告提示 - 友好文案 -->
     <a-alert
       v-if="!backendOnline"
       type="warning"
       show-icon
-      message="后端未启动/不可用（离线模式）"
+      message="服务未连接"
+      description="后端服务未启动或不可用，当前为离线模式"
       class="workbench-alert"
     />
     <a-alert
       v-else-if="!canUseKb"
       type="warning"
       show-icon
-      message="后端未启用知识库功能（enable_knowledge_base=false），无法写入索引"
+      message="知识库服务未就绪"
+      description="后端未启用知识库功能，无法写入索引。请检查服务端配置"
       class="workbench-alert"
     />
 
@@ -37,10 +39,9 @@
         <!-- 目标知识库 -->
         <div class="config-section">
           <label class="config-label">目标知识库</label>
-          <div class="config-row">
+          <div class="select-with-action">
             <a-select
               v-model:value="selectedDbId"
-              style="flex: 1"
               :disabled="!backendOnline"
               placeholder="选择一个知识库"
               @change="onDatabaseChange"
@@ -49,9 +50,14 @@
                 {{ db.name }}
               </a-select-option>
             </a-select>
-            <a-button @click="loadDatabases" :loading="state.loadingDatabases">
-              <ReloadOutlined />
-            </a-button>
+            <button
+              class="select-action-btn"
+              @click="loadDatabases"
+              :disabled="state.loadingDatabases"
+              title="刷新列表"
+            >
+              <ReloadOutlined :spin="state.loadingDatabases" />
+            </button>
           </div>
           <div v-if="selectedDb" class="config-hint">
             向量模型：{{ selectedDb.embed_model || '-' }} · 维度：{{ selectedDb.dimension || '-' }}
@@ -680,13 +686,15 @@ const advancedKeys = ref([])
   margin-bottom: 8px;
 }
 
-.config-row {
-  display: flex;
-  gap: 8px;
+/* 选择框 + 内嵌刷新按钮 */
+.select-with-action {
+  position: relative;
 
-  /* Select 组件 hover 效果升级 */
   :deep(.ant-select) {
+    width: 100%;
+
     .ant-select-selector {
+      padding-right: 40px !important; /* 为按钮留出空间 */
       transition: all 0.2s ease;
     }
 
@@ -699,18 +707,42 @@ const advancedKeys = ref([])
       box-shadow: 0 0 0 3px rgba(255, 125, 0, 0.1) !important;
     }
   }
+}
 
-  /* 刷新按钮 - 改为圆形图标按钮 */
-  > .ant-btn:not(.ant-btn-primary) {
-    border: none;
-    background: rgba(255, 125, 0, 0.08);
+/* 内嵌刷新按钮 */
+.select-action-btn {
+  position: absolute;
+  right: 28px; /* 在下拉箭头左边 */
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--gray-400);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  z-index: 1;
+
+  &:hover:not(:disabled) {
     color: var(--primary-color);
-
-    &:hover {
-      background: rgba(255, 125, 0, 0.15);
-      color: var(--primary-color);
-    }
+    background: rgba(255, 125, 0, 0.1);
   }
+
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+  }
+}
+
+.config-row {
+  display: flex;
+  gap: 8px;
 }
 
 .config-hint {
@@ -933,17 +965,19 @@ const advancedKeys = ref([])
   justify-content: space-between;
   padding: 16px 24px;
   /* 毛玻璃背景 */
-  background: rgba(255, 255, 255, 0.85);
+  background: rgba(255, 255, 255, 0.88);
   backdrop-filter: blur(24px);
   -webkit-backdrop-filter: blur(24px);
   border-radius: 20px;
   /* 上描边 - 玻璃切面感 */
-  border-top: 1px solid rgba(255, 255, 255, 0.6);
-  /* 有色阴影 - 微微带橙 */
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  border-top-color: rgba(255, 255, 255, 0.7);
+  /* 深度阴影 - 悬浮感 */
   box-shadow:
-    0 -1px 0 rgba(255, 255, 255, 0.5) inset,
-    0 8px 32px rgba(0, 0, 0, 0.08),
-    0 4px 16px rgba(255, 125, 0, 0.05);
+    0 -4px 20px -5px rgba(0, 0, 0, 0.06),
+    0 8px 32px rgba(0, 0, 0, 0.1),
+    0 4px 16px rgba(255, 125, 0, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.6);
   pointer-events: auto;
 }
 
@@ -1100,7 +1134,12 @@ const advancedKeys = ref([])
 
   .action-bar-inner {
     background: rgba(30, 30, 30, 0.92);
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.1) inset;
+    border-color: rgba(255, 255, 255, 0.08);
+    border-top-color: rgba(255, 255, 255, 0.12);
+    box-shadow:
+      0 -4px 20px -5px rgba(0, 0, 0, 0.2),
+      0 8px 32px rgba(0, 0, 0, 0.4),
+      inset 0 1px 0 rgba(255, 255, 255, 0.08);
   }
 }
 </style>
