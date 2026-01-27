@@ -1,8 +1,8 @@
 <template>
-  <div class="graph-universe" :class="{ 'dark-mode': isDarkMode }">
+  <div class="graph-explorer">
     <!-- 全屏画布 -->
     <div class="graph-canvas" ref="container">
-      <!-- 画布背景网格 -->
+      <!-- 画布背景网格 - 图纸/地图风格 -->
       <div class="canvas-grid"></div>
     </div>
 
@@ -10,63 +10,67 @@
     <Transition name="fade">
       <div v-if="graphData.nodes.length === 0 && !state.fetching" class="empty-overlay">
         <div class="empty-content">
-          <div class="empty-icon">🌌</div>
-          <h2 class="empty-title">探索知识宇宙</h2>
-          <p class="empty-desc">搜索实体开始探索，或采样随机节点</p>
-          <a-space :size="12">
-            <a-button
-              type="primary"
-              size="large"
-              :loading="state.fetching"
-              :disabled="!canUseGraph"
-              @click="loadSampleNodes"
-            >
-              <template #icon><ThunderboltOutlined /></template>
-              随机探索
-            </a-button>
-          </a-space>
+          <div class="empty-illustration">
+            <div class="empty-icon-group">
+              <ApartmentOutlined class="icon-main" />
+              <SearchOutlined class="icon-accent" />
+            </div>
+          </div>
+          <h2 class="empty-title">探索知识图谱</h2>
+          <p class="empty-desc">搜索实体开始探索，发现有趣的关系网络</p>
+          <a-button
+            type="primary"
+            size="large"
+            :loading="state.fetching"
+            :disabled="!canUseGraph"
+            @click="loadSampleNodes"
+          >
+            <template #icon><CompassOutlined /></template>
+            随机探索
+          </a-button>
         </div>
       </div>
     </Transition>
 
-    <!-- 顶部悬浮搜索栏 (Spotlight Style) -->
+    <!-- 顶部悬浮搜索栏 -->
     <div class="floating-search">
       <div class="search-bar">
-        <SearchOutlined class="search-icon" />
+        <!-- 状态呼吸灯 (内嵌) -->
+        <a-tooltip :title="kgStatus.label">
+          <span class="status-breath" :class="kgStatus.status"></span>
+        </a-tooltip>
         <input
           v-model="state.searchInput"
           type="text"
-          placeholder="搜索实体（如：皮卡丘、小智、关东地区...）"
+          placeholder="搜索宝可梦、技能、地区..."
           @keydown.enter="onSearch"
           :disabled="!canUseGraph"
         />
         <a-button
-          type="text"
+          type="primary"
           class="search-btn"
           :loading="state.searchLoading"
           :disabled="!canUseGraph || !state.searchInput"
           @click="onSearch"
         >
-          <SendOutlined v-if="!state.searchLoading" />
+          <SearchOutlined v-if="!state.searchLoading" />
         </a-button>
       </div>
 
-      <!-- 状态指示器 -->
-      <div class="status-indicator">
-        <span class="status-dot" :class="kgStatus.status"></span>
-        <span class="status-text">{{ kgStatus.label }}</span>
-        <span v-if="graphData.nodes.length > 0" class="node-count">
+      <!-- 节点统计 (有数据时显示) -->
+      <Transition name="fade">
+        <div v-if="graphData.nodes.length > 0" class="node-stats">
           {{ graphData.nodes.length }} 节点 · {{ graphData.edges.length }} 关系
-        </span>
-      </div>
+        </div>
+      </Transition>
     </div>
 
-    <!-- 底部悬浮工具栏 (Dock Style) -->
-    <div class="floating-dock">
-      <div class="dock-group">
+    <!-- 底部悬浮工具栏 - 轻量化胶囊条 -->
+    <div class="floating-toolbar">
+      <div class="toolbar-group">
         <a-tooltip title="力导向布局">
           <button
-            class="dock-btn"
+            class="toolbar-btn"
             :class="{ active: state.layout === 'force' }"
             @click="setLayout('force')"
           >
@@ -75,7 +79,7 @@
         </a-tooltip>
         <a-tooltip title="径向布局">
           <button
-            class="dock-btn"
+            class="toolbar-btn"
             :class="{ active: state.layout === 'radial' }"
             @click="setLayout('radial')"
           >
@@ -84,29 +88,29 @@
         </a-tooltip>
       </div>
 
-      <div class="dock-divider"></div>
+      <div class="toolbar-divider"></div>
 
-      <div class="dock-group">
+      <div class="toolbar-group">
         <a-tooltip title="放大">
-          <button class="dock-btn" @click="zoomIn">
+          <button class="toolbar-btn" @click="zoomIn">
             <ZoomInOutlined />
           </button>
         </a-tooltip>
         <a-tooltip title="缩小">
-          <button class="dock-btn" @click="zoomOut">
+          <button class="toolbar-btn" @click="zoomOut">
             <ZoomOutOutlined />
           </button>
         </a-tooltip>
         <a-tooltip title="适应画布">
-          <button class="dock-btn" @click="fitView">
+          <button class="toolbar-btn" @click="fitView">
             <ExpandOutlined />
           </button>
         </a-tooltip>
       </div>
 
-      <div class="dock-divider"></div>
+      <div class="toolbar-divider"></div>
 
-      <div class="dock-group">
+      <div class="toolbar-group">
         <a-popover placement="top" trigger="click">
           <template #content>
             <div class="sample-popover">
@@ -119,37 +123,30 @@
                 :disabled="!canUseGraph"
                 @click="loadSampleNodes"
               >
-                采样 {{ sampleNodeCount }} 节点
+                探索 {{ sampleNodeCount }} 个节点
               </a-button>
             </div>
           </template>
           <a-tooltip title="随机采样">
-            <button class="dock-btn">
+            <button class="toolbar-btn">
               <ExperimentOutlined />
             </button>
           </a-tooltip>
         </a-popover>
-
-        <a-tooltip :title="isDarkMode ? '浅色模式' : '深色模式'">
-          <button class="dock-btn" @click="toggleDarkMode">
-            <BulbOutlined v-if="isDarkMode" />
-            <BulbFilled v-else />
-          </button>
-        </a-tooltip>
       </div>
 
-      <div class="dock-divider"></div>
+      <div class="toolbar-divider"></div>
 
-      <div class="dock-group">
-        <a-tooltip title="返回首页">
-          <router-link to="/" class="dock-btn">
+      <div class="toolbar-group">
+        <a-tooltip title="返回对话">
+          <router-link to="/" class="toolbar-btn">
             <HomeOutlined />
           </router-link>
         </a-tooltip>
       </div>
     </div>
 
-    <!-- 右侧详情抽屉 -->
+    <!-- 右侧详情面板 -->
     <Transition name="slide-right">
       <div v-if="state.detailOpen && selectedNode" class="detail-panel">
         <div class="detail-header">
@@ -205,12 +202,12 @@
       <div v-if="state.vizLoading || state.fetching" class="loading-overlay">
         <div class="loading-content">
           <LoadingOutlined class="loading-icon" spin />
-          <span>{{ state.vizLoading ? '加载渲染器...' : '获取数据...' }}</span>
+          <span>{{ state.vizLoading ? '加载渲染器...' : '探索中...' }}</span>
         </div>
       </div>
     </Transition>
 
-    <!-- 警告提示 (服务未连接时) -->
+    <!-- 警告提示 -->
     <Transition name="slide-down">
       <div v-if="!canUseGraph" class="warning-banner">
         <ExclamationCircleOutlined />
@@ -228,22 +225,19 @@ import { apiFetch } from '@/api/http'
 import { notifyApiError } from '@/utils/notify'
 import {
   SearchOutlined,
-  SendOutlined,
   ApartmentOutlined,
   RadarChartOutlined,
   ZoomInOutlined,
   ZoomOutOutlined,
   ExpandOutlined,
   ExperimentOutlined,
-  BulbOutlined,
-  BulbFilled,
   HomeOutlined,
   CloseOutlined,
   NodeIndexOutlined,
   RightOutlined,
   LoadingOutlined,
   ExclamationCircleOutlined,
-  ThunderboltOutlined
+  CompassOutlined
 } from '@ant-design/icons-vue'
 
 const configStore = useConfigStore()
@@ -251,7 +245,6 @@ const configStore = useConfigStore()
 const container = ref(null)
 const sampleNodeCount = ref(100)
 const graphData = reactive({ nodes: [], edges: [] })
-const isDarkMode = ref(true)
 
 let graphInstance
 let GraphCtor = null
@@ -382,31 +375,17 @@ const getG6Data = () => {
   }
 }
 
-const getThemeColors = () => {
-  if (isDarkMode.value) {
-    return {
-      primary: '#FFA940',
-      background: 'transparent',
-      surface: 'rgba(255, 255, 255, 0.9)',
-      text: 'rgba(255, 255, 255, 0.85)',
-      textSecondary: 'rgba(255, 255, 255, 0.45)',
-      edgeStroke: 'rgba(255, 255, 255, 0.2)',
-      nodeFill: 'rgba(30, 30, 30, 0.8)',
-      nodeStroke: '#FFA940',
-      selectedFill: '#FFA940'
-    }
-  }
-  return {
-    primary: '#FF7D00',
-    background: 'transparent',
-    surface: 'rgba(255, 255, 255, 0.9)',
-    text: '#333',
-    textSecondary: '#666',
-    edgeStroke: 'rgba(0, 0, 0, 0.15)',
-    nodeFill: '#fff',
-    nodeStroke: '#FF7D00',
-    selectedFill: '#FF7D00'
-  }
+// 暖色调配色方案
+const colors = {
+  primary: '#FF7D00',
+  primaryLight: '#FFA940',
+  text: '#333',
+  textSecondary: '#666',
+  edgeStroke: 'rgba(255, 125, 0, 0.25)',
+  nodeFill: '#fff',
+  nodeStroke: '#FF7D00',
+  selectedFill: '#FF7D00',
+  selectedStroke: '#FF5722'
 }
 
 const ensureGraph = async () => {
@@ -414,8 +393,7 @@ const ensureGraph = async () => {
   const Graph = await ensureG6()
   if (!Graph) return
 
-  const key = `${state.layout}-${isDarkMode.value}`
-  const colors = getThemeColors()
+  const key = state.layout
 
   const layout =
     state.layout === 'radial'
@@ -440,15 +418,16 @@ const ensureGraph = async () => {
         type: 'circle',
         style: {
           labelText: (d) => d.data.label,
-          size: (d) => Math.min(20 + (d.data.degree || 0) * 4, 60),
+          size: (d) => Math.min(24 + (d.data.degree || 0) * 3, 56),
           labelFill: colors.text,
           labelFontSize: 11,
           labelFontWeight: 500,
           fill: (d) => (d.id === state.selectedNodeId ? colors.selectedFill : colors.nodeFill),
-          stroke: colors.nodeStroke,
-          lineWidth: 2,
-          shadowColor: 'rgba(255, 125, 0, 0.3)',
-          shadowBlur: (d) => (d.id === state.selectedNodeId ? 20 : 0)
+          stroke: (d) => (d.id === state.selectedNodeId ? colors.selectedStroke : colors.nodeStroke),
+          lineWidth: (d) => (d.id === state.selectedNodeId ? 3 : 2),
+          shadowColor: 'rgba(255, 125, 0, 0.2)',
+          shadowBlur: (d) => (d.id === state.selectedNodeId ? 16 : 4),
+          shadowOffsetY: 2
         }
       },
       edge: {
@@ -458,7 +437,8 @@ const ensureGraph = async () => {
           labelFill: colors.textSecondary,
           labelFontSize: 10,
           labelBackground: true,
-          labelBackgroundFill: isDarkMode.value ? 'rgba(0,0,0,0.6)' : 'rgba(255,255,255,0.8)',
+          labelBackgroundFill: 'rgba(255,255,255,0.9)',
+          labelBackgroundStroke: 'rgba(255, 125, 0, 0.1)',
           labelPadding: [2, 4],
           endArrow: true,
           stroke: colors.edgeStroke,
@@ -515,13 +495,6 @@ const fitView = () => {
   graphInstance?.fitView?.()
 }
 
-const toggleDarkMode = () => {
-  isDarkMode.value = !isDarkMode.value
-  // Force re-render with new theme
-  layoutKey = null
-  renderGraph()
-}
-
 const focusNode = (id) => {
   state.selectedNodeId = id
   state.detailOpen = true
@@ -574,22 +547,18 @@ onUnmounted(() => {
 </script>
 
 <style lang="less" scoped>
-.graph-universe {
+/* ==================== 探险地图风格 ==================== */
+.graph-explorer {
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
-  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+  background: var(--layout-bg-color, #F7F8FA);
   overflow: hidden;
-  transition: background 0.3s ease;
-
-  &:not(.dark-mode) {
-    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 50%, #dee2e6 100%);
-  }
 }
 
-/* 画布背景网格 */
+/* 画布背景 - 图纸/地图网格 */
 .canvas-grid {
   position: absolute;
   top: 0;
@@ -597,15 +566,11 @@ onUnmounted(() => {
   right: 0;
   bottom: 0;
   background-image:
-    radial-gradient(circle, rgba(255, 125, 0, 0.1) 1px, transparent 1px);
-  background-size: 30px 30px;
+    radial-gradient(circle, rgba(255, 125, 0, 0.08) 1px, transparent 1px),
+    radial-gradient(circle, rgba(255, 125, 0, 0.04) 1px, transparent 1px);
+  background-size: 20px 20px, 100px 100px;
+  background-position: 0 0, 10px 10px;
   pointer-events: none;
-  opacity: 0.5;
-
-  .graph-universe:not(.dark-mode) & {
-    background-image:
-      radial-gradient(circle, rgba(0, 0, 0, 0.08) 1px, transparent 1px);
-  }
 }
 
 /* 画布 */
@@ -618,7 +583,7 @@ onUnmounted(() => {
   z-index: 1;
 }
 
-/* 空状态覆盖层 */
+/* ==================== 空状态 ==================== */
 .empty-overlay {
   position: absolute;
   top: 0;
@@ -630,46 +595,66 @@ onUnmounted(() => {
   justify-content: center;
   z-index: 5;
   pointer-events: none;
+}
 
-  .empty-content {
-    text-align: center;
-    pointer-events: auto;
+.empty-content {
+  text-align: center;
+  pointer-events: auto;
+  padding: 40px;
+  /* 去卡片化 - 直接浮在网格背景上 */
 
-    .empty-icon {
-      font-size: 64px;
-      margin-bottom: 16px;
+  .empty-illustration {
+    margin-bottom: 20px;
+
+    .empty-icon-group {
+      position: relative;
+      width: 100px;
+      height: 100px;
+      margin: 0 auto;
       animation: float 3s ease-in-out infinite;
-    }
 
-    .empty-title {
-      font-size: 28px;
-      font-weight: 600;
-      color: rgba(255, 255, 255, 0.9);
-      margin: 0 0 8px;
+      .icon-main {
+        font-size: 64px;
+        color: var(--primary-color, #FF7D00);
+        opacity: 0.85;
+        filter: drop-shadow(0 4px 12px rgba(255, 125, 0, 0.25));
+      }
 
-      .graph-universe:not(.dark-mode) & {
-        color: #333;
+      .icon-accent {
+        position: absolute;
+        bottom: 0;
+        right: 0;
+        font-size: 28px;
+        color: var(--primary-color, #FF7D00);
+        background: #fff;
+        border-radius: 50%;
+        padding: 4px;
+        box-shadow: 0 2px 8px rgba(255, 125, 0, 0.2);
       }
     }
+  }
 
-    .empty-desc {
-      font-size: 14px;
-      color: rgba(255, 255, 255, 0.6);
-      margin: 0 0 24px;
+  .empty-title {
+    font-size: 24px;
+    font-weight: 600;
+    color: var(--text-color, #333);
+    margin: 0 0 8px;
+    text-shadow: 0 1px 2px rgba(255, 255, 255, 0.8);
+  }
 
-      .graph-universe:not(.dark-mode) & {
-        color: #666;
-      }
-    }
+  .empty-desc {
+    font-size: 14px;
+    color: var(--gray-600, #666);
+    margin: 0 0 24px;
   }
 }
 
 @keyframes float {
   0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-10px); }
+  50% { transform: translateY(-8px); }
 }
 
-/* 悬浮搜索栏 */
+/* ==================== 悬浮搜索栏 ==================== */
 .floating-search {
   position: absolute;
   top: 24px;
@@ -680,110 +665,83 @@ onUnmounted(() => {
   flex-direction: column;
   align-items: center;
   gap: 8px;
+}
 
-  .search-bar {
-    display: flex;
-    align-items: center;
-    width: 480px;
-    max-width: calc(100vw - 48px);
-    padding: 8px 16px;
-    background: rgba(255, 255, 255, 0.1);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    border: 1px solid rgba(255, 255, 255, 0.15);
-    border-radius: 24px;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
-    transition: all 0.2s ease;
+.search-bar {
+  display: flex;
+  align-items: center;
+  width: 420px;
+  max-width: calc(100vw - 48px);
+  padding: 6px 6px 6px 16px;
+  background: #fff;
+  border: 1px solid var(--border-color, #e5e5e5);
+  border-radius: 24px;
+  box-shadow: 0 4px 20px rgba(255, 125, 0, 0.08);
+  transition: all 0.2s ease;
 
-    .graph-universe:not(.dark-mode) & {
-      background: rgba(255, 255, 255, 0.85);
-      border-color: rgba(0, 0, 0, 0.1);
-      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-    }
+  &:focus-within {
+    border-color: var(--primary-color, #FF7D00);
+    box-shadow: 0 4px 20px rgba(255, 125, 0, 0.15);
+  }
 
-    &:focus-within {
-      border-color: rgba(255, 125, 0, 0.5);
-      box-shadow: 0 8px 32px rgba(255, 125, 0, 0.2);
-    }
+  .search-icon {
+    font-size: 16px;
+    color: var(--gray-400, #999);
+    margin-right: 10px;
+  }
 
-    .search-icon {
-      font-size: 18px;
-      color: rgba(255, 255, 255, 0.5);
-      margin-right: 12px;
+  input {
+    flex: 1;
+    border: none;
+    background: transparent;
+    font-size: 14px;
+    color: var(--text-color, #333);
+    outline: none;
 
-      .graph-universe:not(.dark-mode) & {
-        color: #999;
-      }
-    }
-
-    input {
-      flex: 1;
-      border: none;
-      background: transparent;
-      font-size: 15px;
-      color: rgba(255, 255, 255, 0.9);
-      outline: none;
-
-      .graph-universe:not(.dark-mode) & {
-        color: #333;
-      }
-
-      &::placeholder {
-        color: rgba(255, 255, 255, 0.4);
-
-        .graph-universe:not(.dark-mode) & {
-          color: #999;
-        }
-      }
-    }
-
-    .search-btn {
-      width: 36px;
-      height: 36px;
-      padding: 0;
-      border-radius: 50%;
-      color: #FFA940;
-
-      &:hover:not(:disabled) {
-        background: rgba(255, 125, 0, 0.2);
-      }
+    &::placeholder {
+      color: var(--gray-400, #999);
     }
   }
 
-  .status-indicator {
+  .search-btn {
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    border-radius: 50%;
     display: flex;
     align-items: center;
-    gap: 8px;
-    font-size: 12px;
-    color: rgba(255, 255, 255, 0.6);
-
-    .graph-universe:not(.dark-mode) & {
-      color: #666;
-    }
-
-    .status-dot {
-      width: 6px;
-      height: 6px;
-      border-radius: 50%;
-      background: #52c41a;
-
-      &.warning { background: #faad14; }
-      &.offline { background: #ff4d4f; }
-    }
-
-    .node-count {
-      padding-left: 8px;
-      border-left: 1px solid rgba(255, 255, 255, 0.2);
-
-      .graph-universe:not(.dark-mode) & {
-        border-color: rgba(0, 0, 0, 0.1);
-      }
-    }
+    justify-content: center;
   }
 }
 
-/* 底部悬浮工具栏 */
-.floating-dock {
+.status-indicator {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--gray-600, #666);
+  padding: 4px 12px;
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 12px;
+
+  .status-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #52c41a;
+
+    &.warning { background: #faad14; }
+    &.offline { background: #ff4d4f; }
+  }
+
+  .node-count {
+    padding-left: 8px;
+    border-left: 1px solid var(--border-color, #e5e5e5);
+  }
+}
+
+/* ==================== 底部工具栏 - 轻量化胶囊条 ==================== */
+.floating-toolbar {
   position: absolute;
   bottom: 24px;
   left: 50%;
@@ -792,70 +750,49 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   gap: 4px;
-  padding: 8px 12px;
-  background: rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  padding: 6px 10px;
+  background: #fff;
+  border: 1px solid var(--border-color, #e5e5e5);
   border-radius: 20px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
+}
 
-  .graph-universe:not(.dark-mode) & {
-    background: rgba(255, 255, 255, 0.85);
-    border-color: rgba(0, 0, 0, 0.1);
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+.toolbar-group {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.toolbar-divider {
+  width: 1px;
+  height: 20px;
+  background: var(--border-color, #e5e5e5);
+  margin: 0 6px;
+}
+
+.toolbar-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--gray-600, #666);
+  font-size: 15px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-decoration: none;
+
+  &:hover {
+    background: var(--gray-100, #f5f5f5);
+    color: var(--text-color, #333);
   }
 
-  .dock-group {
-    display: flex;
-    align-items: center;
-    gap: 2px;
-  }
-
-  .dock-divider {
-    width: 1px;
-    height: 24px;
-    background: rgba(255, 255, 255, 0.2);
-    margin: 0 8px;
-
-    .graph-universe:not(.dark-mode) & {
-      background: rgba(0, 0, 0, 0.1);
-    }
-  }
-
-  .dock-btn {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 36px;
-    height: 36px;
-    border: none;
-    border-radius: 10px;
-    background: transparent;
-    color: rgba(255, 255, 255, 0.7);
-    font-size: 16px;
-    cursor: pointer;
-    transition: all 0.15s ease;
-    text-decoration: none;
-
-    .graph-universe:not(.dark-mode) & {
-      color: #666;
-    }
-
-    &:hover {
-      background: rgba(255, 255, 255, 0.15);
-      color: #fff;
-
-      .graph-universe:not(.dark-mode) & {
-        background: rgba(0, 0, 0, 0.08);
-        color: #333;
-      }
-    }
-
-    &.active {
-      background: rgba(255, 125, 0, 0.2);
-      color: #FFA940;
-    }
+  &.active {
+    background: rgba(255, 125, 0, 0.1);
+    color: var(--primary-color, #FF7D00);
   }
 }
 
@@ -865,7 +802,7 @@ onUnmounted(() => {
 
   .sample-label {
     font-size: 12px;
-    color: #666;
+    color: var(--gray-600, #666);
     margin-bottom: 8px;
   }
 
@@ -874,242 +811,191 @@ onUnmounted(() => {
   }
 }
 
-/* 右侧详情面板 */
+/* ==================== 右侧详情面板 ==================== */
 .detail-panel {
   position: absolute;
   top: 0;
   right: 0;
-  width: 320px;
+  width: 300px;
   height: 100%;
-  background: rgba(20, 20, 30, 0.95);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border-left: 1px solid rgba(255, 255, 255, 0.1);
+  background: #fff;
+  border-left: 1px solid var(--border-color, #e5e5e5);
+  box-shadow: -4px 0 20px rgba(0, 0, 0, 0.05);
   z-index: 200;
   overflow-y: auto;
-  padding: 24px;
+  padding: 20px;
+}
 
-  .graph-universe:not(.dark-mode) & {
-    background: rgba(255, 255, 255, 0.95);
-    border-color: rgba(0, 0, 0, 0.1);
-  }
+.detail-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 20px;
 
-  .detail-header {
+  .detail-avatar {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #FF7D00, #FFA940);
     display: flex;
-    align-items: flex-start;
-    gap: 12px;
-    margin-bottom: 24px;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    box-shadow: 0 4px 12px rgba(255, 125, 0, 0.25);
 
-    .detail-avatar {
-      width: 48px;
-      height: 48px;
-      border-radius: 12px;
-      background: linear-gradient(135deg, #FF7D00, #FFA940);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      flex-shrink: 0;
-
-      .avatar-text {
-        font-size: 20px;
-        font-weight: 600;
-        color: white;
-      }
-    }
-
-    .detail-title {
-      flex: 1;
-      min-width: 0;
-
-      h3 {
-        margin: 0;
-        font-size: 18px;
-        font-weight: 600;
-        color: rgba(255, 255, 255, 0.9);
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-
-        .graph-universe:not(.dark-mode) & {
-          color: #333;
-        }
-      }
-
-      .detail-id {
-        font-size: 12px;
-        color: rgba(255, 255, 255, 0.5);
-
-        .graph-universe:not(.dark-mode) & {
-          color: #999;
-        }
-      }
-    }
-
-    .close-btn {
-      width: 28px;
-      height: 28px;
-      border: none;
-      border-radius: 8px;
-      background: rgba(255, 255, 255, 0.1);
-      color: rgba(255, 255, 255, 0.6);
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      transition: all 0.15s ease;
-
-      .graph-universe:not(.dark-mode) & {
-        background: rgba(0, 0, 0, 0.05);
-        color: #999;
-      }
-
-      &:hover {
-        background: rgba(255, 255, 255, 0.2);
-        color: #fff;
-
-        .graph-universe:not(.dark-mode) & {
-          background: rgba(0, 0, 0, 0.1);
-          color: #333;
-        }
-      }
-    }
-  }
-
-  .detail-stats {
-    display: flex;
-    gap: 16px;
-    margin-bottom: 24px;
-
-    .stat-item {
-      flex: 1;
-      padding: 16px;
-      background: rgba(255, 255, 255, 0.05);
-      border-radius: 12px;
-      text-align: center;
-
-      .graph-universe:not(.dark-mode) & {
-        background: rgba(0, 0, 0, 0.03);
-      }
-
-      .stat-value {
-        display: block;
-        font-size: 24px;
-        font-weight: 600;
-        color: #FFA940;
-      }
-
-      .stat-label {
-        font-size: 12px;
-        color: rgba(255, 255, 255, 0.5);
-
-        .graph-universe:not(.dark-mode) & {
-          color: #999;
-        }
-      }
-    }
-  }
-
-  .detail-section {
-    .section-header {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      font-size: 14px;
+    .avatar-text {
+      font-size: 18px;
       font-weight: 600;
-      color: rgba(255, 255, 255, 0.9);
-      margin-bottom: 12px;
+      color: white;
+    }
+  }
 
-      .graph-universe:not(.dark-mode) & {
-        color: #333;
-      }
+  .detail-title {
+    flex: 1;
+    min-width: 0;
+
+    h3 {
+      margin: 0;
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--text-color, #333);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
-    .empty-neighbors {
-      font-size: 13px;
-      color: rgba(255, 255, 255, 0.4);
-      text-align: center;
-      padding: 24px 0;
-
-      .graph-universe:not(.dark-mode) & {
-        color: #999;
-      }
+    .detail-id {
+      font-size: 11px;
+      color: var(--gray-500, #999);
     }
+  }
 
-    .neighbor-list {
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-    }
+  .close-btn {
+    width: 28px;
+    height: 28px;
+    border: none;
+    border-radius: 8px;
+    background: var(--gray-100, #f5f5f5);
+    color: var(--gray-500, #999);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s ease;
 
-    .neighbor-item {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      padding: 10px 12px;
-      background: rgba(255, 255, 255, 0.05);
-      border: none;
-      border-radius: 10px;
-      cursor: pointer;
-      transition: all 0.15s ease;
-      width: 100%;
-      text-align: left;
-
-      .graph-universe:not(.dark-mode) & {
-        background: rgba(0, 0, 0, 0.03);
-      }
-
-      &:hover {
-        background: rgba(255, 125, 0, 0.15);
-
-        .neighbor-arrow {
-          opacity: 1;
-          transform: translateX(0);
-        }
-      }
-
-      .neighbor-avatar {
-        width: 28px;
-        height: 28px;
-        border-radius: 8px;
-        background: rgba(255, 125, 0, 0.2);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 12px;
-        font-weight: 600;
-        color: #FFA940;
-        flex-shrink: 0;
-      }
-
-      .neighbor-name {
-        flex: 1;
-        font-size: 13px;
-        color: rgba(255, 255, 255, 0.8);
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-
-        .graph-universe:not(.dark-mode) & {
-          color: #333;
-        }
-      }
-
-      .neighbor-arrow {
-        font-size: 12px;
-        color: rgba(255, 255, 255, 0.4);
-        opacity: 0;
-        transform: translateX(-4px);
-        transition: all 0.15s ease;
-
-        .graph-universe:not(.dark-mode) & {
-          color: #999;
-        }
-      }
+    &:hover {
+      background: var(--gray-200, #e5e5e5);
+      color: var(--text-color, #333);
     }
   }
 }
 
-/* 加载遮罩 */
+.detail-stats {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 20px;
+
+  .stat-item {
+    flex: 1;
+    padding: 14px;
+    background: var(--gray-50, #fafafa);
+    border-radius: 12px;
+    text-align: center;
+
+    .stat-value {
+      display: block;
+      font-size: 22px;
+      font-weight: 600;
+      color: var(--primary-color, #FF7D00);
+    }
+
+    .stat-label {
+      font-size: 11px;
+      color: var(--gray-500, #999);
+    }
+  }
+}
+
+.detail-section {
+  .section-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-color, #333);
+    margin-bottom: 10px;
+  }
+
+  .empty-neighbors {
+    font-size: 13px;
+    color: var(--gray-500, #999);
+    text-align: center;
+    padding: 20px 0;
+  }
+
+  .neighbor-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .neighbor-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    background: var(--gray-50, #fafafa);
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    width: 100%;
+    text-align: left;
+
+    &:hover {
+      background: rgba(255, 125, 0, 0.08);
+
+      .neighbor-arrow {
+        opacity: 1;
+        transform: translateX(0);
+      }
+    }
+
+    .neighbor-avatar {
+      width: 28px;
+      height: 28px;
+      border-radius: 8px;
+      background: rgba(255, 125, 0, 0.15);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--primary-color, #FF7D00);
+      flex-shrink: 0;
+    }
+
+    .neighbor-name {
+      flex: 1;
+      font-size: 13px;
+      color: var(--text-color, #333);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .neighbor-arrow {
+      font-size: 11px;
+      color: var(--gray-400, #bbb);
+      opacity: 0;
+      transform: translateX(-4px);
+      transition: all 0.15s ease;
+    }
+  }
+}
+
+/* ==================== 加载遮罩 ==================== */
 .loading-overlay {
   position: absolute;
   top: 0;
@@ -1119,7 +1005,7 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(0, 0, 0, 0.5);
+  background: rgba(255, 255, 255, 0.8);
   z-index: 300;
 
   .loading-content {
@@ -1127,16 +1013,16 @@ onUnmounted(() => {
     flex-direction: column;
     align-items: center;
     gap: 12px;
-    color: rgba(255, 255, 255, 0.9);
+    color: var(--text-color, #333);
 
     .loading-icon {
-      font-size: 32px;
-      color: #FFA940;
+      font-size: 28px;
+      color: var(--primary-color, #FF7D00);
     }
   }
 }
 
-/* 警告横幅 */
+/* ==================== 警告横幅 ==================== */
 .warning-banner {
   position: absolute;
   top: 90px;
@@ -1147,14 +1033,14 @@ onUnmounted(() => {
   align-items: center;
   gap: 8px;
   padding: 8px 16px;
-  background: rgba(250, 173, 20, 0.15);
-  border: 1px solid rgba(250, 173, 20, 0.3);
+  background: #fffbe6;
+  border: 1px solid #ffe58f;
   border-radius: 8px;
   font-size: 13px;
-  color: #faad14;
+  color: #ad6800;
 }
 
-/* 过渡动画 */
+/* ==================== 过渡动画 ==================== */
 .fade-enter-active,
 .fade-leave-active {
   transition: opacity 0.3s ease;
@@ -1183,7 +1069,7 @@ onUnmounted(() => {
   transform: translate(-50%, -20px);
 }
 
-/* 响应式 */
+/* ==================== 响应式 ==================== */
 @media (max-width: 768px) {
   .floating-search .search-bar {
     width: calc(100vw - 32px);
@@ -1192,20 +1078,20 @@ onUnmounted(() => {
   .detail-panel {
     width: 100%;
     border-left: none;
-    border-top: 1px solid rgba(255, 255, 255, 0.1);
-    height: 60%;
+    border-top: 1px solid var(--border-color, #e5e5e5);
+    height: 55%;
     top: auto;
     bottom: 0;
-    border-radius: 20px 20px 0 0;
+    border-radius: 16px 16px 0 0;
   }
 
-  .floating-dock {
+  .floating-toolbar {
     bottom: 16px;
-    padding: 6px 10px;
+    padding: 5px 8px;
 
-    .dock-btn {
-      width: 32px;
-      height: 32px;
+    .toolbar-btn {
+      width: 28px;
+      height: 28px;
     }
   }
 }
