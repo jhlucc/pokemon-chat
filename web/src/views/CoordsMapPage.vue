@@ -80,11 +80,11 @@ onMounted(async () => {
     zoomControl: false // 禁用默认缩放控件，后面自定义
   }).setView([35, 105], 4) // 默认显示中国区域
 
-  // 使用 CartoDB Voyager 暖色系地图瓦片
+  // 使用 CartoDB Voyager 暖色系地图瓦片（带详细路网和地名）
   tileLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-    attribution: '&copy; <a href="https://carto.com/">CARTO</a>',
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
     subdomains: 'abcd',
-    maxZoom: 19
+    maxZoom: 20
   })
     .on('tileerror', () => {
       if (warnedTileError) return
@@ -360,12 +360,13 @@ function renderCoords(coords) {
   height: 100%;
   border-radius: 24px;
   overflow: hidden;
-  /* 内发光边框 - 全息投影感 */
-  border: 3px solid rgba(255, 255, 255, 0.5);
+  /* 内发光边框 - 悬浮显示屏感 */
+  border: 4px solid rgba(255, 255, 255, 0.5);
   box-shadow:
-    0 8px 32px rgba(0, 0, 0, 0.08),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.3),
-    0 4px 16px rgba(255, 125, 0, 0.05);
+    0 16px 48px rgba(0, 0, 0, 0.12),
+    0 8px 24px rgba(0, 0, 0, 0.08),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.4),
+    0 4px 16px rgba(255, 125, 0, 0.06);
   background: var(--surface-color);
 }
 
@@ -505,7 +506,11 @@ function renderCoords(coords) {
   }
 
   .map-container {
-    border-color: rgba(255, 255, 255, 0.15);
+    border-color: rgba(255, 255, 255, 0.2);
+    box-shadow:
+      0 16px 48px rgba(0, 0, 0, 0.3),
+      0 8px 24px rgba(0, 0, 0, 0.2),
+      inset 0 0 0 1px rgba(255, 255, 255, 0.1);
     background: var(--surface-color);
   }
 
