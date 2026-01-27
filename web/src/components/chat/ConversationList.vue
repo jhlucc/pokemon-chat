@@ -385,14 +385,21 @@ const escapeRegExp = (string) => {
   flex-shrink: 0;
 
   :deep(.ant-input-affix-wrapper) {
-    background: var(--surface-color-2);
+    background: var(--surface-color);
     border: 1px solid var(--border-color);
     border-radius: var(--radius-md);
     padding: 6px 12px;
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.04);
 
-    &:hover,
+    &:hover {
+      border-color: var(--gray-300);
+      background: var(--gray-0);
+    }
+
     &:focus-within {
       border-color: var(--primary-color);
+      background: var(--gray-0);
+      box-shadow: 0 0 0 2px rgba(255, 83, 80, 0.1);
     }
 
     input {

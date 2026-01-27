@@ -258,3 +258,92 @@ button.ant-btn-icon-only:hover {
     --page-padding-y: 14px;
   }
 }
+
+/* ==================== Ant Design Brand Color Override ==================== */
+/* Unify functional activation color to brand coral red */
+
+/* Switch - change default blue to brand coral red */
+.ant-switch.ant-switch-checked {
+  background: var(--primary-color) !important;
+}
+
+.ant-switch.ant-switch-checked:hover:not(.ant-switch-disabled) {
+  background: var(--primary-light-color) !important;
+}
+
+/* Primary buttons */
+.ant-btn-primary {
+  background: var(--primary-color) !important;
+  border-color: var(--primary-color) !important;
+}
+
+.ant-btn-primary:hover:not(:disabled) {
+  background: var(--primary-light-color) !important;
+  border-color: var(--primary-light-color) !important;
+}
+
+/* Checkbox */
+.ant-checkbox-checked .ant-checkbox-inner {
+  background-color: var(--primary-color) !important;
+  border-color: var(--primary-color) !important;
+}
+
+/* Radio */
+.ant-radio-checked .ant-radio-inner {
+  border-color: var(--primary-color) !important;
+}
+
+.ant-radio-checked .ant-radio-inner::after {
+  background-color: var(--primary-color) !important;
+}
+
+/* Tabs active */
+.ant-tabs-tab.ant-tabs-tab-active .ant-tabs-tab-btn {
+  color: var(--primary-color) !important;
+}
+
+.ant-tabs-ink-bar {
+  background: var(--primary-color) !important;
+}
+
+/* Input focus */
+.ant-input:focus,
+.ant-input-focused,
+.ant-input-affix-wrapper:focus,
+.ant-input-affix-wrapper-focused {
+  border-color: var(--primary-color) !important;
+  box-shadow: 0 0 0 2px rgba(255, 83, 80, 0.15) !important;
+}
+
+/* Select focus */
+.ant-select-focused .ant-select-selector {
+  border-color: var(--primary-color) !important;
+  box-shadow: 0 0 0 2px rgba(255, 83, 80, 0.15) !important;
+}
+
+/* Slider */
+.ant-slider-track {
+  background-color: var(--primary-color) !important;
+}
+
+.ant-slider-handle::after {
+  box-shadow: 0 0 0 2px var(--primary-color) !important;
+}
+
+/* Pagination active */
+.ant-pagination-item-active {
+  border-color: var(--primary-color) !important;
+}
+
+.ant-pagination-item-active a {
+  color: var(--primary-color) !important;
+}
+
+/* Links */
+a {
+  color: var(--primary-color);
+}
+
+a:hover {
+  color: var(--primary-light-color);
+}

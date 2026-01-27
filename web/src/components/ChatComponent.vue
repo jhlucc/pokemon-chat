@@ -1,5 +1,10 @@
 <template>
   <div class="chat" ref="chatContainer">
+    <!-- Global Background Decoration -->
+    <div class="chat-bg-decor">
+      <img src="/welcome-bg.png" alt="" class="bg-image" loading="lazy" decoding="async" />
+    </div>
+
     <!--     顶部左侧是打开侧边栏、新建会话、切换模型，右侧是打开选项设置面板。>-->
     <div class="chat-header">
       <!--      聊天界面顶部导航栏（新建对话、切换模型、选项面板）-->
@@ -21,18 +26,6 @@
           />
         </div>
 
-        <div
-          class="action-button"
-          @click="$emit('newconv')"
-          role="button"
-          tabindex="0"
-          aria-label="新建会话"
-          @keydown.enter.prevent="$emit('newconv')"
-          @keydown.space.prevent="$emit('newconv')"
-        >
-          <PlusCircleOutlined class="icon" />
-          <span class="text">新建会话</span>
-        </div>
       </div>
       <div class="header__right">
         <a-dropdown>
@@ -54,11 +47,7 @@
                 :src="getProviderIcon(configStore.config?.model_provider)"
                 :alt="configStore.config?.model_provider || 'provider'"
               />
-                <span class="text"
-                  >{{ configStore.config?.model_provider || '-' }}/{{
-                    configStore.config?.model_name || '-'
-                  }}</span
-                >
+                <span class="text">{{ getModelDisplayName(configStore.config?.model_name) }}</span>
                 <DownOutlined class="model-select-caret" />
               </div>
           </a-tooltip>
@@ -233,7 +222,6 @@
 <script setup>
 import { reactive, ref, onMounted, toRefs, nextTick, onUnmounted, watch, computed } from 'vue'
 import {
-  PlusCircleOutlined,
   FolderOutlined,
   FolderOpenOutlined,
   DownOutlined
@@ -250,7 +238,7 @@ import { readNdjsonStream } from '@/utils/ndjsonStream'
 import { apiFetch, apiRequest } from '@/api/http'
 import { randomId } from '@/utils/id'
 import { readJson, writeJson } from '@/utils/storage'
-import { getProviderIcon } from '@/utils/providerIcon'
+import { getProviderIcon, getModelDisplayName } from '@/utils/providerIcon'
 
 const props = defineProps({
   conv: Object,
@@ -854,11 +842,10 @@ const selectModel = (provider, name) => {
   display: flex;
   flex-direction: column;
   overflow-x: hidden;
-  
+
   /* --- Rotom-Dex Screen Background --- */
   background-color: var(--background-color);
-  /* Clean background as requested, grid removed */
-  
+
   box-sizing: border-box;
   flex: 5 5 200px;
   overflow-y: scroll;
@@ -958,6 +945,48 @@ const selectModel = (provider, name) => {
       color: var(--gray-500);
     }
   }
+}
+
+/* Global Background Decoration - Full Page Coverage */
+.chat-bg-decor {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  pointer-events: none;
+  z-index: 0;
+  overflow: hidden;
+
+  .bg-image {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    top: 0;
+    left: 0;
+    object-fit: cover;
+    object-position: center top;
+    opacity: 0.25;
+    /* Gradient mask: visible at top, fading towards bottom */
+    mask-image: linear-gradient(
+      to bottom,
+      rgba(0, 0, 0, 0.8) 0%,
+      rgba(0, 0, 0, 0.5) 30%,
+      rgba(0, 0, 0, 0.2) 60%,
+      rgba(0, 0, 0, 0) 100%
+    );
+    -webkit-mask-image: linear-gradient(
+      to bottom,
+      rgba(0, 0, 0, 0.8) 0%,
+      rgba(0, 0, 0, 0.5) 30%,
+      rgba(0, 0, 0, 0.2) 60%,
+      rgba(0, 0, 0, 0) 100%
+    );
+  }
+}
+
+:root[data-theme='dark'] .chat-bg-decor .bg-image {
+  opacity: 0.15;
 }
 
 .scroll-to-bottom {
@@ -1155,8 +1184,8 @@ const selectModel = (provider, name) => {
   width: 100%;
   margin: 0 auto;
   padding: var(--space-3) 2rem var(--space-6) 2rem;
-  /* Gradient fade at bottom to mask content scrolling behind input */
-  background: linear-gradient(to top, var(--background-color) 60%, transparent);
+  /* Subtle gradient fade - more transparent to let global background show through */
+  background: linear-gradient(to top, color-mix(in srgb, var(--background-color) 85%, transparent) 40%, transparent);
   z-index: 20;
 
   .message-input-wrapper {
@@ -1164,12 +1193,13 @@ const selectModel = (provider, name) => {
     max-width: 800px;
     margin: 0 auto;
 
-    /* Command Terminal Style */
-    background-color: color-mix(in srgb, var(--surface-color) 90%, transparent);
-    backdrop-filter: blur(var(--blur-md));
+    /* Glassmorphism Style - blends with global background */
+    background-color: color-mix(in srgb, var(--surface-color) 85%, transparent);
+    backdrop-filter: blur(var(--blur-lg));
+    -webkit-backdrop-filter: blur(var(--blur-lg));
     border-radius: var(--radius-lg);
     box-shadow: var(--shadow-sm);
-    border: 1px solid var(--border-color);
+    border: 1px solid color-mix(in srgb, var(--border-color) 80%, transparent);
 
     padding: var(--space-1);
     animation: width var(--duration-slow) ease-in-out;

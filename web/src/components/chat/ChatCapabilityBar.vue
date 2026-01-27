@@ -236,10 +236,10 @@ const kbTooltip = computed(() => {
   gap: var(--space-2);
   padding: var(--space-2) var(--space-3);
   border-radius: var(--radius-sm);
-  border: 1px solid var(--gray-200);
-  background: var(--surface-color);
+  border: none;
+  background: transparent;
   font-size: var(--font-size-xs);
-  color: var(--gray-600);
+  color: var(--gray-500);
   cursor: pointer;
   transition: all var(--duration-fast) var(--ease-default);
   user-select: none;
@@ -247,7 +247,7 @@ const kbTooltip = computed(() => {
 
   .chip-icon {
     font-size: var(--font-size-sm);
-    opacity: 0.8;
+    opacity: 0.7;
   }
 
   .chip-label {
@@ -256,14 +256,13 @@ const kbTooltip = computed(() => {
 
   .chip-caret {
     font-size: var(--font-size-xs);
-    opacity: 0.6;
+    opacity: 0.5;
     margin-left: var(--space-1);
   }
 
   &:hover:not(.disabled) {
-    border-color: var(--primary-color);
-    color: var(--primary-color);
-    background: color-mix(in srgb, var(--primary-color) 5%, transparent);
+    color: var(--gray-700);
+    background: var(--gray-100);
   }
 
   &:focus-visible {
@@ -272,9 +271,8 @@ const kbTooltip = computed(() => {
   }
 
   &.active {
-    border-color: var(--primary-color);
     color: var(--primary-color);
-    background: color-mix(in srgb, var(--primary-color) 10%, transparent);
+    background: color-mix(in srgb, var(--primary-color) 8%, transparent);
 
     .chip-icon {
       opacity: 1;
@@ -289,13 +287,12 @@ const kbTooltip = computed(() => {
 
   /* Agent 模式特殊样式 */
   &.capability-chip--agent {
-    background: linear-gradient(135deg, var(--surface-color), var(--gray-50));
-    border-color: var(--gray-300);
+    background: transparent;
 
     .chip-status {
       font-size: var(--font-size-xs);
-      font-weight: 700;
-      padding: var(--space-1) var(--space-2);
+      font-weight: 600;
+      padding: 2px 6px;
       border-radius: var(--radius-xs);
       background: var(--gray-200);
       color: var(--gray-500);
@@ -308,10 +305,12 @@ const kbTooltip = computed(() => {
       }
     }
 
+    &:hover:not(.disabled) {
+      background: var(--gray-100);
+    }
+
     &.active {
-      background: linear-gradient(135deg, color-mix(in srgb, var(--primary-color) 5%, transparent), color-mix(in srgb, var(--primary-color) 10%, transparent));
-      border-color: var(--primary-color);
-      box-shadow: 0 2px 8px color-mix(in srgb, var(--primary-color) 15%, transparent);
+      background: color-mix(in srgb, var(--primary-color) 8%, transparent);
     }
   }
 }

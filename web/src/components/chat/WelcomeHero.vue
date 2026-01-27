@@ -1,10 +1,5 @@
 <template>
   <div class="welcome-hero animate-fade-in">
-    <!-- Background Decoration -->
-    <div class="hero-bg-decor">
-      <img src="/welcome-bg.png" alt="" class="bg-image" loading="lazy" decoding="async" />
-    </div>
-
     <!-- Hero Section -->
     <div class="hero-section">
       <div class="hero-avatar">
@@ -146,45 +141,6 @@ const quickActions = [
   padding: var(--space-6) var(--space-4);
   gap: var(--space-6);
   overflow: hidden;
-}
-
-/* Background Decoration */
-.hero-bg-decor {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  pointer-events: none;
-  z-index: 0;
-  overflow: hidden;
-
-  .bg-image {
-    position: absolute;
-    width: 100%;
-    height: 100%;
-    top: 0;
-    left: 0;
-    object-fit: cover;
-    object-position: center;
-    opacity: 0.35;
-    mask-image: linear-gradient(
-      to bottom,
-      rgba(0, 0, 0, 0.6) 0%,
-      rgba(0, 0, 0, 0.4) 50%,
-      rgba(0, 0, 0, 0.1) 100%
-    );
-    -webkit-mask-image: linear-gradient(
-      to bottom,
-      rgba(0, 0, 0, 0.6) 0%,
-      rgba(0, 0, 0, 0.4) 50%,
-      rgba(0, 0, 0, 0.1) 100%
-    );
-  }
-}
-
-:root[data-theme='dark'] .hero-bg-decor .bg-image {
-  opacity: 0.25;
 }
 
 /* Hero Section */
@@ -348,6 +304,10 @@ const quickActions = [
     border-color: color-mix(in srgb, var(--primary-color) 30%, var(--border-color));
     transform: translateY(-2px);
     box-shadow: var(--shadow-sm);
+
+    .action-icon {
+      transform: scale(1.1);
+    }
   }
 
   &:active {
@@ -355,8 +315,16 @@ const quickActions = [
   }
 
   .action-icon {
-    font-size: 20px;
+    font-size: 18px;
     flex-shrink: 0;
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: color-mix(in srgb, var(--primary-color) 10%, transparent);
+    border-radius: 50%;
+    transition: transform var(--duration-fast) var(--ease-default);
   }
 
   .action-content {

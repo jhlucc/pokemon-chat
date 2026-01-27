@@ -311,20 +311,20 @@ const handleSendOrStop = () => {
         display: inline-flex;
         align-items: center;
         border-radius: var(--radius-sm);
-        border: 1px solid var(--gray-200);
-        padding: 6px 12px;
-        min-height: 32px;
+        border: none;
+        padding: 6px 10px;
+        min-height: 28px;
         cursor: pointer;
         font-size: var(--font-size-xs);
-        color: var(--gray-600);
+        color: var(--gray-500);
+        background: transparent;
         transition: all var(--duration-fast) var(--ease-default);
         user-select: none;
         white-space: nowrap;
 
         &:hover {
-          background-color: var(--main-10);
-          color: var(--primary-color);
-          border-color: var(--primary-color);
+          background-color: var(--gray-100);
+          color: var(--gray-700);
         }
 
         &:focus-visible {
@@ -334,8 +334,7 @@ const handleSendOrStop = () => {
 
         &.active {
           color: var(--primary-color);
-          border-color: var(--primary-color);
-          background-color: var(--main-10);
+          background-color: color-mix(in srgb, var(--primary-color) 8%, transparent);
         }
 
         &.disabled {
@@ -348,24 +347,30 @@ const handleSendOrStop = () => {
   }
 }
 
-/* 快捷键提示 */
+/* 快捷键提示 - 默认隐藏，聚焦时显示 */
 .input-hints {
   display: flex;
   align-items: center;
   gap: 4px;
   font-size: var(--font-size-xs);
-  color: var(--gray-400);
+  color: var(--gray-300);
+  opacity: 0;
+  transition: opacity var(--duration-fast) var(--ease-default);
+
+  .input-box.is-focused & {
+    opacity: 1;
+  }
 
   kbd {
     display: inline-flex;
     align-items: center;
-    padding: 2px 6px;
-    font-size: 11px;
+    padding: 2px 5px;
+    font-size: 10px;
     font-family: var(--font-family-mono);
-    background: var(--gray-100);
+    background: transparent;
     border: 1px solid var(--gray-200);
-    border-radius: 4px;
-    color: var(--gray-600);
+    border-radius: 3px;
+    color: var(--gray-400);
   }
 
   span {
@@ -373,64 +378,73 @@ const handleSendOrStop = () => {
   }
 }
 
-/* 字符计数 */
+/* 字符计数 - 默认隐藏，聚焦时显示 */
 .char-count {
   font-size: var(--font-size-xs);
-  color: var(--gray-400);
+  color: var(--gray-300);
   font-family: var(--font-family-mono);
-  transition: color var(--duration-fast) var(--ease-default);
+  opacity: 0;
+  transition: opacity var(--duration-fast) var(--ease-default), color var(--duration-fast) var(--ease-default);
+
+  .input-box.is-focused & {
+    opacity: 1;
+  }
 
   &.near-limit {
+    opacity: 1;
     color: var(--warning-color);
   }
 
   &.at-limit {
+    opacity: 1;
     color: var(--error-color);
     font-weight: 600;
   }
 }
 
-/* 图标按钮 */
+/* 图标按钮 - 轻量化设计 */
 .icon-btn {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 36px;
-  height: 36px;
+  width: 28px;
+  height: 28px;
   border-radius: 50%;
-  color: var(--gray-500);
+  color: var(--gray-400);
+  background: transparent;
   transition: all var(--duration-fast) var(--ease-default);
 
   &:hover {
     background: var(--gray-100);
-    color: var(--gray-700);
+    color: var(--gray-600);
   }
 
   &.recording {
     color: var(--error-color);
+    background: color-mix(in srgb, var(--error-color) 10%, transparent);
     animation: pulse 1.5s infinite;
   }
 }
 
-/* 发送按钮 */
+/* 发送按钮 - 缩小尺寸 */
 .send-btn {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 36px;
-  height: 36px;
+  width: 28px;
+  height: 28px;
   border-radius: 50%;
   background: var(--primary-color);
   border: none;
   color: white;
   cursor: pointer;
   transition: all var(--duration-fast) var(--ease-default);
-  box-shadow: 0 2px 8px rgba(255, 83, 80, 0.3);
+  box-shadow: 0 1px 4px rgba(255, 83, 80, 0.25);
 
   &:hover:not(:disabled) {
     background: var(--main-600);
     transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(255, 83, 80, 0.4);
+    box-shadow: 0 2px 8px rgba(255, 83, 80, 0.35);
   }
 
   &:active:not(:disabled) {
