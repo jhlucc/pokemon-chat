@@ -9,18 +9,42 @@
     <!-- 点阵背景 -->
     <div class="dot-grid"></div>
 
-    <!-- 极简 Header -->
-    <header class="home-header">
+    <!-- 极简 Header - 沉浸式透明，滚动时毛玻璃 -->
+    <header class="home-header" :class="{ 'is-scrolled': isScrolled }">
       <div class="brand">
         <img class="brand-logo" src="/logo.png" alt="Logo" />
         <span class="brand-name">{{ APP_NAME }}</span>
       </div>
       <div class="header-actions">
-        <ThemeToggle />
-        <a class="header-link" :href="apiDocsUrl" target="_blank">API</a>
-        <button class="header-link" @click="go('/setting')">
-          <SettingOutlined />
-        </button>
+        <!-- GitHub Star 按钮 -->
+        <a
+          class="github-btn"
+          href="https://github.com/skygazer42/pokemon-chat"
+          target="_blank"
+          rel="noopener"
+        >
+          <svg class="github-icon" viewBox="0 0 16 16" fill="currentColor">
+            <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/>
+          </svg>
+          <span>Star</span>
+          <span class="github-count">363</span>
+        </a>
+
+        <!-- 开发文档 -->
+        <a class="header-link header-link--text" :href="apiDocsUrl" target="_blank">
+          开发文档
+        </a>
+
+        <!-- 分割线 -->
+        <div class="header-divider"></div>
+
+        <!-- 功能图标组 -->
+        <div class="header-icons">
+          <ThemeToggle />
+          <button class="icon-btn" @click="go('/setting')" title="设置">
+            <SettingOutlined />
+          </button>
+        </div>
       </div>
     </header>
 
@@ -99,46 +123,20 @@
       </section>
     </main>
 
-    <!-- 底部悬浮状态栏 -->
-    <footer class="status-bar">
-      <div class="status-pill">
-        <div class="status-item">
-          <span class="status-dot" :class="backendOnline ? 'online' : 'offline'"></span>
-          <span>{{ backendOnline ? '系统正常' : '已断开' }}</span>
-        </div>
-        <div class="status-divider"></div>
-        <div class="status-item">
-          <ApiOutlined class="status-icon" />
-          <span>v{{ configStore.config.backend?.version || '0.0.1' }}</span>
-        </div>
-        <template v-if="configStore.config.enable_reranker">
-          <div class="status-divider"></div>
-          <div class="status-item">
-            <ThunderboltOutlined class="status-icon" />
-            <span>Reranker</span>
-          </div>
-        </template>
-        <template v-if="configStore.config.enable_knowledge_graph">
-          <div class="status-divider"></div>
-          <div class="status-item">
-            <ApartmentOutlined class="status-icon" />
-            <span>Graph</span>
-          </div>
-        </template>
-      </div>
+    <!-- 极简 Footer -->
+    <footer class="simple-footer">
+      <p>© 2025 可萌 AI. All rights reserved.</p>
     </footer>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import {
-  ApiOutlined,
   ApartmentOutlined,
   BookOutlined,
   EnvironmentOutlined,
-  MessageOutlined,
   RightOutlined,
   SettingOutlined,
   ThunderboltOutlined
@@ -152,13 +150,24 @@ const router = useRouter()
 const configStore = useConfigStore()
 
 const ui = computed(() => configStore.config?.ui || {})
-const backendOnline = computed(() => Boolean(configStore.config.backend?.online))
 const apiDocsUrl = computed(() => `${window.location.origin}/api/docs`)
+
+// 滚动状态 - 控制 Header 透明度
+const isScrolled = ref(false)
+const handleScroll = () => {
+  isScrolled.value = window.scrollY > 20
+}
 
 const go = (path: string) => router.push(path)
 
 onMounted(async () => {
   await configStore.refreshConfig()
+  window.addEventListener('scroll', handleScroll, { passive: true })
+  handleScroll() // 初始化状态
+})
+
+onUnmounted(() => {
+  window.removeEventListener('scroll', handleScroll)
 })
 </script>
 
@@ -250,19 +259,30 @@ onMounted(async () => {
   background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
 }
 
-/* ==================== Header ==================== */
+/* ==================== Header - 沉浸式透明 ==================== */
 .home-header {
-  position: sticky;
+  position: fixed;
   top: 0;
+  left: 0;
+  right: 0;
   z-index: 100;
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 16px 32px;
-  background: rgba(255, 255, 255, 0.8);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+  /* 默认：完全透明，让光晕透出 */
+  background: transparent;
+  border-bottom: 1px solid transparent;
+  transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* 滚动后：毛玻璃效果 */
+  &.is-scrolled {
+    background: rgba(255, 255, 255, 0.72);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-bottom-color: rgba(0, 0, 0, 0.06);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  }
 }
 
 .brand {
@@ -287,19 +307,84 @@ onMounted(async () => {
 .header-actions {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 12px;
 }
 
-.header-link {
+/* GitHub Star 按钮 */
+.github-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: #24292e;
+  color: white;
+  border-radius: 100px;
+  font-size: 13px;
+  font-weight: 500;
+  text-decoration: none;
+  transition: all 0.2s ease;
+
+  &:hover {
+    background: #1a1e22;
+    transform: translateY(-1px);
+  }
+
+  .github-icon {
+    width: 16px;
+    height: 16px;
+  }
+
+  .github-count {
+    padding: 2px 6px;
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 100px;
+    font-size: 11px;
+  }
+}
+
+/* 文字链接 */
+.header-link--text {
   font-size: 14px;
   font-weight: 500;
   color: var(--gray-600, #666);
   text-decoration: none;
-  background: none;
-  border: none;
-  cursor: pointer;
   padding: 6px 10px;
   border-radius: 6px;
+  transition: all 0.15s ease;
+
+  &:hover {
+    color: var(--primary-color, #FF7D00);
+    background: rgba(255, 125, 0, 0.08);
+  }
+}
+
+/* 分割线 */
+.header-divider {
+  width: 1px;
+  height: 16px;
+  background: var(--gray-200, #e5e5e5);
+  margin: 0 4px;
+}
+
+/* 图标组 */
+.header-icons {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.icon-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: none;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--gray-500, #888);
+  cursor: pointer;
+  font-size: 18px;
   transition: all 0.15s ease;
 
   &:hover {
@@ -314,7 +399,8 @@ onMounted(async () => {
   z-index: 1;
   max-width: 1100px;
   margin: 0 auto;
-  padding: 48px 24px 120px;
+  /* 为固定 Header 留出空间 */
+  padding: 88px 24px 48px;
 }
 
 /* ==================== Hero ==================== */
@@ -686,70 +772,18 @@ onMounted(async () => {
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* ==================== 底部状态栏 ==================== */
-.status-bar {
-  position: fixed;
-  bottom: 24px;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 100;
-}
+/* ==================== 极简 Footer ==================== */
+.simple-footer {
+  width: 100%;
+  padding: 32px 24px;
+  text-align: center;
 
-.status-pill {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 10px 22px;
-  background: rgba(255, 255, 255, 0.8);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border-radius: 100px;
-  box-shadow:
-    0 8px 32px rgba(0, 0, 0, 0.08),
-    0 2px 8px rgba(0, 0, 0, 0.04),
-    0 0 0 1px rgba(255, 255, 255, 0.5) inset;
-  border: 1px solid rgba(255, 255, 255, 0.4);
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--gray-600, #666);
-}
-
-.status-item {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.status-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: #22C55E;
-
-  &.online {
-    animation: pulse 2s ease-in-out infinite;
+  p {
+    font-size: 12px;
+    color: var(--gray-400, #9CA3AF);
+    opacity: 0.6;
+    margin: 0;
   }
-
-  &.offline {
-    background: #EF4444;
-    animation: none;
-  }
-}
-
-@keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.5; }
-}
-
-.status-icon {
-  font-size: 12px;
-  opacity: 0.7;
-}
-
-.status-divider {
-  width: 1px;
-  height: 12px;
-  background: var(--gray-200, #e5e5e5);
 }
 
 /* ==================== 响应式 ==================== */
@@ -776,6 +810,10 @@ onMounted(async () => {
     width: 80px;
     height: 80px;
   }
+
+  .github-btn .github-count {
+    display: none;
+  }
 }
 
 @media (max-width: 640px) {
@@ -783,8 +821,29 @@ onMounted(async () => {
     padding: 12px 16px;
   }
 
+  .header-actions {
+    gap: 8px;
+  }
+
+  .github-btn {
+    padding: 5px 10px;
+    font-size: 12px;
+
+    span:not(.github-icon):not(.github-count) {
+      display: none;
+    }
+  }
+
+  .header-link--text {
+    display: none;
+  }
+
+  .header-divider {
+    display: none;
+  }
+
   .home-main {
-    padding: 32px 16px 100px;
+    padding: 72px 16px 32px;
   }
 
   .hero {
@@ -836,12 +895,6 @@ onMounted(async () => {
     padding: 10px 20px;
     font-size: 14px;
   }
-
-  .status-pill {
-    padding: 6px 14px;
-    gap: 8px;
-    font-size: 11px;
-  }
 }
 
 /* ==================== 暗色模式 ==================== */
@@ -878,8 +931,46 @@ onMounted(async () => {
   }
 
   .home-header {
-    background: rgba(30, 30, 30, 0.8);
-    border-color: rgba(255, 255, 255, 0.05);
+    /* 暗色模式下默认也是透明 */
+    background: transparent;
+    border-color: transparent;
+
+    &.is-scrolled {
+      background: rgba(20, 20, 20, 0.75);
+      border-bottom-color: rgba(255, 255, 255, 0.06);
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+    }
+  }
+
+  .github-btn {
+    background: #f0f0f0;
+    color: #24292e;
+
+    .github-count {
+      background: rgba(0, 0, 0, 0.1);
+    }
+  }
+
+  .header-link--text {
+    color: var(--gray-400);
+
+    &:hover {
+      color: var(--primary-color);
+      background: rgba(255, 125, 0, 0.15);
+    }
+  }
+
+  .header-divider {
+    background: var(--gray-700);
+  }
+
+  .icon-btn {
+    color: var(--gray-400);
+
+    &:hover {
+      color: var(--primary-color);
+      background: rgba(255, 125, 0, 0.15);
+    }
   }
 
   .bento-card {
@@ -920,10 +1011,8 @@ onMounted(async () => {
     color: var(--gray-600, #6B7280);
   }
 
-  .status-pill {
-    background: rgba(30, 30, 30, 0.75);
-    border-color: rgba(255, 255, 255, 0.08);
-    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.2), 0 0 0 1px rgba(255, 255, 255, 0.05) inset;
+  .simple-footer p {
+    color: var(--gray-500);
   }
 }
 </style>
