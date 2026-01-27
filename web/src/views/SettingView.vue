@@ -49,10 +49,8 @@
                    </div>
                 </div>
               </div>
-              <!-- 装饰：半透明洛托姆轮廓 -->
-              <div class="status-visual">
-                <div class="rotom-silhouette"></div>
-              </div>
+              <!-- 装饰：橙色流光 -->
+              <div class="status-visual"></div>
             </div>
 
             <!-- Quick Actions (Span 4) -->
@@ -116,13 +114,16 @@
               <div class="providers-scroll">
                 <div v-for="p in providerList" :key="p" class="provider-row" @click="toggleProviderEdit(p)">
                   <div class="p-left">
-                    <img :src="getProviderIcon(p)" class="p-icon" />
+                    <div class="p-icon-wrap">
+                      <img :src="getProviderIcon(p)" class="p-icon" />
+                    </div>
                     <div class="p-name">{{ modelCatalog[p]?.name || p }}</div>
                   </div>
                   <div class="p-right">
                     <div class="status-pill" :class="providerConfigured(p) ? 'active' : 'inactive'">
                        {{ providerConfigured(p) ? '已连接' : '未配置' }}
                     </div>
+                    <RightOutlined class="p-arrow" />
                   </div>
                 </div>
               </div>
@@ -384,11 +385,11 @@ onMounted(() => refreshProviders())
 }
 
 .glow--orange {
-  width: 700px;
-  height: 700px;
-  top: -25%;
-  left: -20%;
-  background: radial-gradient(circle, rgba(255, 125, 0, 0.35) 0%, rgba(255, 180, 100, 0.15) 40%, transparent 70%);
+  width: 800px;
+  height: 800px;
+  top: -30%;
+  left: -25%;
+  background: radial-gradient(circle, rgba(255, 125, 0, 0.45) 0%, rgba(255, 180, 100, 0.2) 40%, transparent 70%);
 }
 
 .glow--purple {
@@ -441,12 +442,12 @@ onMounted(() => refreshProviders())
 }
 
 .bento-card {
-  background: rgba(255, 255, 255, 0.75);
+  background: rgba(255, 255, 255, 0.7);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   border-radius: 20px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03), 0 4px 12px rgba(255, 125, 0, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.5);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04), 0 4px 16px rgba(255, 125, 0, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.6);
   padding: 20px;
   transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
   overflow: hidden;
@@ -454,9 +455,9 @@ onMounted(() => refreshProviders())
 
   &:hover {
     transform: translateY(-2px);
-    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.06), 0 10px 30px rgba(255, 125, 0, 0.08);
-    border-color: rgba(255, 125, 0, 0.15);
-    background: rgba(255, 255, 255, 0.9);
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.06), 0 10px 30px rgba(255, 125, 0, 0.1);
+    border-color: rgba(255, 125, 0, 0.2);
+    background: rgba(255, 255, 255, 0.85);
   }
 }
 
@@ -570,9 +571,10 @@ onMounted(() => refreshProviders())
   }
 
   .value {
-    font-size: 15px;
-    font-weight: 600;
-    color: var(--gray-600);
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text-color);
+    font-family: 'JetBrains Mono', 'SF Mono', Consolas, monospace;
 
     &.active {
       color: #22c55e;
@@ -580,28 +582,51 @@ onMounted(() => refreshProviders())
   }
 }
 
-/* 洛托姆装饰 */
+/* 装饰：橙色流光 */
 .status-visual {
   position: absolute;
-  right: 24px;
-  bottom: 24px;
-  width: 120px;
-  height: 120px;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: 200px;
   pointer-events: none;
-  opacity: 0.15;
+  overflow: hidden;
+  border-radius: 0 20px 20px 0;
 
-  .rotom-silhouette {
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(135deg, var(--primary-color) 0%, rgba(255, 125, 0, 0.5) 100%);
+  &::before {
+    content: '';
+    position: absolute;
+    right: -50px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 200px;
+    height: 200px;
+    background: radial-gradient(circle, rgba(255, 125, 0, 0.15) 0%, rgba(255, 125, 0, 0.05) 40%, transparent 70%);
+    animation: glow-pulse 3s ease-in-out infinite;
+  }
+
+  &::after {
+    content: '';
+    position: absolute;
+    right: 20px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 80px;
+    height: 80px;
+    background: radial-gradient(circle, rgba(255, 125, 0, 0.2) 0%, transparent 70%);
     border-radius: 50%;
     animation: float 4s ease-in-out infinite;
   }
 }
 
+@keyframes glow-pulse {
+  0%, 100% { opacity: 0.8; transform: translateY(-50%) scale(1); }
+  50% { opacity: 1; transform: translateY(-50%) scale(1.1); }
+}
+
 @keyframes float {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-8px); }
+  0%, 100% { transform: translateY(-50%); }
+  50% { transform: translateY(-60%); }
 }
 
 /* Actions Card */
@@ -640,42 +665,158 @@ onMounted(() => refreshProviders())
 .providers-scroll::-webkit-scrollbar { width: 4px; }
 .providers-scroll::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 2px; }
 .provider-row {
-  display: flex; justify-content: space-between; align-items: center; padding: 8px 10px; border-radius: 8px; cursor: pointer; transition: all 0.15s; border: 1px solid transparent; margin-bottom: 4px;
-  background: var(--surface-color);
-  &:hover { background: var(--surface-color-2); border-color: var(--border-color); box-shadow: 0 2px 4px rgba(0,0,0,0.02); }
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 12px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: 1px solid transparent;
+  margin-bottom: 6px;
+  background: rgba(255, 255, 255, 0.5);
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.8);
+    border-color: rgba(255, 125, 0, 0.15);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+
+    .p-arrow {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
 }
-.p-left { display: flex; align-items: center; gap: 10px; }
-.p-icon { width: 20px; height: 20px; border-radius: 5px; background: var(--surface-color); padding: 2px; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
-.p-name { font-weight: 600; color: var(--text-color); font-size: 13px; }
+.p-left { display: flex; align-items: center; gap: 12px; }
+.p-icon-wrap {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.03);
+  border-radius: 10px;
+  border: 1px solid rgba(0, 0, 0, 0.05);
+}
+.p-icon {
+  width: 22px;
+  height: 22px;
+  border-radius: 4px;
+}
+.p-name { font-weight: 600; color: var(--text-color); font-size: 14px; }
+.p-right { display: flex; align-items: center; gap: 8px; }
+.p-arrow {
+  font-size: 12px;
+  color: var(--gray-400);
+  opacity: 0;
+  transform: translateX(-4px);
+  transition: all 0.2s ease;
+}
 .status-pill {
-  font-size: 10px; font-weight: 700; padding: 2px 6px; border-radius: 4px; letter-spacing: 0.05em; font-family: 'JetBrains Mono', monospace;
-  &.active { background: #dcfce7; color: #166534; }
-  &.inactive { background: #f1f5f9; color: #94a3b8; }
+  font-size: 11px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 100px;
+  letter-spacing: 0.02em;
+
+  &.active {
+    background: rgba(34, 197, 94, 0.1);
+    color: #16a34a;
+    border: 1px solid rgba(34, 197, 94, 0.2);
+  }
+
+  &.inactive {
+    background: rgba(0, 0, 0, 0.03);
+    color: var(--gray-500);
+    border: 1px solid rgba(0, 0, 0, 0.06);
+  }
 }
 
 /* Capabilities */
 .capabilities-card { grid-column: span 12; }
 .modules-container { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 12px; }
 .module-tile {
-  background: var(--surface-color); border-radius: 12px; padding: 12px; display: flex; flex-direction: column; justify-content: space-between; height: 90px;
-  cursor: pointer; transition: all 0.2s ease; border: 1px solid var(--border-color); position: relative; overflow: hidden;
+  background: rgba(255, 255, 255, 0.5);
+  border-radius: 14px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  height: 95px;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  border: 1px solid rgba(0, 0, 0, 0.04);
+  position: relative;
+  overflow: hidden;
 
-  .tile-bg { position: absolute; inset: 0; opacity: 0; background: linear-gradient(135deg, rgba(255,83,80,0.05), transparent); transition: opacity 0.2s; }
-  .tile-content { position: relative; z-index: 1; height: 100%; display: flex; flex-direction: column; justify-content: space-between; }
-  .tile-icon { font-size: 20px; color: var(--gray-500); transition: color 0.2s; }
-  .tile-name { font-weight: 600; color: var(--gray-600); font-size: 12px; transition: color 0.2s; }
-  .tile-status { font-size: 10px; color: var(--gray-400); font-weight: 700; margin-top: 2px; }
-  .tile-bar { position: absolute; bottom: 0; left: 0; width: 100%; height: 3px; background: var(--gray-200); transition: background 0.2s; }
+  .tile-bg {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    background: linear-gradient(135deg, rgba(255, 125, 0, 0.08), rgba(255, 125, 0, 0.02));
+    transition: opacity 0.25s;
+  }
+
+  .tile-content {
+    position: relative;
+    z-index: 1;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
+
+  .tile-icon {
+    font-size: 22px;
+    color: var(--gray-400);
+    transition: all 0.25s;
+    opacity: 0.6;
+  }
+
+  .tile-name {
+    font-weight: 600;
+    color: var(--gray-500);
+    font-size: 12px;
+    transition: color 0.25s;
+  }
+
+  .tile-status {
+    font-size: 10px;
+    color: var(--gray-400);
+    font-weight: 600;
+    margin-top: 2px;
+    transition: color 0.25s;
+  }
+
+  .tile-bar {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 3px;
+    background: var(--gray-200);
+    transition: all 0.25s;
+  }
 
   &.active {
-    border-color: rgba(255, 83, 80, 0.2); box-shadow: 0 4px 12px rgba(255, 83, 80, 0.05);
+    background: rgba(255, 125, 0, 0.06);
+    border-color: rgba(255, 125, 0, 0.2);
+    box-shadow: 0 4px 16px rgba(255, 125, 0, 0.08);
+
     .tile-bg { opacity: 1; }
-    .tile-icon { color: var(--pokedex-red); }
+    .tile-icon { color: var(--pokedex-red); opacity: 1; }
     .tile-name { color: var(--text-color); }
     .tile-status { color: var(--pokedex-red); }
     .tile-bar { background: var(--pokedex-red); }
   }
-  &:hover { transform: translateY(-1px); }
+
+  &:hover {
+    transform: translateY(-2px);
+    border-color: rgba(255, 125, 0, 0.15);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
+
+    .tile-icon { opacity: 0.8; }
+  }
 }
 
 /* UI Card */
@@ -719,7 +860,7 @@ onMounted(() => refreshProviders())
   }
 
   .glow--orange {
-    background: radial-gradient(circle, rgba(255, 125, 0, 0.25) 0%, rgba(255, 180, 100, 0.1) 40%, transparent 70%);
+    background: radial-gradient(circle, rgba(255, 125, 0, 0.3) 0%, rgba(255, 180, 100, 0.12) 40%, transparent 70%);
   }
 
   .glow--purple {
@@ -733,11 +874,11 @@ onMounted(() => refreshProviders())
   }
 
   .bento-card {
-    background: rgba(40, 40, 40, 0.75);
+    background: rgba(40, 40, 40, 0.7);
     border-color: rgba(255, 255, 255, 0.08);
 
     &:hover {
-      background: rgba(50, 50, 50, 0.9);
+      background: rgba(50, 50, 50, 0.85);
       border-color: rgba(255, 125, 0, 0.3);
     }
   }
@@ -749,6 +890,15 @@ onMounted(() => refreshProviders())
     &.online {
       background: rgba(34, 197, 94, 0.12);
       border-color: rgba(34, 197, 94, 0.25);
+    }
+  }
+
+  .status-visual {
+    &::before {
+      background: radial-gradient(circle, rgba(255, 125, 0, 0.2) 0%, rgba(255, 125, 0, 0.08) 40%, transparent 70%);
+    }
+    &::after {
+      background: radial-gradient(circle, rgba(255, 125, 0, 0.25) 0%, transparent 70%);
     }
   }
 
@@ -764,31 +914,43 @@ onMounted(() => refreshProviders())
   }
 
   .provider-row {
-    background: rgba(30, 30, 30, 0.6);
+    background: rgba(30, 30, 30, 0.5);
 
     &:hover {
-      background: rgba(40, 40, 40, 0.8);
-      border-color: rgba(255, 255, 255, 0.1);
+      background: rgba(40, 40, 40, 0.7);
+      border-color: rgba(255, 125, 0, 0.2);
     }
+  }
+
+  .p-icon-wrap {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 255, 255, 0.08);
   }
 
   .status-pill {
     &.active {
       background: rgba(34, 197, 94, 0.15);
       color: #4ade80;
+      border-color: rgba(34, 197, 94, 0.25);
     }
     &.inactive {
       background: rgba(255, 255, 255, 0.05);
       color: var(--gray-500);
+      border-color: rgba(255, 255, 255, 0.08);
     }
   }
 
   .module-tile {
-    background: rgba(30, 30, 30, 0.6);
-    border-color: rgba(255, 255, 255, 0.08);
+    background: rgba(30, 30, 30, 0.5);
+    border-color: rgba(255, 255, 255, 0.06);
 
     &.active {
+      background: rgba(255, 125, 0, 0.1);
       border-color: rgba(255, 125, 0, 0.3);
+    }
+
+    &:hover {
+      border-color: rgba(255, 125, 0, 0.2);
     }
   }
 
