@@ -184,6 +184,33 @@ python scripts/import_pokemon_map.py
 > - 工具箱 `/tools` -> 知识库 `/database`（RAG 工作台标签页，兼容 `/database/workbench`）
 > - Agent `/agent` -> 对话 `/chat`（输入框左侧“Agent 模式”开关启用，总 Agent = `supervisor_agent`）
 
+### ✅ 代码质量（开发者）
+
+后端：
+
+```bash
+python -m ruff check server src scripts
+python -m ruff format server src scripts
+python -m pytest
+```
+
+前端：
+
+```bash
+cd web
+npm run lint:check
+npm run typecheck
+npm run build
+```
+
+一键（类似 CI）：
+
+```bash
+make check
+```
+
+更多开发/贡献细节见 `CONTRIBUTING.md`。
+
 ### 🧰 常见问题（本地环境）
 
 1) **直接运行后端脚本时报 `No module named 'src'`**

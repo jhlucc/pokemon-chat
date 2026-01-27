@@ -17,6 +17,9 @@ classifiers = [
     "Operating System :: OS Independent",
 ]
 
+[project.scripts]
+pokemon-chat-api = "server.__main__:main"
+
 [project.optional-dependencies]
 dev = [
     "pytest>=7.0",
