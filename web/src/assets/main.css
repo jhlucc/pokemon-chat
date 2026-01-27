@@ -24,7 +24,8 @@
 
 /* AppLayout scroll container background */
 #app-router-view {
-  background-color: var(--layout-bg-color);
+  /* 透明化：让各页面自己控制背景，光晕可以透出 */
+  background-color: transparent;
 }
 
 .layout-container h2 {
