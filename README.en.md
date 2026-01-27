@@ -118,9 +118,15 @@ cp docker/.env.example docker/.env
 # Optional: enable ASR (FunASR) -> enable_asr=true, funasr_url=ws://funasr:10095 (Docker)
 # Optional: restrict CORS origins (recommended for production) -> cors_allow_origins=http://localhost:3100
 
-# 3. Start all services (API + Web + DB + MCP)
+# 3. Start all services (API + Web + Neo4j/MySQL/Milvus, plus auto Neo4j import)
 cd docker
-docker compose --profile infra --profile mcp up -d --build
+docker compose up -d --build
+
+# Optional: MCP SSE server
+# docker compose --profile mcp up -d --build
+
+# Optional: ASR (FunASR)
+# docker compose --profile asr up -d --build
 ```
 
 Access:
@@ -129,20 +135,34 @@ Access:
 
 ### 📦 Data Initialization (First Run)
 
-After starting the services, you need to import knowledge base and graph data. Place data files in the `resources` directory ([Download Link](https://pan.baidu.com/s/1o48ankI6l9jaky5MeRqgYw?pwd=rkdy)).
+Neo4j graph data is imported automatically by the one-shot service `neo4j-bootstrap`, from:
 
-Then execute the import scripts:
+- `resources/data/kg_data/entities.json`
+- `resources/data/kg_data/relations.json`
+
+Force re-import (DANGEROUS: wipes the Neo4j DB):
 
 ```bash
-# Enter API container
 cd docker
-docker compose exec api bash
+docker compose run --rm neo4j-bootstrap python scripts/import_graph.py --wait-seconds 120 --force --reset
+```
 
-# Import Neo4j graph data
-python scripts/import_graph.py
+> Optional: MySQL map data import (run only if you need the map feature).
+> We don’t run it automatically to keep the one-command startup stable across environments.
 
-# Import MySQL map data
-python scripts/import_pokemon_map.py
+```bash
+cd docker
+docker compose exec api python scripts/import_pokemon_map.py
+```
+
+If you want a clean start (wipe persisted data and re-run bootstrap):
+
+```bash
+cd docker
+docker compose down
+# These are bind-mounted data directories (not named volumes), delete them manually:
+rm -rf volumes/neo4j/data volumes/neo4j/logs volumes/milvus volumes/mysql/data
+docker compose up -d --build
 ```
 
 ### 💻 Local Development Mode
@@ -152,7 +172,7 @@ If you wish to run backend/frontend code locally for development:
 1. **Start Infrastructure**
    ```bash
    cd docker
-   docker compose --profile infra up -d # Starts Neo4j, Milvus, MySQL, FunASR
+   docker compose up -d # Starts Neo4j, Milvus, MySQL (FunASR needs --profile asr)
    ```
 
 2. **Start Backend (Server)**

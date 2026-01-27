@@ -3,10 +3,11 @@
 This folder contains a Docker Compose stack for:
 - `web` (Vue build served by Nginx, with `/api` reverse proxy)
 - `api` (FastAPI backend)
-- optional infra (`--profile infra`): Neo4j / Milvus / MySQL / FunASR
+- infra (default): Neo4j / Milvus / MySQL (and their dependencies)
 - optional MCP (`--profile mcp`): FastMCP SSE server
+- optional ASR (`--profile asr`): FunASR runtime
 
-## Quick Start (App Only)
+## Quick Start (Full Stack)
 
 ```bash
 cd docker
@@ -20,22 +21,69 @@ Open:
 - API docs: http://localhost:3100/api/docs
 - Direct API: http://localhost:5050/healthz
 
+### Auto Neo4j Import
+
+On startup, the one-shot service `neo4j-bootstrap` will import graph data from:
+
+- `../resources/data/kg_data/entities.json`
+- `../resources/data/kg_data/relations.json`
+
+This is idempotent: it will **skip** if the marker node exists.
+
+Force re-import (DANGEROUS: wipes the DB):
+
+```bash
+cd docker
+docker compose run --rm neo4j-bootstrap python scripts/import_graph.py --wait-seconds 120 --force --reset
+```
+
+### Optional: Import Map Data (MySQL)
+
+If you need the map feature, import CSV into MySQL:
+
+```bash
+cd docker
+docker compose exec api python scripts/import_pokemon_map.py
+```
+
+## Reset / Clean Start
+
+This stack uses bind-mounted data directories under `docker/volumes/`.
+
+To wipe Neo4j data and re-import:
+
+```bash
+cd docker
+docker compose down
+rm -rf volumes/neo4j/data volumes/neo4j/logs
+docker compose up -d --build
+```
+
+On Windows PowerShell, you can delete the folders manually or run:
+
+```powershell
+cd docker
+docker compose down
+Remove-Item -Recurse -Force .\\volumes\\neo4j\\data, .\\volumes\\neo4j\\logs
+docker compose up -d --build
+```
+
 Note:
 - `docker/.env` is for Docker Compose variable substitution.
 - For local (non-docker) development, use the repo root `.env` (see `.env.template`).
 
-## Full Stack (Infra + App)
+## App Only (Without Infra)
 
 ```bash
 cd docker
-docker compose --profile infra up -d --build
+docker compose up -d --build api web
 ```
 
 ## With MCP SSE Server
 
 ```bash
 cd docker
-docker compose --profile infra --profile mcp up -d --build
+docker compose --profile mcp up -d --build
 ```
 
 MCP SSE endpoint (inside Docker network): `http://mcp:8000/sse`  

@@ -124,7 +124,14 @@ cp docker/.env.example docker/.env
 
 # 3. 启动所有服务 (API + Web + 数据库 + MCP)
 cd docker
-docker compose --profile infra --profile mcp up -d --build
+# 默认会拉起 API + Web + Neo4j/MySQL/Milvus 等依赖，并自动导入 Neo4j 图谱数据（neo4j-bootstrap）
+docker compose up -d --build
+
+# 可选：启动 MCP SSE 服务
+# docker compose --profile mcp up -d --build
+
+# 可选：启动语音识别（FunASR）
+# docker compose --profile asr up -d --build
 ```
 
 访问：
@@ -133,20 +140,34 @@ docker compose --profile infra --profile mcp up -d --build
 
 ### 📦 数据初始化（首次运行）
 
-服务启动后，需要导入知识库与图谱数据。请将数据文件放入 `resources` 目录（[下载链接](https://pan.baidu.com/s/1o48ankI6l9jaky5MeRqgYw?pwd=rkdy)）。
+默认会自动导入 Neo4j 图谱数据（由 `neo4j-bootstrap` 完成），数据来源：
 
-然后执行导入脚本：
+- `resources/data/kg_data/entities.json`
+- `resources/data/kg_data/relations.json`
+
+如需强制重导（危险：会清空 Neo4j 数据库）：
 
 ```bash
-# 进入 API 容器
 cd docker
-docker compose exec api bash
+docker compose run --rm neo4j-bootstrap python scripts/import_graph.py --wait-seconds 120 --force --reset
+```
 
-# 导入 Neo4j 图谱数据
-python scripts/import_graph.py
+> 可选：MySQL 地图数据导入（地图功能需要时再执行）。
+> 由于环境差异较大，这一步不默认自动执行，避免影响“一键启动”。
 
-# 导入 MySQL 地图数据
-python scripts/import_pokemon_map.py
+```bash
+cd docker
+docker compose exec api python scripts/import_pokemon_map.py
+```
+
+如果你想彻底清空数据（Neo4j/Milvus/MySQL 等）重新来一遍：
+
+```bash
+cd docker
+docker compose down
+# 这些是 bind mount 的数据目录（不属于 named volumes），需要手动删除
+rm -rf volumes/neo4j/data volumes/neo4j/logs volumes/milvus volumes/mysql/data
+docker compose up -d --build
 ```
 
 ### 💻 本地开发模式
@@ -156,7 +177,7 @@ python scripts/import_pokemon_map.py
 1. **启动基础依赖 (Infrastructure)**
    ```bash
    cd docker
-   docker compose --profile infra up -d # 启动 Neo4j, Milvus, MySQL, FunASR
+   docker compose up -d # 启动 Neo4j, Milvus, MySQL（FunASR 需 --profile asr）
    ```
 
 2. **启动后端 (Server)**
