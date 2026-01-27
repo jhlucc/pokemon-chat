@@ -672,7 +672,7 @@ onUnmounted(() => {
   align-items: center;
   width: 420px;
   max-width: calc(100vw - 48px);
-  padding: 6px 6px 6px 16px;
+  padding: 6px 6px 6px 14px;
   background: #fff;
   border: 1px solid var(--border-color, #e5e5e5);
   border-radius: 24px;
@@ -684,10 +684,24 @@ onUnmounted(() => {
     box-shadow: 0 4px 20px rgba(255, 125, 0, 0.15);
   }
 
-  .search-icon {
-    font-size: 16px;
-    color: var(--gray-400, #999);
+  /* 状态呼吸灯 */
+  .status-breath {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #52c41a;
     margin-right: 10px;
+    flex-shrink: 0;
+    animation: breath 2s ease-in-out infinite;
+
+    &.warning {
+      background: #faad14;
+    }
+
+    &.offline {
+      background: #ff4d4f;
+      animation: none;
+    }
   }
 
   input {
@@ -714,30 +728,19 @@ onUnmounted(() => {
   }
 }
 
-.status-indicator {
-  display: flex;
-  align-items: center;
-  gap: 8px;
+@keyframes breath {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.6; transform: scale(0.9); }
+}
+
+/* 节点统计 */
+.node-stats {
   font-size: 12px;
-  color: var(--gray-600, #666);
+  color: var(--gray-500, #888);
   padding: 4px 12px;
   background: rgba(255, 255, 255, 0.9);
   border-radius: 12px;
-
-  .status-dot {
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    background: #52c41a;
-
-    &.warning { background: #faad14; }
-    &.offline { background: #ff4d4f; }
-  }
-
-  .node-count {
-    padding-left: 8px;
-    border-left: 1px solid var(--border-color, #e5e5e5);
-  }
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
 }
 
 /* ==================== 底部工具栏 - 轻量化胶囊条 ==================== */
