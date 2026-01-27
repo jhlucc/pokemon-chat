@@ -29,7 +29,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { computed, ref } from 'vue'
 
 interface Props {
   /** 图片源 */

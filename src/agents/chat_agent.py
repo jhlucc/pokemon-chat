@@ -1,10 +1,8 @@
 import asyncio
-import sys
-from pathlib import Path
-from typing import Dict, Optional, List, Any
+from typing import Any
 
 # LangChain Imports
-from langchain_core.messages import HumanMessage, SystemMessage, AIMessage, BaseMessage
+from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 from langchain_core.output_parsers import JsonOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnableLambda
@@ -12,63 +10,58 @@ from langchain_openai import ChatOpenAI
 
 # LangGraph Imports
 from langgraph.checkpoint.memory import MemorySaver
-from langgraph.graph import StateGraph, MessagesState, START, END
+from langgraph.graph import END, START, MessagesState, StateGraph
 
-# Project Imports
-from src.core.settings import settings
-from src.core.feature_flags import feature_enabled
 from src.agents.base import BaseAgent
-from src.knowledge import PokemonLightRAG
-from src.agents.tools.websearch.websearcher import LiteBaseSearcher
-from src.agents.kg_agent import KGQueryAgent
-from src.agents.pokemon_stats_agent import PokemonStatsAgent
-from src.agents.pokedex_agent import PokedexAgent
-from src.agents.trainer_agent import TrainerAgent
 from src.agents.deep_agent.graph import DeepAgent
-from src.utils.logger import get_logger
-from src.models.schemas import AgentResponse
 from src.agents.interrupts import approval_node
+from src.agents.kg_agent import KGQueryAgent
 
 # Middleware Imports
 from src.agents.middleware import (
-    LoggingMiddleware, 
-    RetryMiddleware, 
-    FallbackMiddleware, 
-    MemoryMiddleware, 
-    MiddlewareChain, 
-    MiddlewareContext
+    LoggingMiddleware,
+    MemoryMiddleware,
+    MiddlewareChain,
+    MiddlewareContext,
+    RetryMiddleware,
 )
+from src.agents.pokedex_agent import PokedexAgent
+from src.agents.pokemon_stats_agent import PokemonStatsAgent
+from src.agents.tools.websearch.websearcher import LiteBaseSearcher
+from src.agents.trainer_agent import TrainerAgent
+from src.core.feature_flags import feature_enabled
+
+# Project Imports
+from src.core.settings import settings
+from src.knowledge import PokemonLightRAG
+from src.models.schemas import AgentResponse
+from src.utils.logger import get_logger
 
 logger = get_logger(__name__)
+
 
 # 状态定义
 class AgentState(MessagesState):
     next: str
-    user_id: Optional[str]
-    thread_id: Optional[str]
-    response_mode: Optional[str] # "text", "json", "markdown"
-    approval_status: Optional[str] # "approved", "rejected"
-    user_feedback: Optional[str]
+    user_id: str | None
+    thread_id: str | None
+    response_mode: str | None  # "text", "json", "markdown"
+    approval_status: str | None  # "approved", "rejected"
+    user_feedback: str | None
 
 
 class PokemonKGChatAgent(BaseAgent):
     """宝可梦知识图谱聊天代理"""
 
-    def __init__(
-        self, 
-        openai_base_url: str = None,
-        openai_api_key: str = None,
-        model_name: str = None,
-        **kwargs
-    ):
+    def __init__(self, openai_base_url: str = None, openai_api_key: str = None, model_name: str = None, **kwargs):
         # 优先使用传入参数，否则使用全局配置
         self.openai_base_url = openai_base_url or settings.llm.api_base
         self.openai_api_key = openai_api_key or settings.llm.api_key
         self.model_name = model_name or settings.llm.model_name
-        
+
         # 初始化 Checkpointer
         checkpointer = self._create_checkpointer()
-        
+
         # 调用父类初始化 (会自动调用 _init_components 和 _build_graph)
         super().__init__(checkpointer=checkpointer, **kwargs)
 
@@ -82,7 +75,9 @@ class PokemonKGChatAgent(BaseAgent):
                 # Optional dependency: provided by `langgraph-checkpoint-sqlite`.
                 from langgraph.checkpoint.sqlite import SqliteSaver  # type: ignore
             except ModuleNotFoundError:
-                logger.warning("SqliteSaver unavailable; falling back to MemorySaver. Install langgraph-checkpoint-sqlite.")
+                logger.warning(
+                    "SqliteSaver unavailable; falling back to MemorySaver. Install langgraph-checkpoint-sqlite."
+                )
                 return MemorySaver()
 
             import sqlite3
@@ -95,22 +90,20 @@ class PokemonKGChatAgent(BaseAgent):
     def _init_middleware(self):
         """初始化中间件链"""
         self.middleware = MiddlewareChain()
-        
+
         # 日志中间件
         self.middleware.add(LoggingMiddleware(log_messages=True))
-        
+
         # 记忆管理中间件
-        self.middleware.add(MemoryMiddleware(
-            max_messages=settings.agent.conversation_max_messages,
-            strategy="trim"
-        ))
-        
+        self.middleware.add(MemoryMiddleware(max_messages=settings.agent.conversation_max_messages, strategy="trim"))
+
         # 重试中间件
         self.middleware.add(RetryMiddleware(max_retries=2))
-        
+
         # [NEW] 语义长期记忆中间件
         try:
             from src.agents.middleware.long_term_memory import LongTermMemoryMiddleware
+
             self.middleware.add(LongTermMemoryMiddleware())
             logger.info("✅ Semantic Long-Term Memory middleware added")
         except Exception as e:
@@ -127,15 +120,14 @@ class PokemonKGChatAgent(BaseAgent):
             base_url=self.openai_base_url,
             api_key=self.openai_api_key,
             temperature=settings.llm.temperature,
-            max_tokens=settings.llm.max_tokens
+            max_tokens=settings.llm.max_tokens,
         )
-        
+
         # 使用中间件包装 LLM 调用
         context = MiddlewareContext(agent_name="chat_agent")
         # 包装 Invoke 方法以支持重试等中间件逻辑
         wrapped_invoke = self.middleware.wrap_model_call(self.base_llm.invoke, context)
         self._llm = RunnableLambda(wrapped_invoke)
-
 
         # 初始化知识图谱查询代理
         self.kgsql_agent = None
@@ -173,24 +165,24 @@ class PokemonKGChatAgent(BaseAgent):
                     results = self.searcher.search(query, top_k=3)
                     if not results:
                         return f"未能搜索到关于 '{query}' 的相关信息。"
-                    
+
                     # 格式化结果
-                    
+
                     # ])
                     # return f"关于 '{query}' 的搜索结果：\n{formatted}"
-                    
+
                     # 兼容 Source 对象列表
                     from src.models.schemas import Source
+
                     if results and isinstance(results[0], Source):
-                         formatted = "\n".join([
-                            f"- [{r.title}]({r.url or '#'}): {r.content_snippet}"
-                            for r in results
-                        ])
+                        formatted = "\n".join([f"- [{r.title}]({r.url or '#'}): {r.content_snippet}" for r in results])
                     else:
-                        formatted = "\n".join([
-                            f"- [{r.get('title', '未知标题')}]({r.get('url', '#')}): {r.get('content', '')}"
-                            for r in results
-                        ])
+                        formatted = "\n".join(
+                            [
+                                f"- [{r.get('title', '未知标题')}]({r.get('url', '#')}): {r.get('content', '')}"
+                                for r in results
+                            ]
+                        )
                     return f"关于 '{query}' 的搜索结果：\n{formatted}"
                 except Exception as e:
                     logger.error(f"Web search failed: {e}")
@@ -199,7 +191,7 @@ class PokemonKGChatAgent(BaseAgent):
 
         # 检查 searcher 是否有 search_and_generate
         if not hasattr(self.searcher, "search_and_generate"):
-             self.searcher.search_and_generate = fake_search_and_generate
+            self.searcher.search_and_generate = fake_search_and_generate
 
     def _build_graph(self):
         """构建LangGraph状态图"""
@@ -221,8 +213,15 @@ class PokemonKGChatAgent(BaseAgent):
         builder.add_node("deep_researcher", self._deep_research_node)
 
         # 定义成员列表
-        self.members = ["chat", "graph_rager", "web_searcher", 
-                       "stats_agent", "pokedex_agent", "trainer_agent", "deep_researcher"]
+        self.members = [
+            "chat",
+            "graph_rager",
+            "web_searcher",
+            "stats_agent",
+            "pokedex_agent",
+            "trainer_agent",
+            "deep_researcher",
+        ]
         if self.kgsql_agent:
             self.members.append("kg_sqler")
 
@@ -267,45 +266,49 @@ class PokemonKGChatAgent(BaseAgent):
         return self._graph
 
     # 节点函数定义 ... (后续补全)
-    
+
     async def _guardrail_node(self, state: AgentState):
         """
         守卫节点：检查用户输入是否与 Pokemon 相关。
         """
         messages = state["messages"]
         last_user_msg = messages[-1]
-        
+
         # 定义系统的守卫提示词
         guardrail_prompt = ChatPromptTemplate.from_template("""
         你是 Pokemon 世界的守门人。你的任务是判断用户的输入是否与 "Pokemon (宝可梦/口袋妖怪)"、"动画/游戏" 或 "日常闲聊" 相关。
-        
+
         判断规则：
         1. 如果包含宝可梦名称、角色、招式、地点等，返回 "pass"。
         2. 如果是日常问候（你好、早上好等），返回 "pass"。
         3. 如果是完全无关的话题（如：写Python代码、政治新闻、股票分析、其他动漫等），返回 "block"。
-        
+
         请输出 JSON 格式:
         {{
             "status": "pass" 或 "block",
             "reason": "原因"
         }}
-        
+
         用户输入: {input}
         """)
-        
+
         chain = guardrail_prompt | self.llm | JsonOutputParser()
-        
+
         try:
             result = await chain.ainvoke({"input": last_user_msg.content})
             status = result.get("status", "pass")
-            
+
             if status == "block":
                 return {
                     "next": "end_with_block",
-                    "messages": [AIMessage(content="抱歉，作为一个宝可梦专家，我只能回答与宝可梦相关的问题。让我们聊聊宝可梦吧！")]
+                    "messages": [
+                        AIMessage(
+                            content="抱歉，作为一个宝可梦专家，我只能回答与宝可梦相关的问题。让我们聊聊宝可梦吧！"
+                        )
+                    ],
                 }
             return {"next": "supervisor"}
-            
+
         except Exception as e:
             logger.error(f"Guardrail check failed: {e}")
             # 出错时默认放行，避免阻断服务
@@ -353,38 +356,40 @@ class PokemonKGChatAgent(BaseAgent):
 
         prompt = ChatPromptTemplate.from_template("""
         {system_prompt}
-        
+
         请严格按以下JSON格式回复:
         {{
             "next": "模块名称" (或 "FINISH")
         }}
-        
+
         当前对话:
         {history}
-        
+
         最新输入: {input}
         """)
 
         # 获取最后几条消息作为输入 context
         messages = state["messages"]
-        
+
         # 提取最近几条历史作为 history 文本，避免传入过多 token
         history_msgs = messages[:-1]
         last_msg = messages[-1]
-        
+
         history_text = "\n".join([f"{m.type}: {m.content}" for m in history_msgs[-5:]])
-        
+
         chain = prompt | self.llm | JsonOutputParser()
-        
+
         # 动态构建 members 描述
         members_desc = ", ".join(self.members)
-        
+
         try:
-            response = chain.invoke({
-                "system_prompt": system_prompt.format(members=members_desc),
-                "history": history_text,
-                "input": last_msg.content
-            })
+            response = chain.invoke(
+                {
+                    "system_prompt": system_prompt.format(members=members_desc),
+                    "history": history_text,
+                    "input": last_msg.content,
+                }
+            )
             next_ = response.get("next", "FINISH")
         except Exception as e:
             logger.error(f"Supervisor parsing error: {e}")
@@ -402,42 +407,45 @@ class PokemonKGChatAgent(BaseAgent):
             "知识截止：不要编造数据，如果不确定，请建议用户去查阅图鉴。\n"
             "注意：只回答宝可梦相关话题。如果用户强行聊无关话题，请委婉拒绝并拉回宝可梦话题。\n"
         )
-        
+
         messages = state["messages"]
         # 在 messages 最前面插入 SystemMessage (如果还可以插入的话，LangGraph state 通常是 append only)
         # 这里我们临时构建一个 input 给 llm
-        
+
         # 应用中间件
         context = MiddlewareContext(
-            agent_name="chat_agent",
-            thread_id=state.get("thread_id", ""),
-            user_id=state.get("user_id", "")
+            agent_name="chat_agent", thread_id=state.get("thread_id", ""), user_id=state.get("user_id", "")
         )
         messages = self.middleware.run_before_model(messages, context)
-        
+
         # 注入 Persona
         if not isinstance(messages[0], SystemMessage):
             messages = [SystemMessage(content=persona_prompt)] + messages
         else:
             # 如果已有 SystemMessage，可能需要更新或保留
-            pass 
+            pass
 
         # 获取响应模式，默认为 text
         response_mode = state.get("response_mode", "text")
-        
+
         try:
             if response_mode == "json":
                 # 结构化输出模式
                 structured_base_llm = self.base_llm.with_structured_output(AgentResponse)
                 wrapped_structured_invoke = self.middleware.wrap_model_call(structured_base_llm.invoke, context)
                 model_response = wrapped_structured_invoke(messages)
-                
+
                 if isinstance(model_response, AgentResponse):
                     content = model_response.model_dump_json()
                 else:
                     import json
-                    content = json.dumps(model_response, ensure_ascii=False) if isinstance(model_response, dict) else str(model_response)
-                
+
+                    content = (
+                        json.dumps(model_response, ensure_ascii=False)
+                        if isinstance(model_response, dict)
+                        else str(model_response)
+                    )
+
                 model_response = AIMessage(content=content)
             else:
                 # 默认文本模式
@@ -447,16 +455,16 @@ class PokemonKGChatAgent(BaseAgent):
             logger.error(f"LLM invoke failed (mode={response_mode}): {e}")
             if response_mode == "json":
                 from src.models.schemas import ErrorResponse
+
                 error_resp = ErrorResponse(
-                    error_code="llm_error", 
-                    message=f"Failed to generate structured response: {str(e)}"
+                    error_code="llm_error", message=f"Failed to generate structured response: {str(e)}"
                 )
                 model_response = AIMessage(content=error_resp.model_dump_json())
             else:
                 model_response = AIMessage(content=f"Error generating response: {str(e)}")
 
         model_response = self.middleware.run_after_model(model_response, context)
-        
+
         return {"messages": [model_response]}
 
     def _kgsql_node(self, state: AgentState):
@@ -470,12 +478,8 @@ class PokemonKGChatAgent(BaseAgent):
             # 提取最后一条消息
             last_msg = result["messages"][-1]
             content = last_msg.content if hasattr(last_msg, "content") else str(last_msg)
-            
-            return {
-                "messages": [
-                    HumanMessage(content=content, name="kg_sqler")
-                ]
-            }
+
+            return {"messages": [HumanMessage(content=content, name="kg_sqler")]}
         except Exception as e:
             logger.error(f"KG SQL Error: {e}")
             return {"messages": [HumanMessage(content=f"查询知识图谱失败: {e}", name="kg_sqler")]}
@@ -484,15 +488,10 @@ class PokemonKGChatAgent(BaseAgent):
         """图RAG查询节点 (LightRAG)"""
         messages = state["messages"]
         last_content = messages[-1].content if messages else ""
-        
+
         try:
             # Use LightRAG async query
-            response = await self.lightrag.query(
-                query_text=last_content,
-                mode="mix",
-                only_need_context=True,
-                top_k=10
-            )
+            response = await self.lightrag.query(query_text=last_content, mode="mix", only_need_context=True, top_k=10)
             content = response if isinstance(response, str) else str(response)
             return {"messages": [HumanMessage(content=content, name="graph_rager")]}
         except Exception as e:
@@ -504,43 +503,43 @@ class PokemonKGChatAgent(BaseAgent):
         logger.info("📡 已调用 web_searcher 节点")
         messages = state["messages"]
         last_content = messages[-1].content if messages else ""
-        
+
         try:
             response = await self.searcher.search_and_generate(last_content)
             return {"messages": [HumanMessage(content=response, name="web_searcher")]}
         except Exception as e:
-             return {"messages": [HumanMessage(content=f"网络搜索失败: {e}", name="web_searcher")]}
+            return {"messages": [HumanMessage(content=f"网络搜索失败: {e}", name="web_searcher")]}
 
     # [NEW] 子代理调用节点
     def _invoke_subagent(self, agent, state: AgentState, name: str):
         """通用子代理调用逻辑"""
         if not agent:
-             return {"messages": [HumanMessage(content=f"{name} 未初始化", name=name)]}
+            return {"messages": [HumanMessage(content=f"{name} 未初始化", name=name)]}
         try:
-             # 计算调用前的消息数量，用于提取新增消息
-             start_len = len(state["messages"])
-             
-             # 调用子图
-             result = agent.graph.invoke(state)
-             
-             # 获取结果消息
-             all_msgs = result["messages"]
-             
-             # 为了避免消息重复 (LangGraph reducer)，我们只返回新增的消息
-             new_msgs = all_msgs[start_len:]
-             
-             # 如果没有新消息（异常？），至少返回最后一条
-             if not new_msgs and all_msgs:
-                 new_msgs = [all_msgs[-1]]
-             
-             # 确保名字标记（可选）
-             # for m in new_msgs:
-             #    if not m.name: m.name = name
-                 
-             return {"messages": new_msgs}
+            # 计算调用前的消息数量，用于提取新增消息
+            start_len = len(state["messages"])
+
+            # 调用子图
+            result = agent.graph.invoke(state)
+
+            # 获取结果消息
+            all_msgs = result["messages"]
+
+            # 为了避免消息重复 (LangGraph reducer)，我们只返回新增的消息
+            new_msgs = all_msgs[start_len:]
+
+            # 如果没有新消息（异常？），至少返回最后一条
+            if not new_msgs and all_msgs:
+                new_msgs = [all_msgs[-1]]
+
+            # 确保名字标记（可选）
+            # for m in new_msgs:
+            #    if not m.name: m.name = name
+
+            return {"messages": new_msgs}
         except Exception as e:
-             logger.error(f"{name} invoke failed: {e}")
-             return {"messages": [HumanMessage(content=f"{name} 运行失败: {e}", name=name)]}
+            logger.error(f"{name} invoke failed: {e}")
+            return {"messages": [HumanMessage(content=f"{name} 运行失败: {e}", name=name)]}
 
     def _stats_node(self, state: AgentState):
         """数值分析节点"""
@@ -560,10 +559,7 @@ class PokemonKGChatAgent(BaseAgent):
 
     # 公共接口
     async def query(
-        self,
-        question: str,
-        meta: Optional[Dict[str, Any]] = None,
-        history: Optional[List[Dict[str, Any]]] = None
+        self, question: str, meta: dict[str, Any] | None = None, history: list[dict[str, Any]] | None = None
     ):
         meta = meta or {}
         thread_id = meta.get("thread_id", "default_thread")
@@ -575,23 +571,19 @@ class PokemonKGChatAgent(BaseAgent):
             "thread_id": thread_id,
             "user_id": user_id,
             "response_mode": response_mode,
-            "next": START 
+            "next": START,
         }
-        
+
         config = {
             "configurable": {
                 "thread_id": thread_id,
                 "user_id": user_id,
-                # "checkpoint_ns": "" 
+                # "checkpoint_ns": ""
             }
         }
 
         # 运行 middleware before_agent hook
-        context = MiddlewareContext(
-            agent_name="chat_agent", 
-            thread_id="0",
-            user_id="user"
-        )
+        context = MiddlewareContext(agent_name="chat_agent", thread_id="0", user_id="user")
         input_message = self.middleware.run_before_agent(input_message, context)
 
         chunks = []
@@ -614,7 +606,7 @@ class PokemonKGChatAgent(BaseAgent):
             "name": "chat_agent",
             "description": "宝可梦图谱智能体",
             "requirements": ["NEO4J_URI"],
-            "all_tools": ["graph_query", "retrieval", "web_search"]
+            "all_tools": ["graph_query", "retrieval", "web_search"],
         }
 
     # Time Travel APIs - 已由 BaseAgent 实现
@@ -622,6 +614,7 @@ class PokemonKGChatAgent(BaseAgent):
 
 # 使用示例
 if __name__ == "__main__":
+
     async def main():
         # 初始化代理
         agent = PokemonKGChatAgent()
@@ -632,6 +625,5 @@ if __name__ == "__main__":
         print("回答:")
         async for chunk in agent.query(question):
             print(chunk)
-
 
     asyncio.run(main())

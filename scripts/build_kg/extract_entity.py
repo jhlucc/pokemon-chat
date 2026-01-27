@@ -4,7 +4,7 @@ import json
 # 从 JSON 文件中读取数据并提取人物名
 def extract_person_names_from_json(input_file, output_file):
     # 读取 JSON 文件
-    with open(input_file, "r", encoding="utf-8") as file:
+    with open(input_file, encoding="utf-8") as file:
         data = json.load(file)
 
     # 获取 JSON 数据的所有顶级键作为人物名
@@ -21,14 +21,14 @@ def extract_person_names_from_json(input_file, output_file):
 # 从 JSON 文件中提取指定属性的值并保存到 txt 文件中
 def extract_property_values_to_txt(input_file, output_file, property_name):
     # 读取 JSON 文件
-    with open(input_file, "r", encoding="utf-8") as file:
+    with open(input_file, encoding="utf-8") as file:
         data = json.load(file)
 
     # 使用 set 来存储去重后的属性值
     values_set = set()
 
     # 提取指定属性值并添加到集合中
-    for person_name, person_data in data.items():
+    for _person_name, person_data in data.items():
         if property_name in person_data:
             value = person_data[property_name]
             if isinstance(value, list):

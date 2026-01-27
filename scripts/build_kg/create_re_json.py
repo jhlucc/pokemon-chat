@@ -5,7 +5,7 @@ import os
 def append_relationship_type_to_json(input_file, output_file, start_entity_type, end_entity_type, rel_type, rel_name):
     # 如果 JSON 文件存在，读取现有数据
     if os.path.exists(output_file):
-        with open(output_file, "r", encoding="utf-8") as file:
+        with open(output_file, encoding="utf-8") as file:
             data = json.load(file)
     else:
         # 初始化一个空的 JSON 结构
@@ -16,15 +16,12 @@ def append_relationship_type_to_json(input_file, output_file, start_entity_type,
 
     if existing_rel:
         # 如果该类型已存在，则追加到现有的 rels 列表中
-        with open(input_file, "r", encoding="utf-8") as file:
+        with open(input_file, encoding="utf-8") as file:
             for line in file:
                 parts = line.strip().split(",")
                 if len(parts) == 3:
                     start_entity, end_entity, _ = parts
-                    existing_rel["rels"].append({
-                        "start_entity_name": start_entity,
-                        "end_entity_name": end_entity
-                    })
+                    existing_rel["rels"].append({"start_entity_name": start_entity, "end_entity_name": end_entity})
     else:
         # 如果该类型不存在，则创建新类型并添加到 data 中
         new_rel = {
@@ -32,18 +29,15 @@ def append_relationship_type_to_json(input_file, output_file, start_entity_type,
             "end_entity_type": end_entity_type,
             "rel_type": rel_type,
             "rel_name": rel_name,
-            "rels": []
+            "rels": [],
         }
-        with open(input_file, "r", encoding="utf-8") as file:
+        with open(input_file, encoding="utf-8") as file:
             for line in file:
                 parts = line.strip().split(",")
                 if len(parts) == 3:
                     start_entity, end_entity, _ = parts
                     if _ == rel_name:
-                        new_rel["rels"].append({
-                            "start_entity_name": start_entity,
-                            "end_entity_name": end_entity
-                        })
+                        new_rel["rels"].append({"start_entity_name": start_entity, "end_entity_name": end_entity})
         data.append(new_rel)
 
     # 写回 JSON 文件
@@ -59,5 +53,5 @@ append_relationship_type_to_json(
     start_entity_type="Person",
     end_entity_type="Pokémon",
     rel_type="has_pokemon",
-    rel_name="拥有"
+    rel_name="拥有",
 )

@@ -5,21 +5,25 @@ import re
 # 自动机 用于字符串匹配
 import ahocorasick
 from tqdm import tqdm
+
 from src.core.settings import settings
 
 
 # 制作训练集
-class Build_Ner_data():
+class Build_Ner_data:
     def __init__(self):
         self.idx2type = idx2type = ["identity", "person", "Pokémon", "Region", "Town"]
         self.type2idx = type2idx = {"identity": 0, "person": 1, "Pokémon": 2, "Region": 3, "Town": 4}
         self.max_len = 30
-        self.p = ['，', '。', '！', '；', '：', ',', '.', '?', '!', ';']
+        self.p = ["，", "。", "！", "；", "：", ",", ".", "?", "!", ";"]
         self.ahos = [ahocorasick.Automaton() for i in range(len(idx2type))]
 
         for type in idx2type:
-            with open(os.path.join(str(settings.paths.base_dir), 'resources/data/entity_data/', f'{type}.txt'), encoding='utf-8') as f:
-                all_en = f.read().split('\n')
+            with open(
+                os.path.join(str(settings.paths.base_dir), "resources/data/entity_data/", f"{type}.txt"),
+                encoding="utf-8",
+            ) as f:
+                all_en = f.read().split("\n")
             for en in all_en:
                 if len(en) >= 2:
                     self.ahos[type2idx[type]].add_word(en, en)
@@ -34,8 +38,8 @@ class Build_Ner_data():
         :return: 返回一个list,代表分割后的短文本
         :rtype: list
         """
-        text = text.replace('\n', ',')
-        pattern = r'([，。！；：,.?!;])(?=.)|[？,]'
+        text = text.replace("\n", ",")
+        pattern = r"([，。！；：,.?!;])(?=.)|[？,]"
 
         sentences = []
 
@@ -46,7 +50,7 @@ class Build_Ner_data():
         sentences_text = [x for x in sentences if x not in self.p]
         sentences_Punctuation = [x for x in sentences[1::2] if x in self.p]
         split_text = []
-        now_text = ''
+        now_text = ""
 
         # 随机长度,有15%的概率生成短文本 10%的概率生成长文本
         for i in range(len(sentences_text)):
@@ -65,10 +69,10 @@ class Build_Ner_data():
         # 随机选取30%的数据,把末尾标点改为。
         for i in range(len(split_text)):
             if random.random() < 0.3:
-                if (split_text[i][-1] in self.p):
-                    split_text[i] = split_text[i][:-1] + '。'
+                if split_text[i][-1] in self.p:
+                    split_text[i] = split_text[i][:-1] + "。"
                 else:
-                    split_text[i] = split_text[i] + '。'
+                    split_text[i] = split_text[i] + "。"
         return split_text
 
     def make_text_label(self, text):
@@ -79,7 +83,7 @@ class Build_Ner_data():
         :return: 返回一个list,代表标签
         :rtype: list
         """
-        label = ['O'] * len(text)
+        label = ["O"] * len(text)
         flag = 0
         mp = {}
         for type in self.idx2type:
@@ -92,7 +96,7 @@ class Build_Ner_data():
                 st = ed - len(name) + 1
                 if st in mp or ed in mp:
                     continue
-                label[st:ed + 1] = ['B-' + type] + ['I-' + type] * (ed - st)
+                label[st : ed + 1] = ["B-" + type] + ["I-" + type] * (ed - st)
                 flag = flag + 1
                 for i in range(st, ed + 1):
                     mp[i] = 1
@@ -101,16 +105,20 @@ class Build_Ner_data():
 
 # 将文本和对应的标签写入ner_data_aug.txt
 def build_file(all_text, all_label):
-    with open(os.path.join(str(settings.paths.base_dir), 'resources/data/ner_data/', 'ner_data_aug.txt'), "w", encoding="utf-8") as f:
+    with open(
+        os.path.join(str(settings.paths.base_dir), "resources/data/ner_data/", "ner_data_aug.txt"),
+        "w",
+        encoding="utf-8",
+    ) as f:
         for text, label in zip(all_text, all_label):
-            for t, l in zip(text, label):
-                f.write(f'{t} {l}\n')
-            f.write('\n')
+            for t, tag in zip(text, label):
+                f.write(f"{t} {tag}\n")
+            f.write("\n")
 
 
 def load_book_text(file_path):
-    """ 读取书籍文本并按段落分割 """
-    with open(file_path, "r", encoding="utf-8") as f:
+    """读取书籍文本并按段落分割"""
+    with open(file_path, encoding="utf-8") as f:
         text = f.read()
 
     # 以空行分割段落
@@ -119,7 +127,7 @@ def load_book_text(file_path):
 
 
 if __name__ == "__main__":
-    book_path = os.path.join(str(settings.paths.base_dir), 'resources/data/raw_data/', 'book.txt')
+    book_path = os.path.join(str(settings.paths.base_dir), "resources/data/raw_data/", "book.txt")
 
     paragraphs = load_book_text(book_path)
 

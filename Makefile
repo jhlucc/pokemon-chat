@@ -1,4 +1,4 @@
-.PHONY: help docker-up docker-up-infra docker-up-full docker-down docker-logs web-install web-dev web-build web-lint web-typecheck api-logs
+.PHONY: help docker-up docker-up-infra docker-up-full docker-down docker-logs web-install web-dev web-build web-lint web-typecheck api-logs py-lint py-format py-test
 
 help:
 	@echo "Targets:"
@@ -13,6 +13,9 @@ help:
 	@echo "  web-lint         Lint frontend (eslint)"
 	@echo "  web-typecheck    Typecheck frontend (vue-tsc)"
 	@echo "  api-logs         Tail API logs"
+	@echo "  py-lint          Lint backend (ruff)"
+	@echo "  py-format        Format backend (ruff)"
+	@echo "  py-test          Run backend tests (pytest)"
 
 docker-up:
 	cd docker && docker compose up -d --build
@@ -46,3 +49,12 @@ web-lint:
 
 web-typecheck:
 	cd web && npm run typecheck
+
+py-lint:
+	python -m ruff check server src scripts
+
+py-format:
+	python -m ruff format server src scripts
+
+py-test:
+	python -m pytest

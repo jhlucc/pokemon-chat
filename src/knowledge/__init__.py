@@ -39,4 +39,3 @@ def __getattr__(name: str) -> Any:  # pragma: no cover
     value = getattr(mod, attr_name)
     globals()[name] = value  # cache on first use
     return value
-

@@ -17,10 +17,10 @@ if str(_REPO_ROOT) not in sys.path:
 # Load `.env` early so feature flags / provider keys are available during import time.
 load_dotenv(_REPO_ROOT / ".env")
 
+from server.routers import router  # noqa: E402
 from src.core.settings import settings  # noqa: E402
 from src.runtime import aclose_all  # noqa: E402
 from src.utils.logger import request_id_var  # noqa: E402
-from server.routers import router  # noqa: E402
 
 
 @asynccontextmanager
@@ -49,6 +49,20 @@ async def add_request_id(request: Request, call_next):
     finally:
         request_id_var.reset(token)
     response.headers["X-Request-ID"] = req_id
+    return response
+
+
+@app.middleware("http")
+async def add_security_headers(request: Request, call_next):
+    """
+    Lightweight security headers.
+
+    Keep this conservative to avoid breaking the SPA, streaming responses, or dev over HTTP.
+    """
+    response = await call_next(request)
+    response.headers.setdefault("X-Content-Type-Options", "nosniff")
+    response.headers.setdefault("X-Frame-Options", "DENY")
+    response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
     return response
 
 

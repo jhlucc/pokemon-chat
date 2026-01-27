@@ -3,7 +3,7 @@
  * 处理消息发送、接收和流式响应
  */
 import { ref, type Ref } from 'vue'
-import type { Conversation, ChatMeta, StreamResponse, Message, Database } from '@/types/chat'
+import type { ChatMeta, Conversation, Database, StreamResponse } from '@/types/chat'
 import { apiRequest } from '@/api/http'
 import { readNdjsonStream } from '@/utils/ndjsonStream'
 import { useMessageUpdate } from './useMessageUpdate'
@@ -115,8 +115,8 @@ export function useChat(conversation: Ref<Conversation>, options: UseChatOptions
     // 缓冲区（非流式输出时使用）
     let bufferedText = ''
     let bufferedReasoning = ''
-    let bufferedRefs: StreamResponse['refs'] = null
-    let bufferedMeta: StreamResponse['meta'] = null
+    let bufferedRefs: StreamResponse['refs']
+    let bufferedMeta: StreamResponse['meta']
 
     try {
       const endpoint = isAgentMode ? '/chat/agent/supervisor_agent' : '/chat/'

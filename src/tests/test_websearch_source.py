@@ -1,12 +1,13 @@
 import os
 import unittest
 
-if not os.getenv('RUN_INTEGRATION_TESTS'):
+if not os.getenv("RUN_INTEGRATION_TESTS"):
     raise unittest.SkipTest("Integration tests are skipped by default. Set RUN_INTEGRATION_TESTS=1 to run.")
 
 from src.agents.tools.websearch.websearcher import LiteBaseSearcher
-from src.models.schemas import Source
 from src.core.settings import settings
+from src.models.schemas import Source
+
 
 async def test_search():
     searcher = LiteBaseSearcher()
@@ -15,7 +16,7 @@ async def test_search():
     # Since LiteBaseSearcher calls utils.search which is async, let's see if we can run it.
     # Note: utils.search requires web access. If no access, it returns empty or error.
     # We can inspect the code to see if it returns Source objects now.
-    
+
     # Actually, LiteBaseSearcher.search is synchronous.
     try:
         results = searcher.search("Pikachu", top_k=1)
@@ -29,13 +30,14 @@ async def test_search():
                 print("FAILURE: Result is not a Source object.")
         else:
             print("No results found (network might be offline), but no error.")
-            
+
     except Exception as e:
         print(f"Search failed: {e}")
+
 
 if __name__ == "__main__":
     # Settings needs to be initialized
     print(f"Web Search Enabled: {settings.features.enable_web_search}")
-    
+
     # Run test
     test_search()

@@ -1,14 +1,16 @@
 #!/usr/bin/env python
-# -*- coding: utf-8 -*-
 
-import os
-from typing import List, Dict, Union, Generator, Any
 import json
-from openai import OpenAI
+import os
+from collections.abc import Generator
+from typing import Any
+
 import httpx
-from src.utils.logger import get_logger
-from src.core.settings import settings
+from openai import OpenAI
 from openai.types.chat import ChatCompletionMessage
+
+from src.core.settings import settings
+from src.utils.logger import get_logger
 
 logger = get_logger(__name__)
 
@@ -52,23 +54,16 @@ def _choose_http_client() -> httpx.Client:
 
 def to_chat_message(content: str, role: str = "assistant") -> ChatCompletionMessage:
     return ChatCompletionMessage(
-        role=role,
-        content=content,
-        tool_calls=None,
-        function_call=None,
-        annotations=None,
-        audio=None,
-        refusal=None
+        role=role, content=content, tool_calls=None, function_call=None, annotations=None, audio=None, refusal=None
     )
+
 
 class OpenAIBase:
     """
     OpenAI 模型调用基础类，统一封装 openai.ChatAPI的调用。
     """
 
-    def __init__(self, api_key: str = None,
-                 base_url: str = None,
-                 model_name: str = None) -> None:
+    def __init__(self, api_key: str = None, base_url: str = None, model_name: str = None) -> None:
         api_key = api_key or settings.llm.api_key
         base_url = base_url or settings.llm.api_base
         model_name = model_name or settings.llm.model_name
@@ -79,16 +74,13 @@ class OpenAIBase:
         self.client = OpenAI(api_key=api_key, base_url=base_url, http_client=_choose_http_client())
         logger.debug(f"Models: {self.get_models()}")
 
-    def _prepare_messages(self, message: Union[str, List[Dict[str, str]]]) -> List[Dict[str, str]]:
+    def _prepare_messages(self, message: str | list[dict[str, str]]) -> list[dict[str, str]]:
         """将输入消息封装为消息列表格式"""
         if isinstance(message, str):
             return [{"role": "user", "content": message}]
         return message
 
-    def predict(self,
-                message: Union[str, List[Dict[str, str]]],
-                stream: bool = False
-                ) -> Union[Any, Generator[Any, None, None]]:
+    def predict(self, message: str | list[dict[str, str]], stream: bool = False) -> Any | Generator[Any, None, None]:
         """
         根据传入的消息调用模型接口，支持流式返回。
         :param message: 用户输入的消息，可以是字符串或消息列表
@@ -101,24 +93,16 @@ class OpenAIBase:
         else:
             return self._get_response(messages)
 
-    def _stream_response(self, messages: List[Dict[str, str]]) -> Generator[Any, None, None]:
-        response = self.client.chat.completions.create(
-            model=self.model_name,
-            messages=messages,
-            stream=True
-        )
+    def _stream_response(self, messages: list[dict[str, str]]) -> Generator[Any, None, None]:
+        response = self.client.chat.completions.create(model=self.model_name, messages=messages, stream=True)
         for chunk in response:
             yield chunk.choices[0].delta
 
-    def _get_response(self, messages: List[Dict[str, str]]) -> Any:
-        response = self.client.chat.completions.create(
-            model=self.model_name,
-            messages=messages,
-            stream=False
-        )
+    def _get_response(self, messages: list[dict[str, str]]) -> Any:
+        response = self.client.chat.completions.create(model=self.model_name, messages=messages, stream=False)
         return response.choices[0].message
 
-    def get_models(self) -> List[Any]:
+    def get_models(self) -> list[Any]:
         try:
             return self.client.models.list()
         except Exception as e:
@@ -130,6 +114,7 @@ class OpenModel(OpenAIBase):
     """
     针对 OpenAI 模型的封装，默认使用 "gpt-4o-mini" 模型。
     """
+
     def __init__(self, model_name: str = None) -> None:
         model_name = model_name or settings.llm.model_name or "gpt-4o-mini"
         # 使用环境变量中配置的API key 和base_url
@@ -141,7 +126,9 @@ class OpenModel(OpenAIBase):
 class Bailian:
     """阿里云百炼平台模型调用封装"""
 
-    def __init__(self, model_name: str = "qwen-turbo-latest", api_key: str | None = None, api_base: str | None = None) -> None:
+    def __init__(
+        self, model_name: str = "qwen-turbo-latest", api_key: str | None = None, api_base: str | None = None
+    ) -> None:
         # Prefer the unified provider config store (Settings UI), then env fallbacks.
         from src.core.provider_config import get_provider_api_base, get_provider_api_key
 
@@ -157,57 +144,43 @@ class Bailian:
 
         base = ((api_base or "").strip().rstrip("/") or get_provider_api_base("dashscope") or "").rstrip("/")
         # DashScope compatible-mode uses OpenAI-like paths; requests client expects the full endpoint.
-        self.base_url = f"{base}/chat/completions" if base else "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions"
+        self.base_url = (
+            f"{base}/chat/completions" if base else "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions"
+        )
         self.model_name = model_name
 
         import requests
-        self.session = requests.Session()
-        self.session.headers.update({
-            "Authorization": f"Bearer {self.api_key}",
-            "Content-Type": "application/json"
-        })
 
-    def _prepare_messages(self, message: Union[str, List[Dict[str, str]]]) -> List[Dict[str, str]]:
+        self.session = requests.Session()
+        self.session.headers.update({"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"})
+
+    def _prepare_messages(self, message: str | list[dict[str, str]]) -> list[dict[str, str]]:
         if isinstance(message, str):
             return [{"role": "user", "content": message}]
         return message
 
-    def predict(self,
-                message: Union[str, List[Dict[str, str]]],
-                stream: bool = False
-                ) -> Union[Any, Generator[Any, None, None]]:
+    def predict(self, message: str | list[dict[str, str]], stream: bool = False) -> Any | Generator[Any, None, None]:
         messages = self._prepare_messages(message)
         return self._stream_response(messages) if stream else self._get_response(messages)
 
-    def _stream_response(self, messages: List[Dict[str, str]]) -> Generator[Any, None, None]:
-        payload = {
-            "model": self.model_name,
-            "messages": messages,
-            "stream": True
-        }
+    def _stream_response(self, messages: list[dict[str, str]]) -> Generator[Any, None, None]:
+        payload = {"model": self.model_name, "messages": messages, "stream": True}
         with self.session.post(self.base_url, json=payload, stream=True) as response:
             for line in response.iter_lines(decode_unicode=True):
                 if line.startswith("data: "):
                     try:
                         chunk = line[6:]
                         data = json.loads(chunk)
-                        yield to_chat_message(
-                            content=data.get("choices", [{}])[0].get("delta", {}).get("content", "")
-                        )
+                        yield to_chat_message(content=data.get("choices", [{}])[0].get("delta", {}).get("content", ""))
                     except Exception as e:
                         logger.error(f"Stream chunk parse error: {e}")
 
-    def _get_response(self, messages: List[Dict[str, str]]) -> Any:
-        payload = {
-            "model": self.model_name,
-            "messages": messages,
-            "stream": False
-        }
+    def _get_response(self, messages: list[dict[str, str]]) -> Any:
+        payload = {"model": self.model_name, "messages": messages, "stream": False}
         response = self.session.post(self.base_url, json=payload)
         data = response.json()
-        return to_chat_message(
-            content=data.get("choices", [{}])[0].get("message", {}).get("content", "")
-        )
+        return to_chat_message(content=data.get("choices", [{}])[0].get("message", {}).get("content", ""))
+
 
 if __name__ == "__main__":
     try:

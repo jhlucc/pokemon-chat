@@ -1,13 +1,15 @@
-import os
 import json
+import os
 import time
-from pathlib import Path
 import traceback
 
 from src.core.settings import settings
-from src.utils.logger import LogManager
 from src.knowledge.store.kb_db import kb_db_manager
-logger= LogManager()
+from src.utils.logger import LogManager
+
+logger = LogManager()
+
+
 def migrate_json_to_sqlite():
     """将JSON文件数据迁移到SQLite数据库"""
     # 原始JSON文件路径
@@ -19,7 +21,7 @@ def migrate_json_to_sqlite():
 
     try:
         # 读取JSON文件
-        with open(json_path, "r", encoding='utf-8') as f:
+        with open(json_path, encoding="utf-8") as f:
             data = json.load(f)
 
         if not data or "databases" not in data or not data["databases"]:
@@ -47,13 +49,13 @@ def migrate_json_to_sqlite():
                 continue
 
             # 创建数据库
-            db = kb_db_manager.create_database(
+            kb_db_manager.create_database(
                 db_id=db_id,
                 name=name,
                 description=description,
                 embed_model=embed_model,
                 dimension=dimension,
-                metadata=metadata  # 这里传入metadata，在kb_db_manager中会被正确存储为meta_info
+                metadata=metadata,  # 这里传入metadata，在kb_db_manager中会被正确存储为meta_info
             )
 
             # 处理文件
@@ -69,7 +71,7 @@ def migrate_json_to_sqlite():
                     filename=file_info["filename"],
                     path=file_info["path"],
                     file_type=file_info["type"],
-                    status=file_info["status"]
+                    status=file_info["status"],
                 )
 
                 # 处理节点
@@ -86,7 +88,7 @@ def migrate_json_to_sqlite():
                         hash_value=node.get("hash"),
                         start_char_idx=node.get("start_char_idx"),
                         end_char_idx=node.get("end_char_idx"),
-                        metadata=node_metadata  # 在kb_db_manager中会被正确存储为meta_info
+                        metadata=node_metadata,  # 在kb_db_manager中会被正确存储为meta_info
                     )
 
             logger.info(f"数据库 {name} (ID: {db_id}) 迁移完成，共 {len(files)} 个文件")
@@ -102,6 +104,7 @@ def migrate_json_to_sqlite():
         logger.error(f"迁移过程中出错: {e}")
         logger.error(traceback.format_exc())
         return False
+
 
 if __name__ == "__main__":
     migrate_json_to_sqlite()

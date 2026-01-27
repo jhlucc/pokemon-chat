@@ -12,6 +12,16 @@ const API_PREFIX =
   (import.meta?.env?.VITE_API_BASE_PATH || DEFAULT_API_PREFIX).replace(/\/+$/, '') ||
   DEFAULT_API_PREFIX
 
+/**
+ * @typedef {Object} ApiRequestOptions
+ * @property {string=} method
+ * @property {Record<string, unknown>=} query
+ * @property {unknown=} body
+ * @property {Record<string, string>=} headers
+ * @property {number=} timeoutMs
+ * @property {AbortSignal=} signal
+ */
+
 export class ApiError extends Error {
   constructor(
     message,
@@ -101,10 +111,15 @@ function anyAbortSignal(signals) {
   return controller.signal
 }
 
-export async function apiRequest(
-  path,
-  { method = 'GET', query, body, headers, timeoutMs, signal } = {}
-) {
+/**
+ * Low-level request function.
+ * Returns the raw `Response` so callers can handle streaming bodies.
+ *
+ * @param {string} path
+ * @param {ApiRequestOptions=} options
+ * @returns {Promise<Response>}
+ */
+export async function apiRequest(path, { method = 'GET', query, body, headers, timeoutMs, signal } = {}) {
   const reqId = headers?.['X-Request-ID'] || headers?.['x-request-id'] || createRequestId()
   const finalHeaders = { ...buildHeaders(body, headers), 'X-Request-ID': reqId }
 
@@ -164,10 +179,14 @@ export async function apiRequest(
   }
 }
 
-export async function apiFetch(
-  path,
-  { method = 'GET', query, body, headers, timeoutMs, signal } = {}
-) {
+/**
+ * Convenience helper for non-streaming requests.
+ *
+ * @param {string} path
+ * @param {ApiRequestOptions=} options
+ * @returns {Promise<unknown>}
+ */
+export async function apiFetch(path, { method = 'GET', query, body, headers, timeoutMs, signal } = {}) {
   try {
     const res = await apiRequest(path, { method, query, body, headers, timeoutMs, signal })
 
@@ -186,4 +205,3 @@ export async function apiFetch(
     })
   }
 }
-

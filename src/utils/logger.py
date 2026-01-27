@@ -1,15 +1,12 @@
 #!/usr/bin/env python
-# -*- coding: utf-8 -*-
 
 import contextvars
 import logging
 import os
 import sys
 import time
-from typing import Optional
 
 from src.core.settings import settings
-
 
 # Per-request id (set by FastAPI middleware). Defaults to "-" when not in a request context.
 request_id_var: contextvars.ContextVar[str] = contextvars.ContextVar("request_id", default="-")
@@ -29,8 +26,8 @@ class HourlyFileHandler(logging.Handler):
     def __init__(self, log_directory: str):
         super().__init__()
         self.log_directory = log_directory
-        self.current_key: Optional[str] = None
-        self.file_handler: Optional[logging.FileHandler] = None
+        self.current_key: str | None = None
+        self.file_handler: logging.FileHandler | None = None
 
         self.formatter = logging.Formatter(
             "[%(asctime)s] [req:%(request_id)s] [%(filename)s|%(funcName)s] [line:%(lineno)d] "
@@ -114,8 +111,7 @@ def setup_global_logging() -> None:
     os.makedirs(log_dir, exist_ok=True)
 
     formatter = logging.Formatter(
-        "[%(asctime)s] [req:%(request_id)s] [%(filename)s|%(funcName)s] [line:%(lineno)d] "
-        "%(levelname)-8s: %(message)s",
+        "[%(asctime)s] [req:%(request_id)s] [%(filename)s|%(funcName)s] [line:%(lineno)d] %(levelname)-8s: %(message)s",
         datefmt="%Y-%m-%d %H:%M",
     )
 
@@ -143,7 +139,7 @@ def setup_global_logging() -> None:
     _setup_done = True
 
 
-def get_logger(name: Optional[str] = None) -> logging.Logger:
+def get_logger(name: str | None = None) -> logging.Logger:
     """Get a configured logger (ensures global setup runs once)."""
 
     setup_global_logging()

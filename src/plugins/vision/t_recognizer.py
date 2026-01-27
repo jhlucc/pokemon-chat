@@ -18,19 +18,15 @@ import logging
 import os
 import sys
 
-sys.path.insert(
-    0,
-    os.path.abspath(
-        os.path.join(
-            os.path.dirname(
-                os.path.abspath(__file__)),
-            '../../')))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "../../")))
 
-from src.plugins.vision.seeit import draw_box
-from src.plugins.vision import LayoutRecognizer, TableStructureRecognizer, OCR, init_in_out
 import argparse
 import re
+
 import numpy as np
+
+from src.plugins.vision import OCR, LayoutRecognizer, TableStructureRecognizer, init_in_out
+from src.plugins.vision.seeit import draw_box
 
 
 def main(args):
@@ -46,13 +42,12 @@ def main(args):
         if args.mode.lower() == "tsr":
             # lyt = [t for t in lyt if t["type"] == "table column"]
             html = get_table_html(images[i], lyt, ocr)
-            with open(outputs[i] + ".html", "w+", encoding='utf-8') as f:
+            with open(outputs[i] + ".html", "w+", encoding="utf-8") as f:
                 f.write(html)
-            lyt = [{
-                "type": t["label"],
-                "bbox": [t["x0"], t["top"], t["x1"], t["bottom"]],
-                "score": t["score"]
-            } for t in lyt]
+            lyt = [
+                {"type": t["label"], "bbox": [t["x0"], t["top"], t["x1"], t["bottom"]], "score": t["score"]}
+                for t in lyt
+            ]
         img = draw_box(images[i], lyt, detr.labels, float(args.threshold))
         img.save(outputs[i], quality=95)
         logging.info("save result to: " + outputs[i])
@@ -61,26 +56,32 @@ def main(args):
 def get_table_html(img, tb_cpns, ocr):
     boxes = ocr(np.array(img))
     boxes = LayoutRecognizer.sort_Y_firstly(
-        [{"x0": b[0][0], "x1": b[1][0],
-          "top": b[0][1], "text": t[0],
-          "bottom": b[-1][1],
-          "layout_type": "table",
-          "page_number": 0} for b, t in boxes if b[0][0] <= b[1][0] and b[0][1] <= b[-1][1]],
-        np.mean([b[-1][1] - b[0][1] for b, _ in boxes]) / 3
+        [
+            {
+                "x0": b[0][0],
+                "x1": b[1][0],
+                "top": b[0][1],
+                "text": t[0],
+                "bottom": b[-1][1],
+                "layout_type": "table",
+                "page_number": 0,
+            }
+            for b, t in boxes
+            if b[0][0] <= b[1][0] and b[0][1] <= b[-1][1]
+        ],
+        np.mean([b[-1][1] - b[0][1] for b, _ in boxes]) / 3,
     )
 
     def gather(kwd, fzy=10, ption=0.6):
         nonlocal boxes
-        eles = LayoutRecognizer.sort_Y_firstly(
-            [r for r in tb_cpns if re.match(kwd, r["label"])], fzy)
+        eles = LayoutRecognizer.sort_Y_firstly([r for r in tb_cpns if re.match(kwd, r["label"])], fzy)
         eles = LayoutRecognizer.layouts_cleanup(boxes, eles, 5, ption)
         return LayoutRecognizer.sort_Y_firstly(eles, 0)
 
     headers = gather(r".*header$")
     rows = gather(r".* (row|header)")
     spans = gather(r".*spanning")
-    clmns = sorted([r for r in tb_cpns if re.match(
-        r"table column$", r["label"])], key=lambda x: x["x0"])
+    clmns = sorted([r for r in tb_cpns if re.match(r"table column$", r["label"])], key=lambda x: x["x0"])
     clmns = LayoutRecognizer.layouts_cleanup(boxes, clmns, 5, 0.5)
 
     for b in boxes:
@@ -118,7 +119,7 @@ def get_table_html(img, tb_cpns, ocr):
     <style>
     ._table_1nkzy_11 {
       margin: auto;
-      width: 70%%;
+      width: 70%;
       padding: 10px;
     }
     ._table_1nkzy_11 p {
@@ -136,7 +137,7 @@ def get_table_html(img, tb_cpns, ocr):
     }
 
     ._table_1nkzy_11 table {
-      width: 100%%;
+      width: 100%;
       border-collapse: collapse;
     }
 
@@ -162,26 +163,31 @@ def get_table_html(img, tb_cpns, ocr):
     </style>
     </head>
     <body>
-    %s
+    __TABLE__
     </body>
     </html>
-""" % TableStructureRecognizer.construct_table(boxes, html=True)
-    return html
+"""
+    return html.replace("__TABLE__", TableStructureRecognizer.construct_table(boxes, html=True))
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('--inputs',
-                        help="Directory where to store images or PDFs, or a file path to a single image or PDF",
-                        required=True)
-    parser.add_argument('--output_dir', help="Directory where to store the output images. Default: './layouts_outputs'",
-                        default="./layouts_outputs")
     parser.add_argument(
-        '--threshold',
-        help="A threshold to filter out detections. Default: 0.5",
-        default=0.5)
-    parser.add_argument('--mode', help="Task mode: layout recognition or table structure recognition",
-                        choices=["layout", "tsr"],
-                        default="layout")
+        "--inputs",
+        help="Directory where to store images or PDFs, or a file path to a single image or PDF",
+        required=True,
+    )
+    parser.add_argument(
+        "--output_dir",
+        help="Directory where to store the output images. Default: './layouts_outputs'",
+        default="./layouts_outputs",
+    )
+    parser.add_argument("--threshold", help="A threshold to filter out detections. Default: 0.5", default=0.5)
+    parser.add_argument(
+        "--mode",
+        help="Task mode: layout recognition or table structure recognition",
+        choices=["layout", "tsr"],
+        default="layout",
+    )
     args = parser.parse_args()
     main(args)

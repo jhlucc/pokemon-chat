@@ -1,10 +1,10 @@
 import logging
-from threading import Lock
-from typing import List, Optional
-from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
-from mem0 import Memory
 import os
+from threading import Lock
+
+from fastapi import APIRouter, HTTPException
+from mem0 import Memory
+from pydantic import BaseModel
 
 from src.core.settings import settings
 
@@ -34,15 +34,18 @@ def get_memory_client() -> Memory:
         _memory_client = Memory()
         return _memory_client
 
+
 class MemoryAddRequest(BaseModel):
     user_id: str
     text: str
-    metadata: Optional[dict] = None
+    metadata: dict | None = None
+
 
 class MemorySearchRequest(BaseModel):
     user_id: str
     query: str
     limit: int = 5
+
 
 @router.post("/add")
 async def add_memory(request: MemoryAddRequest):
@@ -51,18 +54,20 @@ async def add_memory(request: MemoryAddRequest):
         return {"status": "success", "result": result}
     except Exception as e:
         logger.error(f"Error adding memory: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
+
 
 @router.get("/all")
 async def get_all_memories(user_id: str):
     try:
         if not user_id:
-             raise HTTPException(status_code=400, detail="user_id required")
+            raise HTTPException(status_code=400, detail="user_id required")
         memories = get_memory_client().get_all(user_id=user_id)
         return {"result": memories}
     except Exception as e:
         logger.error(f"Error getting memories: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
+
 
 @router.post("/search")
 async def search_memory(request: MemorySearchRequest):
@@ -71,7 +76,8 @@ async def search_memory(request: MemorySearchRequest):
         return {"result": memories}
     except Exception as e:
         logger.error(f"Error searching memory: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
+
 
 @router.delete("/")
 async def delete_memory(memory_id: str):
@@ -80,7 +86,8 @@ async def delete_memory(memory_id: str):
         return {"status": "success"}
     except Exception as e:
         logger.error(f"Error deleting memory: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
+
 
 @router.delete("/all")
 async def delete_all_memories(user_id: str):
@@ -89,4 +96,4 @@ async def delete_all_memories(user_id: str):
         return {"status": "success"}
     except Exception as e:
         logger.error(f"Error deleting all memories: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e

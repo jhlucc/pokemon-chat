@@ -1,8 +1,5 @@
-from typing import List
-
-from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 from langchain_community.chat_message_histories import ChatMessageHistory
-from langchain_core.messages import BaseMessage
+from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, SystemMessage
 
 from src.knowledge.core.prompts import get_system_prompt
 from src.utils import logger
@@ -40,7 +37,7 @@ class HistoryManager:
         """
         self.history.add_message(AIMessage(content=content))
 
-    def update_ai(self, content: str) -> List[BaseMessage]:
+    def update_ai(self, content: str) -> list[BaseMessage]:
         """
         更新对话历史中最近一条AI消息的内容。如果最近一条消息不是AI消息，则添加新AI消息。
         :param content: 更新后的 AI 文本内容
@@ -93,7 +90,7 @@ class HistoryManager:
             else:
                 role = "unknown"
             # 将换行替换为空格
-            content_single_line = message.content.replace('\n', ' ')
+            content_single_line = message.content.replace("\n", " ")
             lines.append(f"{role}: {content_single_line}")
         return "\n".join(lines)
 

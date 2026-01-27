@@ -1,28 +1,29 @@
 from abc import ABC, abstractmethod
-from typing import Any, Dict, AsyncIterator, Optional, List, TypeVar, Generic, Type
-from langchain_core.messages import BaseMessage
+from collections.abc import AsyncIterator
+from typing import Any, Generic, TypeVar
+
 from langchain_core.language_models import BaseChatModel
 from langchain_core.tools import BaseTool
 from langchain_openai import ChatOpenAI
-from langgraph.graph.state import CompiledStateGraph
-from langgraph.checkpoint.memory import MemorySaver
 from langgraph.checkpoint.base import BaseCheckpointSaver
+from langgraph.checkpoint.memory import MemorySaver
+from langgraph.graph.state import CompiledStateGraph
 
 from src.core.settings import settings
 
 # Type variable for state schema
-TState = TypeVar('TState', bound=Dict[str, Any])
+TState = TypeVar("TState", bound=dict[str, Any])
 
 
 class BaseAgent(ABC, Generic[TState]):
     """
     Agent 基类
-    
+
     所有 Agent 实现都应继承此类，并提供统一的接口用于：
     - 消息流式处理 (astream, ainvoke)
     - 状态查询与更新 (get_state, update_state)
     - 元数据获取 (get_info)
-    
+
     子类必须实现:
     - _build_graph(): 构建并返回编译后的 LangGraph 图
     - get_info(): 返回 Agent 元数据
@@ -30,14 +31,14 @@ class BaseAgent(ABC, Generic[TState]):
 
     def __init__(
         self,
-        llm: Optional[BaseChatModel] = None,
-        tools: Optional[List[BaseTool]] = None,
-        checkpointer: Optional[BaseCheckpointSaver] = None,
-        **kwargs
+        llm: BaseChatModel | None = None,
+        tools: list[BaseTool] | None = None,
+        checkpointer: BaseCheckpointSaver | None = None,
+        **kwargs,
     ):
         """
         初始化基础 Agent
-        
+
         Args:
             llm: 语言模型实例，默认从 settings 创建
             tools: 工具列表
@@ -47,11 +48,11 @@ class BaseAgent(ABC, Generic[TState]):
         self._llm = llm
         self._tools = tools or []
         self._checkpointer = checkpointer or MemorySaver()
-        self._graph: Optional[CompiledStateGraph] = None
-        
+        self._graph: CompiledStateGraph | None = None
+
         # 调用子类初始化钩子
         self._init_components(**kwargs)
-        
+
         # 构建图
         self._graph = self._build_graph()
 
@@ -63,7 +64,7 @@ class BaseAgent(ABC, Generic[TState]):
         return self._llm
 
     @property
-    def tools(self) -> List[BaseTool]:
+    def tools(self) -> list[BaseTool]:
         """获取工具列表"""
         return self._tools
 
@@ -82,7 +83,7 @@ class BaseAgent(ABC, Generic[TState]):
     def _default_llm(self) -> BaseChatModel:
         """
         创建默认的 LLM 实例
-        
+
         子类可以覆盖此方法以使用不同的模型配置
         """
         return ChatOpenAI(
@@ -95,7 +96,7 @@ class BaseAgent(ABC, Generic[TState]):
     def _init_components(self, **kwargs) -> None:
         """
         初始化组件钩子
-        
+
         子类可以覆盖此方法来初始化额外的组件
         """
         pass
@@ -104,7 +105,7 @@ class BaseAgent(ABC, Generic[TState]):
     def _build_graph(self) -> CompiledStateGraph:
         """
         构建并返回编译后的 LangGraph 图
-        
+
         子类必须实现此方法
         """
         pass
@@ -116,20 +117,20 @@ class BaseAgent(ABC, Generic[TState]):
 
     # ==================== 调用接口 ====================
 
-    async def ainvoke(self, input: Dict[str, Any], config: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    async def ainvoke(self, input: dict[str, Any], config: dict[str, Any] | None = None) -> dict[str, Any]:
         """异步调用 Agent"""
         return await self.graph.ainvoke(input, config)
 
-    def invoke(self, input: Dict[str, Any], config: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    def invoke(self, input: dict[str, Any], config: dict[str, Any] | None = None) -> dict[str, Any]:
         """同步调用 Agent"""
         return self.graph.invoke(input, config)
 
-    async def astream(self, input: Dict[str, Any], config: Optional[Dict[str, Any]] = None) -> AsyncIterator[Any]:
+    async def astream(self, input: dict[str, Any], config: dict[str, Any] | None = None) -> AsyncIterator[Any]:
         """异步流式调用 Agent"""
         async for chunk in self.graph.astream(input, config):
             yield chunk
 
-    def stream(self, input: Dict[str, Any], config: Optional[Dict[str, Any]] = None, **kwargs):
+    def stream(self, input: dict[str, Any], config: dict[str, Any] | None = None, **kwargs):
         """同步流式调用 Agent"""
         return self.graph.stream(input, config, **kwargs)
 
@@ -145,7 +146,7 @@ class BaseAgent(ABC, Generic[TState]):
         config = {"configurable": {"thread_id": thread_id}}
         return self.graph.get_state(config)
 
-    async def update_state(self, thread_id: str, values: Dict[str, Any], as_node: Optional[str] = None):
+    async def update_state(self, thread_id: str, values: dict[str, Any], as_node: str | None = None):
         """更新指定线程的状态"""
         config = {"configurable": {"thread_id": thread_id}}
         return await self.graph.aupdate_state(config, values, as_node=as_node)
@@ -158,26 +159,28 @@ class BaseAgent(ABC, Generic[TState]):
             history.append(state)
         return history
 
-    async def query(self, query: str, meta: Dict[str, Any] = None, history: List[Dict[str, Any]] = None) -> AsyncIterator[str]:
+    async def query(
+        self, query: str, meta: dict[str, Any] = None, history: list[dict[str, Any]] = None
+    ) -> AsyncIterator[str]:
         """
         Unified query interface for API endpoints.
         Uses `astream_events` to yield tokens and internal steps (status).
         """
         from langchain_core.messages import HumanMessage
-        
+
         input_state = {"messages": [HumanMessage(content=query)]}
         config = {"configurable": {"thread_id": meta.get("thread_id", "default")}}
-        
+
         # astream_events (v2) allows seeing internal events
         async for event in self.graph.astream_events(input_state, config, version="v1"):
             kind = event["event"]
-            
+
             if kind == "on_chat_model_stream":
                 # Token streaming
                 content = event["data"]["chunk"].content
                 if content:
                     yield content
-                    
+
             elif kind == "on_tool_start":
                 # Tool execution (Status update)
                 tool_name = event["name"]
@@ -185,37 +188,33 @@ class BaseAgent(ABC, Generic[TState]):
                 # Yield a status update chunk
                 yield {
                     "status": "tool_start",
-                    "status_text": f"正在使用工具 {tool_name}...", 
+                    "status_text": f"正在使用工具 {tool_name}...",
                     "tool": tool_name,
-                    "input": tool_input
+                    "input": tool_input,
                 }
             elif kind == "on_tool_end":
                 tool_name = event["name"]
                 # Yield a status update chunk
-                yield {
-                    "status": "tool_end",
-                    "status_text": f"工具 {tool_name} 执行完成",
-                    "tool": tool_name
-                }
+                yield {"status": "tool_end", "status_text": f"工具 {tool_name} 执行完成", "tool": tool_name}
 
 
 class ToolAgent(BaseAgent[TState]):
     """
     工具代理基类
-    
+
     提供标准的工具绑定和执行模式
     """
 
     def __init__(
         self,
-        llm: Optional[BaseChatModel] = None,
-        tools: Optional[List[BaseTool]] = None,
-        checkpointer: Optional[BaseCheckpointSaver] = None,
+        llm: BaseChatModel | None = None,
+        tools: list[BaseTool] | None = None,
+        checkpointer: BaseCheckpointSaver | None = None,
         bind_tools: bool = True,
-        **kwargs
+        **kwargs,
     ):
         super().__init__(llm=llm, tools=tools, checkpointer=checkpointer, **kwargs)
-        
+
         # 自动绑定工具到 LLM
         if bind_tools and self._tools:
             self._llm_with_tools = self.llm.bind_tools(self._tools)

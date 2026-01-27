@@ -2,6 +2,7 @@
 // Keep filenames in `src/assets/providers/*.png` and map provider keys -> icon filenames here.
 
 // Vite glob: use absolute `/src/...` (alias `@` may not work in glob patterns).
+/** @type {Record<string, string>} */
 const providerIcons = import.meta.glob('/src/assets/providers/*.png', {
   eager: true,
   import: 'default'
@@ -51,6 +52,11 @@ const MODEL_NAME_MAP = {
   'qwen-max': '通义千问 Max'
 }
 
+/**
+ * Resolve provider key to icon path.
+ * @param {string | undefined | null} provider
+ * @returns {string}
+ */
 export function getProviderIcon(provider) {
   const p = PROVIDER_ICON_ALIAS[provider] || provider
   return (
@@ -60,6 +66,8 @@ export function getProviderIcon(provider) {
 
 /**
  * Get friendly provider display name
+ * @param {string | undefined | null} provider
+ * @returns {string}
  */
 export function getProviderDisplayName(provider) {
   if (!provider) return '-'
@@ -68,6 +76,8 @@ export function getProviderDisplayName(provider) {
 
 /**
  * Get friendly model display name
+ * @param {string | undefined | null} modelName
+ * @returns {string}
  */
 export function getModelDisplayName(modelName) {
   if (!modelName) return '-'
@@ -76,6 +86,9 @@ export function getModelDisplayName(modelName) {
 
 /**
  * Get combined friendly display for provider/model
+ * @param {string | undefined | null} provider
+ * @param {string | undefined | null} modelName
+ * @returns {string}
  */
 export function getModelLabel(provider, modelName) {
   const providerName = getProviderDisplayName(provider)

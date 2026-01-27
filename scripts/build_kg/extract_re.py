@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 import json
 
 
@@ -8,7 +7,7 @@ def extract_relationships(input_file, output_file, target_relations):
     extracted_lines = []
 
     # 读取原始文件
-    with open(input_file, "r", encoding="utf-8") as file:
+    with open(input_file, encoding="utf-8") as file:
         for line in file:
             # 检查行中是否包含目标关系
             for relation in target_relations:
@@ -28,15 +27,16 @@ def extract_relationships(input_file, output_file, target_relations):
 
 ##################################################################### 实体与实体########################
 
+
 # 从 JSON 文件中提取有效的 chinese_name 和 region，生成 "name, region, 来自" 格式并保存到 txt 文件
 def extract_come_from_relation(input_file, output_file):
-    with open(input_file, "r", encoding="utf-8") as file:
+    with open(input_file, encoding="utf-8") as file:
         data = json.load(file)
 
     lines = []
 
     # 遍历每个实体，提取 chinese_name 和 region
-    for entity_name, entity_data in data.items():
+    for _entity_name, entity_data in data.items():
         chinese_name = entity_data.get("chinese_name", "")
         region = entity_data.get("进化", "")
 
@@ -56,14 +56,15 @@ def extract_come_from_relation(input_file, output_file):
 
 ##################################################################### 实体与属性列表########################
 
+
 def extract_pokemon_relation(input_file, output_file):
-    with open(input_file, "r", encoding="utf-8") as file:
+    with open(input_file, encoding="utf-8") as file:
         data = json.load(file)
 
     lines = []
 
     # 遍历每个实体，提取 chinese_name 和 pokemon 列表
-    for entity_name, entity_data in data.items():
+    for _entity_name, entity_data in data.items():
         chinese_name = entity_data.get("chinese_name", "")
         pokemon_list = entity_data.get("character", [])
 
@@ -85,12 +86,12 @@ def extract_pokemon_relation(input_file, output_file):
 
 def extract_person_pokemon(input_file, output_file):
     # 读取 JSON 文件
-    with open(input_file, "r", encoding="utf-8") as file:
+    with open(input_file, encoding="utf-8") as file:
         data = json.load(file)
 
     # 提取关系并保存到 TXT 文件
     with open(output_file, "w", encoding="utf-8") as output_file:
-        for person, info in data.items():
+        for _person, info in data.items():
             chinese_name = info["chinese_name"]
             pokemon_list = info["pokemon"]
             for pokemon in pokemon_list:

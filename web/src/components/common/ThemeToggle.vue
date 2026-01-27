@@ -32,7 +32,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { BulbOutlined, BulbFilled, CheckOutlined } from '@ant-design/icons-vue'
-import { useTheme, themeOptions, type Theme } from '@/composables/useTheme'
+import { useTheme, themeOptions } from '@/composables/useTheme'
 
 const { theme, resolvedTheme, setTheme } = useTheme()
 

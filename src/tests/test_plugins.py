@@ -1,11 +1,12 @@
 import os
 import unittest
 
-if not os.getenv('RUN_INTEGRATION_TESTS'):
+if not os.getenv("RUN_INTEGRATION_TESTS"):
     raise unittest.SkipTest("Integration tests are skipped by default. Set RUN_INTEGRATION_TESTS=1 to run.")
 
 
 from src.plugins import DocumentProcessorFactory, RapidOCRProcessor
+
 
 def test_plugin_registry():
     print("\n--- Testing Plugin Registry ---")
@@ -13,12 +14,13 @@ def test_plugin_registry():
         processor = DocumentProcessorFactory.get_processor("rapid_ocr")
         print(f"Successfully retrieved processor: {type(processor)}")
         assert isinstance(processor, RapidOCRProcessor)
-        
+
         health = processor.check_health()
         print(f"Health check: {health}")
-        
+
     except Exception as e:
         print(f"Plugin registry test failed: {e}")
+
 
 if __name__ == "__main__":
     test_plugin_registry()

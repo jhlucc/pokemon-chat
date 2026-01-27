@@ -4,8 +4,9 @@ import pickle
 import ahocorasick
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
-from src.core.settings import settings
+
 from src.core.feature_flags import feature_enabled
+from src.core.settings import settings
 from src.utils.logger import get_logger
 
 # BERT-based NER (only if enabled)
@@ -13,12 +14,12 @@ _BERT_AVAILABLE = False
 if feature_enabled("enable_ner_bert"):
     try:
         import torch
-        from torch import nn
-        from torch.utils.data import Dataset, DataLoader
-        from transformers import BertModel, BertTokenizer
         from seqeval.metrics import f1_score
         from sklearn.model_selection import train_test_split
+        from torch import nn
+        from torch.utils.data import DataLoader, Dataset
         from tqdm import tqdm
+        from transformers import BertModel, BertTokenizer
 
         _BERT_AVAILABLE = True
     except Exception as e:
@@ -37,13 +38,13 @@ cache_model = str(settings.paths.cache_berta_model)
 
 def get_data(path, max_len=None):
     all_text, all_tag = [], []
-    with open(path, 'r', encoding='utf8') as f:
-        all_data = f.read().split('\n')
+    with open(path, encoding="utf8") as f:
+        all_data = f.read().split("\n")
 
     sen, tag = [], []
     for data in all_data:
-        data = data.split(' ')
-        if (len(data) != 2):
+        data = data.split(" ")
+        if len(data) != 2:
             if len(sen) > 2:
                 all_text.append(sen)
                 all_tag.append(tag)
@@ -64,10 +65,13 @@ class rule_find:
         self.ahos = [ahocorasick.Automaton() for i in range(len(self.type2idx))]
 
         for type in idx2type:
-            with open(os.path.join(str(settings.paths.base_dir), 'resources/data/entity_data/', f'{type}.txt'), encoding='utf-8') as f:
-                all_en = f.read().split('\n')
+            with open(
+                os.path.join(str(settings.paths.base_dir), "resources/data/entity_data/", f"{type}.txt"),
+                encoding="utf-8",
+            ) as f:
+                all_en = f.read().split("\n")
             for en in all_en:
-                en = en.split(' ')[0]
+                en = en.split(" ")[0]
                 if len(en) >= 1:
                     self.ahos[type2idx[type]].add_word(en, en)
         for i in range(len(self.ahos)):
@@ -82,7 +86,7 @@ class rule_find:
         for i in range(len(self.ahos)):
             now = list(self.ahos[i].iter(sen))
             all_res.extend(now)
-            for j in range(len(now)):
+            for _j in range(len(now)):
                 all_ty.append(self.idx2type[i])
         if len(all_res) != 0:
             combined = list(zip(all_res, all_ty))
@@ -114,11 +118,11 @@ def find_entities(tag):
     result = []  # [(2,3,'Person'),(7,10,'Indentity')]
     label_len = len(tag)
     i = 0
-    while (i < label_len):
-        if (tag[i][0] == 'B'):
-            type = tag[i].strip('B-')
+    while i < label_len:
+        if tag[i][0] == "B":
+            type = tag[i].strip("B-")
             j = i + 1
-            while (j < label_len and tag[j][0] == 'I'):
+            while j < label_len and tag[j][0] == "I":
                 j += 1
             result.append((i, j - 1, type))
             i = j
@@ -136,25 +140,22 @@ class tfidf_alignment:
     """
 
     def __init__(self):
-        eneities_path = os.path.join(str(settings.paths.entity_data), '')
+        eneities_path = os.path.join(str(settings.paths.entity_data), "")
         files = os.listdir(eneities_path)
         # 排除 .py 文件
-        files = [docu for docu in files if '.py' not in docu]
+        files = [docu for docu in files if ".py" not in docu]
         self.tag_2_embs = {}
         self.tag_2_tfidf_model = {}
         self.tag_2_entity = {}
         for ty in files:
-            with open(os.path.join(eneities_path, ty), 'r', encoding='utf-8') as f:
-                entities = f.read().split('\n')
+            with open(os.path.join(eneities_path, ty), encoding="utf-8") as f:
+                entities = f.read().split("\n")
                 # 过滤长度过长或过短的实体
-                entities = [
-                    ent for ent in entities
-                    if 1 <= len(ent.split(' ')[0]) <= 15
-                ]
+                entities = [ent for ent in entities if 1 <= len(ent.split(" ")[0]) <= 15]
                 # 只取每行的第一个词
-                en_name = [ent.split(' ')[0] for ent in entities]
+                en_name = [ent.split(" ")[0] for ent in entities]
                 # 去掉文件名后缀 .txt
-                ty = ty.strip('.txt')
+                ty = ty.removesuffix(".txt")
                 # 记录实体列表
                 self.tag_2_entity[ty] = en_name
                 # 初始化 TF-IDF，
@@ -169,7 +170,7 @@ class tfidf_alignment:
         返回一个 dict：{cls: best_matched_entity_name}
         """
         new_result = {}
-        for s, e, cls, ent in ent_list:
+        for _s, _e, cls, ent in ent_list:
             # 若该类型不在词典中，则跳过
             if cls not in self.tag_2_tfidf_model:
                 continue
@@ -196,6 +197,7 @@ class tfidf_alignment:
 
 # BERT-dependent classes - only defined if BERT is available
 if _BERT_AVAILABLE:
+
     class Nerdataset(Dataset):
         def __init__(self, all_text, all_label, tokenizer, max_len, tag2idx, is_dev=False):
             self.all_text = all_text
@@ -211,15 +213,15 @@ if _BERT_AVAILABLE:
                 max_len = min(len(self.all_text[x]) + 2, 500)
             else:
                 max_len = self.max_len
-            text, label = text[:max_len - 2], label[:max_len - 2]
+            text, label = text[: max_len - 2], label[: max_len - 2]
 
             x_len = len(text)
             assert len(text) == len(label)
             text_idx = self.tokenizer.encode(text, add_special_token=True)
-            label_idx = [self.tag2idx['<PAD>']] + [self.tag2idx[i] for i in label] + [self.tag2idx['<PAD>']]
+            label_idx = [self.tag2idx["<PAD>"]] + [self.tag2idx[i] for i in label] + [self.tag2idx["<PAD>"]]
 
             text_idx += [0] * (max_len - len(text_idx))
-            label_idx += [self.tag2idx['<PAD>']] * (max_len - len(label_idx))
+            label_idx += [self.tag2idx["<PAD>"]] * (max_len - len(label_idx))
             return torch.tensor(text_idx), torch.tensor(label_idx), x_len
 
         def __len__(self):
@@ -227,7 +229,7 @@ if _BERT_AVAILABLE:
 
 
 def build_tag2idx(all_tag):
-    tag2idx = {'<PAD>': 0}
+    tag2idx = {"<PAD>": 0}
     for sen in all_tag:
         for tag in sen:
             tag2idx[tag] = tag2idx.get(tag, len(tag2idx))
@@ -235,6 +237,7 @@ def build_tag2idx(all_tag):
 
 
 if _BERT_AVAILABLE:
+
     class Bert_Model(nn.Module):
         def __init__(self, model_name, hidden_size, tag_num, bi):
             super().__init__()
@@ -257,7 +260,6 @@ if _BERT_AVAILABLE:
                 return torch.argmax(pre, dim=-1).squeeze(0)
 
 
-
 def merge(model_result_word, rule_result):
     result = model_result_word + rule_result
     result = sorted(result, key=lambda x: len(x[-1]), reverse=True)
@@ -277,8 +279,8 @@ def get_ner_result(model, tokenizer, sen, rule, tfidf_r, device, idx2tag):
     """BERT-based NER result (requires torch/transformers)"""
     if not _BERT_AVAILABLE:
         raise RuntimeError("BERT NER is disabled. Set enable_ner_bert=true and install torch/transformers.")
-    
-    sen_to = tokenizer.encode(sen, add_special_tokens=True, return_tensors='pt').to(device)
+
+    sen_to = tokenizer.encode(sen, add_special_tokens=True, return_tensors="pt").to(device)
 
     pre = model(sen_to).tolist()
 
@@ -286,7 +288,7 @@ def get_ner_result(model, tokenizer, sen, rule, tfidf_r, device, idx2tag):
     model_result = find_entities(pre_tag)  # (start,end,cls)
     model_result_word = []  # [(start,end,cls,word), ...]
     for res in model_result:
-        word = sen[res[0]:res[1] + 1]
+        word = sen[res[0] : res[1] + 1]
         model_result_word.append((res[0], res[1], res[2], word))
     rule_result = rule.find(sen)  # [(start,end,cls,word), ...]
 
@@ -304,12 +306,12 @@ def get_ner_result_simple(sen, rule=None, tfidf_r=None):
     """
      NER - 仅使用 AC 自动机 + TF-IDF 对齐
     不需要 BERT/torch/transformers
-    
+
     Args:
         sen: 输入句子
         rule: rule_find 实例 (可选，如为 None 则自动创建)
         tfidf_r: tfidf_alignment 实例 (可选，如为 None 则自动创建)
-    
+
     Returns:
         dict: {entity_type: [entity_names]}
     """
@@ -317,28 +319,29 @@ def get_ner_result_simple(sen, rule=None, tfidf_r=None):
         rule = rule_find()
     if tfidf_r is None:
         tfidf_r = tfidf_alignment()
-    
+
     # 使用 AC 自动机规则匹配
     rule_result = rule.find(sen)  # [(start,end,cls,word), ...]
-    
+
     # TF-IDF 对齐
     tfidf_result = tfidf_r.align(rule_result)
-    
+
     return tfidf_result
 
 
 if __name__ == "__main__":
-    all_text, all_label = get_data(os.path.join(str(settings.paths.ner_data), 'ner_data_aug.txt'))
-    train_text, dev_text, train_label, dev_label = train_test_split(all_text, all_label, test_size=0.02,
-                                                                    random_state=42)
+    all_text, all_label = get_data(os.path.join(str(settings.paths.ner_data), "ner_data_aug.txt"))
+    train_text, dev_text, train_label, dev_label = train_test_split(
+        all_text, all_label, test_size=0.02, random_state=42
+    )
 
     # 加载太慢了，预处理一下
-    if os.path.exists('../../resources/data/ner_data/tag2idx.npy'):
-        with open('../../resources/data/ner_data/tag2idx.npy', 'rb') as f:
+    if os.path.exists("../../resources/data/ner_data/tag2idx.npy"):
+        with open("../../resources/data/ner_data/tag2idx.npy", "rb") as f:
             tag2idx = pickle.load(f)
     else:
         tag2idx = build_tag2idx(all_label)
-        with open('../../resources/data/ner_data/tag2idx.npy', 'wb') as f:
+        with open("../../resources/data/ner_data/tag2idx.npy", "wb") as f:
             pickle.dump(tag2idx, f)
 
     idx2tag = list(tag2idx)
@@ -354,7 +357,7 @@ if __name__ == "__main__":
     lr = 1e-5
     is_train = False
 
-    device = torch.device('cuda:0') if torch.cuda.is_available() else torch.device('cpu')
+    device = torch.device("cuda:0") if torch.cuda.is_available() else torch.device("cpu")
 
     train_dataset = Nerdataset(train_text, train_label, tokenizer, max_len, tag2idx)
     train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
@@ -379,7 +382,7 @@ if __name__ == "__main__":
         for e in range(epoch):
             loss_sum = 0
             ba = 0
-            for x, y, batch_len in tqdm(train_dataloader):
+            for x, y, _batch_len in tqdm(train_dataloader):
                 x = x.to(device)
                 y = y.to(device)
                 opt.zero_grad()
@@ -395,22 +398,22 @@ if __name__ == "__main__":
                 assert len(x) == len(y)
                 x = x.to(device)
                 pre = model(x)
-                pre = [idx2tag[i] for i in pre[1:batch_len + 1]]
+                pre = [idx2tag[i] for i in pre[1 : batch_len + 1]]
                 all_pre.append(pre)
 
-                label = [idx2tag[i] for i in y[0][1:batch_len + 1]]
+                label = [idx2tag[i] for i in y[0][1 : batch_len + 1]]
                 all_label.append(label)
             f1 = f1_score(all_pre, all_label)
             if f1 > bestf1:
                 bestf1 = f1
-                print(f'e={e},loss={loss_sum / ba:.5f} f1={f1:.5f} ---------------------->best')
-                torch.save(model.state_dict(), f'{cache_model}.pt')
+                print(f"e={e},loss={loss_sum / ba:.5f} f1={f1:.5f} ---------------------->best")
+                torch.save(model.state_dict(), f"{cache_model}.pt")
             else:
-                print(f'e={e},loss={loss_sum / ba:.5f} f1={f1:.5f}')
+                print(f"e={e},loss={loss_sum / ba:.5f} f1={f1:.5f}")
 
     rule = rule_find()
     tfidf_r = tfidf_alignment()
 
-    while (True):
-        sen = input('请输入:')
+    while True:
+        sen = input("请输入:")
         print(get_ner_result(model, tokenizer, sen, rule, tfidf_r, device, idx2tag))

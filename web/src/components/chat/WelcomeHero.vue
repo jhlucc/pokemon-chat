@@ -62,9 +62,7 @@ import {
   SearchOutlined,
   ThunderboltOutlined,
   ApartmentOutlined,
-  MessageOutlined,
-  BookOutlined,
-  CompassOutlined
+  MessageOutlined
 } from '@ant-design/icons-vue'
 
 const props = defineProps<{

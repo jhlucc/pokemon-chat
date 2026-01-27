@@ -149,7 +149,7 @@ import {
 
 const GraphContainer = defineAsyncComponent(() => import('./GraphContainer.vue'))
 
-const emit = defineEmits(['retry'])
+defineEmits(['retry'])
 
 const props = defineProps({
   message: Object,

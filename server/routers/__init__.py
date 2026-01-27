@@ -1,6 +1,5 @@
 from fastapi import APIRouter
 
-from src.core.settings import settings
 from src.utils.logger import get_logger
 
 _log = get_logger(__name__)
@@ -9,15 +8,16 @@ router = APIRouter()
 
 
 # Core routers (always enabled)
+from server.routers.admin_router import admin  # noqa: E402
+from server.routers.agent_router import agents_router  # noqa: E402
+from server.routers.agent_router import router as agent  # noqa: E402
 from server.routers.base_router import base  # noqa: E402
-from server.routers.health_router import health  # noqa: E402
-from server.routers.provider_router import router as provider_router  # noqa: E402
 from server.routers.chat_router import chat  # noqa: E402
 from server.routers.data_router import data  # noqa: E402
-from server.routers.tool_router import router as tool  # noqa: E402
-from server.routers.agent_router import router as agent, agents_router  # noqa: E402
-from server.routers.admin_router import admin  # noqa: E402
+from server.routers.health_router import health  # noqa: E402
 from server.routers.log_router import router as log_router  # noqa: E402
+from server.routers.provider_router import router as provider_router  # noqa: E402
+from server.routers.tool_router import router as tool  # noqa: E402
 
 router.include_router(base)
 router.include_router(health)

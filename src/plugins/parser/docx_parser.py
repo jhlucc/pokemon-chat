@@ -20,11 +20,11 @@ from io import BytesIO
 
 import pandas as pd
 from docx import Document
+
 from src.models import rag_tokenizer
 
 
 class RAGFlowDocxParser:
-
     def __extract_table_content(self, tb):
         df = []
         for row in tb.rows:
@@ -32,7 +32,6 @@ class RAGFlowDocxParser:
         return self.__compose_table_content(pd.DataFrame(df))
 
     def __compose_table_content(self, df):
-
         def blockType(b):
             patt = [
                 ("^(20|19)[0-9]{2}[年/-][0-9]{1,2}[月/-][0-9]{1,2}日*$", "Dt"),
@@ -46,7 +45,7 @@ class RAGFlowDocxParser:
                 (r"^[0-9A-Z/\._~-]+$", "Ca"),
                 (r"^[A-Z]*[a-z' -]+$", "En"),
                 (r"^[0-9.,+-]+[0-9A-Za-z/$￥%<>（）()' -]+$", "NE"),
-                (r"^.{1}$", "Sg")
+                (r"^.{1}$", "Sg"),
             ]
             for p, n in patt:
                 if re.search(p, b):
@@ -65,16 +64,16 @@ class RAGFlowDocxParser:
 
         if len(df) < 2:
             return []
-        max_type = Counter([blockType(str(df.iloc[i, j])) for i in range(
-            1, len(df)) for j in range(len(df.iloc[i, :]))])
+        max_type = Counter(
+            [blockType(str(df.iloc[i, j])) for i in range(1, len(df)) for j in range(len(df.iloc[i, :]))]
+        )
         max_type = max(max_type.items(), key=lambda x: x[1])[0]
 
         colnm = len(df.iloc[0, :])
         hdrows = [0]  # header is not nessesarily appear in the first line
         if max_type == "Nu":
             for r in range(1, len(df)):
-                tys = Counter([blockType(str(df.iloc[r, j]))
-                               for j in range(len(df.iloc[r, :]))])
+                tys = Counter([blockType(str(df.iloc[r, j])) for j in range(len(df.iloc[r, :]))])
                 tys = max(tys.items(), key=lambda x: x[1])[0]
                 if tys != max_type:
                     hdrows.append(r)
@@ -115,8 +114,7 @@ class RAGFlowDocxParser:
         return ["\n".join(lines)]
 
     def __call__(self, fnm, from_page=0, to_page=100000000):
-        self.doc = Document(fnm) if isinstance(
-            fnm, str) else Document(BytesIO(fnm))
+        self.doc = Document(fnm) if isinstance(fnm, str) else Document(BytesIO(fnm))
         pn = 0  # parsed page
         secs = []  # parsed contents
         for p in self.doc.paragraphs:
@@ -131,11 +129,12 @@ class RAGFlowDocxParser:
                     runs_within_single_paragraph.append(run.text)  # append run.text first
 
                 # wrap page break checker into a static method
-                if 'lastRenderedPageBreak' in run._element.xml:
+                if "lastRenderedPageBreak" in run._element.xml:
                     pn += 1
 
-            secs.append(("".join(runs_within_single_paragraph), p.style.name if hasattr(p.style,
-                                                                                        'name') else ''))  # then concat run.text as part of the paragraph
+            secs.append(
+                ("".join(runs_within_single_paragraph), p.style.name if hasattr(p.style, "name") else "")
+            )  # then concat run.text as part of the paragraph
 
         tbls = [self.__extract_table_content(tb) for tb in self.doc.tables]
         return secs, tbls

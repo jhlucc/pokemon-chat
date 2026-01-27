@@ -14,11 +14,14 @@
 #  limitations under the License.
 #
 import io
+import os
 import sys
 import threading
-import os
+
 import pdfplumber
+
 from src.plugins.vision.recognizer import Recognizer
+
 from .layout_recognizer import LayoutRecognizer4YOLOv10 as LayoutRecognizer
 from .ocr import OCR
 from .table_structure_recognizer import TableStructureRecognizer
@@ -29,16 +32,18 @@ if LOCK_KEY_pdfplumber not in sys.modules:
 
 
 def traversal_files(base):
-    for root, ds, fs in os.walk(base):
+    for root, _ds, fs in os.walk(base):
         for f in fs:
             fullname = os.path.join(root, f)
             yield fullname
 
 
 def init_in_out(args):
-    from PIL import Image
     import os
     import traceback
+
+    from PIL import Image
+
     images = []
     outputs = []
 
@@ -49,10 +54,9 @@ def init_in_out(args):
         nonlocal outputs, images
         with sys.modules[LOCK_KEY_pdfplumber]:
             pdf = pdfplumber.open(fnm)
-            images = [p.to_image(resolution=72 * zoomin).annotated for i, p in
-                      enumerate(pdf.pages)]
+            images = [p.to_image(resolution=72 * zoomin).annotated for i, p in enumerate(pdf.pages)]
 
-        for i, page in enumerate(images):
+        for i, _page in enumerate(images):
             outputs.append(os.path.split(fnm)[-1] + f"_{i}.jpg")
         pdf.close()
 
@@ -62,10 +66,10 @@ def init_in_out(args):
             pdf_pages(fnm)
             return
         try:
-            fp = open(fnm, 'rb')
+            fp = open(fnm, "rb")
             binary = fp.read()
             fp.close()
-            images.append(Image.open(io.BytesIO(binary)).convert('RGB'))
+            images.append(Image.open(io.BytesIO(binary)).convert("RGB"))
             outputs.append(os.path.split(fnm)[-1])
         except Exception:
             traceback.print_exc()

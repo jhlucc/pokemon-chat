@@ -1,6 +1,5 @@
 import { ref } from 'vue'
 import { defineStore } from 'pinia'
-import { useDebounceFn } from '@vueuse/core'
 import { DEFAULT_CONFIG, LOCAL_CONFIG_KEY } from '@/config/defaultConfig'
 import { apiFetch } from '@/api/http'
 

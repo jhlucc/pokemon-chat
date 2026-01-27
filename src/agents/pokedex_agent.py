@@ -7,11 +7,11 @@ PokedexAgent - 宝可梦图鉴查询代理
 - 查询可学招式
 - 查询特性效果
 """
-from typing import List, Dict, Any, Optional
-from pydantic import BaseModel, Field
+
 from langchain_core.tools import tool
-from langgraph.graph import MessagesState, StateGraph, START, END
+from langgraph.graph import END, START, MessagesState, StateGraph
 from langgraph.prebuilt import ToolNode
+from pydantic import BaseModel, Field
 
 from src.agents.base import ToolAgent
 from src.utils.logger import get_logger
@@ -20,14 +20,49 @@ logger = get_logger(__name__)
 
 # 宝可梦图鉴数据
 POKEDEX = {
-    "001": {"name": "妙蛙种子", "types": ["草", "毒"], "generation": 1, "category": "种子宝可梦", "height": 0.7, "weight": 6.9},
+    "001": {
+        "name": "妙蛙种子",
+        "types": ["草", "毒"],
+        "generation": 1,
+        "category": "种子宝可梦",
+        "height": 0.7,
+        "weight": 6.9,
+    },
     "004": {"name": "小火龙", "types": ["火"], "generation": 1, "category": "蜥蜴宝可梦", "height": 0.6, "weight": 8.5},
     "007": {"name": "杰尼龟", "types": ["水"], "generation": 1, "category": "小龟宝可梦", "height": 0.5, "weight": 9.0},
     "025": {"name": "皮卡丘", "types": ["电"], "generation": 1, "category": "鼠宝可梦", "height": 0.4, "weight": 6.0},
-    "143": {"name": "卡比兽", "types": ["普通"], "generation": 1, "category": "睡觉宝可梦", "height": 2.1, "weight": 460.0},
-    "150": {"name": "超梦", "types": ["超能力"], "generation": 1, "category": "基因宝可梦", "height": 2.0, "weight": 122.0},
-    "149": {"name": "快龙", "types": ["龙", "飞行"], "generation": 1, "category": "龙宝可梦", "height": 2.2, "weight": 210.0},
-    "094": {"name": "耿鬼", "types": ["幽灵", "毒"], "generation": 1, "category": "影子宝可梦", "height": 1.5, "weight": 40.5},
+    "143": {
+        "name": "卡比兽",
+        "types": ["普通"],
+        "generation": 1,
+        "category": "睡觉宝可梦",
+        "height": 2.1,
+        "weight": 460.0,
+    },
+    "150": {
+        "name": "超梦",
+        "types": ["超能力"],
+        "generation": 1,
+        "category": "基因宝可梦",
+        "height": 2.0,
+        "weight": 122.0,
+    },
+    "149": {
+        "name": "快龙",
+        "types": ["龙", "飞行"],
+        "generation": 1,
+        "category": "龙宝可梦",
+        "height": 2.2,
+        "weight": 210.0,
+    },
+    "094": {
+        "name": "耿鬼",
+        "types": ["幽灵", "毒"],
+        "generation": 1,
+        "category": "影子宝可梦",
+        "height": 1.5,
+        "weight": 40.5,
+    },
 }
 
 # 进化链
@@ -76,8 +111,8 @@ class AbilitySchema(BaseModel):
 def search_pokedex(query: str) -> str:
     """按名称、属性或世代搜索宝可梦"""
     results = []
-    query_lower = query.lower()
-    
+    query.lower()
+
     for pid, data in POKEDEX.items():
         # 名称匹配
         if query in data["name"]:
@@ -88,25 +123,22 @@ def search_pokedex(query: str) -> str:
         # 世代匹配
         elif query.isdigit() and int(query) == data["generation"]:
             results.append(f"#{pid} {data['name']} ({'/'.join(data['types'])}) - 第{data['generation']}世代")
-    
+
     if not results:
         return f"未找到匹配 '{query}' 的宝可梦"
-    
+
     return f"**搜索结果 ({len(results)})**:\n" + "\n".join(results)
 
 
 @tool(args_schema=PokemonNameSchema)
 def get_evolution_chain(pokemon_name: str) -> str:
     """获取宝可梦的进化链"""
-    for starter, chain in EVOLUTION_CHAINS.items():
+    for _starter, chain in EVOLUTION_CHAINS.items():
         if pokemon_name in chain:
             index = chain.index(pokemon_name)
-            chain_display = " → ".join([
-                f"**{p}**" if p == pokemon_name else p 
-                for p in chain
-            ])
+            chain_display = " → ".join([f"**{p}**" if p == pokemon_name else p for p in chain])
             return f"**{pokemon_name}** 的进化链:\n{chain_display}\n\n当前为第 {index + 1}/{len(chain)} 阶段"
-    
+
     return f"{pokemon_name} 没有进化链信息(可能是无法进化的宝可梦)"
 
 
@@ -115,7 +147,7 @@ def get_pokemon_moves(pokemon_name: str) -> str:
     """获取宝可梦可学习的招式"""
     if pokemon_name not in MOVES:
         return f"未找到 {pokemon_name} 的招式信息"
-    
+
     move_list = MOVES[pokemon_name]
     return f"**{pokemon_name}** 可学习的招式:\n" + "\n".join([f"- {move}" for move in move_list])
 
@@ -125,7 +157,7 @@ def get_ability_info(ability_name: str) -> str:
     """查询特性效果"""
     if ability_name not in ABILITIES:
         return f"未找到特性: {ability_name}"
-    
+
     ability = ABILITIES[ability_name]
     pokemon_list = ", ".join(ability["pokemon"])
     return f"""**特性: {ability_name}**
@@ -138,7 +170,7 @@ def get_ability_info(ability_name: str) -> str:
 
 class PokedexAgent(ToolAgent):
     """宝可梦图鉴查询代理"""
-    
+
     def __init__(self):
         tools = [search_pokedex, get_evolution_chain, get_pokemon_moves, get_ability_info]
         super().__init__(tools=tools, bind_tools=True)
@@ -172,12 +204,9 @@ class PokedexAgent(ToolAgent):
             tool = tool_map.get(call["name"])
             if tool:
                 result = tool.invoke(call["args"])
-                new_messages.append({
-                    "role": "tool",
-                    "name": call["name"],
-                    "content": result,
-                    "tool_call_id": call["id"]
-                })
+                new_messages.append(
+                    {"role": "tool", "name": call["name"], "content": result, "tool_call_id": call["id"]}
+                )
         return {"messages": new_messages}
 
     def _build_graph(self):
@@ -186,10 +215,7 @@ class PokedexAgent(ToolAgent):
         workflow.add_node("run_tool", self._run_tool)
 
         workflow.add_edge(START, "agent")
-        workflow.add_conditional_edges("agent", self._should_continue, {
-            "run_tool": "run_tool",
-            "end": END
-        })
+        workflow.add_conditional_edges("agent", self._should_continue, {"run_tool": "run_tool", "end": END})
         workflow.add_edge("run_tool", "agent")
 
         return workflow.compile(checkpointer=self.checkpointer)

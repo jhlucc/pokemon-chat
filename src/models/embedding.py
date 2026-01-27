@@ -12,32 +12,34 @@ Unified Embedding - 统一的多厂商 Embedding 接口
 - 批量编码支持
 - 异步 API (aembed, abatch_encode)
 """
-import warnings
-warnings.filterwarnings("ignore")
 
 import asyncio
 import hashlib
-import requests
+import warnings
 from abc import ABC, abstractmethod
-from typing import List, Dict, Union, Any
+from typing import Any
+
+import httpx
+import requests
+
 from src.core.settings import settings
 from src.utils.logger import get_logger
 
-import httpx
+warnings.filterwarnings("ignore")
 
 logger = get_logger(__name__)
 
 # 全局 embedding 缓存 (可配置大小)
 _CACHE_SIZE = 10000
-_embedding_cache: Dict[str, List[float]] = {}
+_embedding_cache: dict[str, list[float]] = {}
 
 
 def _cache_key(text: str, model: str) -> str:
     """生成缓存键"""
-    return hashlib.md5(f"{model}:{text}".encode("utf-8")).hexdigest()
+    return hashlib.md5(f"{model}:{text}".encode()).hexdigest()
 
 
-def hashstr(data: Union[str, List[str]]) -> str:
+def hashstr(data: str | list[str]) -> str:
     if isinstance(data, list):
         data = "".join(data)
     return hashlib.md5(data.encode("utf-8")).hexdigest()
@@ -45,16 +47,17 @@ def hashstr(data: Union[str, List[str]]) -> str:
 
 class BaseEmbeddingModel(ABC):
     """Embedding 基类，带缓存支持"""
-    embed_state: Dict[str, Any] = {}
+
+    embed_state: dict[str, Any] = {}
     dimension: int = 1024
     use_cache: bool = True
 
     @abstractmethod
-    def _embed_impl(self, texts: List[str]) -> List[List[float]]:
+    def _embed_impl(self, texts: list[str]) -> list[list[float]]:
         """实际的 embedding 实现 (子类实现)"""
         pass
 
-    def embed(self, texts: Union[str, List[str]]) -> List[List[float]]:
+    def embed(self, texts: str | list[str]) -> list[list[float]]:
         """生成文本向量 (带缓存)"""
         if isinstance(texts, str):
             texts = [texts]
@@ -68,7 +71,7 @@ class BaseEmbeddingModel(ABC):
         uncached_texts = []
 
         for i, text in enumerate(texts):
-            key = _cache_key(text, getattr(self, 'model', 'default'))
+            key = _cache_key(text, getattr(self, "model", "default"))
             if key in _embedding_cache:
                 results[i] = _embedding_cache[key]
             else:
@@ -82,7 +85,7 @@ class BaseEmbeddingModel(ABC):
 
             # 存入缓存
             for idx, text, emb in zip(uncached_indices, uncached_texts, new_embeddings):
-                key = _cache_key(text, getattr(self, 'model', 'default'))
+                key = _cache_key(text, getattr(self, "model", "default"))
                 if len(_embedding_cache) < _CACHE_SIZE:
                     _embedding_cache[key] = emb
                 results[idx] = emb
@@ -91,35 +94,30 @@ class BaseEmbeddingModel(ABC):
 
         return results
 
-
     def get_dimension(self) -> int:
         return self.dimension
 
-    def batch_encode(self, messages: List[str], batch_size: int = 20) -> List[List[float]]:
+    def batch_encode(self, messages: list[str], batch_size: int = 20) -> list[list[float]]:
         logger.info(f"Batch encoding {len(messages)} messages")
         data = []
         task_id = None
 
         if len(messages) > batch_size:
             task_id = hashstr(messages)
-            self.embed_state[task_id] = {
-                'status': 'in-progress',
-                'total': len(messages),
-                'progress': 0
-            }
+            self.embed_state[task_id] = {"status": "in-progress", "total": len(messages), "progress": 0}
 
         for i in range(0, len(messages), batch_size):
-            group_msg = messages[i: i + batch_size]
+            group_msg = messages[i : i + batch_size]
             logger.info(f"Encoding messages {i} to {i + batch_size} out of {len(messages)}")
             response = self.embed(group_msg)
             data.extend(response)
 
             if task_id:
-                self.embed_state[task_id]['progress'] = i + len(group_msg)
+                self.embed_state[task_id]["progress"] = i + len(group_msg)
 
         if task_id:
-            self.embed_state[task_id]['progress'] = len(messages)
-            self.embed_state[task_id]['status'] = 'completed'
+            self.embed_state[task_id]["progress"] = len(messages)
+            self.embed_state[task_id]["status"] = "completed"
 
         return data
 
@@ -131,24 +129,21 @@ class BaseEmbeddingModel(ABC):
         logger.info("Embedding cache cleared")
 
     @classmethod
-    def cache_stats(cls) -> Dict[str, int]:
+    def cache_stats(cls) -> dict[str, int]:
         """获取缓存统计"""
-        return {
-            "size": len(_embedding_cache),
-            "max_size": _CACHE_SIZE
-        }
+        return {"size": len(_embedding_cache), "max_size": _CACHE_SIZE}
 
     # ========== Async Methods ==========
 
-    async def _aembed_impl(self, texts: List[str]) -> List[List[float]]:
+    async def _aembed_impl(self, texts: list[str]) -> list[list[float]]:
         """异步 embedding 实现 (子类可覆盖)
-        
+
         默认在线程池中运行同步方法
         """
         loop = asyncio.get_event_loop()
         return await loop.run_in_executor(None, self._embed_impl, texts)
 
-    async def aembed(self, texts: Union[str, List[str]]) -> List[List[float]]:
+    async def aembed(self, texts: str | list[str]) -> list[list[float]]:
         """异步生成文本向量 (带缓存)"""
         if isinstance(texts, str):
             texts = [texts]
@@ -162,7 +157,7 @@ class BaseEmbeddingModel(ABC):
         uncached_texts = []
 
         for i, text in enumerate(texts):
-            key = _cache_key(text, getattr(self, 'model', 'default'))
+            key = _cache_key(text, getattr(self, "model", "default"))
             if key in _embedding_cache:
                 results[i] = _embedding_cache[key]
             else:
@@ -175,7 +170,7 @@ class BaseEmbeddingModel(ABC):
             new_embeddings = await self._aembed_impl(uncached_texts)
 
             for idx, text, emb in zip(uncached_indices, uncached_texts, new_embeddings):
-                key = _cache_key(text, getattr(self, 'model', 'default'))
+                key = _cache_key(text, getattr(self, "model", "default"))
                 if len(_embedding_cache) < _CACHE_SIZE:
                     _embedding_cache[key] = emb
                 results[idx] = emb
@@ -184,7 +179,7 @@ class BaseEmbeddingModel(ABC):
 
         return results
 
-    async def abatch_encode(self, messages: List[str], batch_size: int = 20) -> List[List[float]]:
+    async def abatch_encode(self, messages: list[str], batch_size: int = 20) -> list[list[float]]:
         """异步批量编码"""
         logger.info(f"[Async] Batch encoding {len(messages)} messages")
         data = []
@@ -192,24 +187,20 @@ class BaseEmbeddingModel(ABC):
 
         if len(messages) > batch_size:
             task_id = hashstr(messages)
-            self.embed_state[task_id] = {
-                'status': 'in-progress',
-                'total': len(messages),
-                'progress': 0
-            }
+            self.embed_state[task_id] = {"status": "in-progress", "total": len(messages), "progress": 0}
 
         for i in range(0, len(messages), batch_size):
-            group_msg = messages[i: i + batch_size]
+            group_msg = messages[i : i + batch_size]
             logger.info(f"[Async] Encoding messages {i} to {i + batch_size} out of {len(messages)}")
             response = await self.aembed(group_msg)
             data.extend(response)
 
             if task_id:
-                self.embed_state[task_id]['progress'] = i + len(group_msg)
+                self.embed_state[task_id]["progress"] = i + len(group_msg)
 
         if task_id:
-            self.embed_state[task_id]['progress'] = len(messages)
-            self.embed_state[task_id]['status'] = 'completed'
+            self.embed_state[task_id]["progress"] = len(messages)
+            self.embed_state[task_id]["status"] = "completed"
 
         return data
 
@@ -228,15 +219,9 @@ class SiliconFlowEmbedding(BaseEmbeddingModel):
 
         logger.info(f"Using SiliconFlow embedding: {self.model}")
 
-    def _embed_impl(self, texts: List[str]) -> List[List[float]]:
-        headers = {
-            "Authorization": f"Bearer {self.api_key}",
-            "Content-Type": "application/json"
-        }
-        payload = {
-            "model": self.model,
-            "input": texts
-        }
+    def _embed_impl(self, texts: list[str]) -> list[list[float]]:
+        headers = {"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"}
+        payload = {"model": self.model, "input": texts}
 
         response = requests.post(self.url, headers=headers, json=payload)
         if response.status_code != 200:
@@ -248,16 +233,10 @@ class SiliconFlowEmbedding(BaseEmbeddingModel):
 
         return [d["embedding"] for d in result["data"]]
 
-    async def _aembed_impl(self, texts: List[str]) -> List[List[float]]:
+    async def _aembed_impl(self, texts: list[str]) -> list[list[float]]:
         """Native async implementation using httpx"""
-        headers = {
-            "Authorization": f"Bearer {self.api_key}",
-            "Content-Type": "application/json"
-        }
-        payload = {
-            "model": self.model,
-            "input": texts
-        }
+        headers = {"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"}
+        payload = {"model": self.model, "input": texts}
 
         async with httpx.AsyncClient() as client:
             response = await client.post(self.url, headers=headers, json=payload, timeout=30.0)
@@ -285,16 +264,10 @@ class OpenAIEmbedding(BaseEmbeddingModel):
 
         logger.info(f"Using OpenAI-compatible embedding: {self.model} from {self.base_url}")
 
-    def _embed_impl(self, texts: List[str]) -> List[List[float]]:
+    def _embed_impl(self, texts: list[str]) -> list[list[float]]:
         url = f"{self.base_url}/embeddings"
-        headers = {
-            "Authorization": f"Bearer {self.api_key}",
-            "Content-Type": "application/json"
-        }
-        payload = {
-            "model": self.model,
-            "input": texts
-        }
+        headers = {"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"}
+        payload = {"model": self.model, "input": texts}
 
         response = requests.post(url, headers=headers, json=payload)
         if response.status_code != 200:
@@ -317,7 +290,7 @@ class OllamaEmbedding(BaseEmbeddingModel):
 
         logger.info(f"Using Ollama embedding: {self.model} at {self.url}")
 
-    def _embed_impl(self, texts: List[str]) -> List[List[float]]:
+    def _embed_impl(self, texts: list[str]) -> list[list[float]]:
         payload = {
             "model": self.model,
             "input": texts,
@@ -348,15 +321,9 @@ class DashScopeEmbedding(BaseEmbeddingModel):
 
         logger.info(f"Using DashScope embedding: {self.model}")
 
-    def _embed_impl(self, texts: List[str]) -> List[List[float]]:
-        headers = {
-            "Authorization": f"Bearer {self.api_key}",
-            "Content-Type": "application/json"
-        }
-        payload = {
-            "model": self.model,
-            "input": texts
-        }
+    def _embed_impl(self, texts: list[str]) -> list[list[float]]:
+        headers = {"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"}
+        payload = {"model": self.model, "input": texts}
 
         response = requests.post(self.url, headers=headers, json=payload)
         if response.status_code != 200:
@@ -378,18 +345,14 @@ EMBEDDING_PROVIDERS = {
 }
 
 
-def get_embedding_model(
-    provider: str = None,
-    model: str = None,
-    **kwargs
-) -> BaseEmbeddingModel:
+def get_embedding_model(provider: str = None, model: str = None, **kwargs) -> BaseEmbeddingModel:
     """
     获取 Embedding 模型实例
-    
+
     Args:
         provider: 提供商名称，默认从 settings 读取
         model: 模型名称，默认从 settings 读取
-        
+
     Returns:
         BaseEmbeddingModel 实例
     """
@@ -397,10 +360,7 @@ def get_embedding_model(
     provider = provider.lower()
 
     if provider not in EMBEDDING_PROVIDERS:
-        raise ValueError(
-            f"不支持的 Embedding 提供商: {provider}\n"
-            f"支持的提供商: {list(EMBEDDING_PROVIDERS.keys())}"
-        )
+        raise ValueError(f"不支持的 Embedding 提供商: {provider}\n支持的提供商: {list(EMBEDDING_PROVIDERS.keys())}")
 
     return EMBEDDING_PROVIDERS[provider](model=model, **kwargs)
 

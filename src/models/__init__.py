@@ -4,19 +4,18 @@ Model selection utilities.
 This module provides a unified interface for selecting chat models from various providers.
 All configuration is read from `src.core.settings.settings`.
 """
-import os
-import traceback
-from typing import Optional
 
-from src.core.settings import settings
+import traceback
+
 from src.core.provider_config import get_provider_api_base, get_provider_api_key
+from src.core.settings import settings
 from src.models.chat_model import OpenAIBase
 from src.utils.logger import get_logger
 
 logger = get_logger(__name__)
 
 
-def select_model(model_provider: Optional[str] = None, model_name: Optional[str] = None):
+def select_model(model_provider: str | None = None, model_name: str | None = None):
     """
     Select a chat model instance.
 
@@ -24,7 +23,7 @@ def select_model(model_provider: Optional[str] = None, model_name: Optional[str]
         model_provider: Provider name (e.g., 'openai', 'dashscope', 'siliconflow').
                        Defaults to 'siliconflow' if not specified.
         model_name: Model name. Defaults to settings.llm.model_name.
-    
+
     Returns:
         A chat model instance with `.predict()` method.
     """
@@ -36,6 +35,7 @@ def select_model(model_provider: Optional[str] = None, model_name: Optional[str]
 
     if model_provider == "dashscope":
         from src.models.chat_model import Bailian
+
         return Bailian(model_name)
 
     # Generic OpenAI-compatible providers (siliconflow, etc.)
@@ -57,6 +57,4 @@ def select_model(model_provider: Optional[str] = None, model_name: Optional[str]
             model_name=model_name,
         )
     except Exception as e:
-        raise ValueError(f"Model provider {model_provider} load failed: {e}\n{traceback.format_exc()}")
-
-
+        raise ValueError(f"Model provider {model_provider} load failed: {e}\n{traceback.format_exc()}") from e

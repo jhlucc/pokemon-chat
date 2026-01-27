@@ -2,15 +2,15 @@ from __future__ import annotations
 
 import json
 import os
+import time
 from contextlib import AsyncExitStack
-from typing import Optional, Tuple
+
+from openai import OpenAI
 
 from mcp import ClientSession
 from mcp.client.sse import sse_client
-from openai import OpenAI
-
-from src.core.settings import settings
 from src.core.feature_flags import feature_enabled
+from src.core.settings import settings
 from src.utils.http_client import get_safe_httpx_client
 
 
@@ -25,11 +25,11 @@ class MCPClient:
 
     def __init__(
         self,
-        sse_url: Optional[str] = None,
+        sse_url: str | None = None,
         *,
-        llm_api_key: Optional[str] = None,
-        llm_base_url: Optional[str] = None,
-        llm_model: Optional[str] = None,
+        llm_api_key: str | None = None,
+        llm_base_url: str | None = None,
+        llm_model: str | None = None,
     ) -> None:
         self.sse_url = sse_url or os.getenv("MCP_SSE_URL") or os.getenv("mcp_sse_url") or "http://127.0.0.1:8000/sse"
 
@@ -58,7 +58,7 @@ class MCPClient:
         )
 
         # OpenAI client is cheap; if the key is missing we delay the error to ask().
-        self._client: Optional[OpenAI] = None
+        self._client: OpenAI | None = None
         if self.llm_api_key:
             self._client = OpenAI(
                 api_key=self.llm_api_key,
@@ -70,11 +70,9 @@ class MCPClient:
         # Kept for router compatibility; OpenAI client doesn't need explicit close.
         return
 
-    async def ask(self, query: str) -> Tuple[str, Optional[str]]:
+    async def ask(self, query: str) -> tuple[str, str | None]:
         if self._client is None:
-            raise ValueError(
-                "MCPClient missing API key. Set MCP_LLM_API_KEY (or DEEPSEEK_API_KEY / llm_api_key)."
-            )
+            raise ValueError("MCPClient missing API key. Set MCP_LLM_API_KEY (or DEEPSEEK_API_KEY / llm_api_key).")
 
         async with AsyncExitStack() as stack:
             rd, wr = await stack.enter_async_context(sse_client(self.sse_url))
@@ -99,7 +97,7 @@ class MCPClient:
             )
             choice = first.choices[0]
 
-            coords_json: Optional[str] = None
+            coords_json: str | None = None
             if choice.finish_reason == "tool_calls":
                 msgs.append(choice.message.model_dump())
                 for tc in choice.message.tool_calls:
@@ -123,13 +121,10 @@ class MCPClient:
 
 
 # ──────────────────── 单例 + 缓存 ────────────────────
-from functools import lru_cache
-from typing import Dict
-import time
-
-_mcp_client: Optional[MCPClient] = None
-_query_cache: Dict[str, tuple] = {}  # {query: (answer, coords, timestamp)}
+_mcp_client: MCPClient | None = None
+_query_cache: dict[str, tuple] = {}  # {query: (answer, coords, timestamp)}
 _cache_ttl = 300  # 5 minutes
+
 
 def get_mcp_client() -> MCPClient:
     """获取 MCP 客户端单例"""
@@ -138,10 +133,11 @@ def get_mcp_client() -> MCPClient:
         _mcp_client = MCPClient()
     return _mcp_client
 
-async def cached_ask(query: str, use_cache: bool = True) -> Tuple[str, Optional[str]]:
+
+async def cached_ask(query: str, use_cache: bool = True) -> tuple[str, str | None]:
     """带缓存的 MCP 查询"""
     global _query_cache
-    
+
     # 检查缓存
     if use_cache and query in _query_cache:
         answer, coords, ts = _query_cache[query]
@@ -149,15 +145,15 @@ async def cached_ask(query: str, use_cache: bool = True) -> Tuple[str, Optional[
             return answer, coords
         else:
             del _query_cache[query]
-    
+
     # 执行查询
     client = get_mcp_client()
     answer, coords = await client.ask(query)
-    
+
     # 存入缓存
     if use_cache and answer:
         _query_cache[query] = (answer, coords, time.time())
-    
+
     return answer, coords
 
 

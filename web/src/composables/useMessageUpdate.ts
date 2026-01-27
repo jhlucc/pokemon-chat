@@ -7,8 +7,6 @@ import type {
   Message,
   Conversation,
   MessageStatus,
-  MessageRefs,
-  MessageMeta,
   MessageUpdateInfo,
   KnowledgeBaseResult
 } from '@/types/chat'
@@ -112,7 +110,7 @@ export function useMessageUpdate(conversation: Ref<Conversation>) {
       }
 
       // 更新状态
-      if (info.status != null && info.status !== '') {
+      if (info.status != null) {
         msg.status = info.status
       }
 

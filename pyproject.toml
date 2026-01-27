@@ -36,8 +36,15 @@ target-version = "py310"
 line-length = 120
 exclude = [
     ".git",
+    ".claude",
+    ".codex",
     ".venv",
     "__pycache__",
+    "node_modules",
+    "web/node_modules",
+    "web/dist",
+    "web/.vite",
+    "docker/volumes",
     "*.pyc",
     "build",
     "dist",
@@ -60,7 +67,7 @@ ignore = [
 ]
 
 [tool.ruff.lint.isort]
-known-first-party = ["src"]
+known-first-party = ["src", "server"]
 
 [tool.ruff.format]
 quote-style = "double"

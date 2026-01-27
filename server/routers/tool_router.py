@@ -2,49 +2,49 @@
 
 import asyncio
 import os
-import json
-import uuid
 import traceback
-from typing import Any, Dict, List, Optional
+from typing import Any
 
-from fastapi import APIRouter, Body
-from fastapi.responses import StreamingResponse
+from fastapi import APIRouter
 from pydantic import BaseModel
 
 # NOTE: avoid importing heavy modules at module import time to keep startup cheap.
 # —— 日志
 from src.utils.logger import LogManager
+
 logger = LogManager()
 
-router = APIRouter(tags=["tools","agent"])
+router = APIRouter(tags=["tools", "agent"])
 
 #
 # —— 1./tools前缀：工具列表+文件分块+PDF→文本
 #
 tools_router = APIRouter(prefix="/tools", tags=["tools"])
 
+
 class Tool(BaseModel):
     name: str
     title: str
     description: str
     url: str
-    method: Optional[str] = "POST"
-    params: Optional[Dict[str, Any]] = None
-    metadata: Optional[Dict[str, Any]] = None
+    method: str | None = "POST"
+    params: dict[str, Any] | None = None
+    metadata: dict[str, Any] | None = None
 
-@tools_router.get("/", response_model=List[Tool])
+
+@tools_router.get("/", response_model=list[Tool])
 async def list_tools():
     """
     列出所有可用工具，包括文件分块、PDF 转文本，以及已注册的 agent
     """
-    tools: List[Tool] = [
+    tools: list[Tool] = [
         Tool(
             name="file-chunking",
             title="文件分块",
             description="给定一个本地文件路径，用 chunk_file 切分成若干 Document。",
             url="/tools/file-chunking",
             method="POST",
-            params={"file":"/path/to/file.pdf","chunk_size":1000,"chunk_overlap":100}
+            params={"file": "/path/to/file.pdf", "chunk_size": 1000, "chunk_overlap": 100},
         ),
         Tool(
             name="pdf2txt",
@@ -52,15 +52,14 @@ async def list_tools():
             description="给定一个本地 PDF 路径，跑 OCR/解析，返回纯文本。",
             url="/tools/pdf2txt",
             method="POST",
-            params={"file":"/path/to/file.pdf"}
+            params={"file": "/path/to/file.pdf"},
         ),
         Tool(
             name="agent",
             title="智能体",
             description="智能体演练平台",
             url="/tools/agent",
-        )
-
+        ),
     ]
 
     # for agent_cls in agent_manager.agents.values():
@@ -82,10 +81,12 @@ async def list_tools():
 
     return tools
 
+
 class FileChunkPayload(BaseModel):
     file: str
     chunk_size: int = 1000
     chunk_overlap: int = 100
+
 
 @tools_router.post("/file-chunking")
 async def file_chunking(payload: FileChunkPayload):
@@ -102,16 +103,16 @@ async def file_chunking(payload: FileChunkPayload):
             do_ocr=False,
         )
         # Document.page_content + metadata
-        return {"chunks": [
-            {"text": d.page_content, "meta": d.metadata}
-            for d in docs
-        ]}
+        return {"chunks": [{"text": d.page_content, "meta": d.metadata} for d in docs]}
     except Exception as e:
         logger.error(f"file-chunking 出错: {e}\n{traceback.format_exc()}")
         return {"error": str(e)}
 
+
 class PDFPayload(BaseModel):
     file: str
+
+
 @tools_router.post("/pdf2txt")
 async def pdf_to_text(payload: PDFPayload):
     try:

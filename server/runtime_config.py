@@ -5,7 +5,7 @@ import os
 import tempfile
 from pathlib import Path
 from threading import Lock
-from typing import Any, Dict
+from typing import Any
 
 from src.core.settings import settings
 
@@ -34,7 +34,7 @@ def _config_file() -> Path:
     return _config_dir() / "ui_config.json"
 
 
-def _read_json_file(path: Path) -> Dict[str, Any]:
+def _read_json_file(path: Path) -> dict[str, Any]:
     try:
         if not path.exists():
             return {}
@@ -44,7 +44,7 @@ def _read_json_file(path: Path) -> Dict[str, Any]:
         return {}
 
 
-def _atomic_write_json(path: Path, data: Dict[str, Any]) -> None:
+def _atomic_write_json(path: Path, data: dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp_fd, tmp_path = tempfile.mkstemp(prefix=path.name + ".", dir=str(path.parent))
     try:
@@ -59,13 +59,13 @@ def _atomic_write_json(path: Path, data: Dict[str, Any]) -> None:
             pass
 
 
-def load_ui_overrides() -> Dict[str, Any]:
+def load_ui_overrides() -> dict[str, Any]:
     """Load persisted UI overrides (non-sensitive)."""
     with _lock:
         return _read_json_file(_config_file())
 
 
-def patch_ui_overrides(patch: Dict[str, Any]) -> Dict[str, Any]:
+def patch_ui_overrides(patch: dict[str, Any]) -> dict[str, Any]:
     """Patch persisted UI overrides and return the new stored overrides."""
     patch = patch or {}
     safe_patch = {k: v for k, v in patch.items() if k in _ALLOWED_PATCH_KEYS}
@@ -90,7 +90,7 @@ def patch_ui_overrides(patch: Dict[str, Any]) -> Dict[str, Any]:
         return cur
 
 
-def build_ui_config() -> Dict[str, Any]:
+def build_ui_config() -> dict[str, Any]:
     """
     Build the config object consumed by the frontend.
     IMPORTANT: do NOT include secrets (API keys).
@@ -106,7 +106,7 @@ def build_ui_config() -> Dict[str, Any]:
             return bool(default)
         if isinstance(v, bool):
             return v
-        if isinstance(v, (int, float)):
+        if isinstance(v, int | float):
             return bool(v)
         if isinstance(v, str):
             s = v.strip().lower()
@@ -139,4 +139,3 @@ def build_ui_config() -> Dict[str, Any]:
         # Compatibility with existing UI code
         "custom_models": [],
     }
-

@@ -9,23 +9,23 @@ import subprocess
 import tempfile
 import traceback
 import uuid
-from typing import List, Dict, Any, Optional
+from typing import TYPE_CHECKING, Any
 
-from fastapi import APIRouter, Body, HTTPException, UploadFile, File
+from fastapi import APIRouter, Body, File, HTTPException, UploadFile
 from fastapi.responses import StreamingResponse
 
 from src import executor
-from src.core.settings import settings
 from src.core.feature_flags import feature_enabled
-from src.utils.logger import LogManager
-from src.runtime import get_retriever, get_asr_client
+from src.core.settings import settings
+from src.knowledge.cache.cache import get_semantic_cache
+from src.knowledge.memory.agentic import get_agentic_memory
+from src.runtime import get_asr_client, get_retriever
+from src.utils.logger import LogManager, request_id_var
+
 logger = LogManager()
 
-# Semantic Cache
-from src.knowledge.cache.cache import get_semantic_cache
-
-# Agentic Memory
-from src.knowledge.memory.agentic import get_agentic_memory
+if TYPE_CHECKING:
+    from langchain_core.messages import BaseMessage
 
 chat = APIRouter(prefix="/chat")
 
@@ -33,7 +33,8 @@ chat = APIRouter(prefix="/chat")
 # Utils
 # ---------------------------------------------------------
 
-def convert_messages_to_dicts(messages: List[BaseMessage]) -> List[Dict[str, str]]:
+
+def convert_messages_to_dicts(messages: list[BaseMessage]) -> list[dict[str, str]]:
     """
     把 LangChain Message 转成 {role, content}，确保:
       - HumanMessage  → "user"
@@ -41,9 +42,9 @@ def convert_messages_to_dicts(messages: List[BaseMessage]) -> List[Dict[str, str
       - SystemMessage → "system"
     """
     # Lazy import: keeps server startup cheaper.
-    from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
+    from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 
-    result: List[Dict[str, str]] = []
+    result: list[dict[str, str]] = []
     for msg in messages:
         if isinstance(msg, HumanMessage):
             role = "user"
@@ -52,15 +53,15 @@ def convert_messages_to_dicts(messages: List[BaseMessage]) -> List[Dict[str, str
         elif isinstance(msg, SystemMessage):
             role = "system"
         else:
-            role = "user"          # fallback
+            role = "user"  # fallback
 
         result.append({"role": role, "content": msg.content})
     return result
 
-def make_chunk(meta: Dict[str, Any],
-               content: Optional[str] = None,
-               **kwargs) -> bytes:
+
+def make_chunk(meta: dict[str, Any], content: str | None = None, **kwargs) -> bytes:
     """统一的 SSE / chunk 打包函数（返回 bytes 行）"""
+
     def convert(obj):
         # Lazy import: keeps server startup cheaper.
         from langchain_core.messages import BaseMessage
@@ -70,6 +71,7 @@ def make_chunk(meta: Dict[str, Any],
         raise TypeError(f"Object of type {obj.__class__.__name__} is not JSON serializable")
 
     payload = {
+        "request_id": request_id_var.get(),
         "response": content,
         "meta": meta,
         **kwargs,
@@ -77,13 +79,14 @@ def make_chunk(meta: Dict[str, Any],
     return json.dumps(payload, ensure_ascii=False, default=convert).encode("utf-8") + b"\n"
 
 
-
-def need_retrieve(meta: Dict[str, Any]) -> bool:
+def need_retrieve(meta: dict[str, Any]) -> bool:
     return meta.get("use_web") or meta.get("use_graph") or meta.get("db_id") or meta.get("mcp_id")
+
 
 # ---------------------------------------------------------
 # Routes
 # ---------------------------------------------------------
+
 
 @chat.get("/")
 async def chat_get():
@@ -92,24 +95,24 @@ async def chat_get():
 
 @chat.post("/")
 async def chat_post(
-        query: str = Body(...),
-        meta: Optional[Dict[str, Any]] = Body(None),
-        history: Optional[List[Dict[str, Any]]] = Body(None),
-        thread_id: Optional[str] = Body(None),
+    query: str = Body(...),
+    meta: dict[str, Any] | None = Body(None),
+    history: list[dict[str, Any]] | None = Body(None),
+    thread_id: str | None = Body(None),
 ):
     """主聊天接口，支持 **流式** 返回"""
     meta = dict(meta or {})
     history = list(history or [])
 
     # 1. 选择模型 ----------------------------------------------------------------
-    from src.models import select_model
-    from src.knowledge.core.history_chat import HistoryManager
-
     # Model selection:
     # - Prefer request meta (frontend-selected)
     # - Fallback to persisted UI overrides
     # - Finally fallback to env defaults
     from server.runtime_config import load_ui_overrides
+    from src.knowledge.core.history_chat import HistoryManager
+    from src.models import select_model
+
     overrides = load_ui_overrides()
     model_provider = meta.get("model_provider") or overrides.get("model_provider") or "siliconflow"
     model_name = meta.get("model_name") or overrides.get("model_name") or settings.llm.model_name
@@ -121,17 +124,19 @@ async def chat_post(
     meta["server_model_name"] = model.model_name
     meta["model_provider"] = model_provider
     meta["model_name"] = model_name
-    
+
     # Get user preferences and inject into system prompt
     user_id = thread_id or meta.get("thread_id") or "default_user"
     memory = get_agentic_memory()
     preference_injection = memory.get_system_prompt_injection(user_id)
-    
+
     base_system_prompt = meta.get("system_prompt", "")
     enhanced_system_prompt = base_system_prompt + preference_injection if preference_injection else base_system_prompt
-    prompt_sha = hashlib.sha256(enhanced_system_prompt.encode("utf-8")).hexdigest()[:12] if enhanced_system_prompt else ""
+    prompt_sha = (
+        hashlib.sha256(enhanced_system_prompt.encode("utf-8")).hexdigest()[:12] if enhanced_system_prompt else ""
+    )
     cache_meta = {"model_provider": model_provider, "model_name": model_name, "system_prompt_sha": prompt_sha}
-    
+
     history_manager = HistoryManager(system_prompt=enhanced_system_prompt)
     # Load client-provided history into the prompt context (system prompt is managed server-side).
     for item in history:
@@ -147,7 +152,7 @@ async def chat_post(
             history_manager.add_ai(content)
 
     logger.debug(f"Received query: {query} with meta: {meta}")
-    
+
     # Log conversation turn for memory extraction
     memory.add_conversation_turn(user_id, "user", query)
 
@@ -155,19 +160,22 @@ async def chat_post(
     async def generate_response():
         modified_query = query
         refs = None
-        
-        # 1. Check Semantic Cache FIRST ----------------------------------------
+
+        # Only safe for single-turn, non-retrieval queries (avoids cross-history poisoning).
+        safe_cache = (not history) and (not need_retrieve(meta))
+
+        # 1. Semantic Cache ----------------------------------------------------
         cache = get_semantic_cache()
-        cached_response = cache.get(query, meta=cache_meta)
-        if cached_response:
-            yield make_chunk(meta, content=cached_response, status="finished")
-            return
+        if safe_cache:
+            cached_response = cache.get(query, meta=cache_meta)
+            if cached_response:
+                yield make_chunk(meta, content=cached_response, status="finished")
+                return
 
         # 2. 检索阶段 -------------------------------------------------------------
         if meta and need_retrieve(meta):
             yield make_chunk(meta, status="searching")
             try:
-
                 from asyncio import to_thread
 
                 retriever = get_retriever()
@@ -175,22 +183,17 @@ async def chat_post(
                     retriever,  # 同步函数
                     modified_query,
                     history,
-                    meta
+                    meta,
                 )
             except Exception as e:
                 logger.error(f"Retriever error: {e}\n{traceback.format_exc()}")
-                yield make_chunk(meta,
-                                 message=f"Retriever error: {e}",
-                                 status="error")
+                yield make_chunk(meta, message=f"Retriever error: {e}", status="error")
                 return
             yield make_chunk(meta, status="generating")
 
         # 构造 Prompt ----
-        messages = history_manager.get_history_with_msg(
-            modified_query,
-            max_rounds=meta.get("history_round")
-        )
-        history_manager.add_user(modified_query)                    # 把原始用户查询加入历史
+        messages = history_manager.get_history_with_msg(modified_query, max_rounds=meta.get("history_round"))
+        history_manager.add_user(modified_query)  # 把原始用户查询加入历史
         formatted_messages = convert_messages_to_dicts(messages)
 
         content = ""
@@ -200,9 +203,7 @@ async def chat_post(
                 # 一些模型将「思考过程」放在 reasoning_content
                 if not delta.content and hasattr(delta, "reasoning_content"):
                     reasoning_content += delta.reasoning_content or ""
-                    yield make_chunk(meta,
-                                     reasoning_content=reasoning_content,
-                                     status="reasoning")
+                    yield make_chunk(meta, reasoning_content=reasoning_content, status="reasoning")
                     continue
 
                 content += delta.content or ""
@@ -215,16 +216,17 @@ async def chat_post(
             # 4. 更新历史，发送最终块
             updated_history = history_manager.update_ai(content)
             history_serializable = convert_messages_to_dicts(updated_history)
-            
-            # 5. Cache the response (only cache non-retrieval queries for now)
-            if content and not need_retrieve(meta):
+
+            # 5. Cache the response (avoid cross-history poisoning)
+            if content and safe_cache:
                 cache.set(query, content, meta=cache_meta)
-            
+
             # 6. Log AI response and periodically extract preferences
             memory.add_conversation_turn(user_id, "assistant", content)
-            
+
             # Extract preferences every 5 conversation turns (configurable)
             from random import random
+
             if random() < 0.2:  # 20% chance to trigger extraction (async-friendly)
                 try:
                     memory.extract_and_update_preferences(user_id)
@@ -246,38 +248,19 @@ async def chat_post(
                         "results": [],
                         "all_results": [],
                         "rw_query": query,
-                        "message": "知识库未启用、或未指定知识库、或知识库不存在"
+                        "message": "知识库未启用、或未指定知识库、或知识库不存在",
                     },
-                    "graph_base": {
-                        "results": {
-                            "nodes": [],
-                            "edges": []
-                        }
-                    },
-                    "web_search": {
-                        "results": [],
-                        "message": "Web search is disabled"
-                    },
-                    "mysql_mcp": {
-                        "answer": "",
-                        "coords": []
-                    },
+                    "graph_base": {"results": {"nodes": [], "edges": []}},
+                    "web_search": {"results": [], "message": "Web search is disabled"},
+                    "mysql_mcp": {"answer": "", "coords": []},
                 }
 
             # 最后一条流式返回
-            yield make_chunk(
-                meta,
-                status="finished",
-                history=history_serializable,
-                refs=refs
-            )
-
+            yield make_chunk(meta, status="finished", history=history_serializable, refs=refs)
 
         except Exception as e:
             logger.error(f"Model error: {e}\n{traceback.format_exc()}")
-            yield make_chunk(meta,
-                             message=f"Model error: {e}",
-                             status="error")
+            yield make_chunk(meta, message=f"Model error: {e}", status="error")
 
     return StreamingResponse(
         generate_response(),
@@ -287,7 +270,7 @@ async def chat_post(
 
 
 @chat.post("/call")
-async def call(query: str = Body(...), meta: Optional[Dict[str, Any]] = Body(None)):
+async def call(query: str = Body(...), meta: dict[str, Any] | None = Body(None)):
     """同步调用完整模型"""
     from src.models import select_model
 
@@ -303,7 +286,7 @@ async def call(query: str = Body(...), meta: Optional[Dict[str, Any]] = Body(Non
 
 
 @chat.post("/call_lite")
-async def call_lite(query: str = Body(...), meta: Optional[Dict[str, Any]] = Body(None)):
+async def call_lite(query: str = Body(...), meta: dict[str, Any] | None = Body(None)):
     """使用 Lite 模型，同步调用"""
     from src.models import select_model
 
@@ -320,7 +303,6 @@ async def call_lite(query: str = Body(...), meta: Optional[Dict[str, Any]] = Bod
     response = await _predict_async(query)
     logger.debug(f"query: {query}, response: {response.content}")
     return {"response": response.content}
-
 
 
 @chat.get("/agent")
@@ -340,9 +322,9 @@ async def get_agent_list():
 async def chat_agent(
     agent_name: str,
     query: str = Body(...),
-    history: Optional[List[Dict[str, Any]]] = Body(None),
-    cfg: Optional[Dict[str, Any]] = Body(None),
-    meta: Optional[Dict[str, Any]] = Body(None),
+    history: list[dict[str, Any]] | None = Body(None),
+    cfg: dict[str, Any] | None = Body(None),
+    meta: dict[str, Any] | None = Body(None),
 ):
     history = list(history or [])
     cfg = dict(cfg or {})
@@ -353,9 +335,9 @@ async def chat_agent(
     try:
         agent = agent_manager.get_agent(agent_name)
     except ValueError:
-        raise HTTPException(status_code=404, detail=f"Agent '{agent_name}' not found")
+        raise HTTPException(status_code=404, detail=f"Agent '{agent_name}' not found") from None
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
     # 给历史消息补 id，防止前端缺字段
     for msg in history:
@@ -363,7 +345,7 @@ async def chat_agent(
 
     # 本次请求 id / 线程 id
     request_id = cfg.get("request_id", str(uuid.uuid4()))
-    thread_id  = cfg.get("thread_id",  request_id)
+    thread_id = cfg.get("thread_id", request_id)
     meta.update({"query": query, "agent_name": agent_name, "thread_id": thread_id})
 
     # 会话历史管理（仅用来更新助手消息）
@@ -378,19 +360,18 @@ async def chat_agent(
         msg_id: str,
         error: str | None = None,
         history_resp=None,
-
         refs=None,
-        data: Dict[str, Any] | None = None
+        data: dict[str, Any] | None = None,
     ):
         """
         前端必须要拿到 msg.id，所以这里统一塞一个 msg 字段
         """
         payload = {
             "request_id": request_id,
-            "response":  content,
-            "status":    status,
-            "meta":      meta,
-            "msg":       {"id": msg_id, "type": "assistant"}     # ★ 重点
+            "response": content,
+            "status": status,
+            "meta": meta,
+            "msg": {"id": msg_id, "type": "assistant"},  # ★ 重点
         }
         if error:
             payload["error"] = error
@@ -423,40 +404,38 @@ async def chat_agent(
                 if isinstance(part, str):
                     # Token
                     final_answer += part
-                    yield make_agent_chunk(
-                        content=part,
-                        status="loading",
-                        msg_id=cur_msg_id
-                    )
+                    yield make_agent_chunk(content=part, status="loading", msg_id=cur_msg_id)
                 elif isinstance(part, dict):
-                     # Structured Metadata (e.g. status update)
-                     if "status" in part:
-                         yield make_agent_chunk(
-                             # Keep status compatible with ChatComponent UI:
-                             # - do not emit arbitrary status strings (would be treated as error)
-                             # - keep "init" until we have actual tokens to render
-                             status="init",
-                             msg_id=cur_msg_id,
-                             data=part
-                         )
+                    # Structured Metadata (e.g. status update)
+                    if "status" in part:
+                        yield make_agent_chunk(
+                            # Keep status compatible with ChatComponent UI:
+                            # - do not emit arbitrary status strings (would be treated as error)
+                            # - keep "init" until we have actual tokens to render
+                            status="init",
+                            msg_id=cur_msg_id,
+                            data=part,
+                        )
 
-        # ③ finished
-            updated           = history_mgr.update_ai(final_answer)
-            history_serializ  = convert_messages_to_dicts(updated)
+            # ③ finished
+            updated = history_mgr.update_ai(final_answer)
+            history_serializ = convert_messages_to_dicts(updated)
 
             refs = {
                 "query": query,
                 "history": history_serializ,
                 "meta": meta,
-                "model_name": "",        # 需要的话自行补充
+                "model_name": "",  # 需要的话自行补充
                 "entities": [],
                 "knowledge_base": {
-                    "results": [], "all_results": [], "rw_query": query,
-                    "message": "知识库未启用、或未指定知识库、或知识库不存在"
+                    "results": [],
+                    "all_results": [],
+                    "rw_query": query,
+                    "message": "知识库未启用、或未指定知识库、或知识库不存在",
                 },
-                "graph_base":  {"results": {"nodes": [], "edges": []}},
-                "web_search":  {"results": [], "message": "Web search is disabled"},
-                "mysql_mcp":   {"answer": "", "coords": []}
+                "graph_base": {"results": {"nodes": [], "edges": []}},
+                "web_search": {"results": [], "message": "Web search is disabled"},
+                "mysql_mcp": {"answer": "", "coords": []},
             }
 
             yield make_agent_chunk(
@@ -465,23 +444,18 @@ async def chat_agent(
                 status="finished",
                 msg_id=cur_msg_id,
                 history_resp=history_serializ,
-                refs=refs
+                refs=refs,
             )
 
         except Exception as e:
             logger.error(f"Agent error: {e}\n{traceback.format_exc()}")
-            yield make_agent_chunk(
-                status="error",
-                msg_id=cur_msg_id,
-                error=str(e)
-            )
+            yield make_agent_chunk(status="error", msg_id=cur_msg_id, error=str(e))
 
     return StreamingResponse(
         streamer(),
         media_type="application/x-ndjson",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
-
 
 
 @chat.get("/models")
@@ -493,11 +467,12 @@ async def get_chat_models(model_provider: str):
 
 
 @chat.post("/models/update")
-async def update_chat_models(model_provider: str, model_names: List[str]):
+async def update_chat_models(model_provider: str, model_names: list[str]):
     # config.model_names[model_provider]["models"] = model_names
     # config._save_models_to_file()
     # return {"models": config.model_names[model_provider]["models"]}
     raise HTTPException(status_code=501, detail="Configuration update not supported in this version")
+
 
 @chat.post("/asr/")
 async def asr_upload(file: UploadFile = File(...)):
@@ -517,10 +492,7 @@ async def asr_upload(file: UploadFile = File(...)):
 
     try:
         subprocess.run(
-            ["ffmpeg", "-y", "-i", input_path, "-ar", "16000", "-ac", "1", output_path],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            check=True
+            ["ffmpeg", "-y", "-i", input_path, "-ar", "16000", "-ac", "1", output_path], capture_output=True, check=True
         )
         with open(output_path, "rb") as f:
             wav_bytes = f.read()
@@ -529,7 +501,7 @@ async def asr_upload(file: UploadFile = File(...)):
 
     except subprocess.CalledProcessError as e:
         logger.error(f"音频转码失败: {e}")
-        raise HTTPException(status_code=500, detail="Audio conversion failed")
+        raise HTTPException(status_code=500, detail="Audio conversion failed") from e
 
     finally:
         try:

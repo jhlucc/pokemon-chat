@@ -4,10 +4,12 @@
 
 from src.knowledge.core import prompts
 
+
 class BaseOperator:
     """
     基类
     """
+
     template = None
 
     def __init__(self):
@@ -23,11 +25,11 @@ class BaseOperator:
         return self.call(**kwargs)
 
 
-
 class HyDEOperator(BaseOperator):
     """
     HyDE 重写查询
     """
+
     template = prompts.HYDE_PROMPT_TEMPLATE
 
     def __init__(self):

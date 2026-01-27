@@ -1,34 +1,28 @@
+import importlib
 
-import sys
-import os
 
-# Ensure src is in python path
-sys.path.append(os.getcwd())
+def _check_import(module: str, symbol: str) -> bool:
+    try:
+        mod = importlib.import_module(module)
+        obj = getattr(mod, symbol)
+        print(f"PASS: imported {module}.{symbol} -> {obj}")
+        return True
+    except Exception as e:
+        print(f"FAIL: cannot import {module}.{symbol}: {e}")
+        return False
+
 
 def test_imports():
     print("Testing imports for MilvusService refactor...")
-    try:
-        from src.knowledge.vector.milvus_store import MilvusService
-        print("✅ Successfully imported MilvusService from new location.")
-    except ImportError as e:
-        print(f"❌ Failed to import MilvusService from new location: {e}")
-        return
+    ok = True
 
-    try:
-        from src.agents.tools.websearch.LiteWebSearcher import WebSearcher
-        print("✅ Successfully imported WebSearcher (LiteWebSearcher).")
-    except ImportError as e:
-        print(f"❌ Failed to import WebSearcher: {e}")
-        return
+    ok &= _check_import("src.knowledge.vector.milvus_store", "MilvusService")
+    ok &= _check_import("src.agents.tools.websearch.LiteWebSearcher", "WebSearcher")
+    ok &= _check_import("src.agents.tools.websearch.TavilyWebSearcher", "IndustrialWebSearcher")
 
-    try:
-        from src.agents.tools.websearch.TavilyWebSearcher import IndustrialWebSearcher
-        print("✅ Successfully imported IndustrialWebSearcher (TavilyWebSearcher).")
-    except ImportError as e:
-        print(f"❌ Failed to import IndustrialWebSearcher: {e}")
-        return
+    if ok:
+        print("All imports valid.")
 
-    print("All imports valid.")
 
 if __name__ == "__main__":
     test_imports()

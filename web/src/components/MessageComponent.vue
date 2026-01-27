@@ -163,7 +163,6 @@ import { message as antdMessage } from 'ant-design-vue'
 import {
   CaretRightOutlined,
   ThunderboltOutlined,
-  LoadingOutlined,
   ExclamationCircleOutlined,
   ReloadOutlined,
   CopyOutlined,

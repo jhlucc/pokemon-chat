@@ -1,7 +1,6 @@
-from typing import List, Literal, Optional
+from typing import Literal
+
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
-from langchain_core.output_parsers.openai_functions import JsonOutputFunctionsParser
-from langchain_core.messages import SystemMessage
 from pydantic import BaseModel
 
 from src.core.llm_factory import build_chat_llm
@@ -51,8 +50,7 @@ prompt = ChatPromptTemplate.from_messages(
         MessagesPlaceholder(variable_name="messages"),
         (
             "system",
-            "Given the conversation above, who should act next?"
-            " Or should we FINISH? Select one of: {options}",
+            "Given the conversation above, who should act next? Or should we FINISH? Select one of: {options}",
         ),
     ]
 ).partial(options=str(options), members=", ".join(AVAILABLE_WORKERS))
@@ -61,19 +59,18 @@ prompt = ChatPromptTemplate.from_messages(
 class RouteResponse(BaseModel):
     next: Literal["FINISH", "rag_worker", "web_worker", "graph_worker", "stats_worker", "mcp_worker"]
 
+
 class SupervisorNode:
     def __init__(self):
         # Deterministic routing: keep temperature at 0.
         self.llm = build_chat_llm(temperature=0.0)
-        
+
     def __call__(self, state: AgentState):
-        chain = (
-            prompt
-            | self.llm.with_structured_output(RouteResponse)
-        )
+        chain = prompt | self.llm.with_structured_output(RouteResponse)
         result = chain.invoke(state)
         # Convert Pydantic model to dict for state update
         return {"next": result.next}
+
 
 def supervisor_node(state: AgentState):
     node = SupervisorNode()

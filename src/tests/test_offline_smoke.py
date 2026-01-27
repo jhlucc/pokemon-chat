@@ -1,4 +1,6 @@
+import asyncio
 import os
+import unittest
 
 # Ensure offline-safe defaults for this test module.
 os.environ.setdefault("enable_reranker", "false")
@@ -17,12 +19,9 @@ for _k in (
 ):
     os.environ.pop(_k, None)
 
-import asyncio
-import unittest
-
-from src.mcp.client_core import MCPClient
-from src.models import select_model
-from src.runtime import get_kb, reset_all
+from src.mcp.client_core import MCPClient  # noqa: E402
+from src.models import select_model  # noqa: E402
+from src.runtime import get_kb, reset_all  # noqa: E402
 
 
 class OfflineSmokeTests(unittest.TestCase):
@@ -46,4 +45,3 @@ class OfflineSmokeTests(unittest.TestCase):
                 await client.ask("hi")
 
         asyncio.run(_run())
-

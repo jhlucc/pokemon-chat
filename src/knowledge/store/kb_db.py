@@ -1,14 +1,17 @@
 import os
 import pathlib
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker, joinedload
 from contextlib import contextmanager
-from sqlalchemy.orm.attributes import instance_state
+
+from sqlalchemy import create_engine
+from sqlalchemy.orm import joinedload, sessionmaker
 
 from src.core.settings import settings
 from src.models.kb_models import Base, KnowledgeDatabase, KnowledgeFile, KnowledgeNode
 from src.utils.logger import LogManager
-logger=LogManager()
+
+logger = LogManager()
+
+
 class KBDBManager:
     """知识库数据库管理器"""
 
@@ -58,9 +61,9 @@ class KBDBManager:
             return None
 
         # 确保主键已加载
-        if hasattr(obj, 'id'):
+        if hasattr(obj, "id"):
             _ = obj.id
-        if hasattr(obj, 'db_id'):
+        if hasattr(obj, "db_id"):
             _ = obj.db_id
 
         # 根据需要添加其他必须预加载的属性
@@ -72,9 +75,7 @@ class KBDBManager:
         """获取所有知识库"""
         with self.get_session() as session:
             # 使用eager loading加载关联的files
-            databases = session.query(KnowledgeDatabase).options(
-                joinedload(KnowledgeDatabase.files)
-            ).all()
+            databases = session.query(KnowledgeDatabase).options(joinedload(KnowledgeDatabase.files)).all()
 
             # 转换为字典并返回，避免后续延迟加载
             return [self._to_dict_safely(db) for db in databases]
@@ -83,16 +84,19 @@ class KBDBManager:
         """根据ID获取知识库"""
         with self.get_session() as session:
             # 使用eager loading加载关联的files
-            db = session.query(KnowledgeDatabase).options(
-                joinedload(KnowledgeDatabase.files).joinedload(KnowledgeFile.nodes)
-            ).filter_by(db_id=db_id).first()
+            db = (
+                session.query(KnowledgeDatabase)
+                .options(joinedload(KnowledgeDatabase.files).joinedload(KnowledgeFile.nodes))
+                .filter_by(db_id=db_id)
+                .first()
+            )
 
             # 转换为字典并返回，避免后续延迟加载
             return self._to_dict_safely(db) if db else None
 
     def _to_dict_safely(self, obj):
         """安全地将对象转换为字典，避免延迟加载问题"""
-        if hasattr(obj, 'to_dict'):
+        if hasattr(obj, "to_dict"):
             return obj.to_dict()
         return obj
 
@@ -105,7 +109,7 @@ class KBDBManager:
                 description=description,
                 embed_model=embed_model,
                 dimension=dimension,
-                meta_info=metadata or {}  # 存储到meta_info字段
+                meta_info=metadata or {},  # 存储到meta_info字段
             )
             session.add(db)
             session.flush()  # 立即写入数据库，获取ID
@@ -118,7 +122,7 @@ class KBDBManager:
                 "embed_model": embed_model,
                 "dimension": dimension,
                 "metadata": metadata or {},  # 返回时使用metadata键
-                "files": {}
+                "files": {},
             }
             return db_dict
 
@@ -136,12 +140,7 @@ class KBDBManager:
         """添加文件"""
         with self.get_session() as session:
             file = KnowledgeFile(
-                file_id=file_id,
-                database_id=db_id,
-                filename=filename,
-                path=path,
-                file_type=file_type,
-                status=status
+                file_id=file_id, database_id=db_id, filename=filename, path=path, file_type=file_type, status=status
             )
             session.add(file)
             session.flush()
@@ -154,7 +153,7 @@ class KBDBManager:
                 "type": file_type,
                 "status": status,
                 "created_at": file.created_at.timestamp() if file.created_at else None,
-                "nodes": []
+                "nodes": [],
             }
 
     def update_file_status(self, file_id, status):
@@ -178,17 +177,17 @@ class KBDBManager:
     def get_files_by_database(self, db_id):
         """获取知识库下的所有文件"""
         with self.get_session() as session:
-            files = session.query(KnowledgeFile).options(
-                joinedload(KnowledgeFile.nodes)
-            ).filter_by(database_id=db_id).all()
+            files = (
+                session.query(KnowledgeFile).options(joinedload(KnowledgeFile.nodes)).filter_by(database_id=db_id).all()
+            )
             return [self._to_dict_safely(file) for file in files]
 
     def get_file_by_id(self, file_id):
         """根据ID获取文件"""
         with self.get_session() as session:
-            file = session.query(KnowledgeFile).options(
-                joinedload(KnowledgeFile.nodes)
-            ).filter_by(file_id=file_id).first()
+            file = (
+                session.query(KnowledgeFile).options(joinedload(KnowledgeFile.nodes)).filter_by(file_id=file_id).first()
+            )
             return self._to_dict_safely(file) if file else None
 
     # 知识块操作方法
@@ -201,7 +200,7 @@ class KBDBManager:
                 hash=hash_value,
                 start_char_idx=start_char_idx,
                 end_char_idx=end_char_idx,
-                meta_info=metadata or {}
+                meta_info=metadata or {},
             )
             session.add(node)
             session.flush()
@@ -214,7 +213,7 @@ class KBDBManager:
                 "hash": hash_value,
                 "start_char_idx": start_char_idx,
                 "end_char_idx": end_char_idx,
-                "metadata": metadata or {}
+                "metadata": metadata or {},
             }
 
     def get_nodes_by_file(self, file_id):
@@ -233,6 +232,7 @@ class KBDBManager:
                 query = query.filter(KnowledgeNode.text.like(f"%{search_text}%"))
             nodes = query.limit(limit).all()
             return [self._to_dict_safely(node) for node in nodes]
+
 
 # 创建全局知识库数据库管理器实例
 kb_db_manager = KBDBManager()

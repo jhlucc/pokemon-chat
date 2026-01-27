@@ -1,8 +1,9 @@
-from typing import Dict, Any, Optional
 import os
 import sqlite3
-from langgraph.graph.state import CompiledStateGraph
+from typing import Any
+
 from langgraph.checkpoint.memory import MemorySaver
+from langgraph.graph.state import CompiledStateGraph
 
 try:
     # Optional dependency: provided by `langgraph-checkpoint-sqlite`.
@@ -10,14 +11,16 @@ try:
 except ModuleNotFoundError:  # pragma: no cover
     SqliteSaver = None
 from src.agents.base import BaseAgent
-from src.graph.workflow import workflow
 from src.core.settings import settings
+from src.graph.workflow import workflow
 from src.utils.callbacks import FileTraceCallbackHandler
+
 
 class SupervisorAgent(BaseAgent):
     """
     Supervisor Agent that uses the modular LangGraph workflow.
     """
+
     def _build_graph(self) -> CompiledStateGraph:
         """
         Builds the graph using the pre-defined workflow and the agent's checkpointer.
@@ -38,20 +41,20 @@ class SupervisorAgent(BaseAgent):
         else:
             # Fallback: in-memory checkpoints (works without extra deps).
             self._checkpointer = MemorySaver()
-        
+
         # Attach tracing callback by updating the compiled graph's runtime config?
         # LangGraph invoke passes config. We can add callbacks there.
         # BaseAgent.invoke methods should support passing config.
         # But we can also set default config here? No, better in BaseAgent.
-        
+
         return workflow.compile(checkpointer=self._checkpointer)
 
-    def invoke(self, input: Dict[str, Any], config: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    def invoke(self, input: dict[str, Any], config: dict[str, Any] | None = None) -> dict[str, Any]:
         """Override to inject callbacks by default."""
         config = config or {}
         if "callbacks" not in config:
-             # Enable Tracing
-             config["callbacks"] = [FileTraceCallbackHandler()]
+            # Enable Tracing
+            config["callbacks"] = [FileTraceCallbackHandler()]
         return super().invoke(input, config)
 
     def get_info(self) -> dict:
@@ -59,5 +62,5 @@ class SupervisorAgent(BaseAgent):
             "name": "supervisor_agent",
             "description": "A multi-agent supervisor system routing queries to specialized workers (RAG, Web, Graph, Stats).",
             "type": "supervisor",
-            "workers": ["rag_worker", "web_worker", "graph_worker", "stats_worker"]
+            "workers": ["rag_worker", "web_worker", "graph_worker", "stats_worker"],
         }

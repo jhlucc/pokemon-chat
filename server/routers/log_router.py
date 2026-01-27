@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import re
 from pathlib import Path
-from typing import Optional
 
 from fastapi import APIRouter, HTTPException, Query
 
@@ -24,7 +23,7 @@ def _redact(text: str) -> str:
     return text
 
 
-def _find_latest_log_file(log_dir: Path) -> Optional[Path]:
+def _find_latest_log_file(log_dir: Path) -> Path | None:
     if not log_dir.exists():
         return None
     candidates = [p for p in log_dir.rglob("*.log") if p.is_file()]
@@ -37,7 +36,7 @@ def _tail_lines(path: Path, lines: int) -> str:
     try:
         raw = path.read_text(encoding="utf-8", errors="replace")
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to read log file: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to read log file: {e}") from e
 
     parts = raw.splitlines()
     if lines > 0:
@@ -58,4 +57,3 @@ async def get_log(lines: int = Query(500, ge=50, le=5000)):
 
     content = _tail_lines(latest, lines=lines)
     return {"log": _redact(content)}
-

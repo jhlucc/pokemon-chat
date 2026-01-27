@@ -7,7 +7,7 @@ from copy import deepcopy
 from functools import lru_cache
 from pathlib import Path
 from threading import Lock
-from typing import Any, Dict, Optional
+from typing import Any
 
 from src.core.settings import settings
 
@@ -69,7 +69,7 @@ def _secrets_file() -> Path:
     return _config_dir() / "provider_secrets.json"
 
 
-def _read_json_file(path: Path) -> Dict[str, Any]:
+def _read_json_file(path: Path) -> dict[str, Any]:
     try:
         if not path.exists():
             return {}
@@ -79,7 +79,7 @@ def _read_json_file(path: Path) -> Dict[str, Any]:
         return {}
 
 
-def _atomic_write_json(path: Path, data: Dict[str, Any]) -> None:
+def _atomic_write_json(path: Path, data: dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp_fd, tmp_path = tempfile.mkstemp(prefix=path.name + ".", dir=str(path.parent))
     try:
@@ -104,22 +104,22 @@ def mask_secret(value: str, keep_start: int = 3, keep_end: int = 4) -> str:
 
 
 @lru_cache(maxsize=1)
-def _load_provider_secrets_cached() -> Dict[str, Any]:
+def _load_provider_secrets_cached() -> dict[str, Any]:
     return _read_json_file(_secrets_file())
 
 
-def load_provider_secrets() -> Dict[str, Any]:
+def load_provider_secrets() -> dict[str, Any]:
     """Load persisted provider secrets (API keys / base URLs)."""
     with _lock:
         return deepcopy(_load_provider_secrets_cached())
 
 
-def _provider_env_key(provider: str) -> Optional[str]:
+def _provider_env_key(provider: str) -> str | None:
     p = _canonical_provider(provider)
     return _PROVIDER_ENV.get(p, {}).get("api_key")
 
 
-def _provider_env_base(provider: str) -> Optional[str]:
+def _provider_env_base(provider: str) -> str | None:
     p = _canonical_provider(provider)
     return _PROVIDER_ENV.get(p, {}).get("api_base")
 
@@ -177,7 +177,7 @@ def get_provider_api_base(provider: str) -> str:
     return (_DEFAULT_API_BASE.get(provider) or settings.llm.api_base or "").strip().rstrip("/")
 
 
-def patch_provider_secrets(provider: str, api_key: Optional[str] = None, api_base: Optional[str] = None) -> Dict[str, Any]:
+def patch_provider_secrets(provider: str, api_key: str | None = None, api_base: str | None = None) -> dict[str, Any]:
     """
     Patch a single provider secret.
 
@@ -237,7 +237,7 @@ def patch_provider_secrets(provider: str, api_key: Optional[str] = None, api_bas
     return load_provider_secrets()
 
 
-def patch_provider_secrets_many(patch: Dict[str, Any]) -> Dict[str, Any]:
+def patch_provider_secrets_many(patch: dict[str, Any]) -> dict[str, Any]:
     """
     Patch multiple providers at once.
 
@@ -320,7 +320,7 @@ def patch_provider_secrets_many(patch: Dict[str, Any]) -> Dict[str, Any]:
     return load_provider_secrets()
 
 
-def build_provider_status() -> Dict[str, Any]:
+def build_provider_status() -> dict[str, Any]:
     """
     Return UI-safe provider status for settings page.
     IMPORTANT: never include raw API keys in the response.
@@ -330,8 +330,8 @@ def build_provider_status() -> Dict[str, Any]:
     for k in (secrets or {}).keys():
         providers.add(_canonical_provider(k))
 
-    def _merged_stored(provider: str) -> Dict[str, Any]:
-        merged: Dict[str, Any] = dict(secrets.get(provider, {}) or {})
+    def _merged_stored(provider: str) -> dict[str, Any]:
+        merged: dict[str, Any] = dict(secrets.get(provider, {}) or {})
         # Backward-compat: merge any existing alias entries into the canonical provider view.
         for alias, canon in _ALIAS_TO_CANONICAL.items():
             if canon != provider:
@@ -343,7 +343,7 @@ def build_provider_status() -> Dict[str, Any]:
                 merged["api_base"] = a.get("api_base")
         return merged
 
-    status: Dict[str, Any] = {}
+    status: dict[str, Any] = {}
     for provider in sorted(providers):
         provider = _canonical_provider(provider)
         if not provider:

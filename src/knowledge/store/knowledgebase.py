@@ -1,19 +1,20 @@
 import os
-import random
 import shutil
 import time
 import traceback
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from pymilvus import CollectionSchema, DataType, FieldSchema, MilvusClient, MilvusException
 
-from src.core.settings import settings
 from src.core.feature_flags import feature_enabled
+from src.core.settings import settings
 from src.knowledge.store.kb_db import kb_db_manager
 from src.utils import hashstr
 from src.utils.logger import get_logger
 
 logger = get_logger(__name__)
+
+
 # 知识库管理
 class KnowledgeBase:
     """
@@ -27,11 +28,7 @@ class KnowledgeBase:
     - 文件管理：记录文件状态，支持批量迁移、备份
     """
 
-    def __init__(
-        self,
-        milvus_uri: Optional[str] = None,
-        embedding_config: Optional[Dict[str, Any]] = None
-    ) -> None:
+    def __init__(self, milvus_uri: str | None = None, embedding_config: dict[str, Any] | None = None) -> None:
         self._milvus_uri = milvus_uri
         self._embedding_config = embedding_config
 
@@ -48,7 +45,7 @@ class KnowledgeBase:
         self.conf = ""
 
         # 运行时依赖（懒加载）
-        self.client: Optional[MilvusClient] = None
+        self.client: MilvusClient | None = None
         self.embed_model = None
         self.reranker = None
 
@@ -70,42 +67,44 @@ class KnowledgeBase:
             logger.info("检测到旧 JSON 知识库，迁移中...")
             try:
                 from scripts.migrate_kb_to_sqlite import migrate_json_to_sqlite
+
                 migrate_json_to_sqlite()
                 logger.info("迁移完成！")
             except Exception as e:
                 logger.error(f"迁移失败: {e}")
 
     # -- Embedding 模型 ---------------------------------------------------
-    def _load_embedding_model(self, embedding_config: Optional[Dict[str, Any]]):
+    def _load_embedding_model(self, embedding_config: dict[str, Any] | None):
         logger.info(f"传入的 embedding_config: {embedding_config}")
         if not self._is_enabled():
             self.embed_model = None
             self.reranker = None
             return
-        
+
         from src.models.embedding import get_embedding_model
-        
+
         # 使用新的 settings 获取 embedding 配置
         # model_name格式: "BAAI/bge-m3" 或带provider前缀
         model_name = settings.embedding.model_name
-        
+
         # 如果传入了自定义配置，优先使用
         if embedding_config and isinstance(embedding_config, dict):
             embed_model_str = embedding_config.get("embed_model", "")
             if embed_model_str:
                 model_name = embed_model_str
-        
+
         self.conf = model_name
         self.embed_model = get_embedding_model(model=model_name)
-        
+
         if feature_enabled("enable_reranker"):
             from src.models.reranker_model import get_reranker
+
             self.reranker = get_reranker()
         else:
             self.reranker = None
 
     # -- Milvus 连接 --------------------------------------------------------
-    def _connect_milvus(self, uri: Optional[str]):
+    def _connect_milvus(self, uri: str | None):
         try:
             # 优先使用函数参数 -> 再看环境变量 -> 再看 settings 默认值
             target = uri or os.getenv("MILVUS_URI") or settings.database.milvus_uri
@@ -136,16 +135,12 @@ class KnowledgeBase:
             self._connect_milvus(self._milvus_uri)
 
     # -- 知识库管理 --------------------------------------------------------
-    def create_database(self, name: str, description: str, dimension: Optional[int] = None) -> Dict[str, Any]:
+    def create_database(self, name: str, description: str, dimension: int | None = None) -> dict[str, Any]:
         self._ensure_ready()
         dim = dimension or self.embed_model.get_dimension()
         db_id = f"kb_{hashstr(name)}"
         info = self.db_manager.create_database(
-            db_id=db_id,
-            name=name,
-            description=description,
-            embed_model=self.conf,
-            dimension=dim
+            db_id=db_id, name=name, description=description, embed_model=self.conf, dimension=dim
         )
         self._ensure_directories(db_id)
         self.add_collection(db_id, dim)
@@ -162,16 +157,17 @@ class KnowledgeBase:
                 logger.warning(f"Drop Milvus collection failed (ignored): {e}")
         self.db_manager.delete_database(db_id)
         folder = os.path.join(self.work_dir, db_id)
-        if os.path.isdir(folder): shutil.rmtree(folder)
+        if os.path.isdir(folder):
+            shutil.rmtree(folder)
 
-    def list_databases(self) -> List[Dict[str, Any]]:
+    def list_databases(self) -> list[dict[str, Any]]:
         out = []
         for db in self.db_manager.get_all_databases():
             record = db.copy()
             try:
-                record['metadata'] = self.get_collection_info(db['db_id'])
+                record["metadata"] = self.get_collection_info(db["db_id"])
             except Exception:
-                record['metadata'] = {'error': '无法获取'}
+                record["metadata"] = {"error": "无法获取"}
             out.append(record)
         return out
 
@@ -183,7 +179,7 @@ class KnowledgeBase:
         do_ocr: bool = False,
         chunk_size: int = 1000,
         chunk_overlap: int = 100,
-        ocr_det_threshold: float = 0.3
+        ocr_det_threshold: float = 0.3,
     ) -> str:
         """
         导入单个文件：
@@ -192,8 +188,8 @@ class KnowledgeBase:
         - 自动记录并插入 Milvus
         返回 file_id
         """
-        ext = path.split('.')[-1].lower()
-        file_id = f"file_{hashstr(path+str(time.time()))}"
+        ext = path.split(".")[-1].lower()
+        file_id = f"file_{hashstr(path + str(time.time()))}"
         _, upload_folder = self._ensure_directories(db_id)
         os.makedirs(upload_folder, exist_ok=True)
         if not os.path.isabs(path):
@@ -206,8 +202,9 @@ class KnowledgeBase:
 
         # 分块
         from src.knowledge.core.indexing import chunk_file
+
         try:
-            if ext == 'pdf' or do_ocr:
+            if ext == "pdf" or do_ocr:
                 docs = chunk_file(path, chunk_size, chunk_overlap, True, ocr_det_threshold)
             else:
                 docs = chunk_file(path, chunk_size, chunk_overlap)
@@ -219,12 +216,7 @@ class KnowledgeBase:
 
         # 数据库记录
         self.db_manager.add_file(
-            db_id=db_id,
-            file_id=file_id,
-            filename=os.path.basename(path),
-            path=path,
-            file_type=ext,
-            status='processing'
+            db_id=db_id, file_id=file_id, filename=os.path.basename(path), path=path, file_type=ext, status="processing"
         )
 
         # 向量插入
@@ -232,21 +224,15 @@ class KnowledgeBase:
             self._ensure_ready()
             chunks = [d.metadata | {"text": d.page_content} for d in docs]
             self._insert_vectors(db_id, file_id, texts, chunks)
-            self.db_manager.update_file_status(file_id, 'done')
+            self.db_manager.update_file_status(file_id, "done")
         except Exception as e:
             logger.error(f"向量插入失败: {e}\n{traceback.format_exc()}")
-            self.db_manager.update_file_status(file_id, 'failed')
+            self.db_manager.update_file_status(file_id, "failed")
 
         return file_id
 
-    def ingest_directory(
-        self,
-        db_id: str,
-        folder: str,
-        suffixes: Optional[List[str]] = None,
-        **kwargs
-    ) -> List[str]:
-        suffixes = suffixes or ['.pdf', '.txt', '.md', '.docx']
+    def ingest_directory(self, db_id: str, folder: str, suffixes: list[str] | None = None, **kwargs) -> list[str]:
+        suffixes = suffixes or [".pdf", ".txt", ".md", ".docx"]
         ids = []
         for root, _, files in os.walk(folder):
             for f in files:
@@ -258,7 +244,7 @@ class KnowledgeBase:
 
     def _ensure_directories(self, db_id: str) -> (str, str):
         base = os.path.join(self.work_dir, db_id)
-        upload = os.path.join(base, 'uploads')
+        upload = os.path.join(base, "uploads")
         os.makedirs(base, exist_ok=True)
         os.makedirs(upload, exist_ok=True)
         return base, upload
@@ -279,32 +265,24 @@ class KnowledgeBase:
         self.client.create_collection(collection_name=name, schema=schema)
 
         from pymilvus import Collection
+
         collection = Collection(name)
         collection.create_index(
-            field_name="vector",
-            index_params={
-                "index_type": "IVF_FLAT",
-                "metric_type": "L2",
-                "params": {"nlist": 1024}
-            }
+            field_name="vector", index_params={"index_type": "IVF_FLAT", "metric_type": "L2", "params": {"nlist": 1024}}
         )
         collection.load()
 
-    def get_collection_info(self, name: str) -> Dict[str, Any]:
+    def get_collection_info(self, name: str) -> dict[str, Any]:
         try:
             self._ensure_ready()
             info = self.client.describe_collection(name)
             info.update(self.client.get_collection_stats(name))
             return info
         except MilvusException as e:
-            return {'name': name, 'error': str(e)}
+            return {"name": name, "error": str(e)}
 
     def _insert_vectors(
-            self,
-            collection_name: str,
-            file_id: str,
-            docs: List[str],
-            chunk_infos: List[Dict[str, Any]]
+        self, collection_name: str, file_id: str, docs: list[str], chunk_infos: list[dict[str, Any]]
     ) -> Any:
         self._ensure_ready()
         if not self.client.has_collection(collection_name):
@@ -318,24 +296,19 @@ class KnowledgeBase:
             meta["file_id"] = file_id
             meta["text"] = docs[idx]
             vector_id = f"{file_id}_{idx}"
-            entities.append({
-                "id": vector_id,
-                "vector": v,
-                "file_id": meta["file_id"],
-                "text": meta["text"]
-            })
+            entities.append({"id": vector_id, "vector": v, "file_id": meta["file_id"], "text": meta["text"]})
 
         return self.client.insert(collection_name=collection_name, data=entities)
 
     # -- 检索 --------------------------------------------------------------
     def search(
-            self,
-            query: str,
-            db_id: str,
-            distance_threshold: Optional[float] = None,
-            rerank: bool = True,
-            top_k: Optional[int] = None
-    ) -> Dict[str, Any]:
+        self,
+        query: str,
+        db_id: str,
+        distance_threshold: float | None = None,
+        rerank: bool = True,
+        top_k: int | None = None,
+    ) -> dict[str, Any]:
         self._ensure_ready()
         dt = distance_threshold or self.default_distance_threshold
         tk = top_k or self.top_k
@@ -345,24 +318,21 @@ class KnowledgeBase:
 
         #  Milvus 检索
         raw_res = self.client.search(
-            db_id,
-            [vector],
-            limit=self.default_max_query_count,
-            output_fields=["text", "file_id"]
+            db_id, [vector], limit=self.default_max_query_count, output_fields=["text", "file_id"]
         )
 
         # 转成纯Python可序列化结构
-        hits: List[Dict[str, Any]] = raw_res[0]
-        results: List[Dict[str, Any]] = []
+        hits: list[dict[str, Any]] = raw_res[0]
+        results: list[dict[str, Any]] = []
         for h in hits:
             results.append(
                 {
                     "entity": {
                         "text": h.get("text", ""),
                         "file_id": h.get("file_id"),
-                        "id": h.get("id")  # 其它字段按需保留
+                        "id": h.get("id"),  # 其它字段按需保留
                     },
-                    "distance": h.get("score", h.get("distance", 0.0))
+                    "distance": h.get("score", h.get("distance", 0.0)),
                 }
             )
 
@@ -375,16 +345,10 @@ class KnowledgeBase:
             scores = self.reranker.compute_score(query, texts, normalize=False)
             for r, s in zip(filtered, scores):
                 r["rerank_score"] = float(s)  # 转 float，保证可 JSON
-            filtered = [
-                r for r in filtered
-                if r["rerank_score"] > self.default_rerank_threshold
-            ]
+            filtered = [r for r in filtered if r["rerank_score"] > self.default_rerank_threshold]
             filtered.sort(key=lambda x: x["rerank_score"], reverse=True)
 
-        return {
-            "results": filtered[:tk],
-            "all_results": results
-        }
+        return {"results": filtered[:tk], "all_results": results}
 
     def restart(self):
         # Reset runtime clients (lazy rebuild).

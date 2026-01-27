@@ -1,12 +1,16 @@
 from abc import ABC, abstractmethod
-from typing import Dict, Any, Optional
+from typing import Any
+
 from pydantic import BaseModel
+
 
 class ProcessingResult(BaseModel):
     """文档处理结果"""
+
     content: str
-    metadata: Dict[str, Any] = {}
-    error: Optional[str] = None
+    metadata: dict[str, Any] = {}
+    error: str | None = None
+
 
 class BaseDocumentProcessor(ABC):
     """
@@ -15,7 +19,7 @@ class BaseDocumentProcessor(ABC):
     """
 
     @abstractmethod
-    def process_file(self, file_path: str, params: Dict[str, Any] = None) -> ProcessingResult:
+    def process_file(self, file_path: str, params: dict[str, Any] = None) -> ProcessingResult:
         """
         处理单个文件
         :param file_path: 文件绝对路径
@@ -25,7 +29,7 @@ class BaseDocumentProcessor(ABC):
         pass
 
     @abstractmethod
-    def check_health(self) -> Dict[str, Any]:
+    def check_health(self) -> dict[str, Any]:
         """
         检查处理器健康状态（例如模型是否加载，API 是否可用）
         """

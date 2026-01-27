@@ -24,7 +24,6 @@ def build_document(search_results):
     documents = []
 
     for result in search_results:
-
         if "uuid" in result:
             uuid = result["uuid"]
         else:
@@ -70,7 +69,7 @@ async def fetch_url(session, url):
     try:
         async with session.get(url, ssl=False) as response:  # 注意：在实际部署中应仔细考虑是否禁用 SSL
             response.raise_for_status()  # 检查响应状态码，如果不是 2xx，将抛出异常
-            response.encoding = 'utf-8'  # 设置响应的编码，通常不需要手动设置，aiohttp 会自动处理
+            response.encoding = "utf-8"  # 设置响应的编码，通常不需要手动设置，aiohttp 会自动处理
             html = await response.text()  # 等待响应体被完全读取
             return html
     except Exception as e:
@@ -96,7 +95,7 @@ async def fetch_markdown(session, url):
         markdown = await html_to_markdown(html)
 
         # 保留至少一个空行（即将两个及以上的换行符替换为两个换行符）
-        markdown = re.sub(r'\n{3,}', '\n\n', markdown)
+        markdown = re.sub(r"\n{3,}", "\n\n", markdown)
 
         return url, markdown
     except Exception as e:
@@ -132,7 +131,7 @@ async def batch_fetch_urls(urls):
 
 async def fetch_details(search_results):
     # 获取要提取详细信息的url
-    urls = [document.metadata['link'] for document in search_results if 'link' in document.metadata]
+    urls = [document.metadata["link"] for document in search_results if "link" in document.metadata]
 
     try:
         details = await batch_fetch_urls(urls)
@@ -146,7 +145,7 @@ async def fetch_details(search_results):
     # 直接在 search_results 上更新 page_content
     for document in search_results:
         # 使用属性访问方式获取链接信息
-        link = document.metadata['link']  # 确保 Document 类定义了 metadata 属性且是一个字典
+        link = document.metadata["link"]  # 确保 Document 类定义了 metadata 属性且是一个字典
         if link in content_maps:
             # 直接更新 Document 对象的 page_content 属性
             document.page_content = content_maps[link]
@@ -156,7 +155,7 @@ async def fetch_details(search_results):
     return chunks
 
 
-async def search(query, num, locale=''):
+async def search(query, num, locale=""):
     """
     定义一个异步函数，用于发起Serper API的实时 Google Search
     """
@@ -164,7 +163,7 @@ async def search(query, num, locale=''):
     params = {
         "q": query,  # 搜索查询词
         "num": num,  # 请求返回的结果数量
-        "hl": "zh-cn"
+        "hl": "zh-cn",
     }
 
     # 如果提供了地区设置，则添加到参数字典中
@@ -177,7 +176,6 @@ async def search(query, num, locale=''):
         search_results = await get_search_results(params=params)
         return search_results  # 返回搜索结果
     except Exception as e:
-
         # 如果搜索过程中出现异常，打印错误信息并重新抛出异常
         print(f"search failed: {e}")
         raise e
@@ -186,9 +184,9 @@ async def search(query, num, locale=''):
 async def get_search_results(params):
     try:
         # SerperAPI的URL
-        url = 'https://google.serper.dev/search'
+        url = "https://google.serper.dev/search"
         # 从环境变量中获取 API 密钥
-        params['api_key'] = '25e9d44471387624110f9d83e9a4e9c68136aad9'
+        params["api_key"] = "25e9d44471387624110f9d83e9a4e9c68136aad9"
 
         # 使用aiohttp创建一个异步HTTP客户端会话
         async with aiohttp.ClientSession() as session:

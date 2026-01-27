@@ -1,4 +1,5 @@
-from typing import Dict, Type, Any, Optional
+from typing import Any
+
 from src.agents.base import BaseAgent
 from src.utils.logger import get_logger
 
@@ -7,6 +8,7 @@ logger = get_logger(__name__)
 
 class SingletonMeta(type):
     _instances = {}
+
     def __call__(cls, *args, **kwargs):
         if cls not in cls._instances:
             cls._instances[cls] = super().__call__(*args, **kwargs)
@@ -17,14 +19,14 @@ class AgentManager(metaclass=SingletonMeta):
     """
     Agent 管理器 (单例)
     负责注册、获取和管理 Agent 实例。
-    
+
     所有注册的 Agent 类必须继承自 BaseAgent。
     """
-    
+
     def __init__(self):
-        self._registry: Dict[str, Type[BaseAgent]] = {}
-        self._instances: Dict[str, BaseAgent] = {}
-        
+        self._registry: dict[str, type[BaseAgent]] = {}
+        self._instances: dict[str, BaseAgent] = {}
+
         # 延迟导入以避免循环依赖
         self._register_builtin_agents()
 
@@ -32,41 +34,47 @@ class AgentManager(metaclass=SingletonMeta):
         """注册内置 Pokemon 主题 Agent"""
         try:
             from src.agents.chat_agent import PokemonKGChatAgent
+
             self.register("chat_agent", PokemonKGChatAgent)
         except Exception as e:
             logger.warning(f"Failed to register chat_agent: {e}")
-        
+
         try:
             from src.agents.deep_agent import DeepAgent
+
             self.register("deep_agent", DeepAgent)
         except Exception as e:
             logger.warning(f"Failed to register deep_agent: {e}")
-        
+
         try:
             from src.agents.pokemon_stats_agent import PokemonStatsAgent
+
             self.register("stats_agent", PokemonStatsAgent)
         except Exception as e:
             logger.warning(f"Failed to register stats_agent: {e}")
-        
+
         try:
             from src.agents.pokedex_agent import PokedexAgent
+
             self.register("pokedex_agent", PokedexAgent)
         except Exception as e:
             logger.warning(f"Failed to register pokedex_agent: {e}")
-        
+
         try:
             from src.agents.trainer_agent import TrainerAgent
+
             self.register("trainer_agent", TrainerAgent)
         except Exception as e:
             logger.warning(f"Failed to register trainer_agent: {e}")
 
         try:
             from src.agents.supervisor_agent import SupervisorAgent
+
             self.register("supervisor_agent", SupervisorAgent)
         except Exception as e:
             logger.warning(f"Failed to register supervisor_agent: {e}")
 
-    def register(self, name: str, agent_cls: Type[BaseAgent]):
+    def register(self, name: str, agent_cls: type[BaseAgent]):
         """注册 Agent 类"""
         self._registry[name] = agent_cls
         logger.info(f"Registered agent: {name} -> {agent_cls.__name__}")
@@ -84,7 +92,7 @@ class AgentManager(metaclass=SingletonMeta):
     def get_agent(self, name: str, **kwargs) -> BaseAgent:
         """
         获取 Agent 实例 (懒加载)
-        
+
         Args:
             name: Agent 名称
             **kwargs: 传递给 Agent 构造函数的额外参数
@@ -92,26 +100,26 @@ class AgentManager(metaclass=SingletonMeta):
         # 如果已有实例且无额外参数，直接返回
         if name in self._instances and not kwargs:
             return self._instances[name]
-        
+
         if name not in self._registry:
             raise ValueError(f"Agent '{name}' not found in registry. Available: {list(self._registry.keys())}")
-            
+
         # Instantiate
         try:
             agent_cls = self._registry[name]
             instance = agent_cls(**kwargs) if kwargs else agent_cls()
-            
+
             # 只缓存无参数创建的实例
             if not kwargs:
                 self._instances[name] = instance
-            
+
             logger.info(f"Instantiated agent: {name}")
             return instance
         except Exception as e:
             logger.error(f"Failed to instantiate agent '{name}': {e}")
             raise e
 
-    def list_agents(self) -> Dict[str, Any]:
+    def list_agents(self) -> dict[str, Any]:
         """列出所有已注册 Agent 的信息"""
         info_list = {}
         for name in self._registry:
@@ -133,4 +141,3 @@ class AgentManager(metaclass=SingletonMeta):
 
 # Export singleton instance
 agent_manager = AgentManager()
-

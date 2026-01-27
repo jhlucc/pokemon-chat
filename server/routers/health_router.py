@@ -1,12 +1,13 @@
 from __future__ import annotations
 
+import os
 import socket
 from urllib.parse import urlparse
 
 from fastapi import APIRouter
 
-from src.core.settings import settings
 from src.core.feature_flags import feature_enabled
+from src.core.settings import settings
 
 health = APIRouter(tags=["health"])
 
@@ -32,9 +33,28 @@ def _parse_host_port(uri: str, default_port: int) -> tuple[str, int]:
         port = u.port or default_port
         return host, port
 
-    if ":" in uri:
+    # Handle plain host:port (without scheme). Be conservative with IPv6-like inputs.
+    if ":" in uri and not uri.startswith("["):
+        # Likely IPv6 without brackets -> treat as host-only.
+        if uri.count(":") > 1:
+            return uri, default_port
+
         host, port_s = uri.rsplit(":", 1)
-        return host, int(port_s)
+        try:
+            return host, int(port_s)
+        except Exception:
+            return uri, default_port
+
+    # Bracketed IPv6: [::1]:1234
+    if uri.startswith("[") and "]" in uri:
+        host_part, _, rest = uri.partition("]")
+        host = host_part[1:]
+        if rest.startswith(":"):
+            try:
+                return host, int(rest[1:])
+            except Exception:
+                return host, default_port
+        return host, default_port
 
     return uri, default_port
 
@@ -87,7 +107,9 @@ async def readyz():
 
     # MySQL
     mysql_enabled = bool(feature_enabled("enable_mcp"))  # MCP tool uses MySQL in this project
-    mysql_ok, mysql_err = _tcp_check(settings.database.mysql_host, settings.database.mysql_port) if mysql_enabled else (True, "")
+    mysql_ok, mysql_err = (
+        _tcp_check(settings.database.mysql_host, settings.database.mysql_port) if mysql_enabled else (True, "")
+    )
     checks["mysql"] = {
         "enabled": mysql_enabled,
         "target": f"{settings.database.mysql_host}:{settings.database.mysql_port}",
@@ -107,4 +129,22 @@ async def readyz():
     }
 
     ok = all(v["ok"] for v in checks.values() if v.get("enabled"))
-    return {"status": "ok" if ok else "fail", "checks": checks, "warnings": warnings}
+    return {
+        "status": "ok" if ok else "fail",
+        "app": {
+            "version": (os.getenv("APP_VERSION") or "").strip() or None,
+            "build_sha": (os.getenv("BUILD_SHA") or "").strip() or None,
+            "build_time": (os.getenv("BUILD_TIME") or "").strip() or None,
+        },
+        "features": {
+            "enable_knowledge_base": bool(feature_enabled("enable_knowledge_base")),
+            "enable_knowledge_graph": bool(feature_enabled("enable_knowledge_graph")),
+            "enable_web_search": bool(feature_enabled("enable_web_search")),
+            "enable_mcp": bool(feature_enabled("enable_mcp")),
+            "enable_reranker": bool(feature_enabled("enable_reranker")),
+            "enable_asr": bool(feature_enabled("enable_asr")),
+            "enable_ner_bert": bool(feature_enabled("enable_ner_bert")),
+        },
+        "checks": checks,
+        "warnings": warnings,
+    }

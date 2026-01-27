@@ -1,13 +1,12 @@
 #!/usr/bin/env python
-# -*- coding: utf-8 -*-
-import os
-import logging
 import traceback
-from typing import Any, Dict, List, Callable
+from collections.abc import Callable
+from typing import Any
 
-from pymilvus import connections, Collection
-from src.core.settings import settings
+from pymilvus import Collection, connections
+
 from src.core.feature_flags import feature_enabled
+from src.core.settings import settings
 from src.models.embedding import get_embedding_model
 from src.models.reranker_model import RerankerWrapper
 from src.utils.logger import get_logger
@@ -52,11 +51,8 @@ class VectorRecaller:
         else:
             logger.info("Reranker not enabled.")
 
-    def search_by_vector(self, vector: List[float], limit: int = 10) -> List[Any]:
-        search_params = {
-            "metric_type": "COSINE",
-            "params": {"nprobe": 8, "ef": 64}
-        }
+    def search_by_vector(self, vector: list[float], limit: int = 10) -> list[Any]:
+        search_params = {"metric_type": "COSINE", "params": {"nprobe": 8, "ef": 64}}
 
         results = self.collection.search(
             data=[vector],
@@ -64,20 +60,20 @@ class VectorRecaller:
             param=search_params,
             limit=limit,
             expr="text_length > 50",
-            output_fields=["text", "metadata"]
+            output_fields=["text", "metadata"],
         )
 
         hits = results[0] if results else []
         return hits
 
-    def search(self, query: str, limit: int = 10) -> List[Any]:
+    def search(self, query: str, limit: int = 10) -> list[Any]:
         vectors = self.embed_model.batch_encode([query])
         if not vectors:
             logger.error("Embedding failed.")
             return []
         return self.search_by_vector(vectors[0], limit)
 
-    def query(self, query: str, **kwargs) -> Dict[str, Any]:
+    def query(self, query: str, **kwargs) -> dict[str, Any]:
         distance_threshold = kwargs.get("distance_threshold", self.distance_threshold)
         rerank_threshold = kwargs.get("rerank_threshold", self.rerank_threshold)
         max_query_count = kwargs.get("max_query_count", self.max_query_count)
@@ -97,13 +93,11 @@ class VectorRecaller:
                     "text": getattr(hit.entity, "text", ""),
                     "metadata": getattr(hit.entity, "metadata", {}),
                     "distance": hit.distance,
-                    "rerank_score": score
+                    "rerank_score": score,
                 }
                 results_with_scores.append(result)
 
-            results_with_scores = [
-                res for res in results_with_scores if res["rerank_score"] > rerank_threshold
-            ]
+            results_with_scores = [res for res in results_with_scores if res["rerank_score"] > rerank_threshold]
 
             results_with_scores.sort(key=lambda x: x["rerank_score"], reverse=True)
         else:
@@ -112,20 +106,17 @@ class VectorRecaller:
                     "text": getattr(hit.entity, "text", ""),
                     "metadata": getattr(hit.entity, "metadata", {}),
                     "distance": hit.distance,
-                    "rerank_score": None
+                    "rerank_score": None,
                 }
                 for hit in filtered_hits
             ]
 
         final_results = results_with_scores[:top_k]
 
-        return {
-            "results": final_results,
-            "all_hits": hits
-        }
+        return {"results": final_results, "all_hits": hits}
 
-    def get_retriever(self) -> Callable[[str], List[Dict[str, Any]]]:
-        def retriever(query: str) -> List[Dict[str, Any]]:
+    def get_retriever(self) -> Callable[[str], list[dict[str, Any]]]:
+        def retriever(query: str) -> list[dict[str, Any]]:
             return self.query(query).get("results", [])
 
         return retriever
@@ -146,7 +137,7 @@ if __name__ == "__main__":
             logger.info(f"内容: {res['text']}")
             logger.info(f"元数据: {res['metadata']}")
             logger.info(f"相似度: {1 - res['distance']:.3f}")
-            if res.get('rerank_score'):
+            if res.get("rerank_score"):
                 logger.info(f"重排序分数: {res['rerank_score']:.3f}")
             print("-----")
     except Exception as e:

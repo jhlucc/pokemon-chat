@@ -22,7 +22,7 @@
         :value="historyRound"
         :min="1"
         :max="50"
-        @change="(val) => emit('update:history-round', val as number)"
+        @change="(val: number | string | null) => emit('update:history-round', Number(val ?? 1))"
       />
     </div>
     <div class="options-row">
@@ -31,7 +31,7 @@
         :value="fontSize"
         style="width: 100px"
         placeholder="选择字体大小"
-        @change="(val) => emit('update:font-size', val)"
+        @change="(val: string) => emit('update:font-size', val as FontSize)"
       >
         <a-select-option value="smaller">更小</a-select-option>
         <a-select-option value="default">默认</a-select-option>
@@ -48,11 +48,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref } from 'vue'
 import { onClickOutside } from '@vueuse/core'
 import type { FontSize } from '@/types/chat'
 
-const props = defineProps<{
+defineProps<{
   visible: boolean
   stream: boolean
   summaryTitle: boolean

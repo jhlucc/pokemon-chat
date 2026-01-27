@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """
 Agentic (long-term) memory.
 
@@ -12,11 +10,10 @@ The API is used by:
 - unit tests in `src/tests/test_phase11.py`
 """
 
-import json
+from __future__ import annotations
+
 import sqlite3
-from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, Optional
 
 from pydantic import BaseModel, Field
 
@@ -51,7 +48,7 @@ class AgenticMemory:
     SQLite-backed preference store.
     """
 
-    def __init__(self, db_path: Optional[Path] = None) -> None:
+    def __init__(self, db_path: Path | None = None) -> None:
         self.db_path = Path(db_path) if db_path else _default_db_path()
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         self._init_db()
@@ -158,7 +155,7 @@ class AgenticMemory:
 
 
 # Global singleton used by chat_router.
-_memory: Optional[AgenticMemory] = None
+_memory: AgenticMemory | None = None
 
 
 def get_agentic_memory() -> AgenticMemory:

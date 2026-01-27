@@ -1,13 +1,15 @@
+import asyncio
 import logging
+import os
 import time
 from datetime import datetime, timedelta
-from typing import List, Dict, Optional
-import asyncio
 
-from tavily import TavilyClient
-from src.knowledge.vector.milvus_store import MilvusService
 from langchain_core.prompts import PromptTemplate
 from langchain_openai import ChatOpenAI
+from tavily import TavilyClient
+
+from src.core.settings import settings
+from src.knowledge.vector.milvus_store import MilvusService
 
 logger = logging.getLogger("IndustrialWebSearcher")
 logger.setLevel(logging.INFO)
@@ -15,12 +17,10 @@ if not logger.handlers:
     console_handler = logging.StreamHandler()
     console_handler.setLevel(logging.INFO)
     formatter = logging.Formatter(
-        fmt="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-        datefmt="%Y-%m-%d %H:%M:%S"
+        fmt="%(asctime)s - %(name)s - %(levelname)s - %(message)s", datefmt="%Y-%m-%d %H:%M:%S"
     )
     console_handler.setFormatter(formatter)
     logger.addHandler(console_handler)
-from src.core.settings import settings
 
 
 class MissingAPIKeyError(Exception):
@@ -31,53 +31,53 @@ class TavilySearchError(Exception):
     pass
 
 
-def _validate_api_key(api_key: Optional[str]) -> str:
+def _validate_api_key(api_key: str | None) -> str:
     if not api_key:
         raise MissingAPIKeyError("环境变量未设置。")
     return api_key
 
 
-def _extract_search_results(raw_results: Dict, max_results: int) -> List[Dict]:
+def _extract_search_results(raw_results: dict, max_results: int) -> list[dict]:
     if not raw_results or "results" not in raw_results:
         logger.warning("Tavilyapi返回内容为空或格式异常。")
         return []
     extracted = []
-    for item in raw_results['results'][:max_results]:
-        extracted.append({
-            'title': item.get('title', ''),
-            'content': item.get('content', ''),
-            'url': item.get('url', ''),
-            'score': item.get('score', 0)
-        })
+    for item in raw_results["results"][:max_results]:
+        extracted.append(
+            {
+                "title": item.get("title", ""),
+                "content": item.get("content", ""),
+                "url": item.get("url", ""),
+                "score": item.get("score", 0),
+            }
+        )
     return extracted
 
 
 class IndustrialWebSearcher:
-    def __init__(self, api_key: Optional[str] = None, cache_ttl_minutes: int = 10, milvus_collection: str = "test"):
+    def __init__(self, api_key: str | None = None, cache_ttl_minutes: int = 10, milvus_collection: str = "test"):
         self.api_key = _validate_api_key(api_key or os.getenv("TAVILY_API_KEY"))
         self.client = TavilyClient(self.api_key)
         self.cache_ttl = timedelta(minutes=cache_ttl_minutes)
-        self._search_cache: Dict[str, Dict] = {}
+        self._search_cache: dict[str, dict] = {}
         # 初始化 MilvusService（负责插入向量和语义搜索）
-        self.milvus = MilvusService(collection_name=milvus_collection, embedding_model=settings.embedding.model_name,
-                                    overwrite=True)
+        self.milvus = MilvusService(
+            collection_name=milvus_collection, embedding_model=settings.embedding.model_name, overwrite=True
+        )
         logger.info("IndustrialWebSearcher 实例已创建。")
 
     def _is_cache_valid(self, query: str) -> bool:
         if query not in self._search_cache:
             return False
         cache_entry = self._search_cache[query]
-        if 'expires_at' not in cache_entry:
+        if "expires_at" not in cache_entry:
             return False
-        return datetime.now() < cache_entry['expires_at']
+        return datetime.now() < cache_entry["expires_at"]
 
-    def _cache_results(self, query: str, results: List[Dict]) -> None:
-        self._search_cache[query] = {
-            "results": results,
-            "expires_at": datetime.now() + self.cache_ttl
-        }
+    def _cache_results(self, query: str, results: list[dict]) -> None:
+        self._search_cache[query] = {"results": results, "expires_at": datetime.now() + self.cache_ttl}
 
-    def perform_search(self, query: str, max_results: int = 3, search_depth: str = "basic") -> List[Dict]:
+    def perform_search(self, query: str, max_results: int = 3, search_depth: str = "basic") -> list[dict]:
         """
         调用 Tavily API 获取搜索结果，并缓存结果。之后返回原始结果列表。
         """
@@ -94,21 +94,17 @@ class IndustrialWebSearcher:
         start_time = time.time()
         try:
             logger.info(f"开始搜索: '{query}', 深度: {search_depth}, 期望结果数: {max_results}")
-            raw_response = self.client.search(
-                query=query,
-                search_depth=search_depth,
-                max_results=max_results
-            )
+            raw_response = self.client.search(query=query, search_depth=search_depth, max_results=max_results)
         except Exception as e:
             logger.error(f"Tavily搜索时出现异常：{e}")
-            raise TavilySearchError(f"Tavily 搜索异常：{e}")
+            raise TavilySearchError(f"Tavily 搜索异常：{e}") from e
         results = _extract_search_results(raw_response, max_results)
         self._cache_results(query, results)
         elapsed = time.time() - start_time
         logger.info(f"搜索完成，耗时: {elapsed:.2f} 秒，返回 {len(results)} 条结果。")
         return results
 
-    def format_results(self, results: List[Dict]) -> str:
+    def format_results(self, results: list[dict]) -> str:
         """将搜索结果格式化为可读文本"""
         if not results:
             return "没有找到相关的网络搜索结果。"
@@ -124,7 +120,7 @@ class IndustrialWebSearcher:
         self._search_cache.clear()
         logger.info("搜索缓存已清空。")
 
-    def insert_and_rerank(self, query: str, results: List[Dict], rag_top_k: int = 3) -> List[Dict]:
+    def insert_and_rerank(self, query: str, results: list[dict], rag_top_k: int = 3) -> list[dict]:
         """
         利用 MilvusService 将搜索结果插入向量库，并基于向量相似性进行重排序与去重。
         返回语义上最相关的结果列表。
@@ -134,8 +130,8 @@ class IndustrialWebSearcher:
         for item in results:
             # page_content摘要或内容，metadata 中记录标题和URL等
             doc = type("Document", (), {})()  # 创建一个简单的对象用于存储属性
-            doc.page_content = item['content']
-            doc.metadata = {"title": item['title'], "url": item['url'], "snippet": item['content']}
+            doc.page_content = item["content"]
+            doc.metadata = {"title": item["title"], "url": item["url"], "snippet": item["content"]}
             documents.append(doc)
 
         # 插入文档到Milvus
@@ -149,11 +145,9 @@ class IndustrialWebSearcher:
             content = doc.page_content
             if content not in seen:
                 seen.add(content)
-                reranked.append({
-                    "title": doc.metadata.get("title", ""),
-                    "content": content,
-                    "url": doc.metadata.get("url", "")
-                })
+                reranked.append(
+                    {"title": doc.metadata.get("title", ""), "content": content, "url": doc.metadata.get("url", "")}
+                )
         return reranked
 
 
@@ -164,23 +158,24 @@ class IndustrialWebSearcherLLM:
     """
 
     def __init__(
-            self,
-            api_key: Optional[str] = None,
-            cache_ttl_minutes: int = 10,
-            milvus_collection: str = "test",
-            rag_top_k: int = 3,
-            llm_model: str = None,
-            openai_base_url: str = None,
-            openai_api_key: str = None,
-            embedding_model: str = None,
+        self,
+        api_key: str | None = None,
+        cache_ttl_minutes: int = 10,
+        milvus_collection: str = "test",
+        rag_top_k: int = 3,
+        llm_model: str = None,
+        openai_base_url: str = None,
+        openai_api_key: str = None,
+        embedding_model: str = None,
     ):
         # Apply defaults from settings
         llm_model = llm_model or settings.llm.model_name
         openai_base_url = openai_base_url or settings.llm.api_base
         openai_api_key = openai_api_key or settings.llm.api_key
         embedding_model = embedding_model or settings.embedding.model_name
-        self.searcher = IndustrialWebSearcher(api_key=api_key, cache_ttl_minutes=cache_ttl_minutes,
-                                              milvus_collection=milvus_collection)
+        self.searcher = IndustrialWebSearcher(
+            api_key=api_key, cache_ttl_minutes=cache_ttl_minutes, milvus_collection=milvus_collection
+        )
         self.rag_top_k = rag_top_k
         # 提示模板
         self.prompt_templates = {
@@ -191,12 +186,11 @@ class IndustrialWebSearcherLLM:
                     "<联网检索到的信息>{context}</联网检索到的信息>\n"
                     "<问题>{question}</问题>\n"
                 ),
-                input_variables=["context", "question"]
+                input_variables=["context", "question"],
             ),
             "without_context": PromptTemplate(
-                template="请你回答我的问题:\n{question}\n\n",
-                input_variables=["question"]
-            )
+                template="请你回答我的问题:\n{question}\n\n", input_variables=["question"]
+            ),
         }
         self.llm = ChatOpenAI(
             model=llm_model,
@@ -204,7 +198,7 @@ class IndustrialWebSearcherLLM:
             api_key=openai_api_key,
         )
 
-    def _combine_results(self, raw_results: List[Dict], reranked: List[Dict]) -> str:
+    def _combine_results(self, raw_results: list[dict], reranked: list[dict]) -> str:
         """
         合并原始搜索结果（例如摘要）与Milvus 重排序后的结果，生成最终的上下文字符串，
         并通过set去重。
@@ -242,7 +236,8 @@ class IndustrialWebSearcherLLM:
         return answer
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
+
     async def main():
         searcher_llm = IndustrialWebSearcherLLM(
             api_key=settings.tavily.api_key,
@@ -251,7 +246,7 @@ if __name__ == '__main__':
             rag_top_k=3,
             llm_model=settings.llm.model_name,
             openai_api_key=settings.llm.api_key,
-            openai_base_url=settings.llm.api_base
+            openai_base_url=settings.llm.api_base,
         )
         query_str = "皮卡丘进化是什么？"
         logger.info(f"正在执行搜索查询: {query_str}")
@@ -265,6 +260,5 @@ if __name__ == '__main__':
         # )
         # print("\n=== 格式化后的搜索结果 ===")
         # print(formatted_results)
-
 
     asyncio.run(main())

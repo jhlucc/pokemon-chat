@@ -1,20 +1,19 @@
-import os
-import logging
 import asyncio
-import concurrent.futures          # ← 新增
+import concurrent.futures  # ← 新增
+import logging
+import os
 from abc import ABC, abstractmethod
-from typing import Dict, List, Optional, Any
+from typing import Any
+
+from langchain_core.output_parsers import JsonOutputParser
+from langchain_core.prompts import ChatPromptTemplate
+from langchain_openai import ChatOpenAI
 
 from src.core.settings import settings
 from src.models.schemas import Source
-from langchain_openai import ChatOpenAI
-from langchain_core.prompts import ChatPromptTemplate
-from langchain_core.output_parsers import JsonOutputParser
-from langchain_core.messages import AIMessage
-
 
 # -------------------- 全局超时时长（秒） --------------------
-SEARCH_TIMEOUT = 10        # 你可以按需改成 5、15 等
+SEARCH_TIMEOUT = 10  # 你可以按需改成 5、15 等
 # -----------------------------------------------------------
 
 logger = logging.getLogger("WebSearcher")
@@ -24,10 +23,12 @@ logger.setLevel(logging.INFO)
 # 抽象基类
 # ---------------------------------------------------------------------------
 
+
 class BaseWebSearcher(ABC):
     """所有搜索器统一接口：同步 search(query) -> List[Source]"""
+
     @abstractmethod
-    def search(self, query: str, top_k: int = 5) -> List[Source]:
+    def search(self, query: str, top_k: int = 5) -> list[Source]:
         raise NotImplementedError
 
 
@@ -35,11 +36,13 @@ class BaseWebSearcher(ABC):
 # Tavily
 # ---------------------------------------------------------------------------
 
+
 class TavilyBasicSearcher(BaseWebSearcher):
     """使用 Tavily API 进行搜索（完全同步实现，已加超时）"""
 
-    def __init__(self, api_key: Optional[str] = None):
+    def __init__(self, api_key: str | None = None):
         from tavily import TavilyClient
+
         self.api_key = api_key or os.getenv("TAVILY_API_KEY")
         if not self.api_key:
             raise ValueError("Tavily API Key 未提供!!!")
@@ -49,19 +52,14 @@ class TavilyBasicSearcher(BaseWebSearcher):
         """在线程池里调用，便于加超时"""
         return self.client.search(*args, **kwargs)
 
-    def search(self, query: str, top_k: int = 5) -> List[Dict[str, Any]]:
+    def search(self, query: str, top_k: int = 5) -> list[dict[str, Any]]:
         logger.info(f"[TavilyBasicSearcher] Searching for: {query} (top_k={top_k})")
         if not query.strip():
             return []
 
         try:
             with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
-                future = pool.submit(
-                    self._safe_call,
-                    query=query,
-                    max_results=top_k,
-                    search_depth="basic"
-                )
+                future = pool.submit(self._safe_call, query=query, max_results=top_k, search_depth="basic")
                 raw = future.result(timeout=SEARCH_TIMEOUT)
         except concurrent.futures.TimeoutError:
             logger.warning(f"Tavily 搜索超时 (> {SEARCH_TIMEOUT}s)")
@@ -79,7 +77,7 @@ class TavilyBasicSearcher(BaseWebSearcher):
                 title=item.get("title", ""),
                 content_snippet=item.get("content", ""),
                 url=item.get("url", ""),
-                score=item.get("score", 0)
+                score=item.get("score", 0),
             )
             for item in raw["results"][:top_k]
         ]
@@ -89,34 +87,32 @@ class TavilyBasicSearcher(BaseWebSearcher):
 # Lite 基础搜索  ——  用 async 搜索工具，但对外提供同步接口
 # ---------------------------------------------------------------------------
 
+
 class LiteBaseSearcher(BaseWebSearcher):
-    def __init__(self, some_config: Optional[Any] = None):
+    def __init__(self, some_config: Any | None = None):
         self.llm = ChatOpenAI(
-            model=settings.llm.model_name,
-            base_url=settings.llm.api_base,
-            api_key=settings.llm.api_key,
-            temperature=0.0
+            model=settings.llm.model_name, base_url=settings.llm.api_base, api_key=settings.llm.api_key, temperature=0.0
         )
 
-    def _check_safety(self, query: str) -> Dict[str, Any]:
+    def _check_safety(self, query: str) -> dict[str, Any]:
         """检查查询是否安全/相关"""
         prompt = ChatPromptTemplate.from_template("""
         你是 Pokemon 搜索守门人。你的任务是判断用户的搜索查询是否与 "Pokemon (宝可梦/口袋妖怪)"、"动画/游戏" 相关。
-        
+
         判断规则：
         1. 如果包含宝可梦名称、角色、招式、地点等，返回 "pass"。
         2. 如果是日常问候（你好、早上好等），返回 "pass"。
         3. 如果是完全无关的话题（如：政治、股票、其他动漫、编程问题等），返回 "block"。
-        
+
         请输出 JSON 格式:
         {{
             "status": "pass" 或 "block",
             "reason": "原因"
         }}
-        
+
         用户查询: {query}
         """)
-        
+
         chain = prompt | self.llm | JsonOutputParser()
         try:
             return chain.invoke({"query": query})
@@ -142,7 +138,7 @@ class LiteBaseSearcher(BaseWebSearcher):
 
     # ---------- 对外接口 ----------
 
-    def search(self, query: str, top_k: int = 5) -> List[Dict[str, Any]]:
+    def search(self, query: str, top_k: int = 5) -> list[dict[str, Any]]:
         logger.info(f"[LiteWebSearcher] Searching for: {query} (top_k={top_k})")
         if not query.strip():
             return []
@@ -160,7 +156,7 @@ class LiteBaseSearcher(BaseWebSearcher):
                         title="搜索被拒绝",
                         content_snippet=f"抱歉，我无法搜索不是宝可梦主题的内容~ (原因: {check_result.get('reason', '无关内容')})",
                         url="#",
-                        score=0.0
+                        score=0.0,
                     )
                 ]
         except Exception as e:
@@ -169,7 +165,7 @@ class LiteBaseSearcher(BaseWebSearcher):
             pass
 
         # 异步搜索工具（保持原来的导入路径）
-        from src.agents.tools.websearch.utils import search      # async def search(q, k) -> list
+        from src.agents.tools.websearch.utils import search  # async def search(q, k) -> list
 
         try:
             raw_results = self._run_sync(search(query, top_k))
@@ -181,11 +177,7 @@ class LiteBaseSearcher(BaseWebSearcher):
             return []
 
         return [
-            Source(
-                title=doc.get("title", ""),
-                content_snippet=doc.get("snippet", ""),
-                url=doc.get("link", "")
-            )
+            Source(title=doc.get("title", ""), content_snippet=doc.get("snippet", ""), url=doc.get("link", ""))
             for doc in raw_results[:top_k]
         ]
 

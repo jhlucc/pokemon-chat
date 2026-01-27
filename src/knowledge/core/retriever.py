@@ -2,13 +2,13 @@ from __future__ import annotations
 
 import asyncio
 import threading
-from typing import Any, Dict, List
+from typing import Any
 
+from src.core.feature_flags import feature_enabled
 from src.core.llm_factory import build_chat_llm
 from src.core.settings import settings
-from src.core.feature_flags import feature_enabled
 from src.knowledge.core.operators import HyDEOperator
-from src.knowledge.core.prompts import knowbase_qa_template, rewritten_query_prompt_template, keywords_prompt_template
+from src.knowledge.core.prompts import keywords_prompt_template, knowbase_qa_template, rewritten_query_prompt_template
 from src.models.reranker_model import RerankerWrapper
 from src.runtime import get_kb, get_kg_agent, get_mcp_client
 from src.utils.logger import get_logger
@@ -20,7 +20,6 @@ _DEFAULT_MCP_TIMEOUT_S = 15.0
 
 
 class Retriever:
-
     def __init__(self):
         self._load_models()
         self._kg_agent = None
@@ -38,7 +37,7 @@ class Retriever:
             self._kg_agent = get_kg_agent()
         return self._kg_agent
 
-    def _get_llm(self, meta: Dict[str, Any] | None = None):
+    def _get_llm(self, meta: dict[str, Any] | None = None):
         """
         Return an OpenAI-compatible LLM for internal retrieval steps.
 
@@ -64,16 +63,17 @@ class Retriever:
 
         if feature_enabled("enable_web_search"):
             from src.agents.tools.websearch.websearcher import LiteBaseSearcher
+
             self.web_searcher = LiteBaseSearcher()
 
-    def retrieval(self, query: str, history: List[Dict[str, Any]], meta: Dict[str, Any]) -> Dict[str, Any]:
+    def retrieval(self, query: str, history: list[dict[str, Any]], meta: dict[str, Any]) -> dict[str, Any]:
         refs = {"query": query, "history": history, "meta": meta}
         refs["model_name"] = settings.llm.model_name
         refs["entities"] = self.reco_entities(query, history, refs)
         refs["knowledge_base"] = self.query_knowledgebase(query, history, refs)
-        refs["graph_base"] = self.query_graph(query, history, refs) #图谱
+        refs["graph_base"] = self.query_graph(query, history, refs)  # 图谱
         refs["web_search"] = self.query_web(query, history, refs)
-        refs["mysql_mcp"]=self.query_mysql_mcp(query, history, refs)
+        refs["mysql_mcp"] = self.query_mysql_mcp(query, history, refs)
         return refs
 
     async def _call_mcp(self, query: str, *, timeout_s: float) -> dict:
@@ -84,15 +84,16 @@ class Retriever:
         except asyncio.TimeoutError:
             _log.error(f"MCP 查询超时: {timeout_s}s")
             return {"answer": ""}
+
     def restart(self):
         """所有需要重启的模型"""
         self._load_models()
 
-    def query_mysql_mcp(self, query: str, history: List[Dict[str, Any]], refs: Dict[str, Any]) -> Dict[str, Any]:
+    def query_mysql_mcp(self, query: str, history: list[dict[str, Any]], refs: dict[str, Any]) -> dict[str, Any]:
         meta = refs["meta"]
         mcp_id = meta.get("mcp_id")  # 按钮亮时 = 'default'
         if not mcp_id or not feature_enabled("enable_mcp"):
-            return {"answer": "" }
+            return {"answer": ""}
 
         try:
             timeout_s = float(meta.get("mcp_timeout_s", _DEFAULT_MCP_TIMEOUT_S))
@@ -131,7 +132,8 @@ class Retriever:
         except Exception as e:
             _log.error(f"MCP 查询失败: {e}")
             return {"answer": ""}
-    def clean_kb_text(self,kb_res, max_len=100):
+
+    def clean_kb_text(self, kb_res, max_len=100):
         seen = set()
         cleaned = []
         for r in kb_res:
@@ -164,6 +166,7 @@ class Retriever:
         # 加入网络搜索结果
         web_res = refs.get("web_search", {}).get("results", [])
         if web_res:
+
             def _web_item_to_text(item: Any) -> str:
                 if item is None:
                     return ""
@@ -173,9 +176,7 @@ class Retriever:
                 else:
                     title = str(getattr(item, "title", "") or "").strip()
                     content = str(
-                        getattr(item, "content", None)
-                        or getattr(item, "content_snippet", None)
-                        or ""
+                        getattr(item, "content", None) or getattr(item, "content_snippet", None) or ""
                     ).strip()
                 if not (title or content):
                     return ""
@@ -183,7 +184,7 @@ class Retriever:
 
             web_text = "\n".join(t for t in (_web_item_to_text(r) for r in web_res) if t)
             external_parts.append("网络搜索信息:\n" + web_text)
-        mcp_tes=refs.get("mysql_mcp", {}).get("answer", [])
+        mcp_tes = refs.get("mysql_mcp", {}).get("answer", [])
         if mcp_tes:
             external_parts.append("MySQL_MCP:\n" + mcp_tes.strip())
         # print(external_parts)
@@ -213,10 +214,7 @@ class Retriever:
                 return {"answer": None, "results": empty, "subgraph": empty}
 
             # 调用 KGQueryAgent.query，传hops参数
-            result = agent.query(
-                query,
-                hops=refs["meta"].get("graphHops", 2)
-            )
+            result = agent.query(query, hops=refs["meta"].get("graphHops", 2))
             # Normalize shape for the frontend: `graph_base.results.{nodes,edges}`
             if isinstance(result, dict):
                 subgraph = result.get("results") or result.get("subgraph") or empty
@@ -250,7 +248,7 @@ class Retriever:
                 db_id=db_id,
                 distance_threshold=meta.get("distanceThreshold", self.default_distance_threshold),
                 rerank=True,
-                top_k=meta.get("topK", self.top_k)
+                top_k=meta.get("topK", self.top_k),
             )
             response["results"] = kb_res["results"]
             response["all_results"] = kb_res["all_results"]
@@ -267,6 +265,7 @@ class Retriever:
             if self.web_searcher is None:
                 # Feature might be toggled on at runtime; lazy init here.
                 from src.agents.tools.websearch.websearcher import LiteBaseSearcher
+
                 self.web_searcher = LiteBaseSearcher()
             raw_results = self.web_searcher.search(query, top_k=5)
         except Exception as e:
@@ -275,7 +274,7 @@ class Retriever:
 
         # Frontend expects each result shape: {title, url, content, score}.
         results: list[dict[str, Any]] = []
-        for item in (raw_results or []):
+        for item in raw_results or []:
             if item is None:
                 continue
             if isinstance(item, dict):
@@ -303,12 +302,11 @@ class Retriever:
             rewrite_query_span = refs["meta"].get("use_rewrite_query", "off")
         else:
             # 暂时默认为 off 或从 settings 读取如果存在
-            rewrite_query_span = "off" # settings.features.use_rewrite_query? 暂无该配置，默认为 off
+            rewrite_query_span = "off"  # settings.features.use_rewrite_query? 暂无该配置，默认为 off
 
         if rewrite_query_span == "off":
             rewritten_query = query
         else:
-
             history_query = [entry["content"] for entry in history if entry["role"] == "user"] if history else ""
             rewritten_query_prompt = rewritten_query_prompt_template.format(history=history_query, query=query)
             rewritten_query = model.invoke(rewritten_query_prompt).content
@@ -402,7 +400,7 @@ class Retriever:
             node_dict[item[2].element_id] = dict(id=item[2].element_id, name=item[2]._properties.get("name", "Unknown"))
 
             # 处理关系列表中的每个关系
-            for i, relationship in enumerate(item[1]):
+            for _i, relationship in enumerate(item[1]):
                 try:
                     # 提取关系信息
                     node_info, edge_info = self._extract_relationship_info(relationship, node_dict=node_dict)
@@ -424,6 +422,8 @@ class Retriever:
         refs = self.retrieval(query, history, meta)
         query = self.construct_query(query, refs, meta)
         return query, refs
+
+
 if __name__ == "__main__":
     from pprint import pprint
 

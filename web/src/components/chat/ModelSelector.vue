@@ -10,8 +10,8 @@
         role="button"
         tabindex="0"
         aria-label="选择模型"
-        @keydown.enter.prevent="$event.currentTarget?.click?.()"
-        @keydown.space.prevent="$event.currentTarget?.click?.()"
+        @keydown.enter.prevent="onKeyboardActivate"
+        @keydown.space.prevent="onKeyboardActivate"
       >
         <img
           class="model-select-icon"
@@ -75,6 +75,10 @@ const emit = defineEmits<{
 const filteredModelKeys = computed(() => {
   return Object.keys(props.modelNames || {}).filter((k) => k !== 'custom')
 })
+
+function onKeyboardActivate(event: KeyboardEvent) {
+  ;(event.currentTarget as HTMLElement | null)?.click()
+}
 </script>
 
 <style scoped lang="less">

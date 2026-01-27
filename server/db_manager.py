@@ -1,9 +1,11 @@
 import os
 import pathlib
+
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from src.core.settings import settings
+
 
 class DBManager:
     """数据库管理器"""
@@ -37,6 +39,7 @@ class DBManager:
     def get_session(self):
         """获取数据库会话"""
         return self.Session()
+
 
 _db_manager_instance: DBManager | None = None
 

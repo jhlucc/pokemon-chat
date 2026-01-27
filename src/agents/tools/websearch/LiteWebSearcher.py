@@ -1,24 +1,24 @@
-from typing import List, Dict
+from __future__ import annotations
 
+from langchain_core.documents import Document
 from langchain_core.prompts import PromptTemplate
-from langchain_openai import ChatOpenAI
 
-from src.knowledge.vector.milvus_store import MilvusService
-from src.agents.tools.websearch.utils import *
+from src.agents.tools.websearch.utils import fetch_details, reranking, search
 from src.core.settings import settings
+from src.knowledge.vector.milvus_store import MilvusService
 
 
 class WebSearcher:
     def __init__(
-            self,
-            milvus_collection: str = "test1",
-            embedding_model: str = None,
-            search_top_k: int = 10,
-            rerank_top_k: int = 5,
-            rag_top_k: int = 3,
-            llm: str = None,
-            openai_base_url: str = None,
-            openai_api_key: str = None,
+        self,
+        milvus_collection: str = "test1",
+        embedding_model: str | None = None,
+        search_top_k: int = 10,
+        rerank_top_k: int = 5,
+        rag_top_k: int = 3,
+        llm: str | None = None,
+        openai_base_url: str | None = None,
+        openai_api_key: str | None = None,
     ):
         # Apply defaults from settings
         embedding_model = embedding_model or settings.embedding.model_name
@@ -32,11 +32,7 @@ class WebSearcher:
         :param search_top_k: 初始搜索返回结果数量
         :param rerank_top_k: 重排序后保留结果数量
         """
-        self.milvus = MilvusService(
-            collection_name=milvus_collection,
-            embedding_model=embedding_model,
-            overwrite=True
-        )
+        self.milvus = MilvusService(collection_name=milvus_collection, embedding_model=embedding_model, overwrite=True)
         self.search_top_k = search_top_k
         self.rerank_top_k = rerank_top_k
         self.rag_top_k = rag_top_k
@@ -51,12 +47,11 @@ class WebSearcher:
                     "<联网检索到的信息>{context}</联网检索到的信息>\n"
                     "<问题>{question}</问题>\n"
                 ),
-                input_variables=["context", "question"]
+                input_variables=["context", "question"],
             ),
             "without_context": PromptTemplate(
-                template="请你回答我的问题:\n{question}\n\n",
-                input_variables=["question"]
-            )
+                template="请你回答我的问题:\n{question}\n\n", input_variables=["question"]
+            ),
         }
         # self.llm = ChatOpenAI(
         #     model=llm,
@@ -65,7 +60,7 @@ class WebSearcher:
         # )
         self.llm = None
 
-    async def search(self, query: str) -> Dict[str, str]:
+    async def search(self, query: str) -> dict[str, str]:
         """
         执行完整搜索流程并返回格式化结果
         :param query: 用户查询文本
@@ -75,19 +70,16 @@ class WebSearcher:
         raw_results = await search(query, self.search_top_k)
         # 2. 结果重排序
         ranked_results = reranking(query, raw_results, self.rerank_top_k)
-        rerank_snippets = [doc.metadata['snippet'] for doc in ranked_results if 'snippet' in doc.metadata]
+        rerank_snippets = [doc.metadata["snippet"] for doc in ranked_results if "snippet" in doc.metadata]
         # 3. 获取详情内容
         detailed_results = await fetch_details(ranked_results)
         # 4. 处理结果并生成prompt
         return self.generate_output(query, detailed_results, rerank_snippets)
 
-    def generate_output(self, query: str, results: List[Document], rerank_snippets: List[str]) -> Dict[str, str]:
+    def generate_output(self, query: str, results: list[Document], rerank_snippets: list[str]) -> dict[str, str]:
         """生成最终输出"""
         if not results and not rerank_snippets:
-            return {
-                "prompt_template": self.prompt_templates["without_context"],
-                "context": ""
-            }
+            return {"prompt_template": self.prompt_templates["without_context"], "context": ""}
 
         # 将结果存入向量库
         self.milvus.insert_documents(results)
@@ -99,16 +91,9 @@ class WebSearcher:
         combined_contents = list(set(rerank_snippets + search_contents))
         # 拼接成最终context
         context = "\n\n".join(combined_contents)
-        return {
-            "prompt_template": self.prompt_templates["with_context"],
-            "context": context
-        }
+        return {"prompt_template": self.prompt_templates["with_context"], "context": context}
 
-    async def generate_answer(
-            self,
-            question: str,
-            context: str
-    ) -> str:
+    async def generate_answer(self, question: str, context: str) -> str:
         """
         使用大模型生成回复
         :param question: 用户问题
@@ -116,36 +101,23 @@ class WebSearcher:
         :return: 生成的回答
         """
         # 选择模板
-        template = (
-            self.prompt_templates["with_context"]
-            if context
-            else self.prompt_templates["without_context"]
-        )
+        template = self.prompt_templates["with_context"] if context else self.prompt_templates["without_context"]
         # 构建输入
-        input_dict = {
-            "question": question,
-            "context": context
-        }
+        input_dict = {"question": question, "context": context}
         # 构建处理链
         chain = template | self.llm
         # 生成回复
         response = await chain.ainvoke(input_dict)
         return response
 
-    async def search_and_generate(
-            self,
-            query: str
-    ) -> str:
+    async def search_and_generate(self, query: str) -> str:
         # 1. 执行搜索
         search_result = await self.search(query)
 
         # 2. 如果有LLM则生成回复
         answer = ""
         if self.llm:
-            answer = await self.generate_answer(
-                question=query,
-                context=search_result["context"]
-            )
+            answer = await self.generate_answer(question=query, context=search_result["context"])
         else:
             return search_result["context"]
         return answer.content
@@ -153,7 +125,6 @@ class WebSearcher:
 
 if __name__ == "__main__":
     import asyncio
-
 
     async def main():
         # 示例用法
@@ -169,7 +140,6 @@ if __name__ == "__main__":
         print(result)
         # 清理资源
         searcher.milvus.close()
-
 
     # 运行主程序
     asyncio.run(main())

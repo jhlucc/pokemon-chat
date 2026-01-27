@@ -6,10 +6,11 @@ Evaluates retrieval quality and determines if:
 - AMBIGUOUS: Supplement with web search
 - WRONG: Discard and use only web search
 """
-from typing import Dict, Any, List, Literal
-from langchain_openai import ChatOpenAI
+
+from typing import Literal
+
 from langchain_core.prompts import ChatPromptTemplate
-from langchain_core.output_parsers import StrOutputParser
+from langchain_openai import ChatOpenAI
 from pydantic import BaseModel, Field
 
 from src.core.settings import settings
@@ -17,16 +18,21 @@ from src.utils.logger import get_logger
 
 logger = get_logger(__name__)
 
+
 class RetrievalGrade(BaseModel):
     """Grade for retrieval quality."""
+
     grade: Literal["CORRECT", "AMBIGUOUS", "WRONG"] = Field(
         description="Grade of retrieval quality: CORRECT if docs answer the query, AMBIGUOUS if partially relevant, WRONG if irrelevant"
     )
     reason: str = Field(description="Brief explanation for the grade")
 
 
-GRADING_PROMPT = ChatPromptTemplate.from_messages([
-    ("system", """你是宝可梦知识检索质量评估员。
+GRADING_PROMPT = ChatPromptTemplate.from_messages(
+    [
+        (
+            "system",
+            """你是宝可梦知识检索质量评估员。
 给定用户问题和检索到的文档，评估文档是否相关且足以回答问题。
 
 评分标准：
@@ -40,82 +46,76 @@ GRADING_PROMPT = ChatPromptTemplate.from_messages([
 宝可梦特殊考量：
 - 如果文档讲的是进化链上的相关宝可梦，可以算AMBIGUOUS
 - 如果文档讲的是相同属性的其他宝可梦，可以算AMBIGUOUS
-- 如果文档完全距离，算WRONG"""),
-    ("human", """用户问题: {query}
+- 如果文档完全距离，算WRONG""",
+        ),
+        (
+            "human",
+            """用户问题: {query}
 
 检索到的宝可梦知识:
 {documents}
 
-请评估检索质量 (CORRECT/AMBIGUOUS/WRONG) 并简要说明理由。""")
-])
+请评估检索质量 (CORRECT/AMBIGUOUS/WRONG) 并简要说明理由。""",
+        ),
+    ]
+)
 
 
 class CRAGEvaluator:
     """
     Corrective RAG Evaluator.
-    
+
     Grades retrieval quality and determines the correction strategy.
     """
-    
+
     def __init__(self):
         self.llm = ChatOpenAI(
-            model=settings.llm.model_name,
-            api_key=settings.llm.api_key,
-            base_url=settings.llm.api_base,
-            temperature=0
+            model=settings.llm.model_name, api_key=settings.llm.api_key, base_url=settings.llm.api_base, temperature=0
         )
         self.grading_chain = GRADING_PROMPT | self.llm.with_structured_output(RetrievalGrade)
-    
-    def grade(self, query: str, documents: List[str]) -> RetrievalGrade:
+
+    def grade(self, query: str, documents: list[str]) -> RetrievalGrade:
         """
         Grade the quality of retrieved documents for a query.
-        
+
         Args:
             query: User's original query
             documents: List of retrieved document contents
-            
+
         Returns:
             RetrievalGrade with grade and reason
         """
         if not documents:
             return RetrievalGrade(grade="WRONG", reason="No documents retrieved")
-        
+
         try:
-            docs_text = "\n\n---\n\n".join([f"Doc {i+1}: {doc[:500]}..." for i, doc in enumerate(documents[:5])])
-            
-            result = self.grading_chain.invoke({
-                "query": query,
-                "documents": docs_text
-            })
-            
+            docs_text = "\n\n---\n\n".join([f"Doc {i + 1}: {doc[:500]}..." for i, doc in enumerate(documents[:5])])
+
+            result = self.grading_chain.invoke({"query": query, "documents": docs_text})
+
             logger.info(f"CRAG Grade: {result.grade} - {result.reason}")
             return result
-            
+
         except Exception as e:
             logger.error(f"CRAG grading failed: {e}")
             # Default to AMBIGUOUS on error (safe fallback)
             return RetrievalGrade(grade="AMBIGUOUS", reason=f"Grading error: {e}")
-    
-    def correct(
-        self,
-        grade: RetrievalGrade,
-        original_docs: List[str],
-        web_search_fn
-    ) -> List[str]:
+
+    def correct(self, grade: RetrievalGrade, original_docs: list[str], web_search_fn) -> list[str]:
         """
         Apply correction strategy based on grade.
-        
+
         Args:
             grade: RetrievalGrade from grade()
             original_docs: Originally retrieved documents
             web_search_fn: Callable that performs web search and returns List[str]
-            
+
         Returns:
             Corrected list of documents
         """
         if grade.grade == "CORRECT":
             return original_docs
-        
+
         elif grade.grade == "AMBIGUOUS":
             # Supplement with web search
             try:
@@ -124,7 +124,7 @@ class CRAGEvaluator:
             except Exception as e:
                 logger.warning(f"Web search failed during correction: {e}")
                 return original_docs
-        
+
         else:  # WRONG
             # Discard original, use only web search
             try:
@@ -136,6 +136,7 @@ class CRAGEvaluator:
 
 # Global instance
 _evaluator: CRAGEvaluator = None
+
 
 def get_crag_evaluator() -> CRAGEvaluator:
     global _evaluator

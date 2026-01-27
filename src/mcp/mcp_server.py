@@ -11,15 +11,17 @@ from __future__ import annotations
 import json
 import logging
 import os
-from typing import List, Sequence, Tuple
+from collections.abc import Sequence
 
 import pymysql
+
 from mcp.server.fastmcp import FastMCP
 from mcp.types import TextContent  # 仅用来包装返回值
 
 # ──────────────────── 日志 ────────────────────
 logging.basicConfig(level=logging.INFO, format="%(asctime)s  %(levelname)s  %(message)s")
 logger = logging.getLogger(__name__)
+
 
 def _get_db_conf() -> dict:
     # Keep compatibility with both legacy UPPERCASE env names and the project's settings keys.
@@ -38,8 +40,10 @@ def _get_db_conf() -> dict:
         cursorclass=pymysql.cursors.Cursor,
     )
 
+
 # ──────────────────── 连接池 ────────────────────
 _pool = None
+
 
 def _get_connection():
     """获取连接池中的连接"""
@@ -47,13 +51,9 @@ def _get_connection():
     if _pool is None:
         try:
             from dbutils.pooled_db import PooledDB
+
             _pool = PooledDB(
-                creator=pymysql,
-                maxconnections=10,
-                mincached=2,
-                maxcached=5,
-                blocking=True,
-                **_get_db_conf()
+                creator=pymysql, maxconnections=10, mincached=2, maxcached=5, blocking=True, **_get_db_conf()
             )
             logger.info("MySQL connection pool initialized")
         except ImportError:
@@ -61,29 +61,29 @@ def _get_connection():
             return pymysql.connect(**_get_db_conf())
     return _pool.connection()
 
+
 app = FastMCP(
     "pokemon-fastmcp",
     host=os.getenv("MCP_HOST", "0.0.0.0"),
     port=int(os.getenv("MCP_PORT", "8000")),
 )
 
-def _err_txt(msg: str) -> List[TextContent]:
+
+def _err_txt(msg: str) -> list[TextContent]:
     return [TextContent(type="text", text=json.dumps({"error": msg}, ensure_ascii=False))]
 
 
 # ──────────────────── 公共辅助 ────────────────────
-def _rows_to_text(rows: Sequence[Tuple[float, float, str]]) -> List[TextContent]:
+def _rows_to_text(rows: Sequence[tuple[float, float, str]]) -> list[TextContent]:
     if not rows:
         return _err_txt("未找到匹配地点")
     data = [{"location": name, "lat": float(lat), "lng": float(lng)} for lat, lng, name in rows]
-    return [TextContent(type="text",
-                        text=json.dumps(data, ensure_ascii=False))]
+    return [TextContent(type="text", text=json.dumps(data, ensure_ascii=False))]
+
+
 # ──────────────────── 工具 1 ────────────────────
-@app.tool(
-    name="search_locations_by_pokemon",
-    description="模糊搜索宝可梦出现地点，返回经纬度与真实地名 JSON 列表"
-)
-def search_locations_by_pokemon(pokemon_name: str) -> List[TextContent]:
+@app.tool(name="search_locations_by_pokemon", description="模糊搜索宝可梦出现地点，返回经纬度与真实地名 JSON 列表")
+def search_locations_by_pokemon(pokemon_name: str) -> list[TextContent]:
     sql = """
         SELECT latitude, longitude, real_location
           FROM pokemon_locations
@@ -104,12 +104,12 @@ def search_locations_by_pokemon(pokemon_name: str) -> List[TextContent]:
 
     return _rows_to_text(rows)
 
+
 # ──────────────────── 工具 2 ────────────────────
 @app.tool(
-    name="get_location_info",
-    description="输入地点（宝可梦世界名或现实地名）→ 返回匹配的经纬度与真实地名 JSON 列表"
+    name="get_location_info", description="输入地点（宝可梦世界名或现实地名）→ 返回匹配的经纬度与真实地名 JSON 列表"
 )
-def get_location_info(location: str) -> List[TextContent]:
+def get_location_info(location: str) -> list[TextContent]:
     sql = """
         SELECT latitude, longitude, real_location
           FROM pokemon_locations
@@ -128,6 +128,7 @@ def get_location_info(location: str) -> List[TextContent]:
         return _err_txt(f"数据库错误：{e}")
 
     return _rows_to_text(rows)
+
 
 # ──────────────────── 运行 ────────────────────
 if __name__ == "__main__":

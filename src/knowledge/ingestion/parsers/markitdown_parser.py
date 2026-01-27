@@ -1,5 +1,6 @@
 from markitdown import MarkItDown
 
+
 class MarkItDownParser:
     @staticmethod
     def parse(file_path: str) -> str:

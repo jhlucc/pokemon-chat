@@ -37,5 +37,4 @@ def patch_providers(payload: dict = Body(...)):
             patch_provider_secrets_many(payload)
         return {"providers": build_provider_status()}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
+        raise HTTPException(status_code=500, detail=str(e)) from e

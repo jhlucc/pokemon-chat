@@ -12,7 +12,6 @@ Why:
 from __future__ import annotations
 
 from functools import lru_cache
-from typing import Optional
 
 from src.utils.logger import get_logger
 
@@ -75,8 +74,8 @@ def get_graph_db():
 def get_asr_client():
     """FunASR client singleton."""
     global _asr_client_instance
-    from src.utils.funasr_client import FunASRClient
     from src.core.settings import settings
+    from src.utils.funasr_client import FunASRClient
 
     _asr_client_instance = FunASRClient(url=settings.asr.funasr_url)
     return _asr_client_instance
@@ -99,7 +98,13 @@ def get_mcp_client():
 
 def reset_all():
     """Clear all cached singletons."""
-    global _kb_instance, _retriever_instance, _kg_agent_instance, _graph_db_instance, _asr_client_instance, _mcp_client_instance
+    global \
+        _kb_instance, \
+        _retriever_instance, \
+        _kg_agent_instance, \
+        _graph_db_instance, \
+        _asr_client_instance, \
+        _mcp_client_instance
     get_kb.cache_clear()
     get_retriever.cache_clear()
     get_kg_agent.cache_clear()

@@ -155,8 +155,7 @@ import {
   UploadOutlined,
   DeleteOutlined,
   LeftOutlined,
-  SearchOutlined,
-  CommentOutlined
+  SearchOutlined
 } from '@ant-design/icons-vue'
 
 const props = defineProps({

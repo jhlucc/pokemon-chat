@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import os
 from functools import lru_cache
-from typing import Optional
 
 import httpx
 
@@ -41,7 +40,7 @@ def _strip_unsupported_proxy_env() -> None:
 
 
 @lru_cache(maxsize=1)
-def get_safe_httpx_client() -> Optional[httpx.Client]:
+def get_safe_httpx_client() -> httpx.Client | None:
     """
     Return a shared httpx client that avoids env proxy parsing issues.
     If the environment doesn't use unsupported proxy schemes, return None

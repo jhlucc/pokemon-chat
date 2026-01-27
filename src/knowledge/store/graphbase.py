@@ -25,8 +25,9 @@ import json
 import os
 import traceback
 import warnings
-from src.core.settings import settings
+
 from src.core.feature_flags import feature_enabled
+from src.core.settings import settings
 from src.utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -35,6 +36,7 @@ warnings.filterwarnings("ignore", category=UserWarning)
 
 
 UIE_MODEL = None
+
 
 class GraphDatabase:
     def __init__(self):
@@ -50,7 +52,7 @@ class GraphDatabase:
 
         # 尝试加载已保存的图数据库信息
         if not self.load_graph_info():
-            logger.info(f"未找到已保存的图数据库信息，将创建新的配置")
+            logger.info("未找到已保存的图数据库信息，将创建新的配置")
         # NOTE: do not auto-connect here. Keep init cheap; connect on first use.
 
     def start(self):
@@ -111,9 +113,10 @@ class GraphDatabase:
         self.start()
         return self.driver
 
-    def get_sample_nodes(self, kgdb_name='neo4j', num=50):
+    def get_sample_nodes(self, kgdb_name="neo4j", num=50):
         """获取指定数据库的 num 个节点信息"""
         self.use_database(kgdb_name)
+
         def query(tx, num):
             result = tx.run("MATCH (n)-[r]->(m) RETURN n, r, m LIMIT $num", num=int(num))
             return result.values()
@@ -126,7 +129,7 @@ class GraphDatabase:
         self.use_database(self.kgdb_name)
         with self.driver.session() as session:
             existing_databases = session.run("SHOW DATABASES")
-            existing_db_names = [db['name'] for db in existing_databases]
+            existing_db_names = [db["name"] for db in existing_databases]
 
             if existing_db_names:
                 print(f"已存在数据库: {existing_db_names[0]}")
@@ -139,19 +142,18 @@ class GraphDatabase:
     def use_database(self, kgdb_name="neo4j"):
         """切换到指定数据库"""
         if kgdb_name != self.kgdb_name:
-            raise ValueError(
-                f"传入的数据库名称 '{kgdb_name}' 与当前实例的数据库名称 '{self.kgdb_name}' 不一致"
-            )
+            raise ValueError(f"传入的数据库名称 '{kgdb_name}' 与当前实例的数据库名称 '{self.kgdb_name}' 不一致")
         self._ensure_driver()
 
-    def txt_add_entity(self, triples, kgdb_name='neo4j'):
+    def txt_add_entity(self, triples, kgdb_name="neo4j"):
         """添加实体三元组"""
         self.use_database(kgdb_name)
+
         def create(tx, triples):
             for triple in triples:
-                h = triple['h']
-                t = triple['t']
-                r = triple['r']
+                h = triple["h"]
+                t = triple["t"]
+                r = triple["r"]
                 query = (
                     "MERGE (a:Entity {name: $h}) "
                     "MERGE (b:Entity {name: $t}) "
@@ -162,9 +164,10 @@ class GraphDatabase:
         with self.driver.session() as session:
             session.execute_write(create, triples)
 
-    async def txt_add_vector_entity(self, triples, kgdb_name='neo4j'):
+    async def txt_add_vector_entity(self, triples, kgdb_name="neo4j"):
         """添加实体三元组"""
         self.use_database(kgdb_name)
+
         def _index_exists(tx, index_name):
             """检查索引是否存在"""
             result = tx.run("SHOW INDEXES")
@@ -176,11 +179,16 @@ class GraphDatabase:
         def _create_graph(tx, data):
             """添加一个三元组"""
             for entry in data:
-                tx.run("""
+                tx.run(
+                    """
                 MERGE (h:Entity {name: $h})
                 MERGE (t:Entity {name: $t})
                 MERGE (h)-[r:RELATION {type: $r}]->(t)
-                """, h=entry['h'], t=entry['t'], r=entry['r'])
+                """,
+                    h=entry["h"],
+                    t=entry["t"],
+                    r=entry["r"],
+                )
 
         def _create_vector_index(tx, dim):
             """创建向量索引"""
@@ -205,26 +213,33 @@ class GraphDatabase:
             param_placeholders = ", ".join([f"${key}" for key in params.keys()])
 
             # 执行查询
-            result = tx.run(f"""
+            result = tx.run(
+                f"""
             MATCH (n:Entity)
             WHERE n.name IN [{param_placeholders}] AND n.embedding IS NULL
             RETURN n.name AS name
-            """, params)
+            """,
+                params,
+            )
 
             return [record["name"] for record in result]
 
         def _batch_set_embeddings(tx, entity_embedding_pairs):
             """批量设置实体的嵌入向量"""
             for entity_name, embedding in entity_embedding_pairs:
-                tx.run("""
+                tx.run(
+                    """
                 MATCH (e:Entity {name: $name})
                 CALL db.create.setNodeVectorProperty(e, 'embedding', $embedding)
-                """, name=entity_name, embedding=embedding)
+                """,
+                    name=entity_name,
+                    embedding=embedding,
+                )
 
         # 判断模型名称是否匹配
         cur_model_name = settings.embedding.model_name
         self.embed_model_name = self.embed_model_name or cur_model_name
-        
+
         # 简化检查，只要不是 None 就行
         # assert self.embed_model_name == cur_model_name or self.embed_model_name is None
 
@@ -241,7 +256,7 @@ class GraphDatabase:
             # 筛选出没有embedding的节点
             nodes_without_embedding = session.execute_read(_get_nodes_without_embedding, all_entities)
             if not nodes_without_embedding:
-                logger.info(f"所有实体已有embedding，无需重新计算")
+                logger.info("所有实体已有embedding，无需重新计算")
                 return
 
             logger.info(f"需要为{len(nodes_without_embedding)}/{len(all_entities)}个实体计算embedding")
@@ -251,8 +266,10 @@ class GraphDatabase:
             total_entities = len(nodes_without_embedding)
 
             for i in range(0, total_entities, max_batch_size):
-                batch_entities = nodes_without_embedding[i:i+max_batch_size]
-                logger.debug(f"Processing entities batch {i//max_batch_size + 1}/{(total_entities-1)//max_batch_size + 1} ({len(batch_entities)} entities)")
+                batch_entities = nodes_without_embedding[i : i + max_batch_size]
+                logger.debug(
+                    f"Processing entities batch {i // max_batch_size + 1}/{(total_entities - 1) // max_batch_size + 1} ({len(batch_entities)} entities)"
+                )
 
                 # 批量获取嵌入向量
                 batch_embeddings = await self.aget_embedding(batch_entities)
@@ -266,14 +283,14 @@ class GraphDatabase:
             # 数据添加完成后保存图信息
             self.save_graph_info()
 
-    async def jsonl_file_add_entity(self, file_path, kgdb_name='neo4j'):
+    async def jsonl_file_add_entity(self, file_path, kgdb_name="neo4j"):
         self.status = "processing"
-        kgdb_name = kgdb_name or 'neo4j'
+        kgdb_name = kgdb_name or "neo4j"
         self.use_database(kgdb_name)  # 切换到指定数据库
         logger.info(f"Start adding entity to {kgdb_name} with {file_path}")
 
         def read_triples(file_path):
-            with open(file_path, 'r', encoding='utf-8') as file:
+            with open(file_path, encoding="utf-8") as file:
                 for line in file:
                     if line.strip():
                         yield json.loads(line.strip())
@@ -321,7 +338,7 @@ class GraphDatabase:
         # print(res.get("subgraph", {"nodes": [], "edges": []}))
         return res.get("subgraph", {"nodes": [], "edges": []})
 
-    def query_specific_entity(self, entity_name, kgdb_name='neo4j', hops=2, limit=100):
+    def query_specific_entity(self, entity_name, kgdb_name="neo4j", hops=2, limit=100):
         """查询指定实体三元组信息（无向关系）"""
         if not entity_name:
             logger.warning("实体名称为空")
@@ -358,9 +375,10 @@ class GraphDatabase:
             logger.error(f"数据库会话异常: {str(e)}")
             return []
 
-    def query_all_nodes_and_relationships(self, kgdb_name='neo4j', hops = 2):
+    def query_all_nodes_and_relationships(self, kgdb_name="neo4j", hops=2):
         """查询图数据库中所有三元组信息 NEVER USE"""
         self.use_database(kgdb_name)
+
         def query(tx, hops):
             result = tx.run(f"""
             MATCH (n)-[r*1..{hops}]->(m)
@@ -373,9 +391,10 @@ class GraphDatabase:
         with self.driver.session() as session:
             return session.execute_read(query, hops)
 
-    def query_by_relationship_type(self, relationship_type, kgdb_name='neo4j', hops = 2):
+    def query_by_relationship_type(self, relationship_type, kgdb_name="neo4j", hops=2):
         """查询指定关系三元组信息 NEVER USE"""
         self.use_database(kgdb_name)
+
         def query(tx, relationship_type, hops):
             result = tx.run(f"""
             MATCH (n)-[r:`{relationship_type}`*1..{hops}]->(m)
@@ -388,16 +407,20 @@ class GraphDatabase:
         with self.driver.session() as session:
             return session.execute_read(query, relationship_type, hops)
 
-    def query_entity_like(self, keyword, kgdb_name='neo4j', hops = 2):
+    def query_entity_like(self, keyword, kgdb_name="neo4j", hops=2):
         """模糊查询 NEVER USE"""
         self.use_database(kgdb_name)
+
         def query(tx, keyword, hops):
-            result = tx.run(f"""
+            result = tx.run(
+                f"""
             MATCH (n:Entity)
             WHERE n.name CONTAINS $keyword
             MATCH (n)-[r*1..{hops}]->(m)
             RETURN n AS n, r, m AS m
-            """, keyword=keyword)
+            """,
+                keyword=keyword,
+            )
             values = result.values()
             values = clean_triples_embedding(values)
             return values
@@ -405,15 +428,19 @@ class GraphDatabase:
         with self.driver.session() as session:
             return session.execute_read(query, keyword, hops)
 
-    def query_node_info(self, node_name, kgdb_name='neo4j', hops = 2):
+    def query_node_info(self, node_name, kgdb_name="neo4j", hops=2):
         """查询指定节点的详细信息返回信息 NEVER USE"""
         self.use_database(kgdb_name)  # 切换到指定数据库
+
         def query(tx, node_name, hops):
-            result = tx.run(f"""
+            result = tx.run(
+                f"""
             MATCH (n {{name: $node_name}})
             OPTIONAL MATCH (n)-[r*1..{hops}]->(m)
             RETURN n AS n, r, m AS m
-            """, node_name=node_name)
+            """,
+                node_name=node_name,
+            )
             values = result.values()
             values = clean_triples_embedding(values)
             return values
@@ -452,10 +479,14 @@ class GraphDatabase:
         return model.encode([text])[0]
 
     def set_embedding(self, tx, entity_name, embedding):
-        tx.run("""
+        tx.run(
+            """
         MATCH (e:Entity {name: $name})
         CALL db.create.setNodeVectorProperty(e, 'embedding', $embedding)
-        """, name=entity_name, embedding=embedding)
+        """,
+            name=entity_name,
+            embedding=embedding,
+        )
 
     def get_graph_info(self, graph_name="neo4j"):
         try:
@@ -467,6 +498,7 @@ class GraphDatabase:
                 "error": str(e),
                 "embed_model_name": self.embed_model_name,
             }
+
         def query(tx):
             entity_count = tx.run("MATCH (n) RETURN count(n) AS count").single()["count"]
             relationship_count = tx.run("MATCH ()-[r]->() RETURN count(r) AS count").single()["count"]
@@ -511,11 +543,11 @@ class GraphDatabase:
         try:
             graph_info = self.get_graph_info(graph_name)
             if graph_info is None or graph_info.get("error"):
-                logger.error(f"图数据库信息为空，无法保存")
+                logger.error("图数据库信息为空，无法保存")
                 return False
 
             info_file_path = os.path.join(self.work_dir, "graph_info.json")
-            with open(info_file_path, 'w', encoding='utf-8') as f:
+            with open(info_file_path, "w", encoding="utf-8") as f:
                 json.dump(graph_info, f, ensure_ascii=False, indent=2)
 
             # logger.info(f"图数据库信息已保存到：{info_file_path}")
@@ -524,7 +556,7 @@ class GraphDatabase:
             logger.error(f"保存图数据库信息失败：{e}")
             return False
 
-    def query_nodes_without_embedding(self, kgdb_name='neo4j'):
+    def query_nodes_without_embedding(self, kgdb_name="neo4j"):
         """查询没有嵌入向量的节点
 
         Returns:
@@ -554,7 +586,7 @@ class GraphDatabase:
                 logger.warning(f"图数据库信息文件不存在：{info_file_path}")
                 return False
 
-            with open(info_file_path, 'r', encoding='utf-8') as f:
+            with open(info_file_path, encoding="utf-8") as f:
                 graph_info = json.load(f)
 
             # 更新对象属性
@@ -570,7 +602,7 @@ class GraphDatabase:
             logger.error(f"加载图数据库信息失败：{e}")
             return False
 
-    def add_embedding_to_nodes(self, node_names=None, kgdb_name='neo4j'):
+    def add_embedding_to_nodes(self, node_names=None, kgdb_name="neo4j"):
         """为节点添加嵌入向量
 
         Args:
@@ -610,10 +642,14 @@ class GraphDatabase:
 
         def _batch_set_embeddings(tx, entity_embedding_pairs):
             for entity_name, embedding in entity_embedding_pairs:
-                tx.run("""
+                tx.run(
+                    """
                 MATCH (e:Entity {name: $name})
                 CALL db.create.setNodeVectorProperty(e, 'embedding', $embedding)
-                """, name=entity_name, embedding=embedding)
+                """,
+                    name=entity_name,
+                    embedding=embedding,
+                )
 
         count = 0
         max_batch_size = 256
@@ -621,7 +657,7 @@ class GraphDatabase:
             session.execute_write(_create_vector_index, settings.embedding.dimension)
 
             for i in range(0, len(node_names), max_batch_size):
-                batch_nodes = node_names[i:i + max_batch_size]
+                batch_nodes = node_names[i : i + max_batch_size]
                 try:
                     batch_embeddings = self.get_embedding(batch_nodes)
                     pairs = list(zip(batch_nodes, batch_embeddings))
@@ -632,7 +668,6 @@ class GraphDatabase:
 
         self.save_graph_info()
         return count
-
 
     def _extract_relationship_info(self, relationship, source_name=None, target_name=None, node_dict=None):
         """
@@ -714,18 +749,15 @@ class GraphDatabase:
                 deduped_edges.append(edge)
                 seen_edges.add(key)
 
-        return {
-            "nodes": deduped_nodes,
-            "edges": deduped_edges
-        }
+        return {"nodes": deduped_nodes, "edges": deduped_edges}
 
 
 def clean_triples_embedding(triples):
     for item in triples:
-        if hasattr(item[0], '_properties'):
-            item[0]._properties['embedding'] = None
-        if hasattr(item[2], '_properties'):
-            item[2]._properties['embedding'] = None
+        if hasattr(item[0], "_properties"):
+            item[0]._properties["embedding"] = None
+        if hasattr(item[2], "_properties"):
+            item[2]._properties["embedding"] = None
     return triples
 
 

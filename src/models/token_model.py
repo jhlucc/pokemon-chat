@@ -1,12 +1,14 @@
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey
+from sqlalchemy import Column, DateTime, Integer, String
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.sql import func
 
 Base = declarative_base()
 
+
 class AgentToken(Base):
     """智能体访问令牌模型"""
-    __tablename__ = 'agent_tokens'
+
+    __tablename__ = "agent_tokens"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     agent_id = Column(String, nullable=False, index=True)  # 智能体ID
@@ -20,6 +22,5 @@ class AgentToken(Base):
             "agent_id": self.agent_id,
             "name": self.name,
             "token": self.token,
-            "created_at": self.created_at.isoformat() if self.created_at else None
+            "created_at": self.created_at.isoformat() if self.created_at else None,
         }
-

@@ -1,9 +1,12 @@
-from typing import Dict, Any
+from typing import Any
+
 from langchain_core.prompts import ChatPromptTemplate
+from tavily import TavilyClient
+
 from src.core.llm_factory import build_chat_llm
 from src.core.settings import settings
 from src.graph.state import AgentState
-from tavily import TavilyClient
+
 
 class WebWorker:
     def __init__(self):
@@ -20,31 +23,36 @@ class WebWorker:
             results = response.get("results", [])
             if not results:
                 return "No web results found."
-            
-            context = "\n\n".join([
-                f"Title: {r.get('title')}\nUrl: {r.get('url')}\nContent: {r.get('content')}"
-                for r in results
-            ])
+
+            context = "\n\n".join(
+                [f"Title: {r.get('title')}\nUrl: {r.get('url')}\nContent: {r.get('content')}" for r in results]
+            )
             return context
         except Exception as e:
             return f"Web search failed: {str(e)}"
 
-    def __call__(self, state: AgentState) -> Dict[str, Any]:
+    def __call__(self, state: AgentState) -> dict[str, Any]:
         messages = state["messages"]
         last_message = messages[-1]
         query = last_message.content
-        
+
         context = self.search(query)
-        
-        prompt = ChatPromptTemplate.from_messages([
-            ("system", "You are a web researcher. Answer the query using the provided search results.\n\nResults:\n{context}"),
-            ("user", "{query}")
-        ])
-        
+
+        prompt = ChatPromptTemplate.from_messages(
+            [
+                (
+                    "system",
+                    "You are a web researcher. Answer the query using the provided search results.\n\nResults:\n{context}",
+                ),
+                ("user", "{query}"),
+            ]
+        )
+
         chain = prompt | self.llm
         response = chain.invoke({"context": context, "query": query})
-        
+
         return {"messages": [response]}
+
 
 def web_worker_node(state: AgentState):
     worker = WebWorker()

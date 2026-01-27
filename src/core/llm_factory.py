@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """
 Centralized helpers for constructing OpenAI-compatible LangChain clients.
 
@@ -11,11 +9,12 @@ Why:
   surprises across graph workers, retrievers, etc.
 """
 
-import sys
+from __future__ import annotations
+
 import json
+import sys
 from functools import lru_cache
 from pathlib import Path
-from typing import Optional
 
 from langchain_openai import ChatOpenAI
 
@@ -51,10 +50,10 @@ def clear_ui_overrides_cache() -> None:
 
 def build_chat_llm(
     *,
-    model_provider: Optional[str] = None,
-    model_name: Optional[str] = None,
-    temperature: Optional[float] = None,
-    max_tokens: Optional[int] = None,
+    model_provider: str | None = None,
+    model_name: str | None = None,
+    temperature: float | None = None,
+    max_tokens: int | None = None,
 ) -> ChatOpenAI:
     """
     Build a ChatOpenAI instance using the project's provider resolution rules.
@@ -70,17 +69,8 @@ def build_chat_llm(
     provider = (model_provider or overrides.get("model_provider") or "siliconflow").strip().lower()
     name = (model_name or overrides.get("model_name") or settings.llm.model_name).strip() or settings.llm.model_name
 
-    api_key = (
-        get_provider_api_key(provider)
-        or settings.get_api_key(provider)
-        or settings.llm.api_key
-        or ""
-    ).strip()
-    base_url = (
-        get_provider_api_base(provider)
-        or settings.llm.api_base
-        or ""
-    ).strip()
+    api_key = (get_provider_api_key(provider) or settings.get_api_key(provider) or settings.llm.api_key or "").strip()
+    base_url = (get_provider_api_base(provider) or settings.llm.api_base or "").strip()
 
     if not api_key and "pytest" not in sys.modules:
         _log.warning(f"LLM api_key is empty for provider='{provider}'. Calls may fail until configured.")

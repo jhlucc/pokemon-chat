@@ -1,16 +1,16 @@
-import os
 import asyncio
+import os
 import traceback
-import uuid
-from typing import List, Optional, Dict, Any
+from typing import Any
 
-from fastapi import APIRouter, File, UploadFile, HTTPException, Body, Query, Form
+from fastapi import APIRouter, Body, File, Form, HTTPException, Query, UploadFile
 from fastapi.responses import JSONResponse
-from src.utils.logger import LogManager
-from src.core.settings import settings
-from src.utils import hashstr
 from pydantic import BaseModel
-from src.runtime import get_kb, get_graph_db
+
+from src.core.settings import settings
+from src.runtime import get_graph_db, get_kb
+from src.utils import hashstr
+from src.utils.logger import LogManager
 
 
 class _KBProxy:
@@ -28,6 +28,7 @@ kgdb = _GraphDBProxy()
 logger = LogManager()
 data = APIRouter(prefix="/data")
 
+
 @data.get("/")
 async def list_databases():
     """列出所有知识库"""
@@ -36,13 +37,12 @@ async def list_databases():
         return {"databases": rows}
     except Exception as e:
         logger.error(f"list_databases failed: {e}\n{traceback.format_exc()}")
-        raise HTTPException(500, str(e))
+        raise HTTPException(500, str(e)) from e
+
 
 @data.post("/")
 async def create_database(
-    database_name: str = Body(...),
-    description: str = Body(...),
-    dimension: Optional[int] = Body(None)
+    database_name: str = Body(...), description: str = Body(...), dimension: int | None = Body(None)
 ):
     """创建一个新的知识库 Collection"""
     try:
@@ -50,7 +50,8 @@ async def create_database(
         return JSONResponse(info)
     except Exception as e:
         logger.error(f"create_database failed: {e}\n{traceback.format_exc()}")
-        raise HTTPException(500, str(e))
+        raise HTTPException(500, str(e)) from e
+
 
 @data.delete("/")
 async def delete_database(db_id: str = Query(...)):
@@ -60,7 +61,8 @@ async def delete_database(db_id: str = Query(...)):
         return {"message": "删除成功"}
     except Exception as e:
         logger.error(f"delete_database failed: {e}\n{traceback.format_exc()}")
-        raise HTTPException(500, str(e))
+        raise HTTPException(500, str(e)) from e
+
 
 @data.get("/info")
 async def get_database_info(db_id: str = Query(...)):
@@ -73,7 +75,7 @@ async def get_database_info(db_id: str = Query(...)):
         return db
     except Exception as e:
         logger.error(f"get_database_info failed: {e}\n{traceback.format_exc()}")
-        raise HTTPException(500, str(e))
+        raise HTTPException(500, str(e)) from e
 
 
 class FileChunkPayload(BaseModel):
@@ -82,9 +84,11 @@ class FileChunkPayload(BaseModel):
     chunk_overlap: int = 100
     do_ocr: bool = False
 
+
 @data.post("/file-to-chunk")
 async def file_to_chunk(payload: FileChunkPayload):
     from src.knowledge.core.indexing import chunk_file
+
     try:
         # CPU/IO-bound parsing: run in a worker thread to avoid blocking the event loop.
         docs = await asyncio.to_thread(
@@ -94,23 +98,20 @@ async def file_to_chunk(payload: FileChunkPayload):
             chunk_overlap=payload.chunk_overlap,
             do_ocr=payload.do_ocr,
         )
-        return {
-            "chunks": [{"text": d.page_content, "meta": d.metadata} for d in docs]
-        }
+        return {"chunks": [{"text": d.page_content, "meta": d.metadata} for d in docs]}
     except Exception as e:
         logger.error(f"file-to-chunk failed: {e}\n{traceback.format_exc()}")
-        raise HTTPException(500, str(e))
+        raise HTTPException(500, str(e)) from e
+
+
 @data.post("/add-by-chunks")
-async def add_by_chunks(
-    db_id: str = Body(...),
-    file_chunks: Dict[str, Dict[str, Any]] = Body(...)
-):
+async def add_by_chunks(db_id: str = Body(...), file_chunks: dict[str, dict[str, Any]] = Body(...)):
     try:
         # Ensure Milvus + embedding runtime are initialized before touching `kb.client`.
         kb._ensure_ready()
         # 补：确保 Milvus 中有该 Collection（防止前端绕过 /data POST 创建数据库）
         if not kb.client.has_collection(db_id):
-            dim = kb.db_manager.get_database(db_id)['dimension']
+            dim = kb.db_manager.get_database(db_id)["dimension"]
             kb.add_collection(db_id, dim)
 
         for file_id, file_data in file_chunks.items():
@@ -121,16 +122,15 @@ async def add_by_chunks(
                 filename=file_data.get("filename"),
                 path="uploaded-via-chunks",
                 file_type="custom",
-                status="processing"
+                status="processing",
             )
 
             chunks = [
-                {**chunk["meta"], "text": chunk["text"], "file_id": file_id}
-                for chunk in file_data.get("nodes", [])
+                {**chunk["meta"], "text": chunk["text"], "file_id": file_id} for chunk in file_data.get("nodes", [])
             ]
             texts = [chunk["text"] for chunk in file_data.get("nodes", [])]
             kb._insert_vectors(db_id, file_id, texts, chunks)
-            kb.db_manager.update_file_status(file_id, 'done')
+            kb.db_manager.update_file_status(file_id, "done")
 
         return {"status": "success", "message": f"共导入 {len(file_chunks)} 个文件"}
     except Exception as e:
@@ -145,7 +145,7 @@ async def ingest_file(
     do_ocr: bool = Body(False),
     chunk_size: int = Body(1000),
     chunk_overlap: int = Body(100),
-    ocr_threshold: float = Body(0.3)
+    ocr_threshold: float = Body(0.3),
 ):
     """把服务器路径下的单个文件导入到指定库"""
     try:
@@ -155,26 +155,24 @@ async def ingest_file(
             do_ocr=do_ocr,
             chunk_size=chunk_size,
             chunk_overlap=chunk_overlap,
-            ocr_det_threshold=ocr_threshold
+            ocr_det_threshold=ocr_threshold,
         )
         return {"file_id": file_id, "status": "success"}
     except Exception as e:
         logger.error(f"ingest_file failed: {e}\n{traceback.format_exc()}")
-        raise HTTPException(500, str(e))
+        raise HTTPException(500, str(e)) from e
+
 
 @data.post("/ingest/dir")
-async def ingest_directory(
-    db_id: str = Body(...),
-    folder: str = Body(...),
-    suffixes: Optional[List[str]] = Body(None)
-):
+async def ingest_directory(db_id: str = Body(...), folder: str = Body(...), suffixes: list[str] | None = Body(None)):
     """把服务器目录下所有支持后缀的文件批量导入"""
     try:
         ids = kb.ingest_directory(db_id, folder, suffixes)
         return {"file_ids": ids, "status": "success"}
     except Exception as e:
         logger.error(f"ingest_directory failed: {e}\n{traceback.format_exc()}")
-        raise HTTPException(500, str(e))
+        raise HTTPException(500, str(e)) from e
+
 
 @data.get("/search")
 async def search_kb(
@@ -182,26 +180,20 @@ async def search_kb(
     db_id: str = Query(...),
     distance_threshold: float = Query(None),
     rerank: bool = Query(True),
-    top_k: int = Query(None)
+    top_k: int = Query(None),
 ):
     """向量检索接口"""
     try:
-        res = kb.search(
-            query=query,
-            db_id=db_id,
-            distance_threshold=distance_threshold,
-            rerank=rerank,
-            top_k=top_k
-        )
+        res = kb.search(query=query, db_id=db_id, distance_threshold=distance_threshold, rerank=rerank, top_k=top_k)
         return res
     except Exception as e:
         logger.error(f"search_kb failed: {e}\n{traceback.format_exc()}")
-        raise HTTPException(500, str(e))
+        raise HTTPException(500, str(e)) from e
 
 
 class QueryTestPayload(BaseModel):
     query: str
-    meta: Dict[str, Any] = {}
+    meta: dict[str, Any] = {}
 
 
 @data.post("/query-test")
@@ -225,7 +217,7 @@ async def query_test(payload: QueryTestPayload):
         )
 
         # Attach file info for UI rendering convenience.
-        def _attach_file_info(item: Dict[str, Any]) -> Dict[str, Any]:
+        def _attach_file_info(item: dict[str, Any]) -> dict[str, Any]:
             try:
                 file_id = (item.get("entity") or {}).get("file_id")
                 file_info = kb.db_manager.get_file_by_id(file_id) if file_id else None
@@ -242,13 +234,11 @@ async def query_test(payload: QueryTestPayload):
         raise
     except Exception as e:
         logger.error(f"query-test failed: {e}\n{traceback.format_exc()}")
-        raise HTTPException(500, str(e))
+        raise HTTPException(500, str(e)) from e
+
 
 @data.post("/upload")
-async def upload_file(
-    file: UploadFile = File(...),
-    db_id: Optional[str] = Form(None)
-):
+async def upload_file(file: UploadFile = File(...), db_id: str | None = Form(None)):
     """前端上传文件到后端，再由你自己调 ingest_file 导入"""
     if not file.filename:
         raise HTTPException(400, "No file")
@@ -265,6 +255,7 @@ async def upload_file(
         buf.write(await file.read())
     return {"file_path": path, "db_id": db_id}
 
+
 @data.delete("/document")
 async def delete_document(db_id: str = Body(...), file_id: str = Body(...)):
     # Lazy import: keep server startup cheap when KB features are unused.
@@ -273,7 +264,7 @@ async def delete_document(db_id: str = Body(...), file_id: str = Body(...)):
     try:
         # Ensure Milvus client exists before touching `kb.client`.
         kb._ensure_ready()
-        dim = kb.db_manager.get_database(db_id)['dimension']
+        dim = kb.db_manager.get_database(db_id)["dimension"]
 
         # 若 Collection 不存在则先建
         if not kb.client.has_collection(db_id):
@@ -289,22 +280,14 @@ async def delete_document(db_id: str = Body(...), file_id: str = Body(...)):
             if "index doesn't exist" in str(e):
                 collection.create_index(
                     field_name="vector",
-                    index_params={
-                        "index_type": "IVF_FLAT",
-                        "metric_type": "L2",
-                        "params": {"nlist": 1024}
-                    }
+                    index_params={"index_type": "IVF_FLAT", "metric_type": "L2", "params": {"nlist": 1024}},
                 )
                 collection.load()
             else:
                 raise e
 
         # 查询对应向量 ID
-        rows = kb.client.query(
-            collection_name=db_id,
-            filter=f'file_id == "{file_id}"',
-            output_fields=["id"]
-        )
+        rows = kb.client.query(collection_name=db_id, filter=f'file_id == "{file_id}"', output_fields=["id"])
         ids = [r["id"] for r in rows]
 
         if ids:
@@ -314,7 +297,7 @@ async def delete_document(db_id: str = Body(...), file_id: str = Body(...)):
         return {"message": "删除成功"}
     except Exception as e:
         logger.error(f"delete_document failed: {e}\n{traceback.format_exc()}")
-        raise HTTPException(500, str(e))
+        raise HTTPException(500, str(e)) from e
 
 
 @data.get("/debug/list-uploads")
@@ -324,6 +307,8 @@ async def list_uploaded_files(db_id: str = Query(...)):
         return {"error": "Upload folder not found"}
     files = os.listdir(upload_dir)
     return {"files": files}
+
+
 # graph
 @data.get("/graph")
 async def get_graph_info():
@@ -335,7 +320,7 @@ async def get_graph_info():
         return info
     except Exception as e:
         logger.error(f"get_graph_info failed: {e}\n{traceback.format_exc()}")
-        raise HTTPException(500, str(e))
+        raise HTTPException(500, str(e)) from e
 
 
 @data.get("/graph/nodes")
@@ -349,7 +334,7 @@ async def get_graph_nodes(kgdb_name: str = Query("neo4j"), num: int = Query(100)
         return {"result": result}
     except Exception as e:
         logger.error(f"get_graph_nodes failed: {e}\n{traceback.format_exc()}")
-        raise HTTPException(500, str(e))
+        raise HTTPException(500, str(e)) from e
 
 
 def dedup_subgraph(subgraph: dict) -> dict:
@@ -374,16 +359,10 @@ def dedup_subgraph(subgraph: dict) -> dict:
         key = (src, tgt, edge["type"])
         if key not in seen:
             seen.add(key)
-            new_edges.append({
-                "source_id": src,
-                "target_id": tgt,
-                "type": edge["type"]
-            })
+            new_edges.append({"source_id": src, "target_id": tgt, "type": edge["type"]})
 
-    return {
-        "nodes": list(name_to_node.values()),
-        "edges": new_edges
-    }
+    return {"nodes": list(name_to_node.values()), "edges": new_edges}
+
 
 @data.get("/graph/node")
 async def query_graph_node(entity_name: str = Query(...)):
@@ -393,4 +372,4 @@ async def query_graph_node(entity_name: str = Query(...)):
         return {"result": cleaned}
     except Exception as e:
         logger.error(f"query_graph_node failed: {e}\n{traceback.format_exc()}")
-        raise HTTPException(500, str(e))
+        raise HTTPException(500, str(e)) from e

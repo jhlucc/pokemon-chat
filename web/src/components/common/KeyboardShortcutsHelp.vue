@@ -35,7 +35,7 @@
 <script setup>
 import { computed, ref, onMounted, onUnmounted } from 'vue'
 
-const props = defineProps({
+defineProps({
   shortcuts: {
     type: Array,
     default: () => []

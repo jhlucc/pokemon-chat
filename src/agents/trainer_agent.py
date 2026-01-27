@@ -7,11 +7,11 @@ TrainerAgent - 训练师助手代理
 - 属性覆盖分析
 - 配招推荐
 """
-from typing import List, Dict, Any
-from pydantic import BaseModel, Field
+
 from langchain_core.tools import tool
-from langgraph.graph import MessagesState, StateGraph, START, END
+from langgraph.graph import END, START, MessagesState, StateGraph
 from langgraph.prebuilt import ToolNode
+from pydantic import BaseModel, Field
 
 from src.agents.base import ToolAgent
 from src.utils.logger import get_logger
@@ -19,24 +19,43 @@ from src.utils.logger import get_logger
 logger = get_logger(__name__)
 
 # 属性列表
-ALL_TYPES = ["普通", "火", "水", "电", "草", "冰", "格斗", "毒", "地面", "飞行", "超能力", "虫", "岩石", "幽灵", "龙", "恶", "钢", "妖精"]
+ALL_TYPES = [
+    "普通",
+    "火",
+    "水",
+    "电",
+    "草",
+    "冰",
+    "格斗",
+    "毒",
+    "地面",
+    "飞行",
+    "超能力",
+    "虫",
+    "岩石",
+    "幽灵",
+    "龙",
+    "恶",
+    "钢",
+    "妖精",
+]
 
 # 推荐队伍模板
 TEAM_TEMPLATES = {
     "平衡队": {
         "description": "全面平衡的队伍，覆盖多种属性",
         "members": ["皮卡丘", "喷火龙", "水箭龟", "妙蛙花", "快龙", "卡比兽"],
-        "coverage": ["电", "火", "飞行", "水", "草", "毒", "龙", "普通"]
+        "coverage": ["电", "火", "飞行", "水", "草", "毒", "龙", "普通"],
     },
     "速攻队": {
         "description": "高速扫荡队伍",
         "members": ["皮卡丘", "快龙", "超梦", "耿鬼", "喷火龙", "雷丘"],
-        "coverage": ["电", "龙", "飞行", "超能力", "幽灵", "毒", "火"]
+        "coverage": ["电", "龙", "飞行", "超能力", "幽灵", "毒", "火"],
     },
     "耐久队": {
         "description": "高耐久防守队伍",
         "members": ["卡比兽", "水箭龟", "妙蛙花", "钢铠鸦", "幸福蛋", "盔甲鸟"],
-        "coverage": ["普通", "水", "草", "毒", "钢", "飞行"]
+        "coverage": ["普通", "水", "草", "毒", "钢", "飞行"],
     },
 }
 
@@ -83,11 +102,11 @@ class TeamRequestSchema(BaseModel):
 
 
 class CounterSchema(BaseModel):
-    opponent_types: List[str] = Field(description="对手队伍的属性列表")
+    opponent_types: list[str] = Field(description="对手队伍的属性列表")
 
 
 class CoverageSchema(BaseModel):
-    team_types: List[str] = Field(description="队伍成员的属性列表")
+    team_types: list[str] = Field(description="队伍成员的属性列表")
 
 
 class MovesetSchema(BaseModel):
@@ -100,11 +119,11 @@ def build_team(style: str) -> str:
     if style not in TEAM_TEMPLATES:
         available = ", ".join(TEAM_TEMPLATES.keys())
         return f"未知的队伍风格: {style}\n可用风格: {available}"
-    
+
     team = TEAM_TEMPLATES[style]
     members = "\n".join([f"- {m}" for m in team["members"]])
     coverage = ", ".join(team["coverage"])
-    
+
     return f"""## 推荐队伍: {style}
 
 **描述**: {team["description"]}
@@ -117,33 +136,33 @@ def build_team(style: str) -> str:
 
 
 @tool(args_schema=CounterSchema)
-def counter_team(opponent_types: List[str]) -> str:
+def counter_team(opponent_types: list[str]) -> str:
     """针对对手队伍给出克制建议"""
     counters = {}
-    
+
     for opp_type in opponent_types:
         if opp_type in TYPE_WEAKNESSES:
             for weakness in TYPE_WEAKNESSES[opp_type]:
                 counters[weakness] = counters.get(weakness, 0) + 1
-    
+
     if not counters:
         return "无法分析克制关系，请确认属性名称正确"
-    
+
     sorted_counters = sorted(counters.items(), key=lambda x: -x[1])
-    
+
     result = f"## 针对 {'/'.join(opponent_types)} 的克制建议\n\n"
     result += "**推荐携带属性**:\n"
     for type_name, count in sorted_counters[:5]:
         result += f"- **{type_name}** (克制 {count} 个属性)\n"
-    
+
     return result
 
 
 @tool(args_schema=CoverageSchema)
-def type_coverage(team_types: List[str]) -> str:
+def type_coverage(team_types: list[str]) -> str:
     """分析队伍属性覆盖"""
     covered = set()
-    
+
     # 简化的克制表
     coverage_map = {
         "火": ["草", "冰", "虫", "钢"],
@@ -160,24 +179,24 @@ def type_coverage(team_types: List[str]) -> str:
         "钢": ["冰", "岩石", "妖精"],
         "妖精": ["格斗", "龙", "恶"],
     }
-    
+
     for t in team_types:
         if t in coverage_map:
             covered.update(coverage_map[t])
-    
+
     uncovered = set(ALL_TYPES) - covered
-    
+
     coverage_pct = len(covered) / len(ALL_TYPES) * 100
-    
+
     return f"""## 属性覆盖分析
 
-**队伍属性**: {', '.join(team_types)}
+**队伍属性**: {", ".join(team_types)}
 
 **可有效打击** ({len(covered)}/{len(ALL_TYPES)}):
-{', '.join(sorted(covered)) if covered else '无'}
+{", ".join(sorted(covered)) if covered else "无"}
 
 **无法有效打击** ({len(uncovered)}):
-{', '.join(sorted(uncovered)) if uncovered else '无'}
+{", ".join(sorted(uncovered)) if uncovered else "无"}
 
 **覆盖率**: {coverage_pct:.1f}%
 """
@@ -188,21 +207,21 @@ def suggest_moveset(pokemon_name: str) -> str:
     """推荐配招"""
     if pokemon_name not in MOVESETS:
         return f"未找到 {pokemon_name} 的配招建议"
-    
+
     sets = MOVESETS[pokemon_name]
     result = f"## {pokemon_name} 推荐配招\n\n"
-    
+
     for set_name, moves in sets.items():
         result += f"### {set_name}\n"
         result += "\n".join([f"- {move}" for move in moves])
         result += "\n\n"
-    
+
     return result
 
 
 class TrainerAgent(ToolAgent):
     """训练师助手代理"""
-    
+
     def __init__(self):
         tools = [build_team, counter_team, type_coverage, suggest_moveset]
         super().__init__(tools=tools, bind_tools=True)
@@ -236,12 +255,9 @@ class TrainerAgent(ToolAgent):
             tool = tool_map.get(call["name"])
             if tool:
                 result = tool.invoke(call["args"])
-                new_messages.append({
-                    "role": "tool",
-                    "name": call["name"],
-                    "content": result,
-                    "tool_call_id": call["id"]
-                })
+                new_messages.append(
+                    {"role": "tool", "name": call["name"], "content": result, "tool_call_id": call["id"]}
+                )
         return {"messages": new_messages}
 
     def _build_graph(self):
@@ -250,10 +266,7 @@ class TrainerAgent(ToolAgent):
         workflow.add_node("run_tool", self._run_tool)
 
         workflow.add_edge(START, "agent")
-        workflow.add_conditional_edges("agent", self._should_continue, {
-            "run_tool": "run_tool",
-            "end": END
-        })
+        workflow.add_conditional_edges("agent", self._should_continue, {"run_tool": "run_tool", "end": END})
         workflow.add_edge("run_tool", "agent")
 
         return workflow.compile(checkpointer=self.checkpointer)

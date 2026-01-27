@@ -1,4 +1,4 @@
-import { ref, watch, onMounted } from 'vue'
+import { onMounted, ref } from 'vue'
 
 const THEME_STORAGE_KEY = 'pokemon-chat-theme'
 
@@ -89,7 +89,7 @@ export function useTheme() {
 /**
  * Theme options for UI
  */
-export const themeOptions = [
+export const themeOptions: Array<{ value: Theme; label: string; icon: string }> = [
   { value: 'light', label: '浅色模式', icon: '☀️' },
   { value: 'dark', label: '深色模式', icon: '🌙' },
   { value: 'system', label: '跟随系统', icon: '💻' }

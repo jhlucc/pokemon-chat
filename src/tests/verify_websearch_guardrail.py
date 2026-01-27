@@ -1,13 +1,14 @@
-from src.agents.tools.websearch.websearcher import LiteBaseSearcher
-from src.core.settings import settings
 import logging
+
+from src.agents.tools.websearch.websearcher import LiteBaseSearcher
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
 
+
 def test_guardrail():
     searcher = LiteBaseSearcher()
-    
+
     # 1. Test Safe Query
     print("\n--- Testing Safe Query: '皮卡丘' ---")
     results = searcher.search("皮卡丘", top_k=1)
@@ -24,6 +25,7 @@ def test_guardrail():
         print(f"✅ PASS: Unsafe query blocked. Message: {results[0].content_snippet}")
     else:
         print(f"❌ FAIL: Unsafe query allowed? Result: {results[0] if results else 'None'}")
+
 
 if __name__ == "__main__":
     try:

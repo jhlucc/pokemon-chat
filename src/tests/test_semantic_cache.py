@@ -6,14 +6,12 @@ These tests must be offline-safe: we stub the embedding model to avoid network c
 
 from __future__ import annotations
 
-from typing import Dict, List
-
 
 class _DummyEmbeddings:
-    def __init__(self, vectors: Dict[str, List[float]]):
+    def __init__(self, vectors: dict[str, list[float]]):
         self._vectors = vectors
 
-    def embed_query(self, query: str) -> List[float]:
+    def embed_query(self, query: str) -> list[float]:
         return self._vectors[query]
 
 

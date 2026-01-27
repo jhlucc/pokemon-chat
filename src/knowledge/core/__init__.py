@@ -66,4 +66,3 @@ def get_kg_agent():
     from src.runtime import get_kg_agent as _get_kg_agent
 
     return _get_kg_agent()
-

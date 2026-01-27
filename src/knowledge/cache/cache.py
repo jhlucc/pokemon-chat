@@ -4,20 +4,22 @@ Semantic Cache for Pokemon Chat
 Uses embedding similarity to cache and retrieve similar query responses.
 Dramatically reduces LLM calls for repeated/similar questions.
 """
+
 from __future__ import annotations
 
-import json
 import hashlib
+import json
 import os
 import time
 from dataclasses import dataclass
-from threading import Lock
-from typing import Optional, Tuple, Dict, Any
 from pathlib import Path
+from threading import Lock
+from typing import Any
+
 import numpy as np
 
-from src.core.settings import settings
 from src.core.provider_config import get_provider_api_base, get_provider_api_key
+from src.core.settings import settings
 from src.utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -43,19 +45,19 @@ class _CacheEntry:
     embedding: np.ndarray
     response: str
     created_at_s: float
-    meta: Dict[str, str]
+    meta: dict[str, str]
 
 
 class SemanticCache:
     """
     Simple file-based semantic cache.
-    
+
     For production, consider using Redis + pgvector or GPTCache.
     """
-    
+
     def __init__(
         self,
-        cache_dir: Optional[Path] = None,
+        cache_dir: Path | None = None,
         similarity_threshold: float = 0.92,
         max_cache_size: int = 10000,
         ttl_seconds: int = 7 * 24 * 3600,
@@ -66,27 +68,26 @@ class SemanticCache:
             provider = (settings.embedding.provider or "").strip().lower()
             model_name = (settings.embedding.model_name or "").strip()
             api_base = _normalize_openai_api_base(
-                (settings.embedding.api_base or "").strip()
-                or (get_provider_api_base(provider) or "").strip()
+                (settings.embedding.api_base or "").strip() or (get_provider_api_base(provider) or "").strip()
             )
-            ns = hashlib.sha256(f"{provider}:{model_name}:{api_base}".encode("utf-8")).hexdigest()[:12]
+            ns = hashlib.sha256(f"{provider}:{model_name}:{api_base}".encode()).hexdigest()[:12]
             cache_dir = settings.paths.cache_dir / "semantic_cache" / ns
 
         self.cache_dir = cache_dir
         self.cache_dir.mkdir(parents=True, exist_ok=True)
-        
+
         self.similarity_threshold = similarity_threshold
         self.max_cache_size = max_cache_size
         self.ttl_seconds = int(ttl_seconds)
-        
+
         # In-memory index: {query_hash: (embedding, response)}
-        self._index: Dict[str, _CacheEntry] = {}
+        self._index: dict[str, _CacheEntry] = {}
         self._embedding_model = None
         self._embedding_disabled = False
         self._lock = Lock()
-        
+
         self._load_cache()
-    
+
     @property
     def embedding_model(self):
         """Lazy load embedding model."""
@@ -120,18 +121,18 @@ class SemanticCache:
                 openai_api_base=api_base,
             )
         return self._embedding_model
-    
+
     def _get_query_hash(self, query: str) -> str:
         return hashlib.md5(query.strip().lower().encode()).hexdigest()
 
-    def _normalize_meta(self, meta: Optional[Dict[str, Any]]) -> Dict[str, str]:
+    def _normalize_meta(self, meta: dict[str, Any] | None) -> dict[str, str]:
         """
         Normalize cache meta so comparisons are stable and keys remain small.
 
         We only keep a small allowlist to prevent the cache key from exploding.
         """
         meta = meta or {}
-        out: Dict[str, str] = {}
+        out: dict[str, str] = {}
         for k in ("model_provider", "model_name", "system_prompt_sha"):
             v = meta.get(k, None)
             if v is None:
@@ -141,14 +142,14 @@ class SemanticCache:
                 out[k] = s
         return out
 
-    def _meta_key(self, meta: Optional[Dict[str, Any]]) -> str:
+    def _meta_key(self, meta: dict[str, Any] | None) -> str:
         norm = self._normalize_meta(meta)
         if not norm:
             return ""
         # Stable serialization for hashing & comparisons
         return json.dumps(norm, sort_keys=True, ensure_ascii=False, separators=(",", ":"))
 
-    def _get_entry_hash(self, query: str, meta: Optional[Dict[str, Any]]) -> str:
+    def _get_entry_hash(self, query: str, meta: dict[str, Any] | None) -> str:
         """
         Hash for a cache entry.
 
@@ -159,27 +160,27 @@ class SemanticCache:
         mk = self._meta_key(meta)
         if not mk:
             return self._get_query_hash(query)
-        return hashlib.md5(f"{mk}::{query.strip().lower()}".encode("utf-8")).hexdigest()
-    
+        return hashlib.md5(f"{mk}::{query.strip().lower()}".encode()).hexdigest()
+
     def _cosine_similarity(self, a: np.ndarray, b: np.ndarray) -> float:
         """Compute cosine similarity between two vectors."""
         denom = float(np.linalg.norm(a) * np.linalg.norm(b))
         if denom == 0.0:
             return 0.0
         return float(np.dot(a, b) / denom)
-    
+
     def _load_cache(self):
         """Load cache from disk."""
         cache_file = self.cache_dir / "cache.json"
         embeddings_file = self.cache_dir / "embeddings.npy"
-        
+
         if cache_file.exists() and embeddings_file.exists():
             try:
-                with open(cache_file, "r", encoding="utf-8") as f:
+                with open(cache_file, encoding="utf-8") as f:
                     cache_data = json.load(f)
-                
+
                 embeddings = np.load(embeddings_file, allow_pickle=True).item()
-                
+
                 now = time.time()
                 loaded = 0
                 for query_hash, payload in cache_data.items():
@@ -215,18 +216,18 @@ class SemanticCache:
                         meta=meta,
                     )
                     loaded += 1
-                
+
                 logger.info(f"Loaded {loaded} cached entries")
             except Exception as e:
                 logger.warning(f"Failed to load cache: {e}")
-    
+
     def _save_cache(self):
         """Save cache to disk."""
         cache_file = self.cache_dir / "cache.json"
         embeddings_file = self.cache_dir / "embeddings.npy"
         cache_tmp = cache_file.with_suffix(cache_file.suffix + ".tmp")
         emb_tmp = embeddings_file.with_suffix(embeddings_file.suffix + ".tmp")
-        
+
         try:
             cache_data = {
                 h: {"response": entry.response, "created_at_s": entry.created_at_s, "meta": entry.meta}
@@ -256,17 +257,17 @@ class SemanticCache:
                     emb_tmp.unlink()
             except Exception:
                 pass
-    
-    def get(self, query: str, meta: Optional[Dict[str, Any]] = None) -> Optional[str]:
+
+    def get(self, query: str, meta: dict[str, Any] | None = None) -> str | None:
         """
         Try to get a cached response for a similar query.
-        
+
         Returns None if no similar query is found.
         """
         with self._lock:
             if not self._index:
                 return None
-        
+
         try:
             model = self.embedding_model
             if model is None:
@@ -292,17 +293,18 @@ class SemanticCache:
 
             # Get query embedding
             query_embedding = np.array(model.embed_query(query))
-            
+
             # Find most similar cached query
-            best_hash: Optional[str] = None
+            best_hash: str | None = None
             best_match = None
             best_similarity = 0.0
-            
+
             with self._lock:
                 # Drop expired entries opportunistically.
                 if self.ttl_seconds > 0:
                     expired = [
-                        h for h, entry in self._index.items()
+                        h
+                        for h, entry in self._index.items()
                         if entry.created_at_s and (now - entry.created_at_s) > self.ttl_seconds
                     ]
                     for h in expired:
@@ -318,7 +320,7 @@ class SemanticCache:
                     best_similarity = similarity
                     best_hash = h
                     best_match = entry.response
-            
+
             if best_similarity >= self.similarity_threshold:
                 logger.info(f"Cache HIT: similarity={best_similarity:.3f}")
                 # LRU bump for the matched entry.
@@ -331,12 +333,12 @@ class SemanticCache:
             else:
                 logger.debug(f"Cache MISS: best similarity={best_similarity:.3f}")
                 return None
-                
+
         except Exception as e:
             logger.error(f"Cache lookup failed: {e}")
             return None
-    
-    def set(self, query: str, response: str, meta: Optional[Dict[str, Any]] = None):
+
+    def set(self, query: str, response: str, meta: dict[str, Any] | None = None):
         """
         Cache a query-response pair.
         """
@@ -346,7 +348,7 @@ class SemanticCache:
                 return
             norm_meta = self._normalize_meta(meta)
             query_hash = self._get_entry_hash(query, norm_meta)
-            
+
             # Check if already exists
             with self._lock:
                 if query_hash in self._index:
@@ -354,13 +356,13 @@ class SemanticCache:
                     entry = self._index.pop(query_hash)
                     self._index[query_hash] = entry
                     return
-            
+
             # Enforce max size (LRU-like: remove oldest)
             with self._lock:
                 if len(self._index) >= self.max_cache_size:
                     oldest_key = next(iter(self._index))
                     del self._index[oldest_key]
-            
+
             # Get embedding and store
             embedding = np.array(model.embed_query(query))
             with self._lock:
@@ -370,16 +372,16 @@ class SemanticCache:
                     created_at_s=time.time(),
                     meta=norm_meta,
                 )
-            
+
             # Persist to disk
             with self._lock:
                 self._save_cache()
-            
+
             logger.debug(f"Cached new entry: {query[:50]}...")
-            
+
         except Exception as e:
             logger.error(f"Failed to cache response: {e}")
-    
+
     def clear(self):
         """Clear all cached entries."""
         with self._lock:
@@ -387,7 +389,7 @@ class SemanticCache:
             self._save_cache()
         logger.info("Cache cleared")
 
-    def stats(self) -> Dict[str, Any]:
+    def stats(self) -> dict[str, Any]:
         """Return lightweight cache stats for admin/debug endpoints."""
         with self._lock:
             size = len(self._index)
@@ -402,7 +404,8 @@ class SemanticCache:
 
 
 # Global instance
-_cache_instance: Optional[SemanticCache] = None
+_cache_instance: SemanticCache | None = None
+
 
 def get_semantic_cache() -> SemanticCache:
     """Get the global semantic cache instance."""

@@ -45,7 +45,6 @@ resources/save/config/ui_config.json
 *.tmp
 server/saves/
 *.db
-*.txt
 configs/settings.py
 
 

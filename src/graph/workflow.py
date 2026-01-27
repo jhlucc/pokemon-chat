@@ -1,20 +1,22 @@
-from langgraph.graph import StateGraph, END
-from src.graph.state import AgentState
+from langgraph.graph import END, StateGraph
 
-from src.graph.nodes.supervisor import supervisor_node
-from src.graph.nodes.rag_worker import rag_worker_node
-from src.graph.nodes.web_worker import web_worker_node
 from src.graph.nodes.graph_worker import graph_worker_node
-from src.graph.nodes.stats_worker import stats_worker_node
 from src.graph.nodes.mcp_worker import get_mcp_worker
+from src.graph.nodes.rag_worker import rag_worker_node
+from src.graph.nodes.stats_worker import stats_worker_node
+from src.graph.nodes.supervisor import supervisor_node
+from src.graph.nodes.web_worker import web_worker_node
+from src.graph.state import AgentState
 
 # Initialize Graph
 workflow = StateGraph(AgentState)
+
 
 # MCP Worker (async, needs wrapper)
 async def mcp_worker_node(state: AgentState):
     worker = get_mcp_worker()
     return await worker(state)
+
 
 # Add Nodes
 workflow.add_node("supervisor", supervisor_node)
@@ -41,8 +43,8 @@ workflow.add_conditional_edges(
         "graph_worker": "graph_worker",
         "stats_worker": "stats_worker",
         "mcp_worker": "mcp_worker",
-        "FINISH": END
-    }
+        "FINISH": END,
+    },
 )
 
 # Entry Point
@@ -51,4 +53,3 @@ workflow.set_entry_point("supervisor")
 # Compile
 # checkpointer = MemorySaver() # TODO: Add persistence if needed
 graph = workflow.compile()
-

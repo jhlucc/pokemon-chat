@@ -2,14 +2,14 @@
 Pokemon-Chat 统一配置
 使用 Pydantic v2 BaseSettings 管理所有配置
 """
+
 import os
 import sys
 from functools import lru_cache
 from pathlib import Path
-from typing import Tuple
+
 from pydantic import AliasChoices, Field, computed_field
 from pydantic_settings import BaseSettings, SettingsConfigDict
-
 
 # 项目根目录 (Path 对象)
 _BASE_DIR_PATH = Path(__file__).parent.parent.parent.resolve()
@@ -17,6 +17,7 @@ _BASE_DIR_PATH = Path(__file__).parent.parent.parent.resolve()
 
 class PathSettings(BaseSettings):
     """路径配置"""
+
     model_config = SettingsConfigDict(extra="ignore")
 
     @computed_field
@@ -123,6 +124,7 @@ class PathSettings(BaseSettings):
 
 class DatabaseSettings(BaseSettings):
     """数据库配置"""
+
     model_config = SettingsConfigDict(env_prefix="", extra="ignore")
 
     # Neo4j
@@ -131,7 +133,7 @@ class DatabaseSettings(BaseSettings):
     neo4j_password: str = ""
 
     @property
-    def neo4j_auth(self) -> Tuple[str, str]:
+    def neo4j_auth(self) -> tuple[str, str]:
         return (self.neo4j_username, self.neo4j_password)
 
     # MySQL
@@ -148,6 +150,7 @@ class DatabaseSettings(BaseSettings):
 
 class TavilySettings(BaseSettings):
     """Tavily 搜索配置"""
+
     model_config = SettingsConfigDict(env_prefix="tavily_", extra="ignore")
 
     api_key: str = ""
@@ -155,6 +158,7 @@ class TavilySettings(BaseSettings):
 
 class CorsSettings(BaseSettings):
     """CORS 配置"""
+
     model_config = SettingsConfigDict(env_prefix="", extra="ignore")
 
     # Comma-separated list, or "*" (default).
@@ -170,6 +174,7 @@ class CorsSettings(BaseSettings):
 
 class ToolSettings(BaseSettings):
     """第三方工具配置"""
+
     # Accept both `tool_openweather_api_key` (recommended) and legacy `OPENWEATHER_API_KEY`.
     model_config = SettingsConfigDict(env_prefix="", extra="ignore")
 
@@ -182,6 +187,7 @@ class ToolSettings(BaseSettings):
 
 class EmbeddingSettings(BaseSettings):
     """Embedding 配置"""
+
     model_config = SettingsConfigDict(env_prefix="embedding_", extra="ignore")
 
     provider: str = "siliconflow"  # 默认提供商
@@ -193,6 +199,7 @@ class EmbeddingSettings(BaseSettings):
 
 class RerankerSettings(BaseSettings):
     """Reranker 配置"""
+
     model_config = SettingsConfigDict(env_prefix="reranker_", extra="ignore")
 
     provider: str = "siliconflow"
@@ -206,6 +213,7 @@ class RerankerSettings(BaseSettings):
 
 class LLMSettings(BaseSettings):
     """LLM 配置"""
+
     model_config = SettingsConfigDict(env_prefix="llm_", extra="ignore")
 
     api_key: str = ""
@@ -217,6 +225,7 @@ class LLMSettings(BaseSettings):
 
 class FeatureSettings(BaseSettings):
     """功能开关"""
+
     model_config = SettingsConfigDict(extra="ignore")
 
     # Accept both lower-case (docker/.env, .env.template) and legacy UPPER_SNAKE_CASE keys.
@@ -258,6 +267,7 @@ class FeatureSettings(BaseSettings):
 
 class AsrSettings(BaseSettings):
     """ASR 配置"""
+
     model_config = SettingsConfigDict(env_prefix="", extra="ignore")
 
     funasr_url: str = Field(
@@ -268,6 +278,7 @@ class AsrSettings(BaseSettings):
 
 class AgentSettings(BaseSettings):
     """Agent 高级功能配置"""
+
     model_config = SettingsConfigDict(extra="ignore")
 
     # Checkpointer 类型: memory, sqlite
@@ -294,6 +305,7 @@ class AgentSettings(BaseSettings):
 
 class KnowledgeBaseConfig(BaseSettings):
     """知识库配置"""
+
     model_config = SettingsConfigDict(extra="ignore")
 
     milvus_uri: str = "http://localhost:19530"
@@ -307,6 +319,7 @@ class KnowledgeBaseConfig(BaseSettings):
 
 class Settings(BaseSettings):
     """主配置类"""
+
     model_config = SettingsConfigDict(
         # Use an absolute path so `.env` is found regardless of current working directory.
         env_file=str(_BASE_DIR_PATH / ".env"),
@@ -348,7 +361,6 @@ class Settings(BaseSettings):
             key = self.llm.api_key or os.getenv("OPENAI_API_KEY", "")
 
         return key
-
 
 
 @lru_cache

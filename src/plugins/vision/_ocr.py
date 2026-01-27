@@ -5,11 +5,12 @@ import uuid
 # 第三方库
 import fitz  # PyMuPDF
 import numpy as np
-from PIL import Image
 from huggingface_hub import hf_hub_download
 from langchain_community.document_loaders import PyPDFLoader
+from PIL import Image
 from rapidocr_onnxruntime import RapidOCR
 from tqdm import tqdm
+
 from src.core.settings import settings
 
 # from argparse import ArgumentParser
@@ -62,7 +63,7 @@ def _plain_text_loader(file_path: str) -> str:
     """
     从普通文本文件中读取并返回其内容。
     """
-    with open(file_path, "r", encoding="utf-8") as f:
+    with open(file_path, encoding="utf-8") as f:
         return f.read()
 
 
@@ -123,15 +124,10 @@ class OCRHandler2:
         # 再次检查下载结果
         if not os.path.exists(det_path) or not os.path.exists(rec_path):
             raise FileNotFoundError(
-                f"模型文件缺失，无法找到:\n{det_path}\n{rec_path}\n"
-                "请检查自动下载或手动放置模型文件。"
+                f"模型文件缺失，无法找到:\n{det_path}\n{rec_path}\n请检查自动下载或手动放置模型文件。"
             )
 
-        self._ocr_core = RapidOCR(
-            det_box_thresh=self._threshold,
-            det_model_path=det_path,
-            rec_model_path=rec_path
-        )
+        self._ocr_core = RapidOCR(det_box_thresh=self._threshold, det_model_path=det_path, rec_model_path=rec_path)
         logging.info(f"OCR 引擎加载完毕，当前阈值: {self._threshold}")
 
     def single_image_ocr(self, input_data):
@@ -180,12 +176,12 @@ class OCRHandler2:
 
         # 2.逐页转换图像再 OCR
         pdf_filename = os.path.splitext(os.path.basename(pdf_path))[0]
-        storage_dir = os.path.join(str(settings.paths.data_parser_data), 'pdf2txt', pdf_filename)
+        storage_dir = os.path.join(str(settings.paths.data_parser_data), "pdf2txt", pdf_filename)
         os.makedirs(storage_dir, exist_ok=True)
 
         images_for_ocr = self._pdf_2_imgs(pdf_path, storage_dir)
         text_results = []
-        for img in tqdm(images_for_ocr, desc='OCR on PDF pages', ncols=100):
+        for img in tqdm(images_for_ocr, desc="OCR on PDF pages", ncols=100):
             recognized = self.single_image_ocr(img)
             text_results.append(recognized)
 
@@ -196,7 +192,7 @@ class OCRHandler2:
         将 PDF 的每一页转换为 PNG 并返回这些图像的路径列表。
         如果已转换过，则直接读取缓存文件。
         """
-        img_dir = os.path.join(out_dir, 'page_imgs')
+        img_dir = os.path.join(out_dir, "page_imgs")
         results = []
 
         if not os.path.exists(img_dir):
@@ -204,11 +200,11 @@ class OCRHandler2:
             pdf_data = fitz.open(pdf_file)
             total_pages = pdf_data.page_count
 
-            for idx in tqdm(range(total_pages), desc='Converting PDF to images', ncols=100):
+            for idx in tqdm(range(total_pages), desc="Converting PDF to images", ncols=100):
                 page_obj = pdf_data[idx]
                 scale = fitz.Matrix(2, 2)
                 pix = page_obj.get_pixmap(matrix=scale, alpha=False)
-                img_name = os.path.join(img_dir, f'pg_{idx + 1}.png')
+                img_name = os.path.join(img_dir, f"pg_{idx + 1}.png")
                 pix.save(img_name)
                 results.append(img_name)
         else:
@@ -221,7 +217,7 @@ class OCRHandler2:
         """
         将 PIL.Image 或 numpy.ndarray 存成临时文件，并返回其路径。
         """
-        temp_dir = os.path.join(os.getcwd(), 'temp_imgs')
+        temp_dir = os.path.join(os.getcwd(), "temp_imgs")
         os.makedirs(temp_dir, exist_ok=True)
 
         random_name = f"temp_img_{uuid.uuid4().hex[:8]}.png"

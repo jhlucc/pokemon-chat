@@ -1,23 +1,19 @@
 import warnings
 
-warnings.filterwarnings("ignore", category=FutureWarning)
-import numpy as np
-from typing import List, Optional
 from langchain_core.documents import Document
-from pymilvus import (
-    connections, FieldSchema, CollectionSchema,
-    DataType, Collection, utility
-)
+from pymilvus import Collection, CollectionSchema, DataType, FieldSchema, connections, utility
+
+warnings.filterwarnings("ignore", category=FutureWarning)
 
 
 class MilvusStorage:
     def __init__(
-            self,
-            collection_name: str = "default",
-            dim: int = 1024,
-            host: str = "localhost",
-            port: str = "19530",
-            overwrite: bool = False
+        self,
+        collection_name: str = "default",
+        dim: int = 1024,
+        host: str = "localhost",
+        port: str = "19530",
+        overwrite: bool = False,
     ):
         """
         一个轻量封装:
@@ -37,11 +33,7 @@ class MilvusStorage:
             FieldSchema(name="text_length", dtype=DataType.INT64),
         ]
 
-        self.schema = CollectionSchema(
-            fields=self.fields,
-            description="Embedded documents",
-            enable_dynamic_field=True
-        )
+        self.schema = CollectionSchema(fields=self.fields, description="Embedded documents", enable_dynamic_field=True)
 
         if utility.has_collection(collection_name):
             if overwrite:
@@ -59,25 +51,14 @@ class MilvusStorage:
 
     def _create_collection(self) -> Collection:
         print(f"创建新集合: {self.collection_name}")
-        return Collection(
-            name=self.collection_name,
-            schema=self.schema,
-            consistency_level="Strong"
-        )
+        return Collection(name=self.collection_name, schema=self.schema, consistency_level="Strong")
 
-    def _create_index(self, index_params: Optional[dict] = None):
-        default_index = {
-            "index_type": "IVF_FLAT",
-            "metric_type": "COSINE",
-            "params": {"nlist": 16}
-        }
-        self.collection.create_index(
-            field_name="embedding",
-            index_params=index_params or default_index
-        )
+    def _create_index(self, index_params: dict | None = None):
+        default_index = {"index_type": "IVF_FLAT", "metric_type": "COSINE", "params": {"nlist": 16}}
+        self.collection.create_index(field_name="embedding", index_params=index_params or default_index)
         self.collection.load()
 
-    def insert(self, documents: List[Document], batch_size: int = 32):
+    def insert(self, documents: list[Document], batch_size: int = 32):
         """
         注意：要求 doc.metadata["embedding"] 已经存在且维度 == self.dim
         """
@@ -86,7 +67,7 @@ class MilvusStorage:
 
         inserted = 0
         for i in range(0, total_docs, batch_size):
-            batch = documents[i:i + batch_size]
+            batch = documents[i : i + batch_size]
             texts = []
             embeddings = []
             metas = []

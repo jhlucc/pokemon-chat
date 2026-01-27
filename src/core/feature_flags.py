@@ -6,7 +6,7 @@ from copy import deepcopy
 from functools import lru_cache
 from pathlib import Path
 from threading import Lock
-from typing import Any, Dict
+from typing import Any
 
 from src.core.settings import settings
 
@@ -22,7 +22,7 @@ def _ui_config_file() -> Path:
     return _config_dir() / "ui_config.json"
 
 
-def _read_json_file(path: Path) -> Dict[str, Any]:
+def _read_json_file(path: Path) -> dict[str, Any]:
     try:
         if not path.exists():
             return {}
@@ -33,7 +33,7 @@ def _read_json_file(path: Path) -> Dict[str, Any]:
 
 
 @lru_cache(maxsize=1)
-def _load_overrides_cached() -> Dict[str, Any]:
+def _load_overrides_cached() -> dict[str, Any]:
     return _read_json_file(_ui_config_file())
 
 
@@ -41,7 +41,7 @@ def clear_feature_cache() -> None:
     _load_overrides_cached.cache_clear()
 
 
-def load_overrides() -> Dict[str, Any]:
+def load_overrides() -> dict[str, Any]:
     """
     Load persisted UI overrides.
 
@@ -61,7 +61,7 @@ def _as_bool(value: Any, default: bool) -> bool:
         return default
     if isinstance(value, bool):
         return value
-    if isinstance(value, (int, float)):
+    if isinstance(value, int | float):
         return bool(value)
     if isinstance(value, str):
         v = value.strip().lower()

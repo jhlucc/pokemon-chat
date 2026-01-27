@@ -1,23 +1,16 @@
-import os
-from pathlib import Path
-from typing import List, Optional
-from src.plugins.parser import PdfParser, DocxParser, ExcelParser, PptParser, TxtParser
-from src.plugins.vision._ocr import OCRHandler2
 from langchain_core.documents import Document
 from langchain_text_splitters import CharacterTextSplitter
-from src.utils.logger import get_logger
 
-from markitdown import MarkItDown
+from src.knowledge.ingestion.parsers.base import parse_file as new_parse_file
+from src.utils.logger import get_logger
 
 _log = get_logger(__name__)
 
 
-from src.knowledge.ingestion.parsers.base import parse_file as new_parse_file
-
 def parse_file(
-        file_path: str,
-        do_ocr: bool = False,
-        ocr_det_threshold: float = 0.3,
+    file_path: str,
+    do_ocr: bool = False,
+    ocr_det_threshold: float = 0.3,
 ) -> str:
     """
     Deprecated: Delegates to src.knowledge.ingestion.parsers.base.parse_file
@@ -26,19 +19,16 @@ def parse_file(
 
 
 def chunk_file(
-        file_path: str,
-        chunk_size: int = 1000,
-        chunk_overlap: int = 100,
-        do_ocr: bool = False,
-        ocr_det_threshold: float = 0.3,
-) -> List[Document]:
+    file_path: str,
+    chunk_size: int = 1000,
+    chunk_overlap: int = 100,
+    do_ocr: bool = False,
+    ocr_det_threshold: float = 0.3,
+) -> list[Document]:
     # 先将文件解析成纯文本
     text = parse_file(file_path, do_ocr=do_ocr, ocr_det_threshold=ocr_det_threshold)
     # 创建一个文本切分器，这里示例用 CharacterTextSplitter + tiktoken encoder
-    splitter = CharacterTextSplitter.from_tiktoken_encoder(
-        chunk_size=chunk_size,
-        chunk_overlap=chunk_overlap
-    )
+    splitter = CharacterTextSplitter.from_tiktoken_encoder(chunk_size=chunk_size, chunk_overlap=chunk_overlap)
     sub_texts = splitter.split_text(text)
     docs = []
     for idx, s in enumerate(sub_texts):
@@ -52,14 +42,11 @@ def chunk_file(
 
 
 def chunk_text(
-        text: str,
-        chunk_size: int = 1000,
-        chunk_overlap: int = 100,
-) -> List[Document]:
-    splitter = CharacterTextSplitter.from_tiktoken_encoder(
-        chunk_size=chunk_size,
-        chunk_overlap=chunk_overlap
-    )
+    text: str,
+    chunk_size: int = 1000,
+    chunk_overlap: int = 100,
+) -> list[Document]:
+    splitter = CharacterTextSplitter.from_tiktoken_encoder(chunk_size=chunk_size, chunk_overlap=chunk_overlap)
     sub_texts = splitter.split_text(text)
 
     return [Document(page_content=st, metadata={"type": "inline_text"}) for st in sub_texts]
