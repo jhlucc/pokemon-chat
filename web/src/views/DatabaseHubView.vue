@@ -57,7 +57,7 @@
           style="margin-bottom: 12px"
         />
 
-        <a-tabs v-model:activeKey="activeTab" type="card" class="hub-tabs" @change="onTabChange">
+        <a-tabs v-model:activeKey="activeTab" class="hub-tabs" @change="onTabChange">
           <a-tab-pane key="list">
             <template #tab>知识库列表</template>
 
@@ -70,56 +70,56 @@
                   ? '后端未启用知识库功能（enable_knowledge_base=false）'
                   : '后端未启动/不可用（离线模式）'
               "
-              style="margin-bottom: 12px"
+              style="margin-bottom: 16px"
             />
 
-            <div class="databases">
-              <div class="new-database dbcard ui-card" @click="newDatabase.open = true">
-                <div class="top">
-                  <div class="icon"><PlusOutlined /></div>
-                  <div class="info">
-                    <h3>新建知识库</h3>
-                  </div>
-                </div>
-                <p>导入文档数据，增强模型上下文。</p>
+            <!-- 加载骨架屏 -->
+            <div v-if="state.loading" class="databases">
+              <div v-for="n in 6" :key="n" class="dbcard dbcard--skeleton">
+                <a-skeleton active :title="{ width: '60%' }" :paragraph="{ rows: 2 }" />
               </div>
+            </div>
 
-              <template v-if="state.loading">
-                <div v-for="n in 6" :key="n" class="dbcard ui-card dbcard--skeleton">
-                  <a-skeleton active :title="{ width: '60%' }" :paragraph="{ rows: 2 }" />
-                </div>
-              </template>
-              <template v-else>
-                <a-empty v-if="databases.length === 0" class="db-empty" description="暂无知识库">
-                  <a-button type="primary" @click="newDatabase.open = true">新建知识库</a-button>
-                </a-empty>
-                <div
-                  v-for="database in databases"
-                  :key="database.db_id"
-                  class="database dbcard ui-card"
-                  @click="navigateToDatabase(database.db_id)"
-                  role="button"
-                  tabindex="0"
-                  @keydown.enter.prevent="navigateToDatabase(database.db_id)"
-                  @keydown.space.prevent="navigateToDatabase(database.db_id)"
-                >
-                  <div class="top">
-                    <div class="icon"><ReadFilled /></div>
-                    <div class="info">
-                      <h3>{{ database.name }}</h3>
-                      <p>
-                        <span>{{ database.files ? Object.keys(database.files).length : 0 }} 文件</span>
-                        <span class="muted">· {{ database.db_id }}</span>
-                      </p>
-                    </div>
+            <!-- 空状态：居中聚焦 -->
+            <div v-else-if="databases.length === 0" class="empty-state">
+              <div class="empty-illustration">
+                <BookOutlined />
+              </div>
+              <h3 class="empty-title">开始构建你的知识粮仓</h3>
+              <p class="empty-desc">导入文档数据，增强模型上下文。把文档变成 AI 的长期记忆。</p>
+              <a-button type="primary" size="large" @click="newDatabase.open = true">
+                <PlusOutlined /> 新建知识库
+              </a-button>
+            </div>
+
+            <!-- 知识库列表 -->
+            <div v-else class="databases">
+              <div
+                v-for="database in databases"
+                :key="database.db_id"
+                class="dbcard"
+                @click="navigateToDatabase(database.db_id)"
+                role="button"
+                tabindex="0"
+                @keydown.enter.prevent="navigateToDatabase(database.db_id)"
+                @keydown.space.prevent="navigateToDatabase(database.db_id)"
+              >
+                <div class="top">
+                  <div class="icon"><ReadFilled /></div>
+                  <div class="info">
+                    <h3>{{ database.name }}</h3>
+                    <p>
+                      <span>{{ database.files ? Object.keys(database.files).length : 0 }} 文件</span>
+                      <span class="muted">· {{ database.db_id }}</span>
+                    </p>
                   </div>
-                  <p class="description">{{ database.description || '暂无描述' }}</p>
-                  <div class="tags">
-                    <a-tag color="blue" v-if="database.embed_model">{{ database.embed_model }}</a-tag>
-                    <a-tag color="green" v-if="database.dimension">{{ database.dimension }}</a-tag>
-                  </div>
                 </div>
-              </template>
+                <p class="description">{{ database.description || '暂无描述' }}</p>
+                <div class="tags">
+                  <a-tag color="blue" v-if="database.embed_model">{{ database.embed_model }}</a-tag>
+                  <a-tag color="green" v-if="database.dimension">{{ database.dimension }}</a-tag>
+                </div>
+              </div>
             </div>
           </a-tab-pane>
 
@@ -137,7 +137,7 @@
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { message } from 'ant-design-vue'
-import { PlusOutlined, ReadFilled } from '@ant-design/icons-vue'
+import { PlusOutlined, ReadFilled, BookOutlined } from '@ant-design/icons-vue'
 
 import HeaderComponent from '@/components/HeaderComponent.vue'
 import DatabaseRagWorkbench from '@/components/database/DatabaseRagWorkbench.vue'
@@ -255,48 +255,141 @@ onMounted(async () => {
   padding: 0;
 }
 
-.hub-tabs :deep(.ant-tabs-content) {
-  padding-top: 8px;
-}
+/* Tab 样式升级：下划线式 */
+.hub-tabs {
+  :deep(.ant-tabs-nav) {
+    margin-bottom: 20px;
 
-.databases {
-  padding: 0;
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-  gap: 16px;
+    &::before {
+      border-bottom: 1px solid var(--border-color);
+    }
+  }
 
-  .new-database {
-    border-style: dashed;
-    background: color-mix(in srgb, var(--main-500) 6%, var(--surface-color));
+  :deep(.ant-tabs-tab) {
+    padding: 12px 4px;
+    font-size: 15px;
+    font-weight: 500;
+    color: var(--gray-500);
+    transition: all 0.2s ease;
+
+    &:hover {
+      color: var(--primary-color);
+    }
+
+    &.ant-tabs-tab-active {
+      color: var(--primary-color);
+
+      .ant-tabs-tab-btn {
+        color: var(--primary-color);
+      }
+    }
+  }
+
+  :deep(.ant-tabs-ink-bar) {
+    background: var(--primary-color);
+    height: 2px;
+  }
+
+  :deep(.ant-tabs-content) {
+    padding-top: 0;
   }
 }
 
-.dbcard,
-.database {
+/* 空状态：居中聚焦 */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 80px 24px;
+  text-align: center;
+}
+
+.empty-illustration {
+  width: 120px;
+  height: 120px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 24px;
+  background: linear-gradient(135deg, rgba(255, 125, 0, 0.08) 0%, rgba(255, 125, 0, 0.02) 100%);
+  border-radius: 50%;
+  font-size: 48px;
+  color: var(--primary-color);
+}
+
+.empty-title {
+  margin: 0 0 8px;
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--text-color);
+}
+
+.empty-desc {
+  margin: 0 0 24px;
+  font-size: 14px;
+  color: var(--gray-500);
+  max-width: 320px;
+  line-height: 1.6;
+}
+
+/* 知识库卡片网格 */
+.databases {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 20px;
+}
+
+/* 知识库卡片 - 微磨砂质感 */
+.dbcard {
+  position: relative;
   width: 100%;
-  padding: 20px;
-  border-radius: var(--radius-lg);
-  min-height: 160px;
+  padding: 24px;
+  border-radius: 20px;
+  min-height: 180px;
   cursor: pointer;
+  background: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+
+  &:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.08);
+    border-color: rgba(255, 125, 0, 0.2);
+    background: rgba(255, 255, 255, 0.95);
+
+    .icon {
+      transform: scale(1.05);
+      box-shadow: 0 4px 12px rgba(255, 125, 0, 0.2);
+    }
+  }
+
+  &:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--primary-color);
+  }
 
   .top {
     display: flex;
     align-items: center;
-    height: 50px;
-    margin-bottom: 10px;
+    height: 56px;
+    margin-bottom: 12px;
 
     .icon {
-      width: 50px;
-      height: 50px;
+      width: 56px;
+      height: 56px;
       display: flex;
       align-items: center;
       justify-content: center;
-      margin-right: 10px;
-      border-radius: 12px;
-      font-size: 22px;
-      background: color-mix(in srgb, var(--main-500) 12%, var(--surface-color));
-      color: var(--main-600);
-      box-shadow: var(--shadow-xs);
+      margin-right: 14px;
+      border-radius: 16px;
+      font-size: 26px;
+      background: linear-gradient(135deg, rgba(255, 125, 0, 0.12) 0%, rgba(255, 125, 0, 0.06) 100%);
+      color: var(--primary-color);
+      transition: all 0.3s ease;
     }
 
     .info {
@@ -305,17 +398,18 @@ onMounted(async () => {
 
       h3 {
         margin: 0;
-        font-size: 16px;
+        font-size: 17px;
         font-weight: 650;
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
+        color: var(--text-color);
       }
 
       p {
-        margin: 0;
+        margin: 4px 0 0;
         font-size: 13px;
-        color: var(--subtext-color);
+        color: var(--gray-500);
         display: flex;
         gap: 8px;
         flex-wrap: wrap;
@@ -324,12 +418,12 @@ onMounted(async () => {
   }
 
   .description {
-    font-size: 13px;
-    color: var(--subtext-color);
-    margin: 0 0 10px 0;
+    font-size: 14px;
+    color: var(--gray-500);
+    margin: 0 0 12px 0;
     line-height: 1.6;
     display: -webkit-box;
-    -webkit-line-clamp: 3;
+    -webkit-line-clamp: 2;
     -webkit-box-orient: vertical;
     overflow: hidden;
   }
@@ -341,10 +435,21 @@ onMounted(async () => {
   }
 }
 
-.muted {
-  opacity: 0.8;
+/* 骨架屏卡片 */
+.dbcard--skeleton {
+  cursor: default;
+
+  &:hover {
+    transform: none;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  }
 }
 
+.muted {
+  opacity: 0.7;
+}
+
+/* 表单样式 */
 .form-title {
   margin: 0 0 8px;
   font-size: 14px;
@@ -357,12 +462,56 @@ onMounted(async () => {
 
 .form-hint {
   margin: 0 0 10px;
-  color: var(--subtext-color);
+  color: var(--gray-500);
   font-size: 12px;
   line-height: 1.55;
 }
 
 .required {
-  color: var(--danger-500);
+  color: var(--error-color);
+}
+
+/* 响应式 */
+@media (max-width: 640px) {
+  .databases {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .dbcard {
+    padding: 20px;
+    min-height: 160px;
+  }
+
+  .empty-state {
+    padding: 60px 20px;
+  }
+
+  .empty-illustration {
+    width: 100px;
+    height: 100px;
+    font-size: 40px;
+  }
+}
+
+/* 暗色模式 */
+:root[data-theme='dark'] {
+  .dbcard {
+    background: rgba(40, 40, 40, 0.85);
+    border-color: rgba(255, 255, 255, 0.08);
+
+    &:hover {
+      background: rgba(50, 50, 50, 0.95);
+      border-color: rgba(255, 125, 0, 0.3);
+    }
+
+    .top .icon {
+      background: linear-gradient(135deg, rgba(255, 125, 0, 0.15) 0%, rgba(255, 125, 0, 0.08) 100%);
+    }
+  }
+
+  .empty-illustration {
+    background: linear-gradient(135deg, rgba(255, 125, 0, 0.15) 0%, rgba(255, 125, 0, 0.05) 100%);
+  }
 }
 </style>

@@ -1,208 +1,243 @@
 <template>
   <div class="workbench">
+    <!-- 警告提示 -->
     <a-alert
       v-if="!backendOnline"
       type="warning"
       show-icon
       message="后端未启动/不可用（离线模式）"
-      style="margin-bottom: 12px"
+      class="workbench-alert"
     />
     <a-alert
       v-else-if="!canUseKb"
       type="warning"
       show-icon
       message="后端未启用知识库功能（enable_knowledge_base=false），无法写入索引"
-      style="margin-bottom: 12px"
+      class="workbench-alert"
     />
 
-    <div class="head ui-card">
-      <div class="head-row">
-        <div class="head-left">
-          <div class="label">目标知识库</div>
-          <a-select
-            v-model:value="selectedDbId"
-            style="min-width: 260px"
-            :disabled="!backendOnline"
-            placeholder="选择一个知识库"
-            @change="onDatabaseChange"
-          >
-            <a-select-option v-for="db in databases" :key="db.db_id" :value="db.db_id">
-              {{ db.name }} ({{ db.db_id }})
-            </a-select-option>
-          </a-select>
-          <a-button size="small" @click="loadDatabases" :loading="state.loadingDatabases">刷新</a-button>
-        </div>
-        <div class="head-right ui-muted">
-          <span v-if="selectedDb"
-            >向量模型：{{ selectedDb.embed_model || '-' }} · 维度：{{ selectedDb.dimension || '-' }}</span
-          >
-        </div>
-      </div>
-
-      <div class="head-steps">
-        <a-steps :current="currentStep" size="small" responsive>
-          <a-step title="选择知识库" />
-          <a-step title="上传文件" />
-          <a-step title="生成分块" />
-          <a-step title="写入索引" />
-        </a-steps>
-      </div>
+    <!-- 顶部步骤条 - 醒目 -->
+    <div class="stepper-section">
+      <a-steps :current="currentStep" class="workbench-stepper">
+        <a-step title="目标设定" description="选择知识库" />
+        <a-step title="数据投喂" description="上传文档" />
+        <a-step title="智能切分" description="生成分块" />
+        <a-step title="索引构建" description="写入向量" />
+      </a-steps>
     </div>
 
-    <div class="ingest-grid">
-      <div class="panel ui-card">
-        <div class="panel-title">切块参数</div>
-        <a-form layout="vertical">
-          <a-form-item label="Chunk Size">
-            <a-input-number v-model:value="ingestParams.chunkSize" :min="50" :max="10000" style="width: 100%" />
-            <div class="hint ui-muted">每个分块的最大字符数</div>
-          </a-form-item>
-          <a-form-item label="Chunk Overlap">
-            <a-input-number v-model:value="ingestParams.chunkOverlap" :min="0" :max="2000" style="width: 100%" />
-            <div class="hint ui-muted">相邻分块的重叠字符数</div>
-          </a-form-item>
-          <a-form-item>
-            <a-space>
-              <a-switch v-model:checked="ingestParams.doOcr" :disabled="!backendOnline" />
-              <span>启用 OCR（PDF/图片扫描件）</span>
-            </a-space>
-          </a-form-item>
+    <!-- 主布局：左配置 + 右操作 -->
+    <div class="main-grid">
+      <!-- 左侧：配置区 -->
+      <div class="config-panel panel">
+        <div class="panel-header">
+          <span class="panel-title">配置区</span>
+        </div>
 
-          <a-divider style="margin: 12px 0" />
-
-          <a-space wrap>
-            <a-button
-              type="primary"
-              @click="chunkFiles"
-              :loading="state.chunking"
-              :disabled="uploadedFiles.length === 0"
+        <!-- 目标知识库 -->
+        <div class="config-section">
+          <label class="config-label">目标知识库</label>
+          <div class="config-row">
+            <a-select
+              v-model:value="selectedDbId"
+              style="flex: 1"
+              :disabled="!backendOnline"
+              placeholder="选择一个知识库"
+              @change="onDatabaseChange"
             >
-              生成分块
+              <a-select-option v-for="db in databases" :key="db.db_id" :value="db.db_id">
+                {{ db.name }}
+              </a-select-option>
+            </a-select>
+            <a-button @click="loadDatabases" :loading="state.loadingDatabases">
+              <ReloadOutlined />
             </a-button>
-            <a-button @click="resetIngest" :disabled="uploadedFiles.length === 0 && chunkResults.length === 0">
-              清空
-            </a-button>
-          </a-space>
-        </a-form>
+          </div>
+          <div v-if="selectedDb" class="config-hint">
+            向量模型：{{ selectedDb.embed_model || '-' }} · 维度：{{ selectedDb.dimension || '-' }}
+          </div>
+        </div>
+
+        <a-divider style="margin: 16px 0" />
+
+        <!-- 切块参数 -->
+        <div class="config-section">
+          <label class="config-label">切块参数</label>
+
+          <div class="param-item">
+            <span class="param-name">Chunk Size</span>
+            <a-input-number v-model:value="ingestParams.chunkSize" :min="50" :max="10000" style="width: 100%" />
+            <span class="param-hint">每个分块的最大字符数</span>
+          </div>
+
+          <div class="param-item">
+            <span class="param-name">Chunk Overlap</span>
+            <a-input-number v-model:value="ingestParams.chunkOverlap" :min="0" :max="2000" style="width: 100%" />
+            <span class="param-hint">相邻分块的重叠字符数</span>
+          </div>
+
+          <div class="param-item param-item--switch">
+            <a-switch v-model:checked="ingestParams.doOcr" :disabled="!backendOnline" />
+            <span class="param-name">启用 OCR</span>
+            <span class="param-hint">PDF/图片扫描件</span>
+          </div>
+        </div>
       </div>
 
-      <div class="panel ui-card">
-        <div class="panel-title">上传文件</div>
+      <!-- 右侧：操作区 -->
+      <div class="upload-panel panel">
+        <div class="panel-header">
+          <span class="panel-title">数据投喂</span>
+          <span v-if="uploadedFiles.length > 0" class="panel-badge">{{ uploadedFiles.length }} 文件</span>
+        </div>
+
+        <!-- 上传区域 -->
         <a-upload-dragger
           v-model:fileList="fileList"
           name="file"
           :multiple="true"
           :disabled="state.uploading"
           :customRequest="customUpload"
+          class="upload-dragger"
         >
-          <p class="ant-upload-text">点击或拖拽文件到这里上传</p>
-          <p class="ant-upload-hint">支持 .pdf/.txt/.md 等。上传完成后点击“生成分块”。</p>
+          <div class="upload-content">
+            <div class="upload-icon">
+              <InboxOutlined />
+            </div>
+            <p class="upload-title">拖入文档，喂给大脑</p>
+            <p class="upload-hint">支持 .pdf / .txt / .md 等格式，上传后点击下方"生成分块"</p>
+          </div>
         </a-upload-dragger>
 
-        <div class="ingest-actions">
-          <a-space wrap>
-            <a-button
-              type="primary"
-              @click="indexToDatabase"
-              :loading="state.indexing"
-              :disabled="!canIndex"
+        <!-- 分块预览 -->
+        <div v-if="chunkResults.length > 0" class="preview-section">
+          <div class="preview-header">
+            <span class="preview-title">分块预览</span>
+            <span class="preview-stats">{{ chunkResults.length }} 文件 · {{ totalChunks }} 个分块</span>
+          </div>
+          <a-collapse v-model:activeKey="activeFileKeys" class="preview-collapse">
+            <a-collapse-panel
+              v-for="file in chunkResults"
+              :key="file.file_id"
+              :header="`${file.filename}（${file.nodes.length} 块）`"
             >
-              写入索引
-            </a-button>
-            <span class="ui-muted" v-if="chunkResults.length > 0">
-              {{ chunkResults.length }} 个文件 · {{ totalChunks }} 个分块
-            </span>
-          </a-space>
+              <div class="chunk-grid">
+                <div v-for="(node, idx) in file.nodes.slice(0, 6)" :key="idx" class="chunk-card">
+                  <div class="chunk-meta">#{{ idx + 1 }}</div>
+                  <div class="chunk-text">{{ node.text }}</div>
+                </div>
+                <div v-if="file.nodes.length > 6" class="chunk-more">
+                  还有 {{ file.nodes.length - 6 }} 个分块...
+                </div>
+              </div>
+            </a-collapse-panel>
+          </a-collapse>
         </div>
       </div>
     </div>
 
-    <div v-if="chunkResults.length > 0" class="preview ui-card">
-      <div class="preview-title">
-        分块预览
-        <span class="ui-muted">（点击文件展开查看）</span>
-      </div>
-      <a-collapse v-model:activeKey="activeFileKeys">
-        <a-collapse-panel
-          v-for="file in chunkResults"
-          :key="file.file_id"
-          :header="`${file.filename}（${file.nodes.length}）`"
-        >
-          <div class="chunk-grid">
-            <div v-for="(node, idx) in file.nodes" :key="idx" class="chunk-card">
-              <div class="chunk-meta">#{{ idx + 1 }}</div>
-              <div class="chunk-text">{{ node.text }}</div>
-            </div>
-          </div>
-        </a-collapse-panel>
-      </a-collapse>
-    </div>
-
-    <div class="advanced ui-card">
-      <div class="advanced-title">高级工具（可选）</div>
-      <a-collapse v-model:activeKey="advancedKeys">
-        <a-collapse-panel key="pdf" header="PDF 转文本（用于检查解析质量）">
+    <!-- 高级工具 -->
+    <div class="advanced-section panel">
+      <a-collapse v-model:activeKey="advancedKeys" class="advanced-collapse">
+        <a-collapse-panel key="pdf" header="高级：PDF 转文本（检查解析质量）">
           <div class="advanced-grid">
-            <div class="panel ui-card">
-              <div class="panel-title">上传 PDF</div>
+            <div class="advanced-item">
+              <label class="config-label">上传 PDF</label>
               <a-upload-dragger
                 v-model:fileList="pdfFileList"
                 name="file"
                 :max-count="1"
                 :disabled="state.pdfUploading"
                 :customRequest="customPdfUpload"
+                class="upload-dragger upload-dragger--mini"
               >
-                <p class="ant-upload-text">点击或拖拽 PDF 文件到这里上传</p>
-                <p class="ant-upload-hint">用于检查解析质量（OCR/抽取）。</p>
+                <p class="ant-upload-text">点击或拖拽 PDF</p>
               </a-upload-dragger>
-
-              <div class="pdf-actions">
-                <a-space wrap>
-                  <a-button type="primary" @click="convertPdf" :loading="state.converting" :disabled="pdfFileList.length === 0">
-                    开始转换
-                  </a-button>
-                  <a-button @click="resetPdf" :disabled="pdfFileList.length === 0 && !pdfText">清空</a-button>
-                </a-space>
-              </div>
+              <a-space style="margin-top: 12px">
+                <a-button type="primary" @click="convertPdf" :loading="state.converting" :disabled="pdfFileList.length === 0">
+                  开始转换
+                </a-button>
+                <a-button @click="resetPdf" :disabled="pdfFileList.length === 0 && !pdfText">清空</a-button>
+              </a-space>
             </div>
-
-            <div class="panel ui-card">
-              <div class="panel-title">输出文本</div>
-              <a-textarea :value="pdfText" :auto-size="{ minRows: 10, maxRows: 22 }" readonly />
-              <div class="hint ui-muted" style="margin-top: 8px">
+            <div class="advanced-item">
+              <label class="config-label">输出文本</label>
+              <a-textarea :value="pdfText" :auto-size="{ minRows: 6, maxRows: 12 }" readonly placeholder="转换结果将显示在这里" />
+              <div class="param-hint" style="margin-top: 8px">
                 字符数：{{ pdfText.length }} · Token 估算：{{ estimateTokens(pdfText) }}
               </div>
             </div>
           </div>
         </a-collapse-panel>
 
-        <a-collapse-panel key="text" header="文本试切块（离线可用）">
+        <a-collapse-panel key="text" header="高级：文本试切块（离线可用）">
           <div class="advanced-grid">
-            <div class="panel ui-card">
-              <div class="panel-title">输入文本</div>
-              <a-textarea v-model:value="plainText" :auto-size="{ minRows: 8, maxRows: 16 }" placeholder="粘贴一段文本用于试切块（离线可用）" />
-              <div class="hint ui-muted" style="margin-top: 8px">
+            <div class="advanced-item">
+              <label class="config-label">输入文本</label>
+              <a-textarea v-model:value="plainText" :auto-size="{ minRows: 6, maxRows: 12 }" placeholder="粘贴一段文本用于试切块" />
+              <div class="param-hint" style="margin-top: 8px">
                 字符数：{{ plainText.length }} · Token 估算：{{ estimateTokens(plainText) }}
               </div>
             </div>
-            <div class="panel ui-card">
-              <div class="panel-title">预览</div>
-              <a-space wrap style="margin-bottom: 10px">
+            <div class="advanced-item">
+              <label class="config-label">切块预览</label>
+              <a-space style="margin-bottom: 12px">
                 <a-button type="primary" @click="chunkPlainTextNow" :disabled="!plainText">生成分块</a-button>
                 <a-button @click="resetPlainText" :disabled="!plainText && plainChunks.length === 0">清空</a-button>
-                <span class="ui-muted" v-if="plainChunks.length > 0">{{ plainChunks.length }} 个分块</span>
+                <span class="param-hint" v-if="plainChunks.length > 0">{{ plainChunks.length }} 个分块</span>
               </a-space>
               <div class="chunk-grid" v-if="plainChunks.length > 0">
-                <div v-for="(c, idx) in plainChunks" :key="idx" class="chunk-card">
+                <div v-for="(c, idx) in plainChunks.slice(0, 4)" :key="idx" class="chunk-card">
                   <div class="chunk-meta">#{{ idx + 1 }}</div>
                   <div class="chunk-text">{{ c.text }}</div>
                 </div>
               </div>
-              <a-empty v-else description="暂无分块" />
+              <a-empty v-else description="暂无分块" :image="null" />
             </div>
           </div>
         </a-collapse-panel>
       </a-collapse>
+    </div>
+
+    <!-- 底部固定操作栏 -->
+    <div class="action-bar">
+      <div class="action-bar-inner">
+        <div class="action-left">
+          <span v-if="chunkResults.length > 0" class="action-status">
+            <CheckCircleOutlined class="status-icon status-icon--success" />
+            {{ totalChunks }} 个分块已就绪
+          </span>
+          <span v-else-if="uploadedFiles.length > 0" class="action-status">
+            <FileTextOutlined class="status-icon" />
+            {{ uploadedFiles.length }} 个文件待处理
+          </span>
+          <span v-else class="action-status action-status--muted">
+            请上传文件开始
+          </span>
+        </div>
+        <div class="action-right">
+          <a-button @click="resetIngest" :disabled="uploadedFiles.length === 0 && chunkResults.length === 0">
+            清空
+          </a-button>
+          <a-button
+            @click="chunkFiles"
+            :loading="state.chunking"
+            :disabled="uploadedFiles.length === 0"
+          >
+            生成分块
+          </a-button>
+          <a-button
+            type="primary"
+            @click="indexToDatabase"
+            :loading="state.indexing"
+            :disabled="!canIndex"
+            class="action-primary"
+          >
+            <ThunderboltOutlined />
+            写入索引
+          </a-button>
+        </div>
+      </div>
     </div>
   </div>
 </template>
@@ -210,6 +245,13 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
 import { message } from 'ant-design-vue'
+import {
+  InboxOutlined,
+  ReloadOutlined,
+  ThunderboltOutlined,
+  CheckCircleOutlined,
+  FileTextOutlined
+} from '@ant-design/icons-vue'
 import { apiFetch } from '@/api/http'
 import { useConfigStore } from '@/stores/config'
 import { chunkPlainText } from '@/utils/chunking'
@@ -525,126 +567,459 @@ const advancedKeys = ref([])
 .workbench {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 16px;
+  padding-bottom: 100px; /* 为底部操作栏留空间 */
 }
 
-.head {
-  display: flex;
-  padding: 12px;
-  gap: 10px;
-  flex-direction: column;
+.workbench-alert {
+  margin-bottom: 0;
 }
 
-.head-row {
+/* 步骤条区域 */
+.stepper-section {
+  background: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  border-radius: 20px;
+  padding: 24px 32px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.workbench-stepper {
+  :deep(.ant-steps-item-title) {
+    font-weight: 600;
+    font-size: 15px;
+  }
+
+  :deep(.ant-steps-item-description) {
+    font-size: 12px;
+    color: var(--gray-500);
+  }
+
+  :deep(.ant-steps-item-process .ant-steps-item-icon) {
+    background: var(--primary-color);
+    border-color: var(--primary-color);
+  }
+
+  :deep(.ant-steps-item-finish .ant-steps-item-icon) {
+    border-color: var(--primary-color);
+
+    .ant-steps-icon {
+      color: var(--primary-color);
+    }
+  }
+
+  :deep(.ant-steps-item-finish .ant-steps-item-tail::after) {
+    background: var(--primary-color);
+  }
+}
+
+/* 面板通用样式 */
+.panel {
+  background: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  border-radius: 20px;
+  padding: 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.panel-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border-color);
 }
 
-.head-left {
+.panel-title {
+  font-size: 16px;
+  font-weight: 650;
+  color: var(--text-color);
+}
+
+.panel-badge {
+  font-size: 12px;
+  padding: 2px 10px;
+  background: rgba(255, 125, 0, 0.1);
+  color: var(--primary-color);
+  border-radius: 100px;
+  font-weight: 500;
+}
+
+/* 主布局 */
+.main-grid {
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  gap: 16px;
+}
+
+/* 配置区 */
+.config-section {
+  margin-bottom: 16px;
+
+  &:last-child {
+    margin-bottom: 0;
+  }
+}
+
+.config-label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--gray-600);
+  margin-bottom: 8px;
+}
+
+.config-row {
+  display: flex;
+  gap: 8px;
+}
+
+.config-hint {
+  margin-top: 8px;
+  font-size: 12px;
+  color: var(--gray-500);
+}
+
+.param-item {
+  margin-bottom: 14px;
+
+  &:last-child {
+    margin-bottom: 0;
+  }
+}
+
+.param-item--switch {
   display: flex;
   align-items: center;
   gap: 10px;
   flex-wrap: wrap;
 
-  .label {
-    font-weight: 600;
+  .param-name {
+    margin-bottom: 0;
   }
 }
 
-.head-right {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  min-width: 0;
-  text-align: right;
+.param-name {
+  display: block;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-color);
+  margin-bottom: 6px;
 }
 
-.ingest-grid {
+.param-hint {
+  font-size: 12px;
+  color: var(--gray-500);
+  margin-top: 4px;
+}
+
+/* 上传区域 */
+.upload-dragger {
+  :deep(.ant-upload-drag) {
+    background: rgba(255, 125, 0, 0.02);
+    border: 2px dashed rgba(255, 125, 0, 0.2);
+    border-radius: 16px;
+    transition: all 0.3s ease;
+
+    &:hover {
+      border-color: var(--primary-color);
+      background: rgba(255, 125, 0, 0.04);
+    }
+  }
+
+  :deep(.ant-upload-btn) {
+    padding: 32px 20px !important;
+  }
+}
+
+.upload-dragger--mini {
+  :deep(.ant-upload-btn) {
+    padding: 16px !important;
+  }
+}
+
+.upload-content {
+  text-align: center;
+}
+
+.upload-icon {
+  font-size: 48px;
+  color: var(--primary-color);
+  margin-bottom: 12px;
+  opacity: 0.8;
+}
+
+.upload-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-color);
+  margin: 0 0 8px;
+}
+
+.upload-hint {
+  font-size: 13px;
+  color: var(--gray-500);
+  margin: 0;
+}
+
+/* 分块预览 */
+.preview-section {
+  margin-top: 20px;
+}
+
+.preview-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.preview-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-color);
+}
+
+.preview-stats {
+  font-size: 12px;
+  color: var(--gray-500);
+}
+
+.preview-collapse {
+  :deep(.ant-collapse-header) {
+    font-weight: 500;
+  }
+}
+
+.chunk-grid {
   display: grid;
-  grid-template-columns: 320px 1fr;
-  gap: 12px;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 10px;
+}
+
+.chunk-card {
+  padding: 12px;
+  border-radius: 12px;
+  background: rgba(255, 125, 0, 0.04);
+  border: 1px solid rgba(255, 125, 0, 0.1);
+}
+
+.chunk-meta {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--primary-color);
+  margin-bottom: 6px;
+}
+
+.chunk-text {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--gray-600);
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.chunk-more {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px;
+  font-size: 12px;
+  color: var(--gray-500);
+  background: var(--gray-100);
+  border-radius: 12px;
+}
+
+/* 高级工具 */
+.advanced-section {
+  padding: 0;
+
+  :deep(.ant-collapse) {
+    background: transparent;
+    border: none;
+  }
+
+  :deep(.ant-collapse-item) {
+    border: none;
+  }
+
+  :deep(.ant-collapse-header) {
+    padding: 16px 20px !important;
+    font-weight: 600;
+    color: var(--gray-600);
+  }
+
+  :deep(.ant-collapse-content-box) {
+    padding: 0 20px 20px;
+  }
 }
 
 .advanced-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 12px;
+  gap: 16px;
 }
 
-.panel {
-  padding: 12px;
-}
-
-.panel-title {
-  font-weight: 650;
-  margin-bottom: 10px;
-}
-
-.hint {
-  font-size: 12px;
-  margin-top: 6px;
-}
-
-.ingest-actions,
-.pdf-actions {
-  margin-top: 12px;
+.advanced-item {
   display: flex;
+  flex-direction: column;
+}
+
+/* 底部操作栏 */
+.action-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  padding: 0 24px 24px;
+  pointer-events: none;
+}
+
+.action-bar-inner {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
   justify-content: space-between;
+  padding: 16px 24px;
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-radius: 20px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1), 0 0 0 1px rgba(255, 255, 255, 0.5) inset;
+  pointer-events: auto;
+}
+
+.action-left {
+  display: flex;
   align-items: center;
 }
 
-.preview {
-  padding: 12px;
+.action-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-color);
 }
 
-.advanced {
-  padding: 12px;
+.action-status--muted {
+  color: var(--gray-500);
 }
 
-.advanced-title {
-  font-weight: 650;
-  margin-bottom: 10px;
+.status-icon {
+  font-size: 16px;
+  color: var(--gray-500);
 }
 
-.preview-title {
-  font-weight: 650;
-  margin-bottom: 10px;
+.status-icon--success {
+  color: #22C55E;
 }
 
-.chunk-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+.action-right {
+  display: flex;
+  align-items: center;
   gap: 10px;
 }
 
-.chunk-card {
-  padding: 10px 12px;
-  border-radius: var(--radius-md);
-  border: 1px solid var(--border-color);
-  background: color-mix(in srgb, var(--main-500) 4%, var(--surface-color));
-  box-shadow: var(--shadow-xs);
+.action-primary {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 20px;
+  height: 40px;
+  font-weight: 600;
+  box-shadow: 0 2px 8px rgba(255, 125, 0, 0.25);
+
+  &:hover:not(:disabled) {
+    box-shadow: 0 4px 16px rgba(255, 125, 0, 0.35);
+  }
 }
 
-.chunk-meta {
-  font-size: 12px;
-  color: var(--subtext-color);
-  margin-bottom: 6px;
-}
-
-.chunk-text {
-  white-space: pre-wrap;
-  word-break: break-word;
-  line-height: 1.5;
-}
-
-@media (max-width: 980px) {
-  .ingest-grid {
+/* 响应式 */
+@media (max-width: 900px) {
+  .main-grid {
     grid-template-columns: 1fr;
   }
+
   .advanced-grid {
     grid-template-columns: 1fr;
+  }
+
+  .stepper-section {
+    padding: 16px;
+  }
+
+  .workbench-stepper {
+    :deep(.ant-steps-item-description) {
+      display: none;
+    }
+  }
+}
+
+@media (max-width: 640px) {
+  .action-bar {
+    padding: 0 12px 12px;
+  }
+
+  .action-bar-inner {
+    flex-direction: column;
+    gap: 12px;
+    padding: 16px;
+  }
+
+  .action-left {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .action-right {
+    width: 100%;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+}
+
+/* 暗色模式 */
+:root[data-theme='dark'] {
+  .stepper-section,
+  .panel {
+    background: rgba(40, 40, 40, 0.85);
+    border-color: rgba(255, 255, 255, 0.08);
+  }
+
+  .upload-dragger {
+    :deep(.ant-upload-drag) {
+      background: rgba(255, 125, 0, 0.05);
+      border-color: rgba(255, 125, 0, 0.2);
+
+      &:hover {
+        background: rgba(255, 125, 0, 0.08);
+      }
+    }
+  }
+
+  .chunk-card {
+    background: rgba(255, 125, 0, 0.08);
+    border-color: rgba(255, 125, 0, 0.15);
+  }
+
+  .chunk-more {
+    background: var(--gray-800);
+  }
+
+  .action-bar-inner {
+    background: rgba(30, 30, 30, 0.92);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.1) inset;
   }
 }
 </style>
