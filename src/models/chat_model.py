@@ -5,11 +5,49 @@ import os
 from typing import List, Dict, Union, Generator, Any
 import json
 from openai import OpenAI
+import httpx
 from src.utils.logger import get_logger
 from src.core.settings import settings
 from openai.types.chat import ChatCompletionMessage
 
 logger = get_logger(__name__)
+
+_WARNED_UNSUPPORTED_PROXY = False
+_HTTPX_CLIENT_TRUST_ENV: httpx.Client | None = None
+_HTTPX_CLIENT_NO_ENV: httpx.Client | None = None
+
+
+def _choose_http_client() -> httpx.Client:
+    """
+    Choose an httpx client for the OpenAI SDK.
+
+    Some environments export `ALL_PROXY` / `all_proxy` as a socks proxy.
+    httpx (used by the OpenAI Python SDK) does not support socks proxies unless
+    extra dependencies are installed, and will raise at client init time.
+
+    We detect this case and ignore environment proxies (trust_env=False) to
+    keep the server usable out-of-the-box.
+    """
+    global _WARNED_UNSUPPORTED_PROXY
+
+    proxy = (os.getenv("ALL_PROXY") or os.getenv("all_proxy") or "").strip()
+    if proxy.lower().startswith("socks"):
+        if not _WARNED_UNSUPPORTED_PROXY:
+            logger.warning(
+                f"Detected unsupported proxy in ALL_PROXY/all_proxy ({proxy!r}); "
+                "ignoring env proxies for OpenAI-compatible clients."
+            )
+            _WARNED_UNSUPPORTED_PROXY = True
+        global _HTTPX_CLIENT_NO_ENV
+        if _HTTPX_CLIENT_NO_ENV is None:
+            _HTTPX_CLIENT_NO_ENV = httpx.Client(trust_env=False)
+        return _HTTPX_CLIENT_NO_ENV
+
+    # Default behavior: allow standard HTTP(S) proxies via environment variables.
+    global _HTTPX_CLIENT_TRUST_ENV
+    if _HTTPX_CLIENT_TRUST_ENV is None:
+        _HTTPX_CLIENT_TRUST_ENV = httpx.Client()
+    return _HTTPX_CLIENT_TRUST_ENV
 
 
 def to_chat_message(content: str, role: str = "assistant") -> ChatCompletionMessage:
@@ -38,7 +76,7 @@ class OpenAIBase:
         self.base_url = base_url
         self.model_name = model_name
         # 创建OpenAI客户端实例
-        self.client = OpenAI(api_key=api_key, base_url=base_url)
+        self.client = OpenAI(api_key=api_key, base_url=base_url, http_client=_choose_http_client())
         logger.debug(f"Models: {self.get_models()}")
 
     def _prepare_messages(self, message: Union[str, List[Dict[str, str]]]) -> List[Dict[str, str]]:

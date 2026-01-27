@@ -17,7 +17,8 @@ export interface OnlineStatusOptions {
 
 const DEFAULT_OPTIONS: Required<OnlineStatusOptions> = {
   pingInterval: 30000,
-  pingUrl: '/api/health',
+  // Backend provides /healthz and /readyz (GET). Use GET to avoid 405 on HEAD.
+  pingUrl: '/api/healthz',
   pingTimeout: 5000,
   retryInterval: 5000
 }
@@ -80,7 +81,7 @@ export function useOnlineStatus(options: OnlineStatusOptions = {}) {
       const timeoutId = setTimeout(() => controller.abort(), opts.pingTimeout)
 
       const response = await fetch(opts.pingUrl, {
-        method: 'HEAD',
+        method: 'GET',
         signal: controller.signal,
         cache: 'no-store'
       })

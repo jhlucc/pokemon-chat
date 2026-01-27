@@ -40,8 +40,9 @@ class UserPreferences(BaseModel):
 
 
 def _default_db_path() -> Path:
-    # Tests patch `settings.paths.data_dir`; production uses save dir.
-    base = getattr(settings.paths, "data_dir", None) or settings.paths.save_yaml_path
+    # Prefer the "save" directory for writable persistence (works in Docker where
+    # `/app/resources/save` is typically volume-mounted). Fall back to data_dir.
+    base = getattr(settings.paths, "save_yaml_path", None) or getattr(settings.paths, "data_dir", None)
     return Path(base) / "memory" / "agentic_memory.sqlite"
 
 
@@ -165,4 +166,3 @@ def get_agentic_memory() -> AgenticMemory:
     if _memory is None:
         _memory = AgenticMemory()
     return _memory
-

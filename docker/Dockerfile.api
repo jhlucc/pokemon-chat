@@ -38,8 +38,12 @@ RUN python -m pip install --no-cache-dir /wheels/* \
 
 COPY . /app
 
-# Drop root privileges (app writes to /app/resources/save via volume).
+# Drop root privileges.
+# Note: `resources/` is excluded from the Docker build context (see .dockerignore).
+# When we bind-mount `/app/resources/save`, Docker creates missing parent dirs as root.
+# Pre-create `/app/resources/*` so appuser can write cache/memory files at runtime.
 RUN useradd -m appuser \
+    && mkdir -p /app/resources /app/resources/cache /app/resources/data /app/resources/save \
     && chown -R appuser:appuser /app
 USER appuser
 
