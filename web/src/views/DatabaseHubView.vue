@@ -316,17 +316,20 @@ onMounted(async () => {
   z-index: 1;
 }
 
-/* 分段控制器 Tab - 毛玻璃悬浮感 */
+/* 分段控制器 Tab - 毛玻璃融合法 (方案A) */
 .segmented-tabs {
   display: inline-flex;
   padding: 4px;
-  background: rgba(255, 255, 255, 0.5);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  /* 更透明的背景，让暖色光晕透出来 */
+  background: rgba(255, 255, 255, 0.4);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  /* 玻璃边缘高光 */
   border: 1px solid rgba(255, 255, 255, 0.6);
   border-radius: 12px;
   margin-bottom: 24px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  /* 柔和阴影 */
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
 }
 
 .seg-tab {

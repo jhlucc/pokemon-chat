@@ -812,18 +812,21 @@ const advancedKeys = ref([])
   margin-top: 4px;
 }
 
-/* 上传区域 - 淡橙色虚线框 + 可见背景 */
+/* 上传区域 - 明显的橙色虚线框 */
 .upload-dragger {
   :deep(.ant-upload-drag) {
-    /* 增加背景可见度 */
-    background: rgba(255, 247, 237, 0.6);
-    border: 2px dashed rgba(255, 125, 0, 0.4);
+    /* 更明显的背景和边框 */
+    background: rgba(255, 247, 237, 0.7);
+    border: 2px dashed rgba(255, 125, 0, 0.5);
     border-radius: 16px;
-    transition: all 0.3s ease;
+    transition: all 0.25s ease;
 
     &:hover {
       border-color: var(--primary-color);
-      background: rgba(255, 237, 213, 0.8);
+      border-style: dashed;
+      background: rgba(255, 237, 213, 0.9);
+      /* hover时加阴影增强立体感 */
+      box-shadow: 0 0 0 4px rgba(255, 125, 0, 0.08);
     }
   }
 
@@ -833,6 +836,7 @@ const advancedKeys = ref([])
     border-width: 2px !important;
     border-color: var(--primary-color) !important;
     background: rgba(255, 237, 213, 1) !important;
+    box-shadow: 0 0 0 4px rgba(255, 125, 0, 0.15) !important;
   }
 
   :deep(.ant-upload-btn) {
