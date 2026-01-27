@@ -341,11 +341,18 @@ function renderCoords(coords) {
 
 /* 地图容器 */
 .map-wrapper {
-  position: relative;
+  position: absolute;
+  top: 80px;
+  left: 24px;
+  right: 24px;
+  bottom: 24px;
   z-index: 1;
+}
+
+.map-wrapper :deep(.ant-spin-nested-loading),
+.map-wrapper :deep(.ant-spin-container) {
   width: 100%;
   height: 100%;
-  padding: 80px 24px 24px;
 }
 
 .map-container {
@@ -441,7 +448,10 @@ function renderCoords(coords) {
   }
 
   .map-wrapper {
-    padding: 72px 12px 12px;
+    top: 72px;
+    left: 12px;
+    right: 12px;
+    bottom: 12px;
   }
 
   .map-container {
