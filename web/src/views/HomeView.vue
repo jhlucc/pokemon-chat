@@ -32,7 +32,7 @@
 
       <!-- Bento Grid -->
       <section class="bento-grid">
-        <!-- 主卡片：对话 (2列) -->
+        <!-- 主卡片：对话 (2列) - The Hero Card -->
         <div class="bento-card bento-card--hero" @click="go('/chat')">
           <div class="card-bg-icon">
             <MessageOutlined />
@@ -42,10 +42,10 @@
               <MessageOutlined />
             </div>
             <h3 class="card-title">开始对话</h3>
-            <p class="card-desc">多智能体编排 + 记忆 + RAG/图谱/工具协同。不仅是聊天，更是生产力工具。</p>
-            <div class="card-cta">
-              立即进入 <RightOutlined class="cta-arrow" />
-            </div>
+            <p class="card-desc">不仅仅是聊天。内置多智能体编排，支持长记忆与 RAG 检索。你的生产力倍增器。</p>
+            <button class="card-btn">
+              立即进入 <RightOutlined class="btn-arrow" />
+            </button>
           </div>
         </div>
 
@@ -58,6 +58,7 @@
             <h3 class="card-title">知识图谱</h3>
             <p class="card-desc">实体关系探索 + GraphRAG。看见数据之间的隐秘连接。</p>
           </div>
+          <div class="card-hover-arrow"><RightOutlined /></div>
         </div>
 
         <!-- 知识库 (1列) -->
@@ -67,8 +68,9 @@
               <BookOutlined />
             </div>
             <h3 class="card-title">知识库</h3>
-            <p class="card-desc">文档解析、切分与检索管理。</p>
+            <p class="card-desc">文档解析、智能切分与语义检索管理。</p>
           </div>
+          <div class="card-hover-arrow"><RightOutlined /></div>
         </div>
 
         <!-- 地图 (2列) -->
@@ -83,6 +85,7 @@
             <h3 class="card-title">地图探索</h3>
             <p class="card-desc">宝可梦地点与真实世界坐标映射。探索虚拟与现实的交汇。</p>
           </div>
+          <div class="card-hover-arrow"><RightOutlined /></div>
         </div>
       </section>
     </main>
@@ -265,10 +268,11 @@ onMounted(async () => {
 
 .hero-desc {
   font-size: 18px;
-  color: var(--gray-500, #888);
-  max-width: 500px;
+  color: var(--gray-400, #9CA3AF);
+  max-width: 520px;
   margin: 0 auto;
-  line-height: 1.6;
+  line-height: 1.8;
+  letter-spacing: 0.01em;
 }
 
 /* ==================== Bento Grid ==================== */
@@ -287,34 +291,51 @@ onMounted(async () => {
   cursor: pointer;
   overflow: hidden;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
-  border: 1px solid transparent;
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  border: 1px solid rgba(0, 0, 0, 0.04);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 
   &:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 12px 40px rgba(255, 125, 0, 0.12);
-    border-color: rgba(255, 125, 0, 0.2);
+    transform: translateY(-6px);
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.08);
+    border-color: rgba(255, 125, 0, 0.15);
 
     .card-title {
       color: var(--primary-color, #FF7D00);
     }
 
     .card-bg-icon {
-      opacity: 0.12;
-      transform: scale(1.05);
+      opacity: 0.1;
+      transform: scale(1.08);
     }
 
-    .cta-arrow {
-      transform: translateX(4px);
+    .card-hover-arrow {
+      opacity: 1;
+      transform: translateX(0);
     }
   }
 }
 
-/* 主卡片 (2列) */
+/* 主卡片 (2列) - The Hero Card */
 .bento-card--hero {
   grid-column: span 2;
-  min-height: 220px;
-  background: linear-gradient(135deg, #FFF9F5 0%, #FFF 100%);
+  min-height: 240px;
+  background: linear-gradient(135deg, #FFF7ED 0%, #FFFFFF 60%);
+  border: 1px solid #FFEDD5;
+
+  &:hover {
+    box-shadow: 0 20px 50px rgba(255, 125, 0, 0.15);
+    border-color: rgba(255, 125, 0, 0.3);
+
+    .card-btn {
+      background: #EA580C;
+      transform: translateY(-1px);
+      box-shadow: 0 6px 20px rgba(255, 125, 0, 0.4);
+    }
+
+    .btn-arrow {
+      transform: translateX(3px);
+    }
+  }
 }
 
 /* 宽卡片 (2列) */
@@ -322,23 +343,24 @@ onMounted(async () => {
   grid-column: span 2;
 }
 
-/* 背景装饰图标 */
+/* 背景装饰图标 - 放大、溢出 */
 .card-bg-icon {
   position: absolute;
-  top: -20px;
-  right: -20px;
-  font-size: 140px;
+  top: 50%;
+  right: -40px;
+  transform: translateY(-50%);
+  font-size: 260px;
   color: var(--primary-color, #FF7D00);
-  opacity: 0.06;
+  opacity: 0.05;
   pointer-events: none;
-  transition: all 0.3s ease;
+  transition: all 0.4s ease;
 
   &.card-bg-icon--right {
     top: 50%;
-    right: 24px;
+    right: -20px;
     transform: translateY(-50%);
-    font-size: 80px;
-    opacity: 0.08;
+    font-size: 160px;
+    opacity: 0.06;
   }
 }
 
@@ -348,19 +370,19 @@ onMounted(async () => {
   z-index: 1;
 }
 
-/* 图标容器 */
+/* 图标容器 - 放大 */
 .card-icon {
-  width: 48px;
-  height: 48px;
-  border-radius: 14px;
+  width: 56px;
+  height: 56px;
+  border-radius: 16px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 22px;
-  margin-bottom: 16px;
+  font-size: 28px;
+  margin-bottom: 20px;
 
   &.card-icon--orange {
-    background: rgba(255, 125, 0, 0.1);
+    background: rgba(255, 125, 0, 0.12);
     color: #FF7D00;
   }
 
@@ -395,20 +417,39 @@ onMounted(async () => {
   margin: 0;
 }
 
-/* CTA 按钮 */
-.card-cta {
+/* 实体按钮 - Hero Card CTA */
+.card-btn {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  margin-top: 20px;
+  gap: 8px;
+  margin-top: 24px;
+  padding: 12px 24px;
   font-size: 15px;
   font-weight: 600;
-  color: var(--primary-color, #FF7D00);
+  color: white;
+  background: var(--primary-color, #FF7D00);
+  border: none;
+  border-radius: 100px;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(255, 125, 0, 0.3);
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.cta-arrow {
+.btn-arrow {
   font-size: 12px;
-  transition: transform 0.2s ease;
+  transition: transform 0.25s ease;
+}
+
+/* 悬停时出现的箭头 - Standard Cards */
+.card-hover-arrow {
+  position: absolute;
+  bottom: 28px;
+  right: 28px;
+  font-size: 20px;
+  color: var(--gray-300, #D1D5DB);
+  opacity: 0;
+  transform: translateX(8px);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* ==================== 底部状态栏 ==================== */
@@ -487,6 +528,11 @@ onMounted(async () => {
   .bento-card--wide {
     grid-column: span 2;
   }
+
+  .card-bg-icon {
+    font-size: 180px;
+    right: -30px;
+  }
 }
 
 @media (max-width: 640px) {
@@ -521,7 +567,19 @@ onMounted(async () => {
   }
 
   .card-bg-icon {
-    font-size: 100px;
+    font-size: 120px;
+    right: -20px;
+  }
+
+  .card-icon {
+    width: 48px;
+    height: 48px;
+    font-size: 24px;
+  }
+
+  .card-btn {
+    padding: 10px 20px;
+    font-size: 14px;
   }
 
   .status-pill {
@@ -550,6 +608,7 @@ onMounted(async () => {
 
   .bento-card {
     background: var(--surface-color);
+    border-color: rgba(255, 255, 255, 0.05);
 
     &:hover {
       border-color: rgba(255, 125, 0, 0.3);
@@ -557,7 +616,12 @@ onMounted(async () => {
   }
 
   .bento-card--hero {
-    background: linear-gradient(135deg, rgba(255, 125, 0, 0.05) 0%, var(--surface-color) 100%);
+    background: linear-gradient(135deg, rgba(255, 125, 0, 0.08) 0%, var(--surface-color) 60%);
+    border-color: rgba(255, 125, 0, 0.15);
+  }
+
+  .card-hover-arrow {
+    color: var(--gray-600, #6B7280);
   }
 
   .status-pill {
