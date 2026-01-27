@@ -361,10 +361,19 @@ const getG6Data = () => {
     degree[e.target_id] = (degree[e.target_id] || 0) + 1
   })
 
+  // 计算最大度数用于归一化
+  const maxDegree = Math.max(...Object.values(degree), 1)
+
   return {
-    nodes: graphData.nodes.map((n) => ({
+    nodes: graphData.nodes.map((n, index) => ({
       id: n.id,
-      data: { label: n.name, degree: degree[n.id] || 0 }
+      data: {
+        label: n.name,
+        degree: degree[n.id] || 0,
+        maxDegree,
+        colorIndex: index % candyPalette.length,
+        original: n
+      }
     })),
     edges: graphData.edges.map((e) => ({
       id: `${e.source_id}-${e.type}-${e.target_id}`,
@@ -375,17 +384,58 @@ const getG6Data = () => {
   }
 }
 
-// 暖色调配色方案
-const colors = {
-  primary: '#FF7D00',
-  primaryLight: '#FFA940',
-  text: '#333',
-  textSecondary: '#666',
-  edgeStroke: 'rgba(255, 125, 0, 0.25)',
-  nodeFill: '#fff',
-  nodeStroke: '#FF7D00',
-  selectedFill: '#FF7D00',
-  selectedStroke: '#FF5722'
+// 🍬 糖果色暖色调色板 - 可萌风格
+const candyPalette = [
+  '#FF7D00',  // 品牌橙 - 核心宝可梦
+  '#FFA940',  // 金橙 - 重要实体
+  '#FFD666',  // 蜜黄 - 技能类
+  '#FF9A9E',  // 珊瑚粉 - 地点类
+  '#FECACA',  // 浅粉 - 道具类
+  '#FED7AA',  // 杏色 - 属性类
+  '#FDE68A',  // 浅金 - 事件类
+  '#E8D5B7',  // 暖米 - 通用
+]
+
+// 根据度数获取节点颜色 (度数越高颜色越深)
+const getNodeColor = (d) => {
+  if (d.id === state.selectedNodeId) return '#FF5722'
+  const deg = d.data?.degree || 0
+  const maxDeg = d.data?.maxDegree || 1
+  const ratio = deg / maxDeg
+
+  // 度数越高，颜色越偏向品牌橙
+  if (ratio > 0.7) return candyPalette[0] // 核心节点
+  if (ratio > 0.4) return candyPalette[1] // 重要节点
+  if (ratio > 0.2) return candyPalette[2] // 普通节点
+
+  // 其他节点根据索引分配颜色
+  return candyPalette[d.data?.colorIndex || 0]
+}
+
+// 根据度数计算节点大小 (更明显的差异)
+const getNodeSize = (d) => {
+  const deg = d.data?.degree || 0
+  // 基础大小 28px，每个连接 +5px，最大 70px
+  return Math.min(28 + deg * 5, 70)
+}
+
+// 判断节点是否与选中节点相关
+const isRelatedNode = (nodeId) => {
+  if (!state.selectedNodeId) return true
+  if (nodeId === state.selectedNodeId) return true
+
+  // 检查是否是邻居
+  return graphData.edges.some(
+    (e) =>
+      (e.source_id === state.selectedNodeId && e.target_id === nodeId) ||
+      (e.target_id === state.selectedNodeId && e.source_id === nodeId)
+  )
+}
+
+// 判断边是否与选中节点相关
+const isRelatedEdge = (edge) => {
+  if (!state.selectedNodeId) return true
+  return edge.source === state.selectedNodeId || edge.target === state.selectedNodeId
 }
 
 const ensureGraph = async () => {
@@ -395,10 +445,38 @@ const ensureGraph = async () => {
 
   const key = state.layout
 
+  // 专业的力导向布局配置
   const layout =
     state.layout === 'radial'
-      ? { type: 'radial', unitRadius: 120, preventOverlap: true }
-      : { type: 'd3-force', preventOverlap: true, collide: { radius: 40, strength: 0.6 } }
+      ? {
+          type: 'radial',
+          unitRadius: 100,
+          preventOverlap: true,
+          nodeSpacing: 30
+        }
+      : {
+          type: 'd3-force',
+          preventOverlap: true,
+          alphaDecay: 0.08,
+          alphaMin: 0.01,
+          velocityDecay: 0.55,
+          forceSimulation: {
+            velocityDecay: 0.6
+          },
+          collide: {
+            radius: (d) => getNodeSize(d) / 2 + 10,
+            strength: 0.8,
+            iterations: 3
+          },
+          manyBody: {
+            strength: -350,
+            distanceMax: 500
+          },
+          link: {
+            distance: 120,
+            strength: 0.7
+          }
+        }
 
   if (!graphInstance || layoutKey !== key) {
     if (graphInstance) {
@@ -417,49 +495,90 @@ const ensureGraph = async () => {
       node: {
         type: 'circle',
         style: {
-          labelText: (d) => d.data.label,
-          size: (d) => Math.min(24 + (d.data.degree || 0) * 3, 56),
-          labelFill: colors.text,
-          labelFontSize: 11,
-          labelFontWeight: 500,
-          fill: (d) => (d.id === state.selectedNodeId ? colors.selectedFill : colors.nodeFill),
-          stroke: (d) => (d.id === state.selectedNodeId ? colors.selectedStroke : colors.nodeStroke),
+          // 🍬 糖果风节点样式
+          size: getNodeSize,
+          fill: getNodeColor,
+          stroke: (d) => {
+            if (d.id === state.selectedNodeId) return '#E64A19'
+            return 'rgba(255, 255, 255, 0.8)'
+          },
           lineWidth: (d) => (d.id === state.selectedNodeId ? 3 : 2),
-          shadowColor: 'rgba(255, 125, 0, 0.2)',
-          shadowBlur: (d) => (d.id === state.selectedNodeId ? 16 : 4),
-          shadowOffsetY: 2
+
+          // 内发光效果 - 糖果质感
+          shadowColor: (d) => {
+            if (d.id === state.selectedNodeId) return 'rgba(255, 87, 34, 0.5)'
+            return 'rgba(255, 125, 0, 0.25)'
+          },
+          shadowBlur: (d) => (d.id === state.selectedNodeId ? 20 : 8),
+          shadowOffsetY: 2,
+
+          // 聚光灯效果 - 未选中的不相关节点变暗
+          opacity: (d) => (isRelatedNode(d.id) ? 1 : 0.25),
+
+          // 标签样式
+          labelText: (d) => d.data.label,
+          labelFill: '#333',
+          labelFontSize: (d) => {
+            const size = getNodeSize(d)
+            return size > 50 ? 12 : size > 35 ? 11 : 10
+          },
+          labelFontWeight: 500,
+          labelOffsetY: (d) => getNodeSize(d) / 2 + 12,
+          labelBackground: true,
+          labelBackgroundFill: 'rgba(255, 255, 255, 0.85)',
+          labelBackgroundRadius: 4,
+          labelPadding: [2, 6]
         }
       },
       edge: {
-        type: 'line',
+        type: 'quadratic', // 曲线更优雅
         style: {
+          stroke: (d) => (isRelatedEdge(d) ? 'rgba(255, 125, 0, 0.4)' : 'rgba(200, 200, 200, 0.15)'),
+          lineWidth: (d) => (isRelatedEdge(d) ? 1.5 : 1),
+          opacity: (d) => (isRelatedEdge(d) ? 0.8 : 0.2),
+          endArrow: {
+            path: 'M 0,0 L 8,4 L 8,-4 Z',
+            fill: 'rgba(255, 125, 0, 0.5)'
+          },
+          // 边标签
           labelText: (d) => d.data.label,
-          labelFill: colors.textSecondary,
-          labelFontSize: 10,
+          labelFill: '#888',
+          labelFontSize: 9,
           labelBackground: true,
-          labelBackgroundFill: 'rgba(255,255,255,0.9)',
+          labelBackgroundFill: 'rgba(255, 255, 255, 0.9)',
           labelBackgroundStroke: 'rgba(255, 125, 0, 0.1)',
-          labelPadding: [2, 4],
-          endArrow: true,
-          stroke: colors.edgeStroke,
-          lineWidth: 1.5
+          labelBackgroundRadius: 3,
+          labelPadding: [1, 4]
         }
       },
-      behaviors: ['drag-element', 'zoom-canvas', 'drag-canvas']
+      behaviors: [
+        'drag-element',
+        'zoom-canvas',
+        'drag-canvas',
+        {
+          type: 'hover-activate',
+          degree: 1,
+          state: 'active'
+        }
+      ]
     })
 
     graphInstance.on('node:click', (evt) => {
-      const id = evt?.item?.getID?.() || evt?.item?.id || evt?.data?.id || evt?.target?.id || null
+      const id = evt?.target?.id || evt?.data?.id || null
       if (!id) return
       state.selectedNodeId = id
       state.detailOpen = true
-      setTimeout(() => void renderGraph(), 0)
+      // 重新渲染以应用聚光灯效果
+      graphInstance.setData(getG6Data())
+      graphInstance.render()
     })
 
     graphInstance.on('canvas:click', () => {
       state.selectedNodeId = null
       state.detailOpen = false
-      setTimeout(() => void renderGraph(), 0)
+      // 清除聚光灯效果
+      graphInstance.setData(getG6Data())
+      graphInstance.render()
     })
 
     layoutKey = key
@@ -604,48 +723,64 @@ onUnmounted(() => {
   /* 去卡片化 - 直接浮在网格背景上 */
 
   .empty-illustration {
-    margin-bottom: 20px;
+    margin-bottom: 24px;
 
     .empty-icon-group {
       position: relative;
-      width: 100px;
-      height: 100px;
+      width: 120px;
+      height: 120px;
       margin: 0 auto;
       animation: float 3s ease-in-out infinite;
+      /* 白色光晕 - 洗掉背景点阵，让图标"着陆" */
+      background: radial-gradient(circle, rgba(255, 255, 255, 0.85) 0%, rgba(255, 255, 255, 0.4) 40%, transparent 70%);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
 
       .icon-main {
-        font-size: 64px;
+        font-size: 56px;
         color: var(--primary-color, #FF7D00);
-        opacity: 0.85;
-        filter: drop-shadow(0 4px 12px rgba(255, 125, 0, 0.25));
+        filter: drop-shadow(0 2px 8px rgba(255, 125, 0, 0.3));
       }
 
       .icon-accent {
         position: absolute;
-        bottom: 0;
-        right: 0;
-        font-size: 28px;
+        bottom: 12px;
+        right: 12px;
+        font-size: 24px;
         color: var(--primary-color, #FF7D00);
         background: #fff;
         border-radius: 50%;
-        padding: 4px;
+        padding: 6px;
         box-shadow: 0 2px 8px rgba(255, 125, 0, 0.2);
       }
     }
   }
 
   .empty-title {
-    font-size: 24px;
+    font-size: 22px;
     font-weight: 600;
     color: var(--text-color, #333);
     margin: 0 0 8px;
-    text-shadow: 0 1px 2px rgba(255, 255, 255, 0.8);
   }
 
   .empty-desc {
     font-size: 14px;
-    color: var(--gray-600, #666);
-    margin: 0 0 24px;
+    color: var(--gray-500, #888);
+    margin: 0 0 28px;
+  }
+
+  /* 按钮呼吸感优化 */
+  :deep(.ant-btn-primary) {
+    padding: 0 24px;
+    height: 44px;
+    font-size: 15px;
+    border-radius: 22px;
+
+    .anticon {
+      margin-right: 8px;
+    }
   }
 }
 
