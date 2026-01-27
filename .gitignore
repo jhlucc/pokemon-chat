@@ -14,8 +14,12 @@ coverage/
 
 # Env
 .env
+# Ignore all variant env files by default (may contain secrets)
 .env.*
 src/.env
+# ...but keep safe templates/examples tracked
+!.env.example
+!.env.template
 
 # Logs
 logs/
