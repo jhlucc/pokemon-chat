@@ -17,6 +17,12 @@ python -m pip install -r requirements.txt
 python -m pip install ruff pytest pytest-asyncio
 ```
 
+Or (recommended for development):
+
+```bash
+python -m pip install -r requirements-dev.txt
+```
+
 Run lint/format/tests:
 
 ```bash
@@ -50,4 +56,3 @@ python -m pip install pre-commit
 pre-commit install
 pre-commit run -a
 ```
-

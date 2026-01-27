@@ -3,10 +3,16 @@ from __future__ import annotations
 import argparse
 import socket
 import sys
+from pathlib import Path
 from urllib.parse import urlparse
 
-from src.core.feature_flags import feature_enabled
-from src.core.settings import settings
+# Ensure repo root is on sys.path even when running `python scripts/doctor.py`.
+_REPO_ROOT = Path(__file__).resolve().parents[1]
+if str(_REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(_REPO_ROOT))
+
+from src.core.feature_flags import feature_enabled  # noqa: E402
+from src.core.settings import settings  # noqa: E402
 
 
 def _tcp_check(host: str, port: int, timeout_s: float) -> tuple[bool, str]:

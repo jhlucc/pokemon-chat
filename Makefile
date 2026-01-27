@@ -1,5 +1,7 @@
 .PHONY: help docker-up docker-up-infra docker-up-full docker-down docker-logs web-install web-dev web-build web-lint web-typecheck api-logs py-lint py-format py-format-check py-test check
 
+PY ?= python
+
 help:
 	@echo "Targets:"
 	@echo "  docker-up        Build+run web+api"
@@ -53,15 +55,15 @@ web-typecheck:
 	cd web && npm run typecheck
 
 py-lint:
-	python -m ruff check server src scripts
+	$(PY) -m ruff check server src scripts
 
 py-format:
-	python -m ruff format server src scripts
+	$(PY) -m ruff format server src scripts
 
 py-format-check:
-	python -m ruff format --check server src scripts
+	$(PY) -m ruff format --check server src scripts
 
 py-test:
-	python -m pytest
+	$(PY) -m pytest
 
 check: py-lint py-format-check py-test web-lint web-typecheck web-build
