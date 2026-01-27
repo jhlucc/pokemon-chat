@@ -1,5 +1,9 @@
 <template>
   <div class="home-universe">
+    <!-- 光感氛围层 Mesh Gradients -->
+    <div class="ambient-glow glow--orange"></div>
+    <div class="ambient-glow glow--purple"></div>
+    <div class="ambient-glow glow--yellow"></div>
     <!-- 噪点纹理层 -->
     <div class="noise-overlay"></div>
     <!-- 点阵背景 -->
@@ -165,6 +169,57 @@ onMounted(async () => {
   background: var(--layout-bg-color, #F7F8FA);
   position: relative;
   overflow-x: hidden;
+}
+
+/* 光感氛围层 - Mesh Gradients */
+.ambient-glow {
+  position: fixed;
+  border-radius: 50%;
+  filter: blur(120px);
+  pointer-events: none;
+  z-index: 0;
+  mix-blend-mode: multiply;
+  animation: glow-drift 20s ease-in-out infinite;
+}
+
+.glow--orange {
+  width: 600px;
+  height: 600px;
+  top: -15%;
+  left: -10%;
+  background: radial-gradient(circle, rgba(255, 125, 0, 0.35) 0%, transparent 70%);
+  animation-delay: 0s;
+}
+
+.glow--purple {
+  width: 500px;
+  height: 500px;
+  bottom: -10%;
+  right: -10%;
+  background: radial-gradient(circle, rgba(139, 92, 246, 0.25) 0%, transparent 70%);
+  animation-delay: -7s;
+}
+
+.glow--yellow {
+  width: 400px;
+  height: 400px;
+  top: 30%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: radial-gradient(circle, rgba(255, 214, 102, 0.2) 0%, transparent 70%);
+  animation-delay: -14s;
+}
+
+@keyframes glow-drift {
+  0%, 100% {
+    transform: translate(0, 0) scale(1);
+  }
+  33% {
+    transform: translate(30px, -20px) scale(1.05);
+  }
+  66% {
+    transform: translate(-20px, 20px) scale(0.95);
+  }
 }
 
 /* 点阵背景 */
@@ -640,13 +695,13 @@ onMounted(async () => {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 8px 20px;
-  background: rgba(255, 255, 255, 0.9);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  padding: 10px 20px;
+  background: rgba(255, 255, 255, 0.75);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
   border-radius: 100px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-  border: 1px solid rgba(0, 0, 0, 0.05);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.06), 0 0 0 1px rgba(255, 255, 255, 0.5) inset;
+  border: 1px solid rgba(255, 255, 255, 0.3);
   font-size: 12px;
   font-weight: 500;
   color: var(--gray-600, #666);
@@ -788,6 +843,23 @@ onMounted(async () => {
     background: var(--background-color);
   }
 
+  .ambient-glow {
+    mix-blend-mode: screen;
+    opacity: 0.6;
+  }
+
+  .glow--orange {
+    background: radial-gradient(circle, rgba(255, 125, 0, 0.2) 0%, transparent 70%);
+  }
+
+  .glow--purple {
+    background: radial-gradient(circle, rgba(139, 92, 246, 0.15) 0%, transparent 70%);
+  }
+
+  .glow--yellow {
+    background: radial-gradient(circle, rgba(255, 214, 102, 0.1) 0%, transparent 70%);
+  }
+
   .dot-grid {
     background-image:
       radial-gradient(circle, rgba(255, 125, 0, 0.08) 1px, transparent 1px),
@@ -836,8 +908,9 @@ onMounted(async () => {
   }
 
   .status-pill {
-    background: rgba(30, 30, 30, 0.9);
+    background: rgba(30, 30, 30, 0.75);
     border-color: rgba(255, 255, 255, 0.08);
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.2), 0 0 0 1px rgba(255, 255, 255, 0.05) inset;
   }
 }
 </style>
