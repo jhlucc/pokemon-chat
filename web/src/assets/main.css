@@ -312,13 +312,13 @@ button.ant-btn-icon-only:hover {
 .ant-input-affix-wrapper:focus,
 .ant-input-affix-wrapper-focused {
   border-color: var(--primary-color) !important;
-  box-shadow: 0 0 0 2px rgba(255, 83, 80, 0.15) !important;
+  box-shadow: 0 0 0 2px rgba(255, 125, 0, 0.15) !important;
 }
 
 /* Select focus */
 .ant-select-focused .ant-select-selector {
   border-color: var(--primary-color) !important;
-  box-shadow: 0 0 0 2px rgba(255, 83, 80, 0.15) !important;
+  box-shadow: 0 0 0 2px rgba(255, 125, 0, 0.15) !important;
 }
 
 /* Slider */

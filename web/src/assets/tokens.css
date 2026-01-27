@@ -11,14 +11,14 @@
 
   /* === 渐变色令牌 === */
   /* 用于替换组件中分散的渐变定义 */
-  --gradient-primary: linear-gradient(135deg, var(--pokedex-red), #ff8a88);
-  --gradient-primary-hover: linear-gradient(135deg, var(--primary-light-color), #ffb3b0);
-  --gradient-hero: linear-gradient(120deg, var(--pokedex-red), #ff8a88);
+  --gradient-primary: linear-gradient(135deg, var(--pokedex-red), #FFA940);
+  --gradient-primary-hover: linear-gradient(135deg, var(--primary-light-color), #FFD591);
+  --gradient-hero: linear-gradient(120deg, var(--pokedex-red), #FFA940);
 
   /* === 消息气泡专用令牌 === */
   --message-user-bg: var(--gradient-primary);
   --message-user-text: #ffffff;
-  --message-user-shadow: 0 4px 12px rgba(255, 83, 80, 0.2);
+  --message-user-shadow: 0 4px 12px rgba(255, 125, 0, 0.2);
   --message-user-radius: var(--radius-md) var(--radius-md) var(--radius-xs) var(--radius-md);
 
   --message-assistant-bg: var(--surface-color);
@@ -35,7 +35,7 @@
   /* === 输入框令牌 === */
   --input-radius: var(--radius-lg);
   --input-border: 1px solid var(--border-color);
-  --input-shadow-focus: 0 0 0 3px rgba(255, 83, 80, 0.15);
+  --input-shadow-focus: 0 0 0 3px rgba(255, 125, 0, 0.15);
 
   /* === 按钮令牌 === */
   --btn-radius: var(--radius-sm);

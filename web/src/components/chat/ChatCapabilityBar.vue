@@ -220,33 +220,43 @@ const kbTooltip = computed(() => {
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+
+  /* 隐藏滚动条但保留滚动功能 */
+  &::-webkit-scrollbar {
+    height: 0;
+    display: none;
+  }
+  scrollbar-width: none;
 }
 
 .capability-divider {
   width: 1px;
-  height: 20px;
+  height: 16px;
   background: var(--gray-200);
   margin: 0 var(--space-1);
+  flex-shrink: 0;
 }
 
 .capability-chip {
   display: inline-flex;
   align-items: center;
-  gap: var(--space-2);
-  padding: var(--space-2) var(--space-3);
+  gap: 6px;
+  padding: 4px 10px;
   border-radius: var(--radius-sm);
   border: none;
-  background: transparent;
+  background: var(--gray-100);
   font-size: var(--font-size-xs);
-  color: var(--gray-500);
+  color: var(--gray-600);
   cursor: pointer;
   transition: all var(--duration-fast) var(--ease-default);
   user-select: none;
   white-space: nowrap;
+  flex-shrink: 0;
 
   .chip-icon {
-    font-size: var(--font-size-sm);
+    font-size: 12px;
     opacity: 0.7;
   }
 
@@ -255,14 +265,14 @@ const kbTooltip = computed(() => {
   }
 
   .chip-caret {
-    font-size: var(--font-size-xs);
+    font-size: 10px;
     opacity: 0.5;
-    margin-left: var(--space-1);
+    margin-left: 2px;
   }
 
   &:hover:not(.disabled) {
     color: var(--gray-700);
-    background: var(--gray-100);
+    background: var(--gray-200);
   }
 
   &:focus-visible {
@@ -270,9 +280,10 @@ const kbTooltip = computed(() => {
     box-shadow: var(--focus-ring);
   }
 
+  /* 激活状态：非常柔和的橙色背景 */
   &.active {
     color: var(--primary-color);
-    background: color-mix(in srgb, var(--primary-color) 8%, transparent);
+    background: rgba(255, 125, 0, 0.1);
 
     .chip-icon {
       opacity: 1;
@@ -283,34 +294,35 @@ const kbTooltip = computed(() => {
     opacity: var(--opacity-disabled);
     cursor: not-allowed;
     pointer-events: none;
+    background: transparent;
   }
 
   /* Agent 模式特殊样式 */
   &.capability-chip--agent {
-    background: transparent;
+    background: var(--gray-100);
 
     .chip-status {
-      font-size: var(--font-size-xs);
+      font-size: 10px;
       font-weight: 600;
-      padding: 2px 6px;
-      border-radius: var(--radius-xs);
-      background: var(--gray-200);
-      color: var(--gray-500);
-      margin-left: var(--space-1);
+      padding: 2px 5px;
+      border-radius: 3px;
+      background: var(--gray-300);
+      color: var(--gray-600);
+      margin-left: 4px;
       transition: all var(--duration-fast) var(--ease-default);
 
       &.on {
         background: var(--primary-color);
-        color: var(--message-user-text);
+        color: white;
       }
     }
 
     &:hover:not(.disabled) {
-      background: var(--gray-100);
+      background: var(--gray-200);
     }
 
     &.active {
-      background: color-mix(in srgb, var(--primary-color) 8%, transparent);
+      background: rgba(255, 125, 0, 0.1);
     }
   }
 }

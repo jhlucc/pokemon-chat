@@ -1,5 +1,5 @@
 export const THEME_PRESETS = {
-  coral: { label: '珊瑚红', primary: '#FF5350', primaryLight: '#FF8A88' },
+  coral: { label: '暖橙', primary: '#FF7D00', primaryLight: '#FFA940' },
   ocean: { label: '海洋蓝', primary: '#2C86A8', primaryLight: '#8CC6E1' },
   blue: { label: '天空蓝', primary: '#1677FF', primaryLight: '#69B1FF' },
   violet: { label: '紫罗兰', primary: '#722ED1', primaryLight: '#B37FEB' },

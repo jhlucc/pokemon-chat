@@ -1,7 +1,7 @@
 /* === Rotom-Dex OS Theme === */
 :root {
   /* --- Core Palette (Pokedex Style) --- */
-  --pokedex-red: #ff5350;       /* Primary Action / Shell */
+  --pokedex-red: #FF7D00;       /* Primary Action / Shell - 暖橙色 */
   --pokedex-dark: #2b2b2b;      /* Hardware / Sidebar (Dark Mode) */
   --pokedex-screen: #f4f6f9;    /* Screen Background */
   --holo-blue: #e0f7fa;         /* Holographic Accent */
@@ -53,7 +53,7 @@
   --glass-border: 1px solid rgba(255, 255, 255, 0.6);
   --glass-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.07);
 
-  --focus-ring: 0 0 0 3px rgba(255, 83, 80, 0.25);
+  --focus-ring: 0 0 0 3px rgba(255, 125, 0, 0.25);
 
   /* --- Spacing --- */
   --space-1: 4px;
@@ -116,13 +116,13 @@
 
   /* --- Legacy Compatibility --- */
   --main-color: var(--primary-color);
-  --main-700: #c62828;
-  --main-600: #d32f2f;
+  --main-700: #cc6400;
+  --main-600: #e67300;
   --main-500: var(--primary-color);
-  --main-400: #ff8a88;
-  --main-300: #ffcdd2;
-  --main-10: rgba(255, 83, 80, 0.1);
-  --main-5: rgba(255, 83, 80, 0.05);
+  --main-400: #FFA940;
+  --main-300: #FFD591;
+  --main-10: rgba(255, 125, 0, 0.1);
+  --main-5: rgba(255, 125, 0, 0.05);
 
   --main-light-2: #e0e0e0;
   --main-light-3: #eeeeee;
@@ -157,9 +157,9 @@
 /* === Dark Mode (Stealth Mode) === */
 :root[data-theme='dark'] {
   color-scheme: dark;
-  
+
   /* Dark Tech Aesthetic */
-  --pokedex-red: #ff6b69;
+  --pokedex-red: #FFA940;
   --background-color: #121212;
   --surface-color: #1e1e1e;
   --surface-color-2: #2c2c2c;

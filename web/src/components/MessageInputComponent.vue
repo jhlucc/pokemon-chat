@@ -439,12 +439,12 @@ const handleSendOrStop = () => {
   color: white;
   cursor: pointer;
   transition: all var(--duration-fast) var(--ease-default);
-  box-shadow: 0 1px 4px rgba(255, 83, 80, 0.25);
+  box-shadow: 0 1px 4px rgba(255, 125, 0, 0.25);
 
   &:hover:not(:disabled) {
     background: var(--main-600);
     transform: translateY(-1px);
-    box-shadow: 0 2px 8px rgba(255, 83, 80, 0.35);
+    box-shadow: 0 2px 8px rgba(255, 125, 0, 0.35);
   }
 
   &:active:not(:disabled) {

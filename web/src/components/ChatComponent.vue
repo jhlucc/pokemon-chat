@@ -108,8 +108,8 @@
             </a-select>
           </div>
           <div class="options-row" @click="meta.wideScreen = !meta.wideScreen">
-            内容宽度
-            <div @click.stop><a-switch v-model:checked="meta.wideScreen" :checked-children="'宽'" :un-checked-children="'窄'" /></div>
+            宽屏模式
+            <div @click.stop><a-switch v-model:checked="meta.wideScreen" /></div>
           </div>
           <div class="options-row" @click="meta.summary_title = !meta.summary_title">
             自动命名对话

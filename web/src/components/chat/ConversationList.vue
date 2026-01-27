@@ -482,9 +482,10 @@ const escapeRegExp = (string) => {
     }
   }
 
+  /* 选中态：柔和的晨光效果 */
   &.active {
-    background: color-mix(in srgb, var(--primary-color) 8%, transparent);
-    border-color: var(--primary-color);
+    background: rgba(255, 125, 0, 0.06);
+    border-color: transparent;
 
     &::before {
       content: '';
@@ -498,7 +499,7 @@ const escapeRegExp = (string) => {
     }
 
     .item-title {
-      color: var(--primary-color);
+      color: var(--text-color);
       font-weight: 600;
     }
   }
