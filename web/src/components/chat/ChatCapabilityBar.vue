@@ -190,13 +190,24 @@ const hasAnyCapability = computed(
   () => showWebSearch.value || showKnowledgeGraph.value || showMcp.value || showKnowledgeBase.value
 )
 
-const agentTooltip = computed(() =>
-  !props.canAgent
-    ? '服务未连接'
-    : props.useAgent
-      ? '智能模式：AI 自动选择最佳检索策略'
-      : '开启智能模式（推荐）'
-)
+const agentTooltip = computed(() => {
+  if (!props.canAgent) return '服务未连接'
+
+  if (props.useAgent) {
+    const features = []
+    if (props.canWebSearch) features.push('联网')
+    if (props.canGraph) features.push('图谱')
+    if (props.canMcp) features.push('MCP')
+
+    const featureText = features.length > 0
+      ? `（已自动启用: ${features.join('、')}）`
+      : ''
+
+    return `智能模式：AI 自动选择最佳检索策略 ${featureText}。点击关闭可手动控制`
+  }
+
+  return '开启智能模式（推荐）：AI 将自动决策使用哪些工具'
+})
 const webTooltip = computed(() => {
   if (props.canWebSearch) return props.useWeb ? '已启用联网搜索' : '启用联网搜索'
   return props.backendOnline ? '后端未启用联网搜索' : '服务未连接'
@@ -312,8 +323,8 @@ const kbTooltip = computed(() => {
       transition: all var(--duration-fast) var(--ease-default);
 
       &.on {
-        background: var(--primary-color);
-        color: white;
+        background: #FFF7E6;
+        color: #FA541C;
       }
     }
 
@@ -322,7 +333,12 @@ const kbTooltip = computed(() => {
     }
 
     &.active {
-      background: rgba(255, 125, 0, 0.1);
+      background: #FFF7E6;
+      color: #FA541C;
+
+      .chip-icon {
+        color: #FA541C;
+      }
     }
   }
 }

@@ -337,6 +337,7 @@ const escapeRegExp = (string) => {
     font-size: var(--font-size-base);
     color: var(--text-color);
     letter-spacing: 0.025em;
+    line-height: 32px;
   }
 
   .header-left,
@@ -359,6 +360,7 @@ const escapeRegExp = (string) => {
   color: var(--gray-600);
   cursor: pointer;
   transition: all var(--duration-fast) var(--ease-default);
+  flex-shrink: 0;
 
   &:hover {
     background: var(--hover-bg);
@@ -367,13 +369,13 @@ const escapeRegExp = (string) => {
 
   &--primary {
     background: var(--primary-color);
-    color: var(--message-user-text);
-    box-shadow: var(--message-user-shadow);
+    color: white;
+    box-shadow: 0 2px 8px rgba(255, 125, 0, 0.25);
 
     &:hover {
       background: var(--primary-light-color);
       transform: scale(1.05);
-      box-shadow: 0 4px 12px color-mix(in srgb, var(--primary-color) 40%, transparent);
+      box-shadow: 0 3px 12px rgba(255, 125, 0, 0.35);
     }
   }
 }
