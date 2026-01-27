@@ -193,11 +193,6 @@ docker compose ps
 docker compose exec -T neo4j cypher-shell 'MATCH (n) RETURN count(n) AS nodes;'
 ```
 
-### 🧰 常见问题（Docker）
-
-- **端口冲突**：修改 `docker/docker-compose.yml` 的端口映射（默认 Web=3100、API=5050、Neo4j=7474/7687、MySQL=3307、Milvus=19530/19091）
-- **出现 orphan containers 提示**：`cd docker && docker compose up -d --build --remove-orphans`
-
 ### 🤝 开发/贡献
 
 本仓库以 Docker 方式运行与复现为主；开发规范、测试与贡献流程见 `CONTRIBUTING.md`。
