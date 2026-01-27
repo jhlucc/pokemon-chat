@@ -2,11 +2,17 @@
   <div class="workbench">
     <!-- 顶部步骤条 - 醒目 -->
     <div class="stepper-section">
-      <!-- 右上角状态指示器 - 隐形化处理 -->
-      <div v-if="!canUseKb" class="status-indicator status-indicator--warning">
-        <span class="status-dot"></span>
-        <span class="status-text">{{ backendOnline ? '服务受限' : '离线模式' }}</span>
-      </div>
+      <!-- 右上角状态指示器 - 隐形化处理 + Tooltip -->
+      <a-tooltip
+        v-if="!canUseKb"
+        :title="backendOnline ? '后端知识库服务未启用，请检查服务配置' : '后端服务未连接，请启动服务后重试'"
+        placement="bottomRight"
+      >
+        <div class="status-indicator status-indicator--warning">
+          <span class="status-dot"></span>
+          <span class="status-text">{{ backendOnline ? '服务受限' : '离线模式' }}</span>
+        </div>
+      </a-tooltip>
       <a-steps :current="currentStep" class="workbench-stepper">
         <a-step title="目标设定" description="选择知识库" />
         <a-step title="数据投喂" description="上传文档" />

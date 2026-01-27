@@ -184,28 +184,30 @@ onUnmounted(() => {
 .ambient-glow {
   position: fixed;
   border-radius: 50%;
-  filter: blur(120px);
+  filter: blur(100px);
   pointer-events: none;
   z-index: 0;
-  mix-blend-mode: multiply;
+  /* 使用 normal 让光晕在浅色背景上可见 */
+  mix-blend-mode: normal;
   animation: glow-drift 20s ease-in-out infinite;
 }
 
 .glow--orange {
-  width: 600px;
-  height: 600px;
-  top: -20%;
-  left: -15%;
-  background: radial-gradient(circle, rgba(255, 125, 0, 0.28) 0%, transparent 70%);
+  width: 700px;
+  height: 700px;
+  top: -25%;
+  left: -20%;
+  /* 增强可见度 - 多层渐变 */
+  background: radial-gradient(circle, rgba(255, 125, 0, 0.35) 0%, rgba(255, 180, 100, 0.15) 40%, transparent 70%);
   animation-delay: 0s;
 }
 
 .glow--purple {
-  width: 500px;
-  height: 500px;
-  bottom: -10%;
-  right: -10%;
-  background: radial-gradient(circle, rgba(139, 92, 246, 0.25) 0%, transparent 70%);
+  width: 550px;
+  height: 550px;
+  bottom: -15%;
+  right: -15%;
+  background: radial-gradient(circle, rgba(139, 92, 246, 0.25) 0%, rgba(180, 150, 255, 0.1) 40%, transparent 70%);
   animation-delay: -7s;
 }
 
@@ -916,19 +918,19 @@ onUnmounted(() => {
 
   .ambient-glow {
     mix-blend-mode: screen;
-    opacity: 0.6;
+    opacity: 0.7;
   }
 
   .glow--orange {
-    background: radial-gradient(circle, rgba(255, 125, 0, 0.2) 0%, transparent 70%);
+    background: radial-gradient(circle, rgba(255, 125, 0, 0.25) 0%, rgba(255, 180, 100, 0.1) 40%, transparent 70%);
   }
 
   .glow--purple {
-    background: radial-gradient(circle, rgba(139, 92, 246, 0.15) 0%, transparent 70%);
+    background: radial-gradient(circle, rgba(139, 92, 246, 0.2) 0%, rgba(180, 150, 255, 0.08) 40%, transparent 70%);
   }
 
   .glow--yellow {
-    background: radial-gradient(circle, rgba(255, 214, 102, 0.1) 0%, transparent 70%);
+    background: radial-gradient(circle, rgba(255, 214, 102, 0.15) 0%, transparent 70%);
   }
 
   .dot-grid {
