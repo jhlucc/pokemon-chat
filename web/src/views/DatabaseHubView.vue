@@ -349,9 +349,10 @@ onMounted(async () => {
   }
 
   &.active {
-    background: rgba(255, 255, 255, 0.85);
+    /* 选中态：稍微实一点但仍有透明感 */
+    background: rgba(255, 255, 255, 0.75);
     color: var(--primary-color);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
   }
 }
 
@@ -601,8 +602,9 @@ onMounted(async () => {
   }
 
   .segmented-tabs {
-    background: rgba(255, 255, 255, 0.08);
-    border-color: rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.06);
+    border-color: rgba(255, 255, 255, 0.08);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.15);
   }
 
   .seg-tab {
@@ -614,7 +616,7 @@ onMounted(async () => {
     }
 
     &.active {
-      background: rgba(255, 255, 255, 0.1);
+      background: rgba(255, 255, 255, 0.08);
       color: var(--primary-color);
       box-shadow: none;
     }
