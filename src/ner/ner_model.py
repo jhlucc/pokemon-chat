@@ -6,18 +6,30 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 from src.core.settings import settings
 from src.core.feature_flags import feature_enabled
+from src.utils.logger import get_logger
 
 # BERT-based NER (only if enabled)
 _BERT_AVAILABLE = False
 if feature_enabled("enable_ner_bert"):
-    import torch
-    from torch import nn
-    from torch.utils.data import Dataset, DataLoader
-    from transformers import BertModel, BertTokenizer
-    from seqeval.metrics import f1_score
-    from sklearn.model_selection import train_test_split
-    from tqdm import tqdm
-    _BERT_AVAILABLE = True
+    try:
+        import torch
+        from torch import nn
+        from torch.utils.data import Dataset, DataLoader
+        from transformers import BertModel, BertTokenizer
+        from seqeval.metrics import f1_score
+        from sklearn.model_selection import train_test_split
+        from tqdm import tqdm
+
+        _BERT_AVAILABLE = True
+    except Exception as e:
+        # Keep the server import-safe even if the user toggles enable_ner_bert=true
+        # without installing optional deps in the runtime image.
+        log = get_logger(__name__)
+        log.warning(
+            "enable_ner_bert=true but optional deps are missing (torch/transformers/etc). "
+            f"Falling back to rule-based NER. error={e}"
+        )
+        _BERT_AVAILABLE = False
 
 # 模型训练
 cache_model = str(settings.paths.cache_berta_model)
