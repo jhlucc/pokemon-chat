@@ -178,6 +178,33 @@ If you wish to run backend/frontend code locally for development:
 > - Toolbox `/tools` -> Knowledge Base `/database` (RAG Workbench tab, compatible with `/database/workbench`)
 > - Agent `/agent` -> Chat `/chat` (enable via the “Agent Mode” toggle; backend runs `supervisor_agent`)
 
+### ✅ Code Quality (Dev)
+
+Backend:
+
+```bash
+python -m ruff check server src scripts
+python -m ruff format server src scripts
+python -m pytest
+```
+
+Frontend:
+
+```bash
+cd web
+npm run lint:check
+npm run typecheck
+npm run build
+```
+
+One-shot (like CI):
+
+```bash
+make check
+```
+
+For more details, see `CONTRIBUTING.md`.
+
 ### 🧰 Troubleshooting (Local Env)
 
 1) **`No module named 'src'` when launching the backend**

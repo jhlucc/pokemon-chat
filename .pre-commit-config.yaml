@@ -19,3 +19,9 @@ repos:
         language: system
         pass_filenames: false
 
+      - id: web-typecheck
+        name: web (vue-tsc)
+        entry: npm --prefix web run typecheck
+        language: system
+        pass_filenames: false
+
