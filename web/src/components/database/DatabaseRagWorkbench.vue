@@ -1,25 +1,12 @@
 <template>
   <div class="workbench">
-    <!-- 警告提示 - 友好文案 -->
-    <a-alert
-      v-if="!backendOnline"
-      type="warning"
-      show-icon
-      message="服务未连接"
-      description="后端服务未启动或不可用，当前为离线模式"
-      class="workbench-alert"
-    />
-    <a-alert
-      v-else-if="!canUseKb"
-      type="warning"
-      show-icon
-      message="知识库服务未就绪"
-      description="后端未启用知识库功能，无法写入索引。请检查服务端配置"
-      class="workbench-alert"
-    />
-
     <!-- 顶部步骤条 - 醒目 -->
     <div class="stepper-section">
+      <!-- 右上角状态指示器 - 隐形化处理 -->
+      <div v-if="!canUseKb" class="status-indicator status-indicator--warning">
+        <span class="status-dot"></span>
+        <span class="status-text">{{ backendOnline ? '服务受限' : '离线模式' }}</span>
+      </div>
       <a-steps :current="currentStep" class="workbench-stepper">
         <a-step title="目标设定" description="选择知识库" />
         <a-step title="数据投喂" description="上传文档" />
@@ -577,12 +564,9 @@ const advancedKeys = ref([])
   padding-bottom: 100px; /* 为底部操作栏留空间 */
 }
 
-.workbench-alert {
-  margin-bottom: 0;
-}
-
 /* 步骤条区域 */
 .stepper-section {
+  position: relative;
   background: rgba(255, 255, 255, 0.75);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
@@ -591,6 +575,44 @@ const advancedKeys = ref([])
   padding: 24px 32px;
   /* 有色阴影：微微带橙 */
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03), 0 4px 12px rgba(255, 125, 0, 0.03);
+}
+
+/* 状态指示器 - 隐形化处理 */
+.status-indicator {
+  position: absolute;
+  top: 12px;
+  right: 16px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 100px;
+  font-size: 12px;
+  font-weight: 500;
+  background: rgba(0, 0, 0, 0.04);
+  color: var(--gray-500);
+}
+
+.status-indicator--warning {
+  background: rgba(250, 173, 20, 0.1);
+  color: #d97706;
+}
+
+.status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.status-text {
+  line-height: 1;
 }
 
 .workbench-stepper {
@@ -784,17 +806,18 @@ const advancedKeys = ref([])
   margin-top: 4px;
 }
 
-/* 上传区域 - 淡橙色虚线框 */
+/* 上传区域 - 淡橙色虚线框 + 可见背景 */
 .upload-dragger {
   :deep(.ant-upload-drag) {
-    background: rgba(255, 125, 0, 0.03);
-    border: 2px dashed rgba(255, 125, 0, 0.35);
+    /* 增加背景可见度 */
+    background: rgba(255, 247, 237, 0.6);
+    border: 2px dashed rgba(255, 125, 0, 0.4);
     border-radius: 16px;
     transition: all 0.3s ease;
 
     &:hover {
       border-color: var(--primary-color);
-      background: rgba(255, 125, 0, 0.06);
+      background: rgba(255, 237, 213, 0.8);
     }
   }
 
@@ -803,7 +826,7 @@ const advancedKeys = ref([])
     border-style: solid !important;
     border-width: 2px !important;
     border-color: var(--primary-color) !important;
-    background: rgba(255, 125, 0, 0.08) !important;
+    background: rgba(255, 237, 213, 1) !important;
   }
 
   :deep(.ant-upload-btn) {
@@ -1110,17 +1133,26 @@ const advancedKeys = ref([])
 
   .upload-dragger {
     :deep(.ant-upload-drag) {
-      background: rgba(255, 125, 0, 0.05);
-      border-color: rgba(255, 125, 0, 0.3);
+      background: rgba(255, 125, 0, 0.08);
+      border-color: rgba(255, 125, 0, 0.35);
 
       &:hover {
-        background: rgba(255, 125, 0, 0.08);
+        background: rgba(255, 125, 0, 0.12);
       }
     }
 
     :deep(.ant-upload-drag-hover) {
-      background: rgba(255, 125, 0, 0.1) !important;
+      background: rgba(255, 125, 0, 0.15) !important;
     }
+  }
+
+  .status-indicator {
+    background: rgba(255, 255, 255, 0.06);
+  }
+
+  .status-indicator--warning {
+    background: rgba(250, 173, 20, 0.15);
+    color: #fbbf24;
   }
 
   .chunk-card {

@@ -71,18 +71,6 @@
 
         <!-- 知识库列表 -->
         <div v-if="activeTab === 'list'" class="tab-content">
-          <a-alert
-            v-if="!canUseKb"
-            type="warning"
-            show-icon
-            :message="
-              backendOnline
-                ? '后端未启用知识库功能（enable_knowledge_base=false）'
-                : '后端未启动/不可用（离线模式）'
-            "
-            style="margin-bottom: 16px"
-          />
-
           <!-- 加载骨架屏 -->
           <div v-if="state.loading" class="databases">
             <div v-for="n in 6" :key="n" class="dbcard dbcard--skeleton">
@@ -284,19 +272,19 @@ onMounted(async () => {
 }
 
 .glow--orange {
-  width: 500px;
-  height: 500px;
-  top: -15%;
-  left: -10%;
-  background: radial-gradient(circle, rgba(255, 125, 0, 0.2) 0%, transparent 70%);
+  width: 600px;
+  height: 600px;
+  top: -20%;
+  left: -15%;
+  background: radial-gradient(circle, rgba(255, 125, 0, 0.28) 0%, transparent 70%);
 }
 
 .glow--purple {
-  width: 400px;
-  height: 400px;
-  bottom: -5%;
-  right: -5%;
-  background: radial-gradient(circle, rgba(139, 92, 246, 0.18) 0%, transparent 70%);
+  width: 500px;
+  height: 500px;
+  bottom: -10%;
+  right: -10%;
+  background: radial-gradient(circle, rgba(139, 92, 246, 0.22) 0%, transparent 70%);
   animation-delay: -7s;
 }
 
@@ -356,9 +344,9 @@ onMounted(async () => {
   }
 
   &.active {
-    background: white;
+    background: rgba(255, 255, 255, 0.85);
     color: var(--primary-color);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
   }
 }
 
