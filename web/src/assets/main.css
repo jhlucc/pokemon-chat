@@ -271,15 +271,40 @@ button.ant-btn-icon-only:hover {
   background: var(--primary-light-color) !important;
 }
 
-/* Primary buttons */
+/* Primary buttons - 高级渐变质感 */
 .ant-btn-primary {
-  background: var(--primary-color) !important;
-  border-color: var(--primary-color) !important;
+  /* 1. 渐变背景：从浅橙到深橙，增加层次感 */
+  background: linear-gradient(180deg, #FFA940 0%, #FF7D00 100%) !important;
+  border: none !important;
+  /* 2. 顶部高光：增加立体感 */
+  border-top: 1px solid rgba(255, 255, 255, 0.2) !important;
+  /* 3. 字体优化 */
+  font-weight: 600 !important;
+  letter-spacing: 0.02em;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  /* 4. 柔和的橙色投影 */
+  box-shadow: 0 4px 14px rgba(255, 125, 0, 0.3) !important;
+  /* 5. 平滑过渡 */
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
 }
 
 .ant-btn-primary:hover:not(:disabled) {
-  background: var(--primary-light-color) !important;
-  border-color: var(--primary-light-color) !important;
+  /* 悬停：稍微提亮，增加投影 */
+  background: linear-gradient(180deg, #FFB347 0%, #FF8C1A 100%) !important;
+  box-shadow: 0 6px 20px rgba(255, 125, 0, 0.4) !important;
+  transform: translateY(-1px);
+}
+
+.ant-btn-primary:active:not(:disabled) {
+  /* 点击：按下效果 */
+  transform: translateY(0) scale(0.98);
+  box-shadow: 0 2px 8px rgba(255, 125, 0, 0.3) !important;
+}
+
+.ant-btn-primary:disabled {
+  background: linear-gradient(180deg, #FFD1A3 0%, #FFBB80 100%) !important;
+  box-shadow: none !important;
+  opacity: 0.6;
 }
 
 /* Checkbox */

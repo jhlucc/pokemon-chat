@@ -497,12 +497,6 @@ onUnmounted(() => {
     border-color: rgba(255, 200, 150, 0.6);
     background: linear-gradient(135deg, rgba(255, 247, 237, 0.98) 0%, rgba(255, 255, 255, 0.98) 60%);
 
-    .card-btn {
-      background: #EA580C;
-      transform: translateY(-1px);
-      box-shadow: 0 6px 20px rgba(255, 125, 0, 0.4);
-    }
-
     .btn-arrow {
       transform: translateX(3px);
     }
@@ -737,7 +731,7 @@ onUnmounted(() => {
   margin: 0;
 }
 
-/* 实体按钮 - Hero Card CTA */
+/* 实体按钮 - Hero Card CTA - 高级渐变质感 */
 .card-btn {
   display: inline-flex;
   align-items: center;
@@ -746,13 +740,30 @@ onUnmounted(() => {
   padding: 12px 24px;
   font-size: 15px;
   font-weight: 600;
+  letter-spacing: 0.02em;
   color: white;
-  background: var(--primary-color, #FF7D00);
+  /* 渐变背景：从浅橙到深橙 */
+  background: linear-gradient(180deg, #FFA940 0%, #FF7D00 100%);
   border: none;
+  /* 顶部高光 */
+  border-top: 1px solid rgba(255, 255, 255, 0.25);
   border-radius: 100px;
   cursor: pointer;
-  box-shadow: 0 4px 14px rgba(255, 125, 0, 0.3);
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  /* 柔和的橙色投影 */
+  box-shadow: 0 4px 14px rgba(255, 125, 0, 0.35);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+
+  &:hover {
+    background: linear-gradient(180deg, #FFB347 0%, #FF8C1A 100%);
+    box-shadow: 0 6px 20px rgba(255, 125, 0, 0.45);
+    transform: translateY(-2px);
+  }
+
+  &:active {
+    transform: translateY(0) scale(0.98);
+    box-shadow: 0 2px 8px rgba(255, 125, 0, 0.3);
+  }
 }
 
 .btn-arrow {

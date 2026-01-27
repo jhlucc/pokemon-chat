@@ -600,10 +600,14 @@ const advancedKeys = ref([])
   :deep(.ant-steps-item-process .ant-steps-item-icon) {
     background: var(--primary-color);
     border-color: var(--primary-color);
+    /* 外发光效果 - 呼吸感 */
+    box-shadow: 0 0 0 4px rgba(255, 125, 0, 0.15);
   }
 
   :deep(.ant-steps-item-finish .ant-steps-item-icon) {
     border-color: var(--primary-color);
+    /* 完成状态也有淡淡光晕 */
+    box-shadow: 0 0 0 3px rgba(255, 125, 0, 0.1);
 
     .ant-steps-icon {
       color: var(--primary-color);
@@ -677,6 +681,34 @@ const advancedKeys = ref([])
 .config-row {
   display: flex;
   gap: 8px;
+
+  /* Select 组件 hover 效果升级 */
+  :deep(.ant-select) {
+    .ant-select-selector {
+      transition: all 0.2s ease;
+    }
+
+    &:hover:not(.ant-select-disabled) .ant-select-selector {
+      border-color: var(--primary-color) !important;
+    }
+
+    &.ant-select-focused .ant-select-selector {
+      border-color: var(--primary-color) !important;
+      box-shadow: 0 0 0 3px rgba(255, 125, 0, 0.1) !important;
+    }
+  }
+
+  /* 刷新按钮 - 改为圆形图标按钮 */
+  > .ant-btn:not(.ant-btn-primary) {
+    border: none;
+    background: rgba(255, 125, 0, 0.08);
+    color: var(--primary-color);
+
+    &:hover {
+      background: rgba(255, 125, 0, 0.15);
+      color: var(--primary-color);
+    }
+  }
 }
 
 .config-hint {
@@ -890,11 +922,18 @@ const advancedKeys = ref([])
   align-items: center;
   justify-content: space-between;
   padding: 16px 24px;
-  background: rgba(255, 255, 255, 0.92);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+  /* 毛玻璃背景 */
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
   border-radius: 20px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1), 0 0 0 1px rgba(255, 255, 255, 0.5) inset;
+  /* 上描边 - 玻璃切面感 */
+  border-top: 1px solid rgba(255, 255, 255, 0.6);
+  /* 有色阴影 - 微微带橙 */
+  box-shadow:
+    0 -1px 0 rgba(255, 255, 255, 0.5) inset,
+    0 8px 32px rgba(0, 0, 0, 0.08),
+    0 4px 16px rgba(255, 125, 0, 0.05);
   pointer-events: auto;
 }
 
@@ -929,19 +968,47 @@ const advancedKeys = ref([])
   display: flex;
   align-items: center;
   gap: 10px;
+
+  /* 次要按钮弱化 - 让主按钮成为绝对主角 */
+  :deep(.ant-btn:not(.ant-btn-primary)) {
+    color: var(--gray-500);
+    border-color: var(--gray-200);
+    background: rgba(255, 255, 255, 0.6);
+
+    &:hover:not(:disabled) {
+      color: var(--gray-700);
+      border-color: var(--gray-300);
+      background: rgba(255, 255, 255, 0.9);
+    }
+  }
 }
 
 .action-primary {
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 0 20px;
-  height: 40px;
+  padding: 0 24px;
+  height: 42px;
   font-weight: 600;
-  box-shadow: 0 2px 8px rgba(255, 125, 0, 0.25);
+  letter-spacing: 0.02em;
+  /* 渐变背景 */
+  background: linear-gradient(180deg, #FFA940 0%, #FF7D00 100%) !important;
+  border: none !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.25) !important;
+  /* 橙色投影 */
+  box-shadow: 0 4px 14px rgba(255, 125, 0, 0.35);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 
   &:hover:not(:disabled) {
-    box-shadow: 0 4px 16px rgba(255, 125, 0, 0.35);
+    background: linear-gradient(180deg, #FFB347 0%, #FF8C1A 100%) !important;
+    box-shadow: 0 6px 20px rgba(255, 125, 0, 0.45);
+    transform: translateY(-1px);
+  }
+
+  &:active:not(:disabled) {
+    transform: translateY(0) scale(0.98);
+    box-shadow: 0 2px 8px rgba(255, 125, 0, 0.3);
   }
 }
 

@@ -15,7 +15,12 @@
           <a-button @click="refresh" :loading="state.loading" :disabled="!backendOnline">
             <ReloadOutlined /> 刷新
           </a-button>
-          <a-button type="primary" @click="newDatabase.open = true">
+          <!-- 空状态时弱化为描边按钮，减少视觉噪音 -->
+          <a-button
+            :type="isEmptyState ? 'default' : 'primary'"
+            :ghost="isEmptyState"
+            @click="newDatabase.open = true"
+          >
             <PlusOutlined /> 新建知识库
           </a-button>
         </a-space>
@@ -174,6 +179,11 @@ const state = reactive({ loading: false })
 const backendOnline = computed(() => Boolean(configStore.config.backend?.online))
 const canUseKb = computed(
   () => Boolean(configStore.config.backend?.online) && Boolean(configStore.config.enable_knowledge_base)
+)
+
+// 空状态判断 - 用于弱化右上角按钮
+const isEmptyState = computed(
+  () => activeTab.value === 'list' && !state.loading && databases.value.length === 0
 )
 
 const inferTabFromRoute = () => {
