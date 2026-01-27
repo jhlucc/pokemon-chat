@@ -256,7 +256,8 @@ onMounted(async () => {
 .database-hub {
   position: relative;
   min-height: 100vh;
-  background: var(--layout-bg-color, #F7F8FA);
+  /* 透明化：让光晕透出来 */
+  background: transparent;
   overflow-x: hidden;
 }
 
@@ -585,7 +586,8 @@ onMounted(async () => {
 /* 暗色模式 */
 :root[data-theme='dark'] {
   .database-hub {
-    background: var(--background-color);
+    /* 暗色模式也透明，让光晕透出 */
+    background: transparent;
   }
 
   .ambient-glow {
