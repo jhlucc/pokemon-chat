@@ -185,9 +185,9 @@ onMounted(async () => {
 .glow--orange {
   width: 600px;
   height: 600px;
-  top: -15%;
-  left: -10%;
-  background: radial-gradient(circle, rgba(255, 125, 0, 0.35) 0%, transparent 70%);
+  top: -20%;
+  left: -15%;
+  background: radial-gradient(circle, rgba(255, 125, 0, 0.28) 0%, transparent 70%);
   animation-delay: 0s;
 }
 
@@ -355,22 +355,25 @@ onMounted(async () => {
   gap: 20px;
 }
 
-/* Bento 卡片基础样式 */
+/* Bento 卡片基础样式 - 微磨砂质感 */
 .bento-card {
   position: relative;
-  background: #fff;
+  background: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   border-radius: 24px;
   padding: 28px;
   cursor: pointer;
   overflow: hidden;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
-  border: 1px solid rgba(0, 0, 0, 0.04);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.6);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 
   &:hover {
     transform: translateY(-6px);
-    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.08);
-    border-color: rgba(255, 125, 0, 0.15);
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.1);
+    border-color: rgba(255, 255, 255, 0.8);
+    background: rgba(255, 255, 255, 0.95);
 
     .card-title {
       color: var(--primary-color, #FF7D00);
@@ -400,12 +403,13 @@ onMounted(async () => {
 .bento-card--hero {
   grid-column: span 2;
   min-height: 240px;
-  background: linear-gradient(135deg, #FFF7ED 0%, #FFFFFF 60%);
-  border: 1px solid #FFEDD5;
+  background: linear-gradient(135deg, rgba(255, 247, 237, 0.92) 0%, rgba(255, 255, 255, 0.9) 60%);
+  border: 1px solid rgba(255, 237, 213, 0.8);
 
   &:hover {
-    box-shadow: 0 20px 50px rgba(255, 125, 0, 0.15);
-    border-color: rgba(255, 125, 0, 0.3);
+    box-shadow: 0 24px 60px rgba(255, 125, 0, 0.15);
+    border-color: rgba(255, 200, 150, 0.6);
+    background: linear-gradient(135deg, rgba(255, 247, 237, 0.98) 0%, rgba(255, 255, 255, 0.98) 60%);
 
     .card-btn {
       background: #EA580C;
@@ -695,13 +699,16 @@ onMounted(async () => {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 10px 20px;
-  background: rgba(255, 255, 255, 0.75);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  padding: 10px 22px;
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
   border-radius: 100px;
-  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.06), 0 0 0 1px rgba(255, 255, 255, 0.5) inset;
-  border: 1px solid rgba(255, 255, 255, 0.3);
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.08),
+    0 2px 8px rgba(0, 0, 0, 0.04),
+    0 0 0 1px rgba(255, 255, 255, 0.5) inset;
+  border: 1px solid rgba(255, 255, 255, 0.4);
   font-size: 12px;
   font-weight: 500;
   color: var(--gray-600, #666);
@@ -876,17 +883,23 @@ onMounted(async () => {
   }
 
   .bento-card {
-    background: var(--surface-color);
-    border-color: rgba(255, 255, 255, 0.05);
+    background: rgba(40, 40, 40, 0.85);
+    backdrop-filter: blur(12px);
+    border-color: rgba(255, 255, 255, 0.08);
 
     &:hover {
       border-color: rgba(255, 125, 0, 0.3);
+      background: rgba(45, 45, 45, 0.95);
     }
   }
 
   .bento-card--hero {
-    background: linear-gradient(135deg, rgba(255, 125, 0, 0.08) 0%, var(--surface-color) 60%);
+    background: linear-gradient(135deg, rgba(255, 125, 0, 0.1) 0%, rgba(40, 40, 40, 0.85) 60%);
     border-color: rgba(255, 125, 0, 0.15);
+
+    &:hover {
+      background: linear-gradient(135deg, rgba(255, 125, 0, 0.15) 0%, rgba(45, 45, 45, 0.95) 60%);
+    }
   }
 
   .organic-blob {
