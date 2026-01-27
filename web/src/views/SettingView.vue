@@ -1,7 +1,10 @@
 <template>
   <div class="setting-page">
-    <div class="tech-bg"></div> <!-- Background Texture -->
-    
+    <!-- 背景层：暖光氛围 -->
+    <div class="ambient-glow glow--orange"></div>
+    <div class="ambient-glow glow--purple"></div>
+    <div class="dot-grid"></div>
+
     <HeaderComponent
       title="控制中心"
       :breadcrumbs="[{ label: '首页', to: '/' }, { label: '设置' }]"
@@ -21,48 +24,40 @@
           <!-- Row 1: Status & Actions -->
           <div class="bento-grid">
             
-            <!-- Status Card (Span 8) -->
+            <!-- Status Card (Span 8) - 白色毛玻璃风格 -->
             <div class="bento-card status-card" :class="{ online: backendOnline }">
-              <div class="card-deco-corner top-left"></div>
-              <div class="card-deco-corner top-right"></div>
-              
               <div class="status-content">
                 <div class="status-header">
-                  <div class="status-indicator">
+                  <div class="status-indicator" :class="{ online: backendOnline }">
                     <span class="pulse-dot"></span>
-                    <span class="status-text mono">{{ backendOnline ? 'SYSTEM_ONLINE' : 'SYSTEM_OFFLINE' }}</span>
+                    <span class="status-text">{{ backendOnline ? '系统运行中' : '系统离线' }}</span>
                   </div>
-                  <div class="version-badge mono">BUILD.{{ BUILD_SHA ? BUILD_SHA.slice(0, 7) : 'DEV' }}</div>
+                  <div class="version-badge">v{{ BUILD_SHA ? BUILD_SHA.slice(0, 7) : 'DEV' }}</div>
                 </div>
                 <div class="status-body">
                   <h2 class="hero-title">{{ backendOnline ? '洛托姆系统运转正常' : '与后端服务的连接已断开' }}</h2>
-                  <p class="hero-sub">{{ backendOnline ? '所有神经元连接就绪，随时准备响应任务指令。' : '信号丢失。请检查后端服务状态或尝试重新连接。' }}</p>
+                  <p class="hero-sub">{{ backendOnline ? '所有服务连接就绪，随时准备响应任务指令。' : '信号丢失。请检查后端服务状态或尝试重新连接。' }}</p>
                 </div>
                 <div class="status-footer">
                    <div class="metric">
-                      <span class="label">API GATEWAY</span>
-                      <span class="value mono">{{ backendReady ? 'READY' : 'PENDING' }}</span>
-                      <div class="metric-bar" :class="{ active: backendReady }"></div>
+                      <span class="label">接口网关</span>
+                      <span class="value" :class="{ active: backendReady }">{{ backendReady ? '就绪' : '等待中' }}</span>
                    </div>
                    <div class="metric">
-                      <span class="label">LATENCY</span>
-                      <span class="value mono">24ms</span>
-                      <div class="metric-bar active"></div>
+                      <span class="label">响应延迟</span>
+                      <span class="value active">24ms</span>
                    </div>
                 </div>
               </div>
+              <!-- 装饰：半透明洛托姆轮廓 -->
               <div class="status-visual">
-                <!-- Tech Visual -->
-                <div class="radar-circle"></div>
-                <div class="radar-circle c2"></div>
-                <div class="radar-grid"></div>
-                <div class="radar-scan"></div>
+                <div class="rotom-silhouette"></div>
               </div>
             </div>
 
             <!-- Quick Actions (Span 4) -->
             <div class="bento-card actions-card">
-              <div class="card-label">SYSTEM_OPS</div>
+              <div class="card-label">系统操作</div>
               <div class="action-buttons">
                 <button class="bento-btn primary" :disabled="!backendOnline" @click="restartBackend">
                   <div class="btn-content">
@@ -84,7 +79,7 @@
             
             <!-- Brain / Model (Span 6) -->
             <div class="bento-card model-card">
-              <div class="card-label">NEURAL_CORE (Model)</div>
+              <div class="card-label">模型配置</div>
               <div class="model-selector-area">
                 <div class="model-row">
                   <span class="label">供应商</span>
@@ -113,7 +108,7 @@
             <!-- Providers (Span 6) -->
             <div class="bento-card providers-card">
               <div class="card-header">
-                <div class="card-label">CONNECTIONS</div>
+                <div class="card-label">服务连接</div>
                 <div class="header-tools">
                    <span class="count mono">{{ providerList.length }}</span>
                 </div>
@@ -126,7 +121,7 @@
                   </div>
                   <div class="p-right">
                     <div class="status-pill" :class="providerConfigured(p) ? 'active' : 'inactive'">
-                       {{ providerConfigured(p) ? 'LINKED' : 'VOID' }}
+                       {{ providerConfigured(p) ? '已连接' : '未配置' }}
                     </div>
                   </div>
                 </div>
@@ -165,7 +160,7 @@
 
             <!-- Row 3: Capabilities Grid (Span 12) -->
             <div class="bento-card capabilities-card">
-              <div class="card-label">EXTENSIONS (Modules)</div>
+              <div class="card-label">功能模块</div>
               <div class="modules-container">
                 <div 
                   class="module-tile" 
@@ -181,7 +176,7 @@
                     </div>
                     <div class="tile-info">
                       <div class="tile-name">{{ mod.label }}</div>
-                      <div class="tile-status mono">{{ configStore.config[mod.key] ? 'ON' : 'OFF' }}</div>
+                      <div class="tile-status">{{ configStore.config[mod.key] ? '已开启' : '已关闭' }}</div>
                     </div>
                   </div>
                   <div class="tile-bar"></div>
@@ -194,14 +189,14 @@
 
             <!-- Row 4: Appearance (Span 12) -->
             <div class="bento-card ui-card">
-              <div class="card-label">INTERFACE</div>
+              <div class="card-label">界面设置</div>
               <div class="ui-options">
                 <div class="ui-group">
-                  <span class="group-label">Theme Color</span>
+                  <span class="group-label">主题色</span>
                   <div class="theme-picker">
-                    <div 
-                       v-for="(p, key) in THEME_PRESETS" 
-                       :key="key" 
+                    <div
+                       v-for="(p, key) in THEME_PRESETS"
+                       :key="key"
                        class="color-dot"
                        :style="{ background: p.primary }"
                        :class="{ selected: themePreset === key }"
@@ -211,12 +206,12 @@
                 </div>
                 <div class="divider-v"></div>
                 <div class="ui-group">
-                  <span class="group-label">Density</span>
+                  <span class="group-label">布局密度</span>
                   <a-segmented v-model:value="uiDensity" :options="densityOptions" @change="onUiDensityChange" size="small" class="tech-segment"/>
                 </div>
                 <div class="divider-v"></div>
                 <div class="ui-group">
-                  <span class="group-label">Navigation</span>
+                  <span class="group-label">导航显示</span>
                   <div class="checkbox-group">
                     <a-checkbox :checked="uiVisibility.show_knowledge_base" @change="(e) => setUiVisibility('show_knowledge_base', e.target.checked)">知识库</a-checkbox>
                     <a-checkbox :checked="uiVisibility.show_knowledge_graph" @change="(e) => setUiVisibility('show_knowledge_graph', e.target.checked)">图谱</a-checkbox>
@@ -371,34 +366,69 @@ onMounted(() => refreshProviders())
 
 <style scoped lang="less">
 .setting-page {
+  position: relative;
   min-height: 100vh;
-  background: var(--background-color);
+  background: transparent;
+  overflow-x: hidden;
+}
+
+/* 背景层：暖光氛围 */
+.ambient-glow {
+  position: fixed;
+  border-radius: 50%;
+  filter: blur(100px);
+  pointer-events: none;
+  z-index: 0;
+  mix-blend-mode: normal;
+  animation: glow-drift 20s ease-in-out infinite;
+}
+
+.glow--orange {
+  width: 700px;
+  height: 700px;
+  top: -25%;
+  left: -20%;
+  background: radial-gradient(circle, rgba(255, 125, 0, 0.35) 0%, rgba(255, 180, 100, 0.15) 40%, transparent 70%);
+}
+
+.glow--purple {
+  width: 550px;
+  height: 550px;
+  bottom: -15%;
+  right: -15%;
+  background: radial-gradient(circle, rgba(139, 92, 246, 0.25) 0%, rgba(180, 150, 255, 0.1) 40%, transparent 70%);
+  animation-delay: -7s;
+}
+
+@keyframes glow-drift {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(20px, -15px) scale(1.03); }
+  66% { transform: translate(-15px, 15px) scale(0.97); }
+}
+
+/* 点阵背景 */
+.dot-grid {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image:
+    radial-gradient(circle, rgba(255, 125, 0, 0.05) 1px, transparent 1px),
+    radial-gradient(circle, rgba(255, 125, 0, 0.025) 1px, transparent 1px);
+  background-size: 24px 24px, 96px 96px;
+  pointer-events: none;
+  z-index: 0;
 }
 
 .setting-container { padding: 0; }
 
 .bento-wrapper {
-  /* Full-width layout (avoid the "centered block" look). */
   max-width: none;
   margin: 0;
   padding: 0 0 40px;
   position: relative;
   z-index: 1;
-}
-
-.tech-bg {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(
-    180deg,
-    color-mix(in srgb, var(--primary-color) 3%, var(--background-color)) 0%,
-    var(--background-color) 100%
-  );
-  z-index: 0;
-  pointer-events: none;
 }
 
 .mono { font-family: 'JetBrains Mono', 'SF Mono', Consolas, monospace; }
@@ -411,83 +441,168 @@ onMounted(() => refreshProviders())
 }
 
 .bento-card {
-  background: color-mix(in srgb, var(--surface-color) 85%, transparent);
-  backdrop-filter: blur(12px);
-  border-radius: 16px;
-  box-shadow:
-    0 4px 6px -1px rgba(0, 0, 0, 0.02),
-    0 2px 4px -1px rgba(0, 0, 0, 0.02),
-    inset 0 1px 0 color-mix(in srgb, var(--surface-color) 80%, transparent);
-  border: 1px solid var(--border-color);
+  background: rgba(255, 255, 255, 0.75);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-radius: 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03), 0 4px 12px rgba(255, 125, 0, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.5);
   padding: 20px;
   transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
   overflow: hidden;
   position: relative;
 
   &:hover {
-    box-shadow: 0 12px 24px -4px rgba(0, 0, 0, 0.06);
-    border-color: color-mix(in srgb, var(--border-color) 80%, var(--text-color) 10%);
     transform: translateY(-2px);
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.06), 0 10px 30px rgba(255, 125, 0, 0.08);
+    border-color: rgba(255, 125, 0, 0.15);
+    background: rgba(255, 255, 255, 0.9);
   }
 }
 
 .card-label {
-  font-size: 11px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: #94a3b8;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--gray-500);
   margin-bottom: 12px;
 }
 
-/* Status Card */
+/* Status Card - 白色毛玻璃风格 */
 .status-card {
   grid-column: span 12;
   @media (min-width: 768px) { grid-column: span 8; }
-  background: #0f172a; 
-  color: white;
   display: flex;
   justify-content: space-between;
   min-height: 180px;
   position: relative;
-  
+  padding: 24px;
+
   &.online {
-    background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
-    border: 1px solid rgba(255,255,255,0.08);
-    .pulse-dot { background: #22c55e; box-shadow: 0 0 8px #22c55e; }
+    .status-indicator.online {
+      .pulse-dot {
+        background: #22c55e;
+        box-shadow: 0 0 8px rgba(34, 197, 94, 0.5);
+        animation: pulse 2s ease-in-out infinite;
+      }
+    }
   }
-  
-  .card-deco-corner {
-    position: absolute; width: 10px; height: 10px; border: 2px solid rgba(255,255,255,0.1);
-    &.top-left { top: 12px; left: 12px; border-right: none; border-bottom: none; }
-    &.top-right { top: 12px; right: 12px; border-left: none; border-bottom: none; }
-  }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.7; transform: scale(1.1); }
 }
 
 .status-content { flex: 1; display: flex; flex-direction: column; z-index: 2; }
-.status-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
-.status-indicator { display: flex; align-items: center; background: rgba(255,255,255,0.08); padding: 3px 10px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.05); }
-.pulse-dot { width: 6px; height: 6px; background: #64748b; border-radius: 50%; margin-right: 8px; }
-.status-text { font-size: 11px; font-weight: 600; color: #cbd5e1; letter-spacing: 0.05em; }
-.version-badge { font-size: 11px; opacity: 0.4; letter-spacing: 0.05em; }
 
-.hero-title { font-size: 20px; margin: 0 0 6px; font-weight: 600; color: white; letter-spacing: -0.02em; }
-.hero-sub { font-size: 13px; color: #94a3b8; margin: 0; max-width: 380px; line-height: 1.5; }
-
-.status-footer { margin-top: auto; display: flex; gap: 24px; }
-.metric { display: flex; flex-direction: column; min-width: 80px; }
-.metric .label { font-size: 10px; text-transform: uppercase; color: #64748b; margin-bottom: 4px; letter-spacing: 0.05em; }
-.metric .value { font-size: 14px; font-weight: 600; color: #e2e8f0; margin-bottom: 4px; }
-.metric-bar { height: 3px; width: 100%; background: #334155; border-radius: 2px; overflow: hidden; position: relative; }
-.metric-bar.active::after { content:''; position: absolute; left: 0; top: 0; height: 100%; width: 60%; background: #22c55e; animation: barAnim 2s infinite ease-in-out; }
-@keyframes barAnim { 0% { width: 30%; } 50% { width: 80%; } 100% { width: 30%; } }
-
-.status-visual {
-  position: absolute; right: -30px; bottom: -30px; width: 160px; height: 160px; pointer-events: none;
-  .radar-circle { position: absolute; inset: 0; border: 1px solid rgba(255,255,255,0.03); border-radius: 50%; &.c2 { inset: 30px; border-style: dashed; } }
-  .radar-scan { position: absolute; width: 80px; height: 80px; top: 50%; left: 50%; background: linear-gradient(45deg, transparent 50%, rgba(34, 197, 94, 0.08) 100%); transform-origin: top left; animation: radarSpin 4s linear infinite; }
+.status-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
 }
-@keyframes radarSpin { to { transform: rotate(360deg); } }
+
+.status-indicator {
+  display: flex;
+  align-items: center;
+  background: rgba(255, 125, 0, 0.08);
+  padding: 6px 12px;
+  border-radius: 100px;
+  border: 1px solid rgba(255, 125, 0, 0.15);
+
+  &.online {
+    background: rgba(34, 197, 94, 0.08);
+    border-color: rgba(34, 197, 94, 0.2);
+  }
+}
+
+.pulse-dot {
+  width: 8px;
+  height: 8px;
+  background: var(--gray-400);
+  border-radius: 50%;
+  margin-right: 8px;
+}
+
+.status-text {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--gray-600);
+}
+
+.version-badge {
+  font-size: 12px;
+  color: var(--gray-400);
+  font-weight: 500;
+}
+
+.hero-title {
+  font-size: 22px;
+  margin: 0 0 8px;
+  font-weight: 650;
+  color: var(--text-color);
+  letter-spacing: -0.02em;
+}
+
+.hero-sub {
+  font-size: 14px;
+  color: var(--gray-500);
+  margin: 0;
+  max-width: 400px;
+  line-height: 1.6;
+}
+
+.status-footer {
+  margin-top: auto;
+  display: flex;
+  gap: 32px;
+}
+
+.metric {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+
+  .label {
+    font-size: 11px;
+    color: var(--gray-400);
+    font-weight: 500;
+  }
+
+  .value {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--gray-600);
+
+    &.active {
+      color: #22c55e;
+    }
+  }
+}
+
+/* 洛托姆装饰 */
+.status-visual {
+  position: absolute;
+  right: 24px;
+  bottom: 24px;
+  width: 120px;
+  height: 120px;
+  pointer-events: none;
+  opacity: 0.15;
+
+  .rotom-silhouette {
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(135deg, var(--primary-color) 0%, rgba(255, 125, 0, 0.5) 100%);
+    border-radius: 50%;
+    animation: float 4s ease-in-out infinite;
+  }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
 
 /* Actions Card */
 .actions-card {
@@ -568,8 +683,25 @@ onMounted(() => refreshProviders())
 .ui-options { display: flex; gap: 40px; align-items: center; flex-wrap: wrap; }
 .ui-group { display: flex; flex-direction: column; gap: 8px; }
 .group-label { font-size: 11px; font-weight: 600; color: #64748b; letter-spacing: 0.05em; text-transform: uppercase; }
-.theme-picker { display: flex; gap: 8px; }
-.color-dot { width: 20px; height: 20px; border-radius: 50%; cursor: pointer; border: 2px solid white; box-shadow: 0 0 0 1px #e2e8f0; transition: transform 0.2s; &.selected { box-shadow: 0 0 0 2px #0f172a; transform: scale(1.1); } }
+.theme-picker { display: flex; gap: 10px; }
+.color-dot {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  cursor: pointer;
+  border: 3px solid white;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  transition: all 0.2s ease;
+
+  &:hover {
+    transform: scale(1.1);
+  }
+
+  &.selected {
+    transform: scale(1.15);
+    box-shadow: 0 0 0 3px rgba(255, 125, 0, 0.2), 0 4px 12px rgba(0, 0, 0, 0.15);
+  }
+}
 .checkbox-group { display: flex; gap: 16px; }
 .divider-v { width: 1px; height: 32px; background: #f1f5f9; }
 
@@ -578,4 +710,107 @@ onMounted(() => refreshProviders())
 :deep(.ant-checkbox-wrapper) { font-size: 13px; }
 :deep(.tech-modal .ant-modal-content) { border-radius: 16px; padding: 24px; }
 .tech-input { border-radius: 8px; background: #f8fafc !important; border-color: #e2e8f0 !important; &:focus { background: white !important; border-color: var(--pokedex-red) !important; } }
+
+/* 暗色模式 */
+:root[data-theme='dark'] {
+  .ambient-glow {
+    mix-blend-mode: screen;
+    opacity: 0.7;
+  }
+
+  .glow--orange {
+    background: radial-gradient(circle, rgba(255, 125, 0, 0.25) 0%, rgba(255, 180, 100, 0.1) 40%, transparent 70%);
+  }
+
+  .glow--purple {
+    background: radial-gradient(circle, rgba(139, 92, 246, 0.2) 0%, rgba(180, 150, 255, 0.08) 40%, transparent 70%);
+  }
+
+  .dot-grid {
+    background-image:
+      radial-gradient(circle, rgba(255, 125, 0, 0.06) 1px, transparent 1px),
+      radial-gradient(circle, rgba(255, 125, 0, 0.03) 1px, transparent 1px);
+  }
+
+  .bento-card {
+    background: rgba(40, 40, 40, 0.75);
+    border-color: rgba(255, 255, 255, 0.08);
+
+    &:hover {
+      background: rgba(50, 50, 50, 0.9);
+      border-color: rgba(255, 125, 0, 0.3);
+    }
+  }
+
+  .status-indicator {
+    background: rgba(255, 125, 0, 0.12);
+    border-color: rgba(255, 125, 0, 0.2);
+
+    &.online {
+      background: rgba(34, 197, 94, 0.12);
+      border-color: rgba(34, 197, 94, 0.25);
+    }
+  }
+
+  .bento-btn.secondary {
+    background: rgba(40, 40, 40, 0.8);
+    color: var(--gray-300);
+    border-color: rgba(255, 255, 255, 0.1);
+
+    &:hover {
+      background: rgba(50, 50, 50, 0.9);
+      border-color: rgba(255, 255, 255, 0.15);
+    }
+  }
+
+  .provider-row {
+    background: rgba(30, 30, 30, 0.6);
+
+    &:hover {
+      background: rgba(40, 40, 40, 0.8);
+      border-color: rgba(255, 255, 255, 0.1);
+    }
+  }
+
+  .status-pill {
+    &.active {
+      background: rgba(34, 197, 94, 0.15);
+      color: #4ade80;
+    }
+    &.inactive {
+      background: rgba(255, 255, 255, 0.05);
+      color: var(--gray-500);
+    }
+  }
+
+  .module-tile {
+    background: rgba(30, 30, 30, 0.6);
+    border-color: rgba(255, 255, 255, 0.08);
+
+    &.active {
+      border-color: rgba(255, 125, 0, 0.3);
+    }
+  }
+
+  .divider, .divider-v {
+    background: rgba(255, 255, 255, 0.08);
+  }
+
+  .color-dot {
+    border-color: rgba(40, 40, 40, 0.9);
+
+    &.selected {
+      box-shadow: 0 0 0 3px rgba(255, 125, 0, 0.3), 0 4px 12px rgba(0, 0, 0, 0.3);
+    }
+  }
+
+  .tech-input {
+    background: rgba(30, 30, 30, 0.8) !important;
+    border-color: rgba(255, 255, 255, 0.1) !important;
+
+    &:focus {
+      background: rgba(40, 40, 40, 0.9) !important;
+    }
+  }
+}
 </style>
