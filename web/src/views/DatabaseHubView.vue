@@ -1,5 +1,10 @@
 <template>
-  <div class="database-hub layout-container">
+  <div class="database-hub">
+    <!-- 背景层：复用主页的暖光氛围 -->
+    <div class="ambient-glow glow--orange"></div>
+    <div class="ambient-glow glow--purple"></div>
+    <div class="dot-grid"></div>
+
     <HeaderComponent
       :title="headerTitle"
       :description="headerDescription"
@@ -7,12 +12,12 @@
     >
       <template #actions>
         <a-space wrap>
-          <a-button v-if="activeTab !== 'workbench'" @click="onTabChange('workbench')">RAG 工作台</a-button>
-          <a-button v-else @click="onTabChange('list')">知识库列表</a-button>
-          <a-button @click="refresh" :loading="state.loading" :disabled="!backendOnline"
-            >刷新</a-button
-          >
-          <a-button type="primary" @click="newDatabase.open = true">新建知识库</a-button>
+          <a-button @click="refresh" :loading="state.loading" :disabled="!backendOnline">
+            <ReloadOutlined /> 刷新
+          </a-button>
+          <a-button type="primary" @click="newDatabase.open = true">
+            <PlusOutlined /> 新建知识库
+          </a-button>
         </a-space>
       </template>
     </HeaderComponent>
@@ -54,80 +59,95 @@
               ? '后端未启用知识库功能（enable_knowledge_base=false），无法写入索引'
               : '后端未启动/不可用（离线模式）'
           "
-          style="margin-bottom: 12px"
+          style="margin-bottom: 16px"
         />
 
-        <a-tabs v-model:activeKey="activeTab" class="hub-tabs" @change="onTabChange">
-          <a-tab-pane key="list">
-            <template #tab>知识库列表</template>
+        <!-- 分段控制器 Tab -->
+        <div class="segmented-tabs">
+          <button
+            class="seg-tab"
+            :class="{ active: activeTab === 'list' }"
+            @click="onTabChange('list')"
+          >
+            知识库列表
+          </button>
+          <button
+            class="seg-tab"
+            :class="{ active: activeTab === 'workbench' }"
+            @click="onTabChange('workbench')"
+          >
+            RAG 工作台
+          </button>
+        </div>
 
-            <a-alert
-              v-if="!canUseKb"
-              type="warning"
-              show-icon
-              :message="
-                backendOnline
-                  ? '后端未启用知识库功能（enable_knowledge_base=false）'
-                  : '后端未启动/不可用（离线模式）'
-              "
-              style="margin-bottom: 16px"
-            />
+        <!-- 知识库列表 -->
+        <div v-if="activeTab === 'list'" class="tab-content">
+          <a-alert
+            v-if="!canUseKb"
+            type="warning"
+            show-icon
+            :message="
+              backendOnline
+                ? '后端未启用知识库功能（enable_knowledge_base=false）'
+                : '后端未启动/不可用（离线模式）'
+            "
+            style="margin-bottom: 16px"
+          />
 
-            <!-- 加载骨架屏 -->
-            <div v-if="state.loading" class="databases">
-              <div v-for="n in 6" :key="n" class="dbcard dbcard--skeleton">
-                <a-skeleton active :title="{ width: '60%' }" :paragraph="{ rows: 2 }" />
-              </div>
+          <!-- 加载骨架屏 -->
+          <div v-if="state.loading" class="databases">
+            <div v-for="n in 6" :key="n" class="dbcard dbcard--skeleton">
+              <a-skeleton active :title="{ width: '60%' }" :paragraph="{ rows: 2 }" />
             </div>
+          </div>
 
-            <!-- 空状态：居中聚焦 -->
-            <div v-else-if="databases.length === 0" class="empty-state">
-              <div class="empty-illustration">
-                <BookOutlined />
-              </div>
-              <h3 class="empty-title">开始构建你的知识粮仓</h3>
-              <p class="empty-desc">导入文档数据，增强模型上下文。把文档变成 AI 的长期记忆。</p>
-              <a-button type="primary" size="large" @click="newDatabase.open = true">
-                <PlusOutlined /> 新建知识库
-              </a-button>
+          <!-- 空状态：居中聚焦 -->
+          <div v-else-if="databases.length === 0" class="empty-state">
+            <div class="empty-illustration">
+              <BookOutlined />
             </div>
+            <h3 class="empty-title">开始构建你的知识粮仓</h3>
+            <p class="empty-desc">导入文档数据，增强模型上下文。把文档变成 AI 的长期记忆。</p>
+            <a-button type="primary" size="large" @click="newDatabase.open = true">
+              <PlusOutlined /> 新建知识库
+            </a-button>
+          </div>
 
-            <!-- 知识库列表 -->
-            <div v-else class="databases">
-              <div
-                v-for="database in databases"
-                :key="database.db_id"
-                class="dbcard"
-                @click="navigateToDatabase(database.db_id)"
-                role="button"
-                tabindex="0"
-                @keydown.enter.prevent="navigateToDatabase(database.db_id)"
-                @keydown.space.prevent="navigateToDatabase(database.db_id)"
-              >
-                <div class="top">
-                  <div class="icon"><ReadFilled /></div>
-                  <div class="info">
-                    <h3>{{ database.name }}</h3>
-                    <p>
-                      <span>{{ database.files ? Object.keys(database.files).length : 0 }} 文件</span>
-                      <span class="muted">· {{ database.db_id }}</span>
-                    </p>
-                  </div>
+          <!-- 知识库列表 -->
+          <div v-else class="databases">
+            <div
+              v-for="database in databases"
+              :key="database.db_id"
+              class="dbcard"
+              @click="navigateToDatabase(database.db_id)"
+              role="button"
+              tabindex="0"
+              @keydown.enter.prevent="navigateToDatabase(database.db_id)"
+              @keydown.space.prevent="navigateToDatabase(database.db_id)"
+            >
+              <div class="top">
+                <div class="icon"><ReadFilled /></div>
+                <div class="info">
+                  <h3>{{ database.name }}</h3>
+                  <p>
+                    <span>{{ database.files ? Object.keys(database.files).length : 0 }} 文件</span>
+                    <span class="muted">· {{ database.db_id }}</span>
+                  </p>
                 </div>
-                <p class="description">{{ database.description || '暂无描述' }}</p>
-                <div class="tags">
-                  <a-tag color="blue" v-if="database.embed_model">{{ database.embed_model }}</a-tag>
-                  <a-tag color="green" v-if="database.dimension">{{ database.dimension }}</a-tag>
-                </div>
+              </div>
+              <p class="description">{{ database.description || '暂无描述' }}</p>
+              <div class="tags">
+                <a-tag color="blue" v-if="database.embed_model">{{ database.embed_model }}</a-tag>
+                <a-tag color="green" v-if="database.dimension">{{ database.dimension }}</a-tag>
               </div>
             </div>
-          </a-tab-pane>
+          </div>
+        </div>
 
-          <a-tab-pane key="workbench">
-            <template #tab>RAG 工作台</template>
-            <DatabaseRagWorkbench />
-          </a-tab-pane>
-        </a-tabs>
+        <!-- RAG 工作台 -->
+        <div v-if="activeTab === 'workbench'" class="tab-content">
+          <DatabaseRagWorkbench />
+        </div>
       </div>
     </div>
   </div>
@@ -137,7 +157,7 @@
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { message } from 'ant-design-vue'
-import { PlusOutlined, ReadFilled, BookOutlined } from '@ant-design/icons-vue'
+import { PlusOutlined, ReadFilled, BookOutlined, ReloadOutlined } from '@ant-design/icons-vue'
 
 import HeaderComponent from '@/components/HeaderComponent.vue'
 import DatabaseRagWorkbench from '@/components/database/DatabaseRagWorkbench.vue'
@@ -252,47 +272,105 @@ onMounted(async () => {
 
 <style scoped lang="less">
 .database-hub {
-  padding: 0;
+  position: relative;
+  min-height: 100vh;
+  background: var(--layout-bg-color, #F7F8FA);
+  overflow-x: hidden;
 }
 
-/* Tab 样式升级：下划线式 */
-.hub-tabs {
-  :deep(.ant-tabs-nav) {
-    margin-bottom: 20px;
+/* 背景层：暖光氛围 */
+.ambient-glow {
+  position: fixed;
+  border-radius: 50%;
+  filter: blur(120px);
+  pointer-events: none;
+  z-index: 0;
+  mix-blend-mode: multiply;
+  animation: glow-drift 20s ease-in-out infinite;
+}
 
-    &::before {
-      border-bottom: 1px solid var(--border-color);
-    }
+.glow--orange {
+  width: 500px;
+  height: 500px;
+  top: -15%;
+  left: -10%;
+  background: radial-gradient(circle, rgba(255, 125, 0, 0.2) 0%, transparent 70%);
+}
+
+.glow--purple {
+  width: 400px;
+  height: 400px;
+  bottom: -5%;
+  right: -5%;
+  background: radial-gradient(circle, rgba(139, 92, 246, 0.18) 0%, transparent 70%);
+  animation-delay: -7s;
+}
+
+@keyframes glow-drift {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(20px, -15px) scale(1.03); }
+  66% { transform: translate(-15px, 15px) scale(0.97); }
+}
+
+/* 点阵背景 */
+.dot-grid {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image:
+    radial-gradient(circle, rgba(255, 125, 0, 0.05) 1px, transparent 1px),
+    radial-gradient(circle, rgba(255, 125, 0, 0.025) 1px, transparent 1px);
+  background-size: 24px 24px, 96px 96px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.ui-page {
+  position: relative;
+  z-index: 1;
+}
+
+/* 分段控制器 Tab */
+.segmented-tabs {
+  display: inline-flex;
+  padding: 4px;
+  background: rgba(0, 0, 0, 0.04);
+  border-radius: 12px;
+  margin-bottom: 24px;
+}
+
+.seg-tab {
+  padding: 10px 20px;
+  border: none;
+  background: transparent;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--gray-600);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+
+  &:hover:not(.active) {
+    color: var(--gray-700);
+    background: rgba(0, 0, 0, 0.02);
   }
 
-  :deep(.ant-tabs-tab) {
-    padding: 12px 4px;
-    font-size: 15px;
-    font-weight: 500;
-    color: var(--gray-500);
-    transition: all 0.2s ease;
-
-    &:hover {
-      color: var(--primary-color);
-    }
-
-    &.ant-tabs-tab-active {
-      color: var(--primary-color);
-
-      .ant-tabs-tab-btn {
-        color: var(--primary-color);
-      }
-    }
+  &.active {
+    background: white;
+    color: var(--primary-color);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
   }
+}
 
-  :deep(.ant-tabs-ink-bar) {
-    background: var(--primary-color);
-    height: 2px;
-  }
+.tab-content {
+  animation: fadeIn 0.2s ease;
+}
 
-  :deep(.ant-tabs-content) {
-    padding-top: 0;
-  }
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 /* 空状态：居中聚焦 */
@@ -312,7 +390,7 @@ onMounted(async () => {
   align-items: center;
   justify-content: center;
   margin-bottom: 24px;
-  background: linear-gradient(135deg, rgba(255, 125, 0, 0.08) 0%, rgba(255, 125, 0, 0.02) 100%);
+  background: linear-gradient(135deg, rgba(255, 125, 0, 0.1) 0%, rgba(255, 125, 0, 0.03) 100%);
   border-radius: 50%;
   font-size: 48px;
   color: var(--primary-color);
@@ -348,18 +426,18 @@ onMounted(async () => {
   border-radius: 20px;
   min-height: 180px;
   cursor: pointer;
-  background: rgba(255, 255, 255, 0.88);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.6);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  background: rgba(255, 255, 255, 0.75);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 
   &:hover {
     transform: translateY(-4px);
     box-shadow: 0 12px 32px rgba(0, 0, 0, 0.08);
     border-color: rgba(255, 125, 0, 0.2);
-    background: rgba(255, 255, 255, 0.95);
+    background: rgba(255, 255, 255, 0.9);
 
     .icon {
       transform: scale(1.05);
@@ -441,7 +519,7 @@ onMounted(async () => {
 
   &:hover {
     transform: none;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
   }
 }
 
@@ -492,16 +570,68 @@ onMounted(async () => {
     height: 100px;
     font-size: 40px;
   }
+
+  .segmented-tabs {
+    width: 100%;
+  }
+
+  .seg-tab {
+    flex: 1;
+    text-align: center;
+    padding: 10px 12px;
+  }
 }
 
 /* 暗色模式 */
 :root[data-theme='dark'] {
+  .database-hub {
+    background: var(--background-color);
+  }
+
+  .ambient-glow {
+    mix-blend-mode: screen;
+    opacity: 0.5;
+  }
+
+  .glow--orange {
+    background: radial-gradient(circle, rgba(255, 125, 0, 0.15) 0%, transparent 70%);
+  }
+
+  .glow--purple {
+    background: radial-gradient(circle, rgba(139, 92, 246, 0.12) 0%, transparent 70%);
+  }
+
+  .dot-grid {
+    background-image:
+      radial-gradient(circle, rgba(255, 125, 0, 0.06) 1px, transparent 1px),
+      radial-gradient(circle, rgba(255, 125, 0, 0.03) 1px, transparent 1px);
+  }
+
+  .segmented-tabs {
+    background: rgba(255, 255, 255, 0.05);
+  }
+
+  .seg-tab {
+    color: var(--gray-400);
+
+    &:hover:not(.active) {
+      color: var(--gray-300);
+      background: rgba(255, 255, 255, 0.03);
+    }
+
+    &.active {
+      background: rgba(255, 255, 255, 0.1);
+      color: var(--primary-color);
+      box-shadow: none;
+    }
+  }
+
   .dbcard {
-    background: rgba(40, 40, 40, 0.85);
+    background: rgba(40, 40, 40, 0.75);
     border-color: rgba(255, 255, 255, 0.08);
 
     &:hover {
-      background: rgba(50, 50, 50, 0.95);
+      background: rgba(50, 50, 50, 0.9);
       border-color: rgba(255, 125, 0, 0.3);
     }
 
