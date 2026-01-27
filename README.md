@@ -122,7 +122,7 @@ cp docker/.env.example docker/.env
 # 可选：开启语音识别（FunASR）-> enable_asr=true，funasr_url=ws://funasr:10095（Docker）
 # 可选：限制 CORS 来源（生产环境建议）-> cors_allow_origins=http://localhost:3100
 
-# 3. 启动所有服务 (API + Web + 数据库 + MCP)
+# 3. 启动服务 (API + Web + 数据库)
 cd docker
 # 默认会拉起 API + Web + Neo4j/MySQL/Milvus 等依赖，并自动导入 Neo4j 图谱数据（neo4j-bootstrap）
 docker compose up -d --build
@@ -165,90 +165,42 @@ docker compose exec api python scripts/import_pokemon_map.py
 ```bash
 cd docker
 docker compose down
-# 这些是 bind mount 的数据目录（不属于 named volumes），需要手动删除
+# 这些是 bind mount 的数据目录（不属于 named volumes），需要手动删除（Linux/macOS/WSL）
 rm -rf volumes/neo4j/data volumes/neo4j/logs volumes/milvus volumes/mysql/data
 docker compose up -d --build
 ```
 
-### 💻 本地开发模式
+Windows PowerShell：
 
-如果你希望在本地运行前后端代码进行开发：
-
-1. **启动基础依赖 (Infrastructure)**
-   ```bash
-   cd docker
-   docker compose up -d # 启动 Neo4j, Milvus, MySQL（FunASR 需 --profile asr）
-   ```
-
-2. **启动后端 (Server)**
-   ```bash
-   cd server
-   pip install -r requirements.txt
-   python main.py
-   ```
-
-3. **启动前端 (Web)**
-   ```bash
-   cd web
-   npm install
-   npm run dev
-   ```
-
-> 可选：后端环境变量在项目根目录 `.env`，可从 `.env.template` 复制。常用项：`llm_api_key`、`enable_knowledge_base`、`enable_reranker`、`LOG_LEVEL`、`tavily_api_key`。
-
-> 可选：前端环境变量（Vite）在 `web/.env`，可从 `web/.env.example` 复制。常用项：`VITE_API_URL`（开发代理后端地址）、`VITE_API_BASE_PATH`、`VITE_APP_TITLE`。
-
-> 提示：如果你只想体验/开发前端 UI（不启动后端），可以进入「设置」把“离线演示模式”切到“强制 Mock”。
-> 这样前端会用本地 Mock 数据模拟后端接口，不依赖后端的 `base.yaml` 也能完整展示各页面与功能入口。
->
-> 说明：旧版页面已合并（保留路径兼容跳转）
-> - 工具箱 `/tools` -> 知识库 `/database`（RAG 工作台标签页，兼容 `/database/workbench`）
-> - Agent `/agent` -> 对话 `/chat`（输入框左侧“Agent 模式”开关启用，总 Agent = `supervisor_agent`）
-
-### ✅ 代码质量（开发者）
-
-后端：
-
-```bash
-python -m ruff check server src scripts
-python -m ruff format server src scripts
-python -m pytest
+```powershell
+cd docker
+docker compose down
+Remove-Item -Recurse -Force .\\volumes\\neo4j\\data, .\\volumes\\neo4j\\logs, .\\volumes\\milvus, .\\volumes\\mysql\\data
+docker compose up -d --build
 ```
 
-前端：
+### ✅ 启动验证
+
+- Web UI: http://localhost:3100/
+- API Ready: http://localhost:5050/readyz
+- Neo4j Browser: http://localhost:7474/
+
+也可以用命令检查：
 
 ```bash
-cd web
-npm run lint:check
-npm run typecheck
-npm run build
+cd docker
+docker compose ps
+docker compose exec -T neo4j cypher-shell 'MATCH (n) RETURN count(n) AS nodes;'
 ```
 
-一键（类似 CI）：
+### 🧰 常见问题（Docker）
 
-```bash
-make check
-```
+- **端口冲突**：修改 `docker/docker-compose.yml` 的端口映射（默认 Web=3100、API=5050、Neo4j=7474/7687、MySQL=3307、Milvus=19530/19091）
+- **出现 orphan containers 提示**：`cd docker && docker compose up -d --build --remove-orphans`
 
-更多开发/贡献细节见 `CONTRIBUTING.md`。
+### 🤝 开发/贡献
 
-### 🧰 常见问题（本地环境）
-
-1) **直接运行后端脚本时报 `No module named 'src'`**
-- 推荐：`python -m server.main`
-- 或：`cd server && python main.py`
-- 现在也支持：在项目根目录直接 `python server/main.py`（已自动补齐 `PYTHONPATH`）
-
-2) **`CXXABI_1.3.15 not found` / `libicui18n.so.78` / `sqlite3` 导入失败**
-- 这通常是 **conda 环境的动态库** 被系统库覆盖（常见原因：手动设置了 `LD_LIBRARY_PATH`）。
-- 解决思路：
-  - 确保使用 conda 环境的 Python：`which python` / `python -V`
-  - 尝试临时清空：`unset LD_LIBRARY_PATH`
-  - 或强制用 conda 执行：`conda run -n <你的环境名> python -m server.main`
-
-3) **pip 提示大量依赖冲突（dependency conflicts）**
-- 该项目依赖已在 `requirements.txt` 中固定版本（LangChain 1.x / OpenAI 2.x）。
-- 建议用“干净”的虚拟环境安装，不要在同一个环境里混装 `llama-index` / `streamlit` / `langchain-neo4j` 等可能要求不同主版本的包。
+本仓库以 Docker 方式运行与复现为主；开发规范、测试与贡献流程见 `CONTRIBUTING.md`。
 
 ---
 

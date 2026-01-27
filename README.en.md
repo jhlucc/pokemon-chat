@@ -160,88 +160,42 @@ If you want a clean start (wipe persisted data and re-run bootstrap):
 ```bash
 cd docker
 docker compose down
-# These are bind-mounted data directories (not named volumes), delete them manually:
+# These are bind-mounted data directories (not named volumes). Linux/macOS/WSL:
 rm -rf volumes/neo4j/data volumes/neo4j/logs volumes/milvus volumes/mysql/data
 docker compose up -d --build
 ```
 
-### 💻 Local Development Mode
+Windows PowerShell:
 
-If you wish to run backend/frontend code locally for development:
-
-1. **Start Infrastructure**
-   ```bash
-   cd docker
-   docker compose up -d # Starts Neo4j, Milvus, MySQL (FunASR needs --profile asr)
-   ```
-
-2. **Start Backend (Server)**
-   ```bash
-   cd server
-   pip install -r requirements.txt
-   python main.py
-   ```
-
-3. **Start Frontend (Web)**
-   ```bash
-   cd web
-   npm install
-   npm run dev
-   ```
-
-> Optional: backend env vars live in the repo root `.env` (copy from `.env.template`). Common keys: `llm_api_key`, `enable_knowledge_base`, `enable_reranker`, `LOG_LEVEL`, `tavily_api_key`.
-
-> Tip: If you only want to work on the frontend UI (without starting the backend), go to **Settings** and switch **Offline Demo Mode** to **Force Mock**.
-> The frontend will simulate backend APIs with local mock data, so it can render all pages/features without relying on backend `base.yaml`.
->
-> Note: Legacy pages have been merged (backward-compatible redirects remain)
-> - Toolbox `/tools` -> Knowledge Base `/database` (RAG Workbench tab, compatible with `/database/workbench`)
-> - Agent `/agent` -> Chat `/chat` (enable via the “Agent Mode” toggle; backend runs `supervisor_agent`)
-
-### ✅ Code Quality (Dev)
-
-Backend:
-
-```bash
-python -m ruff check server src scripts
-python -m ruff format server src scripts
-python -m pytest
+```powershell
+cd docker
+docker compose down
+Remove-Item -Recurse -Force .\\volumes\\neo4j\\data, .\\volumes\\neo4j\\logs, .\\volumes\\milvus, .\\volumes\\mysql\\data
+docker compose up -d --build
 ```
 
-Frontend:
+### ✅ Verify It's Running
+
+- Web UI: http://localhost:3100/
+- API Ready: http://localhost:5050/readyz
+- Neo4j Browser: http://localhost:7474/
+
+Command checks:
 
 ```bash
-cd web
-npm run lint:check
-npm run typecheck
-npm run build
+cd docker
+docker compose ps
+docker compose exec -T neo4j cypher-shell 'MATCH (n) RETURN count(n) AS nodes;'
 ```
 
-One-shot (like CI):
+### 🧰 Troubleshooting (Docker)
 
-```bash
-make check
-```
+- **Port conflicts**: edit `docker/docker-compose.yml` port mappings (defaults Web=3100, API=5050, Neo4j=7474/7687, MySQL=3307, Milvus=19530/19091)
+- **Orphan containers warning**: `cd docker && docker compose up -d --build --remove-orphans`
 
-For more details, see `CONTRIBUTING.md`.
+### 🤝 Contributing
 
-### 🧰 Troubleshooting (Local Env)
-
-1) **`No module named 'src'` when launching the backend**
-- Recommended: `python -m server.main`
-- Or: `cd server && python main.py`
-- Also supported: run from repo root `python server/main.py` (auto injects repo root into `PYTHONPATH`)
-
-2) **`CXXABI_1.3.15 not found` / `libicui18n.so.78` / `sqlite3` import fails**
-- Usually caused by conda runtime libraries being overridden by system libs (often due to a custom `LD_LIBRARY_PATH`).
-- Try:
-  - Ensure you’re using the conda env Python (`which python`, `python -V`)
-  - Temporarily clear it: `unset LD_LIBRARY_PATH`
-  - Or force conda execution: `conda run -n <env> python -m server.main`
-
-3) **Lots of `pip` dependency conflict warnings**
-- This project pins versions in `requirements.txt` (LangChain 1.x / OpenAI 2.x).
-- Use a clean virtual env, and avoid mixing packages that require incompatible majors (e.g. `llama-index`, `streamlit`, `langchain-neo4j`) in the same env.
+This repo is meant to be reproducible via Docker. For dev conventions/tests/contribution workflow, see `CONTRIBUTING.md`.
 
 ---
 

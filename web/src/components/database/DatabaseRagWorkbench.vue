@@ -750,18 +750,26 @@ const advancedKeys = ref([])
   margin-top: 4px;
 }
 
-/* 上传区域 */
+/* 上传区域 - 淡橙色虚线框 */
 .upload-dragger {
   :deep(.ant-upload-drag) {
-    background: rgba(255, 125, 0, 0.02);
-    border: 2px dashed rgba(255, 125, 0, 0.2);
+    background: rgba(255, 125, 0, 0.03);
+    border: 2px dashed rgba(255, 125, 0, 0.35);
     border-radius: 16px;
     transition: all 0.3s ease;
 
     &:hover {
       border-color: var(--primary-color);
-      background: rgba(255, 125, 0, 0.04);
+      background: rgba(255, 125, 0, 0.06);
     }
+  }
+
+  /* 拖拽时的强反馈 - Drag Over 状态 */
+  :deep(.ant-upload-drag-hover) {
+    border-style: solid !important;
+    border-width: 2px !important;
+    border-color: var(--primary-color) !important;
+    background: rgba(255, 125, 0, 0.08) !important;
   }
 
   :deep(.ant-upload-btn) {
@@ -1067,11 +1075,15 @@ const advancedKeys = ref([])
   .upload-dragger {
     :deep(.ant-upload-drag) {
       background: rgba(255, 125, 0, 0.05);
-      border-color: rgba(255, 125, 0, 0.2);
+      border-color: rgba(255, 125, 0, 0.3);
 
       &:hover {
         background: rgba(255, 125, 0, 0.08);
       }
+    }
+
+    :deep(.ant-upload-drag-hover) {
+      background: rgba(255, 125, 0, 0.1) !important;
     }
   }
 

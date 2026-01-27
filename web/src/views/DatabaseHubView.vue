@@ -11,16 +11,12 @@
       :breadcrumbs="breadcrumbs"
     >
       <template #actions>
-        <a-space wrap>
+        <!-- 空状态时隐藏按钮，聚焦中间引导 -->
+        <a-space wrap v-if="!isEmptyState">
           <a-button @click="refresh" :loading="state.loading" :disabled="!backendOnline">
             <ReloadOutlined /> 刷新
           </a-button>
-          <!-- 空状态时弱化为描边按钮，减少视觉噪音 -->
-          <a-button
-            :type="isEmptyState ? 'default' : 'primary'"
-            :ghost="isEmptyState"
-            @click="newDatabase.open = true"
-          >
+          <a-button type="primary" @click="newDatabase.open = true">
             <PlusOutlined /> 新建知识库
           </a-button>
         </a-space>
@@ -342,13 +338,17 @@ onMounted(async () => {
   z-index: 1;
 }
 
-/* 分段控制器 Tab */
+/* 分段控制器 Tab - 毛玻璃悬浮感 */
 .segmented-tabs {
   display: inline-flex;
   padding: 4px;
-  background: rgba(0, 0, 0, 0.04);
+  background: rgba(255, 255, 255, 0.5);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.6);
   border-radius: 12px;
   margin-bottom: 24px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
 }
 
 .seg-tab {
@@ -618,7 +618,8 @@ onMounted(async () => {
   }
 
   .segmented-tabs {
-    background: rgba(255, 255, 255, 0.05);
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.1);
   }
 
   .seg-tab {
