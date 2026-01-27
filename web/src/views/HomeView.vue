@@ -1,5 +1,7 @@
 <template>
   <div class="home-universe">
+    <!-- 噪点纹理层 -->
+    <div class="noise-overlay"></div>
     <!-- 点阵背景 -->
     <div class="dot-grid"></div>
 
@@ -34,15 +36,15 @@
       <section class="bento-grid">
         <!-- 主卡片：对话 (2列) - The Hero Card -->
         <div class="bento-card bento-card--hero" @click="go('/chat')">
-          <div class="card-bg-icon">
-            <MessageOutlined />
-          </div>
+          <!-- 有机形状装饰 -->
+          <div class="organic-blob blob--1"></div>
+          <div class="organic-blob blob--2"></div>
           <div class="card-content">
             <div class="card-icon card-icon--orange">
-              <MessageOutlined />
+              <ThunderboltOutlined />
             </div>
-            <h3 class="card-title">开始对话</h3>
-            <p class="card-desc">不仅仅是聊天。内置多智能体编排，支持长记忆与 RAG 检索。你的生产力倍增器。</p>
+            <h3 class="card-title">开始对话 <span class="title-spark">⚡</span></h3>
+            <p class="card-desc">不只是聊天，是你的第二大脑。多智能体 + 长记忆，像训练宝可梦一样训练它。</p>
             <button class="card-btn">
               立即进入 <RightOutlined class="btn-arrow" />
             </button>
@@ -50,40 +52,43 @@
         </div>
 
         <!-- 知识图谱 (1列) -->
-        <div v-if="ui.show_knowledge_graph" class="bento-card" @click="go('/graph')">
+        <div v-if="ui.show_knowledge_graph" class="bento-card bento-card--graph" @click="go('/graph')">
+          <!-- 进化链装饰 -->
+          <div class="deco-evolution"></div>
           <div class="card-content">
             <div class="card-icon card-icon--blue">
               <ApartmentOutlined />
             </div>
             <h3 class="card-title">知识图谱</h3>
-            <p class="card-desc">实体关系探索 + GraphRAG。看见数据之间的隐秘连接。</p>
+            <p class="card-desc">数据的进化链。看见实体之间的隐秘连接。</p>
           </div>
           <div class="card-hover-arrow"><RightOutlined /></div>
         </div>
 
         <!-- 知识库 (1列) -->
-        <div v-if="ui.show_knowledge_base" class="bento-card" @click="go('/database')">
+        <div v-if="ui.show_knowledge_base" class="bento-card bento-card--kb" @click="go('/database')">
+          <!-- 书页装饰 -->
+          <div class="deco-pages"></div>
           <div class="card-content">
             <div class="card-icon card-icon--purple">
               <BookOutlined />
             </div>
             <h3 class="card-title">知识库</h3>
-            <p class="card-desc">文档解析、智能切分与语义检索管理。</p>
+            <p class="card-desc">喂给 AI 的知识粮仓。把文档变成它的长期记忆。</p>
           </div>
           <div class="card-hover-arrow"><RightOutlined /></div>
         </div>
 
         <!-- 地图 (2列) -->
-        <div v-if="ui.show_map" class="bento-card bento-card--wide" @click="go('/coords')">
-          <div class="card-bg-icon card-bg-icon--right">
-            <EnvironmentOutlined />
-          </div>
+        <div v-if="ui.show_map" class="bento-card bento-card--wide bento-card--map" @click="go('/coords')">
+          <!-- 等高线装饰 -->
+          <div class="deco-contour"></div>
           <div class="card-content">
             <div class="card-icon card-icon--green">
               <EnvironmentOutlined />
             </div>
             <h3 class="card-title">地图探索</h3>
-            <p class="card-desc">宝可梦地点与真实世界坐标映射。探索虚拟与现实的交汇。</p>
+            <p class="card-desc">虚拟与现实的交汇点。在真实世界里寻找宝可梦的足迹。</p>
           </div>
           <div class="card-hover-arrow"><RightOutlined /></div>
         </div>
@@ -175,6 +180,19 @@ onMounted(async () => {
   background-size: 24px 24px, 96px 96px;
   pointer-events: none;
   z-index: 0;
+}
+
+/* 噪点纹理层 - 印刷品质感 */
+.noise-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  pointer-events: none;
+  z-index: 1000;
+  opacity: 0.025;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
 }
 
 /* ==================== Header ==================== */
@@ -303,14 +321,22 @@ onMounted(async () => {
       color: var(--primary-color, #FF7D00);
     }
 
-    .card-bg-icon {
-      opacity: 0.1;
-      transform: scale(1.08);
-    }
-
     .card-hover-arrow {
       opacity: 1;
       transform: translateX(0);
+    }
+
+    .organic-blob {
+      opacity: 0.18;
+    }
+
+    .blob--1 {
+      transform: rotate(-8deg) scale(1.05);
+    }
+
+    .blob--2 {
+      transform: rotate(20deg) scale(1.1);
+      opacity: 0.12;
     }
   }
 }
@@ -335,7 +361,25 @@ onMounted(async () => {
     .btn-arrow {
       transform: translateX(3px);
     }
+
+    .title-spark {
+      animation: spark-bounce 0.6s ease;
+    }
   }
+}
+
+/* 标题闪电动画 */
+.title-spark {
+  display: inline-block;
+  margin-left: 4px;
+  transition: transform 0.3s ease;
+}
+
+@keyframes spark-bounce {
+  0%, 100% { transform: translateY(0) rotate(0); }
+  25% { transform: translateY(-3px) rotate(-5deg); }
+  50% { transform: translateY(0) rotate(5deg); }
+  75% { transform: translateY(-2px) rotate(-3deg); }
 }
 
 /* 宽卡片 (2列) */
@@ -343,24 +387,155 @@ onMounted(async () => {
   grid-column: span 2;
 }
 
-/* 背景装饰图标 - 放大、溢出 */
-.card-bg-icon {
+/* ==================== 有机形状装饰 (Organic Blobs) ==================== */
+.organic-blob {
   position: absolute;
-  top: 50%;
-  right: -40px;
-  transform: translateY(-50%);
-  font-size: 260px;
-  color: var(--primary-color, #FF7D00);
-  opacity: 0.05;
   pointer-events: none;
-  transition: all 0.4s ease;
+  opacity: 0.12;
+  transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
 
-  &.card-bg-icon--right {
-    top: 50%;
-    right: -20px;
-    transform: translateY(-50%);
-    font-size: 160px;
+.blob--1 {
+  width: 280px;
+  height: 280px;
+  top: -60px;
+  right: -40px;
+  background: linear-gradient(135deg, #FF7D00 0%, #FFA940 100%);
+  border-radius: 30% 70% 70% 30% / 30% 30% 70% 70%;
+  transform: rotate(-12deg);
+}
+
+.blob--2 {
+  width: 120px;
+  height: 120px;
+  bottom: -20px;
+  right: 80px;
+  background: linear-gradient(135deg, #FFD666 0%, #FFA940 100%);
+  border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%;
+  transform: rotate(15deg);
+  opacity: 0.08;
+}
+
+/* 进化链装饰 - 图谱卡片 */
+.bento-card--graph {
+  .deco-evolution {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    width: 80px;
+    height: 80px;
+    opacity: 0.08;
+    background:
+      radial-gradient(circle at 20% 30%, #3B82F6 8px, transparent 8px),
+      radial-gradient(circle at 50% 50%, #3B82F6 12px, transparent 12px),
+      radial-gradient(circle at 80% 70%, #3B82F6 8px, transparent 8px);
+    transform: rotate(8deg);
+    transition: all 0.4s ease;
+
+    &::before {
+      content: '';
+      position: absolute;
+      top: 28%;
+      left: 25%;
+      width: 50%;
+      height: 2px;
+      background: linear-gradient(90deg, #3B82F6, transparent);
+      transform: rotate(25deg);
+    }
+
+    &::after {
+      content: '';
+      position: absolute;
+      top: 55%;
+      left: 45%;
+      width: 40%;
+      height: 2px;
+      background: linear-gradient(90deg, #3B82F6, transparent);
+      transform: rotate(35deg);
+    }
+  }
+
+  &:hover .deco-evolution {
+    opacity: 0.15;
+    transform: rotate(12deg) scale(1.1);
+  }
+}
+
+/* 书页装饰 - 知识库卡片 */
+.bento-card--kb {
+  .deco-pages {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    width: 60px;
+    height: 70px;
     opacity: 0.06;
+    transform: rotate(-8deg);
+    transition: all 0.4s ease;
+
+    &::before,
+    &::after {
+      content: '';
+      position: absolute;
+      border: 2px solid #8B5CF6;
+      border-radius: 2px 6px 6px 2px;
+    }
+
+    &::before {
+      width: 40px;
+      height: 50px;
+      top: 0;
+      right: 0;
+    }
+
+    &::after {
+      width: 40px;
+      height: 50px;
+      top: 8px;
+      right: 8px;
+      opacity: 0.6;
+    }
+  }
+
+  &:hover .deco-pages {
+    opacity: 0.12;
+    transform: rotate(-4deg) scale(1.05);
+  }
+}
+
+/* 等高线装饰 - 地图卡片 */
+.bento-card--map {
+  .deco-contour {
+    position: absolute;
+    top: 50%;
+    right: 30px;
+    width: 140px;
+    height: 100px;
+    transform: translateY(-50%) rotate(5deg);
+    opacity: 0.06;
+    transition: all 0.4s ease;
+
+    &::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border: 2px solid #22C55E;
+      border-radius: 50% 30% 60% 40% / 40% 50% 30% 60%;
+    }
+
+    &::after {
+      content: '';
+      position: absolute;
+      inset: 15px;
+      border: 2px solid #22C55E;
+      border-radius: 40% 60% 30% 70% / 60% 30% 70% 40%;
+      opacity: 0.7;
+    }
+  }
+
+  &:hover .deco-contour {
+    opacity: 0.12;
+    transform: translateY(-50%) rotate(8deg) scale(1.05);
   }
 }
 
@@ -529,9 +704,15 @@ onMounted(async () => {
     grid-column: span 2;
   }
 
-  .card-bg-icon {
-    font-size: 180px;
+  .blob--1 {
+    width: 200px;
+    height: 200px;
     right: -30px;
+  }
+
+  .blob--2 {
+    width: 80px;
+    height: 80px;
   }
 }
 
@@ -566,9 +747,21 @@ onMounted(async () => {
     padding: 24px;
   }
 
-  .card-bg-icon {
-    font-size: 120px;
+  .blob--1 {
+    width: 150px;
+    height: 150px;
+    top: -40px;
     right: -20px;
+  }
+
+  .blob--2 {
+    display: none;
+  }
+
+  .deco-evolution,
+  .deco-pages,
+  .deco-contour {
+    display: none;
   }
 
   .card-icon {
@@ -601,6 +794,10 @@ onMounted(async () => {
       radial-gradient(circle, rgba(255, 125, 0, 0.04) 1px, transparent 1px);
   }
 
+  .noise-overlay {
+    opacity: 0.03;
+  }
+
   .home-header {
     background: rgba(30, 30, 30, 0.8);
     border-color: rgba(255, 255, 255, 0.05);
@@ -618,6 +815,20 @@ onMounted(async () => {
   .bento-card--hero {
     background: linear-gradient(135deg, rgba(255, 125, 0, 0.08) 0%, var(--surface-color) 60%);
     border-color: rgba(255, 125, 0, 0.15);
+  }
+
+  .organic-blob {
+    opacity: 0.08;
+  }
+
+  .blob--2 {
+    opacity: 0.05;
+  }
+
+  .deco-evolution,
+  .deco-pages,
+  .deco-contour {
+    opacity: 0.05;
   }
 
   .card-hover-arrow {
