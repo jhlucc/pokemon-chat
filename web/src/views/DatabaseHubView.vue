@@ -316,43 +316,46 @@ onMounted(async () => {
   z-index: 1;
 }
 
-/* 分段控制器 Tab - 毛玻璃融合法 (方案A) */
+/* 分段控制器 Tab - 去容器化 (De-containerization) */
 .segmented-tabs {
   display: inline-flex;
-  padding: 4px;
-  /* 更透明的背景，让暖色光晕透出来 */
-  background: rgba(255, 255, 255, 0.4);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  /* 玻璃边缘高光 */
-  border: 1px solid rgba(255, 255, 255, 0.6);
-  border-radius: 12px;
+  gap: 8px;
   margin-bottom: 24px;
-  /* 柔和阴影 */
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+  /* 容器完全透明，让暖色光晕直接透出 */
+  background: transparent;
+  border: none;
+  padding: 0;
 }
 
 .seg-tab {
   padding: 10px 20px;
   border: none;
+  /* 未选中态：完全透明，文字直接浮在背景上 */
   background: transparent;
   font-size: 14px;
   font-weight: 500;
-  color: var(--gray-600);
-  border-radius: 8px;
+  color: var(--gray-500);
+  border-radius: 10px;
   cursor: pointer;
   transition: all 0.2s ease;
 
   &:hover:not(.active) {
     color: var(--gray-700);
-    background: rgba(0, 0, 0, 0.02);
+    /* hover时微微显现白底 */
+    background: rgba(255, 255, 255, 0.4);
   }
 
   &.active {
-    /* 选中态：稍微实一点但仍有透明感 */
-    background: rgba(255, 255, 255, 0.75);
+    /* 选中态：实体悬浮按钮 - 唯一的"物理开关" */
+    background: rgba(255, 255, 255, 0.9);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
     color: var(--primary-color);
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+    font-weight: 600;
+    /* 玻璃边缘高光 */
+    border: 1px solid rgba(255, 255, 255, 0.6);
+    /* 柔和阴影，悬浮感 */
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06), 0 4px 12px rgba(255, 125, 0, 0.04);
   }
 }
 
@@ -567,12 +570,15 @@ onMounted(async () => {
 
   .segmented-tabs {
     width: 100%;
+    justify-content: center;
+    gap: 6px;
   }
 
   .seg-tab {
     flex: 1;
     text-align: center;
     padding: 10px 12px;
+    max-width: 160px;
   }
 }
 
@@ -602,9 +608,8 @@ onMounted(async () => {
   }
 
   .segmented-tabs {
-    background: rgba(255, 255, 255, 0.06);
-    border-color: rgba(255, 255, 255, 0.08);
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.15);
+    background: transparent;
+    border: none;
   }
 
   .seg-tab {
@@ -612,13 +617,16 @@ onMounted(async () => {
 
     &:hover:not(.active) {
       color: var(--gray-300);
-      background: rgba(255, 255, 255, 0.03);
+      background: rgba(255, 255, 255, 0.06);
     }
 
     &.active {
-      background: rgba(255, 255, 255, 0.08);
+      background: rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
       color: var(--primary-color);
-      box-shadow: none;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
     }
   }
 

@@ -59,10 +59,12 @@ defineProps({
 
 <style scoped lang="less">
 .header-container {
-  background-color: var(--header-bg);
-  backdrop-filter: blur(10px);
+  /* 完全透明化：让暖色光晕透出 */
+  background: transparent !important;
+  background-color: transparent !important;
   padding: 16px 24px;
-  border-bottom: 1px solid var(--header-border);
+  /* 去掉底部边框，更加通透 */
+  border-bottom: none;
 
   &.sticky {
     position: sticky;
