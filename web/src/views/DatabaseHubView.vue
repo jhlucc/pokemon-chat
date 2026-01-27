@@ -440,12 +440,14 @@ onMounted(async () => {
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   border: 1px solid rgba(255, 255, 255, 0.5);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+  /* 有色阴影：微微带橙 */
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03), 0 4px 12px rgba(255, 125, 0, 0.03);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 
   &:hover {
     transform: translateY(-4px);
-    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.08);
+    /* hover时橙色阴影更明显 */
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.06), 0 10px 30px rgba(255, 125, 0, 0.12);
     border-color: rgba(255, 125, 0, 0.2);
     background: rgba(255, 255, 255, 0.9);
 

@@ -583,7 +583,8 @@ const advancedKeys = ref([])
   border: 1px solid rgba(255, 255, 255, 0.5);
   border-radius: 20px;
   padding: 24px 32px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+  /* 有色阴影：微微带橙 */
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03), 0 4px 12px rgba(255, 125, 0, 0.03);
 }
 
 .workbench-stepper {
@@ -627,7 +628,8 @@ const advancedKeys = ref([])
   border: 1px solid rgba(255, 255, 255, 0.5);
   border-radius: 20px;
   padding: 20px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+  /* 有色阴影：微微带橙 */
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03), 0 4px 12px rgba(255, 125, 0, 0.03);
 }
 
 .panel-header {
