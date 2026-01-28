@@ -783,18 +783,30 @@ const shortenModelName = (name) => {
 
     /* 移除段落的默认边距，让气泡更紧凑 */
     p {
-      margin: 0;
+      margin: 0 !important; /* 强制移除 github-theme 的默认 margin */
       &:not(:last-child) {
-        margin-bottom: 0.5em;
+        margin-bottom: 0.5em !important;
       }
     }
 
     /* 确保第一个和最后一个元素没有额外边距 */
     > *:first-child {
       margin-top: 0 !important;
+      padding-top: 0 !important;
     }
     > *:last-child {
       margin-bottom: 0 !important;
+      padding-bottom: 0 !important;
+    }
+  }
+
+  /* 覆盖 github-theme 的默认样式 */
+  &.github-theme {
+    p {
+      margin: 0 !important;
+      &:not(:last-child) {
+        margin-bottom: 0.5em !important;
+      }
     }
   }
   h1,
@@ -839,6 +851,44 @@ const shortenModelName = (name) => {
   pre code {
     background: transparent;
   }
+}
+
+/* 覆盖 github-theme 的默认样式 - 使用高优先级选择器 */
+.message-md .md-editor-preview.github-theme {
+  p {
+    margin: 0 !important;
+    &:not(:last-child) {
+      margin-bottom: 0.5em !important;
+    }
+  }
+  > *:first-child {
+    margin-top: 0 !important;
+  }
+  > *:last-child {
+    margin-bottom: 0 !important;
+  }
+}
+
+/* 使用 ID 选择器确保最高优先级 */
+#preview-only-preview.github-theme,
+#preview-only-preview.md-editor-preview {
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+#preview-only-preview.github-theme p,
+#preview-only-preview p[data-line],
+.md-editor-preview.github-theme p {
+  margin: 0 !important;
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+  padding: 0 !important;
+}
+
+#preview-only-preview.github-theme p:not(:last-child),
+#preview-only-preview p[data-line]:not(:last-child),
+.md-editor-preview.github-theme p:not(:last-child) {
+  margin-bottom: 0.5em !important;
 }
 
 .model-name {
