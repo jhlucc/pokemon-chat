@@ -5,6 +5,25 @@ from src.knowledge.ingestion.parsers.base import parse_file as new_parse_file
 from src.utils.logger import get_logger
 
 _log = get_logger(__name__)
+_warned_tiktoken = False
+
+
+def _get_splitter(chunk_size: int, chunk_overlap: int) -> CharacterTextSplitter:
+    global _warned_tiktoken
+    try:
+        return CharacterTextSplitter.from_tiktoken_encoder(
+            chunk_size=chunk_size,
+            chunk_overlap=chunk_overlap,
+        )
+    except Exception as exc:
+        if not _warned_tiktoken:
+            _log.warning("tiktoken splitter unavailable; falling back to char splitter. (%s)", exc)
+            _warned_tiktoken = True
+        return CharacterTextSplitter(
+            chunk_size=chunk_size,
+            chunk_overlap=chunk_overlap,
+            length_function=len,
+        )
 
 
 def parse_file(
@@ -28,7 +47,7 @@ def chunk_file(
     # 先将文件解析成纯文本
     text = parse_file(file_path, do_ocr=do_ocr, ocr_det_threshold=ocr_det_threshold)
     # 创建一个文本切分器，这里示例用 CharacterTextSplitter + tiktoken encoder
-    splitter = CharacterTextSplitter.from_tiktoken_encoder(chunk_size=chunk_size, chunk_overlap=chunk_overlap)
+    splitter = _get_splitter(chunk_size, chunk_overlap)
     sub_texts = splitter.split_text(text)
     docs = []
     for idx, s in enumerate(sub_texts):
@@ -46,7 +65,7 @@ def chunk_text(
     chunk_size: int = 1000,
     chunk_overlap: int = 100,
 ) -> list[Document]:
-    splitter = CharacterTextSplitter.from_tiktoken_encoder(chunk_size=chunk_size, chunk_overlap=chunk_overlap)
+    splitter = _get_splitter(chunk_size, chunk_overlap)
     sub_texts = splitter.split_text(text)
 
     return [Document(page_content=st, metadata={"type": "inline_text"}) for st in sub_texts]

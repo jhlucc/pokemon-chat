@@ -8,6 +8,25 @@ from src.knowledge.store.vector import VectorStore
 from src.utils.logger import get_logger
 
 _log = get_logger(__name__)
+_warned_tiktoken = False
+
+
+def _get_splitter(chunk_size: int, chunk_overlap: int) -> CharacterTextSplitter:
+    global _warned_tiktoken
+    try:
+        return CharacterTextSplitter.from_tiktoken_encoder(
+            chunk_size=chunk_size,
+            chunk_overlap=chunk_overlap,
+        )
+    except Exception as exc:
+        if not _warned_tiktoken:
+            _log.warning("tiktoken splitter unavailable; falling back to char splitter. (%s)", exc)
+            _warned_tiktoken = True
+        return CharacterTextSplitter(
+            chunk_size=chunk_size,
+            chunk_overlap=chunk_overlap,
+            length_function=len,
+        )
 
 
 class IngestionPipeline:
@@ -28,7 +47,7 @@ class IngestionPipeline:
 
         # 2. Chunk
         _log.info(f"Pipeline: Chunking text (len={len(text)})")
-        splitter = CharacterTextSplitter.from_tiktoken_encoder(chunk_size=chunk_size, chunk_overlap=chunk_overlap)
+        splitter = _get_splitter(chunk_size, chunk_overlap)
         chunks = splitter.split_text(text)
 
         # 3. Create Documents

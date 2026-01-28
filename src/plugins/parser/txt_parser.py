@@ -16,20 +16,46 @@
 
 import re
 
-import tiktoken
+try:
+    import tiktoken
+except Exception:  # pragma: no cover - optional dependency
+    tiktoken = None
 
 from src.plugins.parser.utils import get_text
+from src.utils.logger import get_logger
+
+_log = get_logger(__name__)
 
 # encoder = tiktoken.encoding_for_model("gpt-3.5-turbo")
-encoder = tiktoken.get_encoding("cl100k_base")
+_encoder = None
+_encoder_ready = False
+
+
+def _get_encoder():
+    global _encoder, _encoder_ready
+    if _encoder_ready:
+        return _encoder
+    if tiktoken is None:
+        _encoder = None
+    else:
+        try:
+            _encoder = tiktoken.get_encoding("cl100k_base")
+        except Exception as exc:
+            _encoder = None
+            _log.warning("tiktoken encoding unavailable; falling back to char length. (%s)", exc)
+    _encoder_ready = True
+    return _encoder
 
 
 def num_tokens_from_string(string: str) -> int:
     """Returns the number of tokens in a text string."""
     try:
+        encoder = _get_encoder()
+        if encoder is None:
+            return len(string)
         return len(encoder.encode(string))
     except Exception:
-        return 0
+        return len(string)
 
 
 class RAGFlowTxtParser:
