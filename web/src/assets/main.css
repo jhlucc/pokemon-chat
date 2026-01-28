@@ -373,3 +373,75 @@ a {
 a:hover {
   color: var(--primary-light-color);
 }
+
+/* ==================== Tooltip 轻量化样式 ==================== */
+/* 将深色 Tooltip 改为浅色"空气感"风格 */
+
+.ant-tooltip,
+.ant-tooltip.ant-tooltip-placement-top,
+.ant-tooltip.ant-tooltip-placement-bottom,
+.ant-tooltip.ant-tooltip-placement-left,
+.ant-tooltip.ant-tooltip-placement-right {
+  --tooltip-bg: #ffffff;
+  --tooltip-text: var(--gray-600);
+  --tooltip-border: color-mix(in srgb, var(--primary-color) 15%, #ffffff);
+  --tooltip-shadow: 0 8px 24px rgba(251, 146, 60, 0.15), 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.ant-tooltip .ant-tooltip-inner,
+.ant-tooltip-inner {
+  background-color: #ffffff !important;
+  background: #ffffff !important;
+  color: var(--gray-600) !important;
+  border: 1px solid color-mix(in srgb, var(--primary-color) 20%, #f5f5f5) !important;
+  border-radius: var(--radius-md) !important;
+  box-shadow: 0 8px 24px rgba(251, 146, 60, 0.15), 0 4px 12px rgba(0, 0, 0, 0.08) !important;
+  padding: 10px 14px !important;
+  font-size: 13px !important;
+  line-height: 1.5 !important;
+  max-width: 280px !important;
+}
+
+/* 箭头样式 */
+.ant-tooltip .ant-tooltip-arrow,
+.ant-tooltip-arrow {
+  --antd-arrow-background-color: #ffffff !important;
+}
+
+.ant-tooltip .ant-tooltip-arrow::before,
+.ant-tooltip .ant-tooltip-arrow::after,
+.ant-tooltip-arrow::before,
+.ant-tooltip-arrow::after {
+  background: #ffffff !important;
+  background-color: #ffffff !important;
+}
+
+.ant-tooltip .ant-tooltip-arrow-content,
+.ant-tooltip-arrow-content {
+  --antd-arrow-background-color: #ffffff !important;
+  background: #ffffff !important;
+}
+
+/* 暗色模式下的 Tooltip */
+:root[data-theme='dark'] .ant-tooltip .ant-tooltip-inner,
+:root[data-theme='dark'] .ant-tooltip-inner {
+  background-color: rgba(45, 45, 50, 0.98) !important;
+  background: rgba(45, 45, 50, 0.98) !important;
+  color: var(--gray-200) !important;
+  border-color: var(--gray-700) !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4), 0 4px 12px rgba(251, 146, 60, 0.1) !important;
+}
+
+:root[data-theme='dark'] .ant-tooltip .ant-tooltip-arrow::before,
+:root[data-theme='dark'] .ant-tooltip .ant-tooltip-arrow::after,
+:root[data-theme='dark'] .ant-tooltip-arrow::before,
+:root[data-theme='dark'] .ant-tooltip-arrow::after {
+  background: rgba(45, 45, 50, 0.98) !important;
+  background-color: rgba(45, 45, 50, 0.98) !important;
+}
+
+:root[data-theme='dark'] .ant-tooltip .ant-tooltip-arrow-content,
+:root[data-theme='dark'] .ant-tooltip-arrow-content {
+  --antd-arrow-background-color: rgba(45, 45, 50, 0.98) !important;
+  background: rgba(45, 45, 50, 0.98) !important;
+}
