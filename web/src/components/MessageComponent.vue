@@ -300,7 +300,7 @@ const shortenModelName = (name) => {
 /* ===== wrapper layout ===== */
 .message-wrapper {
   display: flex;
-  align-items: flex-start;
+  align-items: flex-start; /* 头像顶部对齐 */
   margin-bottom: var(--space-6);
   animation: fadeInUp var(--duration-slow) var(--ease-out);
 
@@ -319,7 +319,6 @@ const shortenModelName = (name) => {
       box-shadow: 0 4px 12px rgba(255, 125, 0, 0.25);
       /* 右上角直角指向用户头像 */
       border-radius: var(--radius-md) var(--radius-xs) var(--radius-md) var(--radius-md);
-      max-width: min(520px, 80%);
 
       :deep(a) { color: var(--message-user-text); text-decoration: underline; }
     }
@@ -349,7 +348,6 @@ const shortenModelName = (name) => {
       box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
       /* 左上角直角指向 AI 头像 */
       border-radius: var(--radius-xs) var(--radius-md) var(--radius-md) var(--radius-md);
-      max-width: min(640px, 85%);
     }
 
     .avatar {
@@ -374,7 +372,9 @@ const shortenModelName = (name) => {
 .message-content-wrapper {
   display: flex;
   flex-direction: column;
-  max-width: min(640px, 85%);
+  /* 不限制 max-width，让气泡自己决定宽度 */
+  flex: 1;
+  min-width: 0; /* 防止 flex 子元素溢出 */
 }
 
 /* ===== message box ===== */
@@ -383,14 +383,21 @@ const shortenModelName = (name) => {
   padding: 10px 14px;
   user-select: text;
   word-break: break-word;
+  white-space: pre-wrap; /* 保留换行但允许正常折行 */
   font-size: var(--font-size-md);
   line-height: var(--line-height-relaxed);
   position: relative;
-  width: fit-content;
+  width: fit-content; /* 关键：宽度自适应内容 */
+  max-width: min(640px, 85%); /* 最大宽度限制 */
 
   &.assistant,
   &.received {
     min-width: 40px;
+  }
+
+  &.user,
+  &.sent {
+    max-width: min(520px, 80%);
   }
 }
 
