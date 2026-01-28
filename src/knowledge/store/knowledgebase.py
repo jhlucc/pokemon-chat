@@ -264,9 +264,17 @@ class KnowledgeBase:
         schema = CollectionSchema(fields=fields, description="KB vector schema")
         self.client.create_collection(collection_name=name, schema=schema)
 
-        from pymilvus import Collection
+        from pymilvus import Collection, connections
 
-        collection = Collection(name)
+        # MilvusClient does not auto-register the default ORM connection used by Collection.
+        # Ensure the default alias exists before creating index/load.
+        if not connections.has_connection("default"):
+            target = self._milvus_uri or os.getenv("MILVUS_URI") or settings.database.milvus_uri
+            if not target.startswith("http://") and not target.startswith("https://"):
+                target = "http://" + target
+            connections.connect(alias="default", uri=target)
+
+        collection = Collection(name, using="default")
         collection.create_index(
             field_name="vector", index_params={"index_type": "IVF_FLAT", "metric_type": "L2", "params": {"nlist": 1024}}
         )
