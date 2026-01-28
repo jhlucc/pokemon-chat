@@ -300,7 +300,7 @@ const shortenModelName = (name) => {
 /* ===== wrapper layout ===== */
 .message-wrapper {
   display: flex;
-  align-items: flex-start; /* 头像顶部对齐 */
+  align-items: flex-start !important; /* 头像顶部对齐 - 强制 */
   margin-bottom: var(--space-6);
   animation: fadeInUp var(--duration-slow) var(--ease-out);
 
@@ -326,7 +326,7 @@ const shortenModelName = (name) => {
     .avatar {
       margin-left: var(--space-3);
       margin-right: 0;
-      margin-top: 2px;
+      margin-top: 4px;
       box-shadow: 0 2px 8px rgba(255, 125, 0, 0.2);
     }
   }
@@ -353,7 +353,7 @@ const shortenModelName = (name) => {
     .avatar {
       margin-right: var(--space-3);
       margin-left: 0;
-      margin-top: 2px;
+      margin-top: 4px;
       border: 2px solid var(--surface-color);
       box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
     }
@@ -365,7 +365,7 @@ const shortenModelName = (name) => {
     border-radius: 50%;
     object-fit: cover;
     flex-shrink: 0;
-    align-self: flex-start; /* 强制头像顶部对齐，即使多行气泡 */
+    align-self: flex-start !important; /* 强制头像顶部对齐 */
   }
 }
 
@@ -381,7 +381,7 @@ const shortenModelName = (name) => {
 /* ===== message box ===== */
 .message-box {
   display: inline-block;
-  padding: 10px 14px;
+  padding: 8px 14px; /* 减少垂直内边距，让气泡更紧凑 */
   user-select: text;
   word-break: break-word;
   white-space: pre-wrap; /* 保留换行但允许正常折行 */
@@ -725,8 +725,11 @@ const shortenModelName = (name) => {
   width: fit-content;
   max-width: 100%;
   height: auto;
+  min-height: 0 !important; /* 移除默认最小高度 */
   background-color: transparent;
   border: none;
+  padding: 0 !important; /* 确保没有额外内边距 */
+  margin: 0 !important; /* 确保没有额外外边距 */
   --md-color: var(--text-color);
   --md-hover-color: var(--text-color);
   --md-bk-color: transparent;
@@ -746,21 +749,53 @@ const shortenModelName = (name) => {
      and previewOnly overrides it to `height:100%`. In chat bubbles we want natural height. */
   flex: none;
   height: auto;
+  padding: 0 !important;
 }
 
 .message-md.md-editor-previewOnly .md-editor-preview-wrapper {
   /* Avoid nested scrolling + flex stretching inside bubbles; let code blocks handle their own overflow. */
   flex: none;
   overflow: visible;
+  padding: 0 !important;
 }
 
 .message-md .md-editor-preview-wrapper {
   color: var(--text-color);
   max-width: 100%;
-  padding: 0;
+  padding: 0 !important;
   font-family: var(--font-family-base);
+
+  /* 确保所有内部预览容器都没有额外间距 */
+  .md-editor-preview {
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  article {
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
   #preview-only-preview {
     font-size: var(--font-size-md);
+    padding: 0 !important;
+    margin: 0 !important;
+
+    /* 移除段落的默认边距，让气泡更紧凑 */
+    p {
+      margin: 0;
+      &:not(:last-child) {
+        margin-bottom: 0.5em;
+      }
+    }
+
+    /* 确保第一个和最后一个元素没有额外边距 */
+    > *:first-child {
+      margin-top: 0 !important;
+    }
+    > *:last-child {
+      margin-bottom: 0 !important;
+    }
   }
   h1,
   h2 {
