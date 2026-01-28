@@ -257,9 +257,8 @@ const kbTooltip = computed(() => {
   padding: 6px 12px;
   border-radius: var(--radius-md);
   border: 1px solid var(--gray-200);
-  background: var(--gray-50);
+  background: var(--surface-color);
   font-size: var(--font-size-xs);
-  color: var(--gray-600);
   cursor: pointer;
   transition: all var(--duration-fast) var(--ease-default);
   user-select: none;
@@ -268,24 +267,23 @@ const kbTooltip = computed(() => {
 
   .chip-icon {
     font-size: 14px;
-    color: var(--gray-500);
+    color: var(--gray-600);
   }
 
   .chip-label {
     font-weight: 500;
-    color: var(--gray-600);
+    color: var(--gray-700);
   }
 
   .chip-caret {
     font-size: 10px;
-    opacity: 0.6;
+    color: var(--gray-500);
     margin-left: 2px;
   }
 
   &:hover:not(.disabled) {
-    color: var(--primary-color);
-    background: color-mix(in srgb, var(--primary-color) 8%, var(--surface-color));
-    border-color: color-mix(in srgb, var(--primary-color) 30%, var(--border-color));
+    background: color-mix(in srgb, var(--primary-color) 10%, var(--surface-color));
+    border-color: color-mix(in srgb, var(--primary-color) 35%, var(--border-color));
 
     .chip-icon,
     .chip-label {
@@ -300,9 +298,8 @@ const kbTooltip = computed(() => {
 
   /* 激活状态：橙色主题 */
   &.active {
-    color: var(--primary-color);
     background: color-mix(in srgb, var(--primary-color) 12%, var(--surface-color));
-    border-color: color-mix(in srgb, var(--primary-color) 40%, transparent);
+    border-color: color-mix(in srgb, var(--primary-color) 45%, transparent);
 
     .chip-icon,
     .chip-label {
@@ -311,13 +308,15 @@ const kbTooltip = computed(() => {
   }
 
   &.disabled {
-    opacity: 0.4;
+    opacity: 0.45;
     cursor: not-allowed;
     pointer-events: none;
-    background: transparent;
-    border-color: transparent;
+    background: var(--gray-50);
+    border-color: var(--gray-100);
 
-    .chip-icon,
+    .chip-icon {
+      color: var(--gray-400);
+    }
     .chip-label {
       color: var(--gray-400);
     }
@@ -325,8 +324,16 @@ const kbTooltip = computed(() => {
 
   /* Agent 模式特殊样式 */
   &.capability-chip--agent {
-    background: var(--gray-50);
+    background: var(--surface-color);
     border: 1px solid var(--gray-200);
+
+    .chip-icon {
+      color: var(--gray-600);
+    }
+
+    .chip-label {
+      color: var(--gray-700);
+    }
 
     .chip-status {
       font-size: 10px;
@@ -345,16 +352,21 @@ const kbTooltip = computed(() => {
     }
 
     &:hover:not(.disabled) {
-      background: color-mix(in srgb, var(--primary-color) 6%, var(--surface-color));
-      border-color: color-mix(in srgb, var(--primary-color) 25%, var(--border-color));
+      background: color-mix(in srgb, var(--primary-color) 8%, var(--surface-color));
+      border-color: color-mix(in srgb, var(--primary-color) 30%, var(--border-color));
+
+      .chip-icon,
+      .chip-label {
+        color: var(--primary-color);
+      }
     }
 
     &.active {
       background: color-mix(in srgb, var(--primary-color) 10%, var(--surface-color));
-      border-color: color-mix(in srgb, var(--primary-color) 35%, transparent);
-      color: var(--primary-color);
+      border-color: color-mix(in srgb, var(--primary-color) 40%, transparent);
 
-      .chip-icon {
+      .chip-icon,
+      .chip-label {
         color: var(--primary-color);
       }
     }

@@ -269,12 +269,12 @@ const quickActions = [
   .action-label {
     font-size: var(--font-size-sm);
     font-weight: 600;
-    color: var(--text-color);
+    color: var(--gray-800);
   }
 
   .action-desc {
-    font-size: var(--font-size-xs);
-    color: var(--gray-500);
+    font-size: 11px;
+    color: var(--gray-400);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;

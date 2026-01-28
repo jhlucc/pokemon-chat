@@ -326,8 +326,8 @@ const escapeRegExp = (string) => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  height: var(--header-height);
-  padding: var(--space-3) var(--space-4);
+  min-height: var(--header-height);
+  padding: var(--space-4) var(--space-4) var(--space-3);
   border-bottom: 1px solid var(--border-color);
   flex-shrink: 0;
 
