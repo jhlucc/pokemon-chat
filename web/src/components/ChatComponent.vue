@@ -1221,13 +1221,14 @@ const selectModel = (provider, name) => {
 
     .note {
       width: 100%;
-      font-size: var(--font-size-xs);
+      font-size: 11px;
       text-align: center;
       padding: 0;
-      color: var(--gray-500);
+      color: var(--gray-400);
       margin-top: var(--space-2);
       margin-bottom: 0;
       user-select: none;
+      opacity: 0.8;
     }
   }
 }

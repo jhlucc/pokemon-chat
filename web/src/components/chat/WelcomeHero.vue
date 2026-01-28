@@ -54,7 +54,7 @@ defineEmits<{
   (e: 'select', prompt: string): void
 }>()
 
-const avatarSrc = computed(() => props.avatarSrc || '/user.png')
+const avatarSrc = computed(() => props.avatarSrc || '/mascot.png')
 
 const quickActions = [
   {
@@ -128,17 +128,25 @@ const quickActions = [
 
 .hero-avatar {
   position: relative;
-  width: 80px;
-  height: 80px;
+  width: 100px;
+  height: 100px;
+  margin-bottom: var(--space-2);
 
   .avatar-image {
     width: 100%;
     height: 100%;
-    border-radius: 50%;
-    object-fit: cover;
-    border: 3px solid var(--surface-color);
-    box-shadow: var(--shadow-md);
+    object-fit: contain;
+    /* 暖色落地投影 - 让小鸟真正"悬浮" */
+    filter: drop-shadow(0 12px 20px rgba(251, 146, 60, 0.35))
+            drop-shadow(0 4px 8px rgba(0, 0, 0, 0.1));
+    /* 悬浮动画 */
+    animation: mascot-float 4s ease-in-out infinite;
   }
+}
+
+@keyframes mascot-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
 }
 
 .hero-content {
@@ -205,25 +213,27 @@ const quickActions = [
   gap: var(--space-3);
   padding: var(--space-3) var(--space-4);
   /* Glassmorphism Style */
-  background: color-mix(in srgb, var(--surface-color) 70%, transparent);
+  background: color-mix(in srgb, var(--surface-color) 75%, transparent);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
-  border: 1px solid color-mix(in srgb, var(--border-color) 60%, transparent);
-  border-radius: var(--radius-md);
+  border: 1px solid color-mix(in srgb, var(--border-color) 50%, transparent);
+  border-radius: var(--radius-lg);
   cursor: pointer;
   text-align: left;
-  transition: all var(--duration-fast) var(--ease-default);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
 
   &:hover {
     background: var(--surface-color);
-    border-color: color-mix(in srgb, var(--primary-color) 40%, var(--border-color));
-    transform: translateY(-3px);
-    box-shadow: 0 8px 24px rgba(255, 125, 0, 0.12);
+    border-color: color-mix(in srgb, var(--primary-color) 50%, var(--border-color));
+    transform: translateY(-4px);
+    box-shadow:
+      0 8px 24px rgba(255, 125, 0, 0.1),
+      0 4px 12px rgba(0, 0, 0, 0.06);
 
     .action-icon {
-      transform: scale(1.15);
-      background: color-mix(in srgb, var(--primary-color) 18%, transparent);
+      transform: scale(1.2);
+      background: color-mix(in srgb, var(--primary-color) 20%, transparent);
     }
 
     .action-label {
@@ -232,7 +242,8 @@ const quickActions = [
   }
 
   &:active {
-    transform: translateY(-1px);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(255, 125, 0, 0.08);
   }
 
   .action-icon {

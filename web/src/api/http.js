@@ -8,6 +8,13 @@ import { createRequestId } from '@/utils/id'
 
 const DEFAULT_TIMEOUT_MS = 15000
 const DEFAULT_API_PREFIX = '/api'
+const RAW_API_ORIGIN = (import.meta?.env?.VITE_API_URL || '').trim()
+const API_ORIGIN = RAW_API_ORIGIN.replace(/\/+$/, '')
+const IS_DEV = Boolean(import.meta?.env?.DEV)
+// In production we normally call same-origin `/api/*` (Nginx reverse proxy).
+// For local `vite preview` or when hosting frontend+backend on different origins,
+// allow setting VITE_API_URL to an absolute backend origin (e.g. http://127.0.0.1:5050).
+const BASE_ORIGIN = !IS_DEV && API_ORIGIN ? API_ORIGIN : window.location.origin
 const API_PREFIX =
   (import.meta?.env?.VITE_API_BASE_PATH || DEFAULT_API_PREFIX).replace(/\/+$/, '') ||
   DEFAULT_API_PREFIX
@@ -56,7 +63,7 @@ function normalizePath(path) {
 }
 
 function buildUrl(path, query) {
-  const url = new URL(normalizePath(path), window.location.origin)
+  const url = new URL(normalizePath(path), BASE_ORIGIN)
   if (query && typeof query === 'object') {
     Object.entries(query).forEach(([k, v]) => {
       if (v === undefined || v === null) return
@@ -191,9 +198,29 @@ export async function apiFetch(path, { method = 'GET', query, body, headers, tim
     const res = await apiRequest(path, { method, query, body, headers, timeoutMs, signal })
 
     const contentType = res.headers.get('content-type') || ''
-    const data = contentType.includes('application/json')
-      ? await res.json().catch(() => null)
-      : await res.text().catch(() => null)
+    if (!contentType.includes('application/json')) {
+      const text = await res.text().catch(() => null)
+      const requestId = res.headers.get('x-request-id') || null
+      throw new ApiError('Unexpected response (expected JSON)', {
+        status: res.status,
+        data: text,
+        requestId,
+        url: res.url,
+        method
+      })
+    }
+
+    const data = await res.json().catch(() => null)
+    if (data === null) {
+      const requestId = res.headers.get('x-request-id') || null
+      throw new ApiError('Invalid JSON response', {
+        status: res.status,
+        data: null,
+        requestId,
+        url: res.url,
+        method
+      })
+    }
 
     return data
   } catch (e) {

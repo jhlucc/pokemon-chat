@@ -8,6 +8,7 @@ export default defineConfig(({ mode }) => {
   // Only load VITE_* keys to avoid pulling backend secrets into the build config.
   const repoRoot = fileURLToPath(new URL('..', import.meta.url))
   const env = loadEnv(mode, repoRoot, 'VITE_')
+  const apiTarget = env.VITE_API_URL || 'http://127.0.0.1:5050'
   const pkg = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf-8'))
   const buildTime = env.VITE_BUILD_TIME || new Date().toISOString()
   const buildSha = env.VITE_BUILD_SHA || process.env.GITHUB_SHA || ''
@@ -96,10 +97,25 @@ export default defineConfig(({ mode }) => {
     },
     server: {
       proxy: {
+        // Vite dev server proxy. Mirrors the docker/nginx reverse-proxy behavior:
+        // - `/api/*` -> backend `/*`
+        // - `/openapi.json` is required for Swagger UI (`/docs`) to render correctly.
         '^/api': {
-          target: env.VITE_API_URL || 'http://127.0.0.1:5050',
+          target: apiTarget,
           changeOrigin: true,
           rewrite: (path) => path.replace(/^\/api/, '')
+        },
+        '^/openapi.json': {
+          target: apiTarget,
+          changeOrigin: true
+        },
+        '^/docs': {
+          target: apiTarget,
+          changeOrigin: true
+        },
+        '^/redoc': {
+          target: apiTarget,
+          changeOrigin: true
         }
       },
       watch: {

@@ -133,7 +133,15 @@ onUnmounted(() => {
 const route = useRoute()
 
 const apiDocsUrl = computed(() => {
-  // Works both in dev (Vite proxy) and prod (Nginx /api reverse proxy).
+  // Dev: Vite proxy serves `/api/*` but Swagger UI also requests `/openapi.json`,
+  // which is proxied in vite.config.js.
+  if (import.meta.env.DEV) return `${window.location.origin}/api/docs`
+
+  // Preview / standalone: allow pointing directly at the backend origin (no proxy).
+  const apiOrigin = (import.meta?.env?.VITE_API_URL || '').trim().replace(/\/+$/, '')
+  if (apiOrigin) return `${apiOrigin}/docs`
+
+  // Prod (docker web): Nginx reverse proxy exposes `/api/*`.
   return `${window.location.origin}/api/docs`
 })
 
