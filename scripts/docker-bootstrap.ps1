@@ -3,13 +3,15 @@ $ErrorActionPreference = "Stop"
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
 $dockerDir = Join-Path $repoRoot "docker"
 
-Set-Location $dockerDir
+$rootEnv = Join-Path $repoRoot ".env"
+$rootEnvExample = Join-Path $repoRoot ".env.example"
 
-if (-not (Test-Path ".env")) {
-  Copy-Item ".env.example" ".env"
-  Write-Host "Created docker/.env from docker/.env.example (please fill llm_api_key)." -ForegroundColor Yellow
+if (-not (Test-Path $rootEnv)) {
+  Copy-Item $rootEnvExample $rootEnv
+  Write-Host "Created .env from .env.example (please fill llm_api_key)." -ForegroundColor Yellow
 }
 
+Set-Location $dockerDir
 docker compose up -d --build
 
 Write-Host ""

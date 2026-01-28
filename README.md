@@ -116,9 +116,14 @@
 git clone https://github.com/skygazer42/pokemon-chat.git
 cd pokemon-chat
 
-# 2. 配置环境变量（Docker Compose 从 ./docker/.env 读取）
-cp docker/.env.example docker/.env
-# 编辑 docker/.env，填写 LLM API KEY（如 llm_api_key / SILICONFLOW_API_KEY）
+# 2. 配置环境变量（后端统一从仓库根目录 `.env` 读取，Docker Compose 也会加载该文件）
+cp .env.example .env
+# 编辑 .env，填写 LLM API KEY（如 llm_api_key / SILICONFLOW_API_KEY）
+# 可选：开启检索/工具能力（示例）
+#   enable_knowledge_graph=true   # Neo4j 知识图谱
+#   enable_knowledge_base=true    # Milvus 知识库
+#   enable_web_search=true        # Web 搜索（需 tavily_api_key）
+#   enable_mcp=true               # MCP（配合 `--profile mcp`）
 # 可选：开启语音识别（FunASR）-> enable_asr=true，funasr_url=ws://funasr:10095（Docker）
 # 可选：限制 CORS 来源（生产环境建议）-> cors_allow_origins=http://localhost:3100
 

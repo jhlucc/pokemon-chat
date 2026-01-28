@@ -112,9 +112,14 @@ No manual environment configuration needed. Directly use Docker Compose to start
 git clone https://github.com/skygazer42/pokemon-chat.git
 cd pokemon-chat
 
-# 2. Configure environment variables (Docker Compose reads ./docker/.env)
-cp docker/.env.example docker/.env
-# Edit docker/.env and fill in your LLM API key (e.g. llm_api_key / SILICONFLOW_API_KEY)
+# 2. Configure environment variables (backend uses repo root `.env`; Docker Compose loads it too)
+cp .env.example .env
+# Edit .env and fill in your LLM API key (e.g. llm_api_key / SILICONFLOW_API_KEY)
+# Optional: enable retrieval/tools (examples)
+#   enable_knowledge_graph=true   # Neo4j knowledge graph
+#   enable_knowledge_base=true    # Milvus knowledge base
+#   enable_web_search=true        # Web search (requires tavily_api_key)
+#   enable_mcp=true               # MCP (use with `--profile mcp`)
 # Optional: enable ASR (FunASR) -> enable_asr=true, funasr_url=ws://funasr:10095 (Docker)
 # Optional: restrict CORS origins (recommended for production) -> cors_allow_origins=http://localhost:3100
 

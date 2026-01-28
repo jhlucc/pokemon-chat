@@ -228,7 +228,7 @@ class FeatureSettings(BaseSettings):
 
     model_config = SettingsConfigDict(extra="ignore")
 
-    # Accept both lower-case (docker/.env, .env.template) and legacy UPPER_SNAKE_CASE keys.
+    # Accept both lower-case (recommended in `.env`) and legacy UPPER_SNAKE_CASE keys.
     enable_knowledge_base: bool = Field(
         default=False,
         validation_alias=AliasChoices("enable_knowledge_base", "ENABLE_KNOWLEDGE_BASE"),

@@ -6,6 +6,10 @@
 __pycache__/
 *.py[cod]
 
+# Env files (may contain secrets)
+.env
+.env.*
+
 *.log
 logs/
 

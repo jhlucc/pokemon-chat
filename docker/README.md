@@ -10,9 +10,10 @@ This folder contains a Docker Compose stack for:
 ## Quick Start (Full Stack)
 
 ```bash
-cd docker
-# optional: copy ./docker/.env.example to ./docker/.env and fill llm_api_key etc
+# from repo root
+# optional: copy .env.example -> .env and fill llm_api_key etc
 cp .env.example .env
+cd docker
 docker compose up -d --build
 ```
 
@@ -20,6 +21,10 @@ Open:
 - Web UI: http://localhost:3100/
 - API docs: http://localhost:3100/api/docs
 - Direct API: http://localhost:5050/healthz
+
+Containers:
+- pk-web
+- pk-api
 
 ### Auto Neo4j Import
 
@@ -69,8 +74,7 @@ docker compose up -d --build
 ```
 
 Note:
-- `docker/.env` is for Docker Compose variable substitution.
-- For local (non-docker) development, use the repo root `.env` (see `.env.template`).
+- Docker Compose loads backend env vars from the repo root `.env` (see `.env.example` / `.env.template`).
 
 ## App Only (Without Infra)
 
