@@ -83,7 +83,7 @@ class MCPWorker:
 
 
 # Global instance
-_mcp_worker: MCPWorker = None
+_mcp_worker: MCPWorker | None = None
 
 
 def get_mcp_worker() -> MCPWorker:
@@ -91,3 +91,8 @@ def get_mcp_worker() -> MCPWorker:
     if _mcp_worker is None:
         _mcp_worker = MCPWorker()
     return _mcp_worker
+
+
+def clear_mcp_worker_cache() -> None:
+    global _mcp_worker
+    _mcp_worker = None

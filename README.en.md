@@ -119,16 +119,20 @@ cp .env.example .env
 #   enable_knowledge_graph=true   # Neo4j knowledge graph
 #   enable_knowledge_base=true    # Milvus knowledge base
 #   enable_web_search=true        # Web search (requires tavily_api_key)
-#   enable_mcp=true               # MCP (use with `--profile mcp`)
+#   enable_mcp=true               # MCP (typically `--profile infra --profile mcp`)
 # Optional: enable ASR (FunASR) -> enable_asr=true, funasr_url=ws://funasr:10095 (Docker)
 # Optional: restrict CORS origins (recommended for production) -> cors_allow_origins=http://localhost:3100
 
-# 3. Start all services (API + Web + Neo4j/MySQL/Milvus, plus auto Neo4j import)
+# 3. Start services
 cd docker
+# Default starts the app only (API + Web).
 docker compose up -d --build
 
-# Optional: MCP SSE server
-# docker compose --profile mcp up -d --build
+# Optional: start infra (Neo4j/MySQL/Milvus, plus auto Neo4j import via neo4j-bootstrap)
+# docker compose --profile infra up -d --build
+
+# Optional: MCP SSE server (needs MySQL, so typically use it with infra)
+# docker compose --profile infra --profile mcp up -d --build
 
 # Optional: ASR (FunASR)
 # docker compose --profile asr up -d --build
@@ -140,7 +144,8 @@ Access:
 
 ### 📦 Data Initialization (First Run)
 
-Neo4j graph data is imported automatically by the one-shot service `neo4j-bootstrap`, from:
+When you start with `--profile infra`, Neo4j graph data is imported automatically by the one-shot service
+`neo4j-bootstrap`, from:
 
 - `resources/data/kg_data/entities.json`
 - `resources/data/kg_data/relations.json`
@@ -167,7 +172,7 @@ cd docker
 docker compose down
 # These are bind-mounted data directories (not named volumes). Linux/macOS/WSL:
 rm -rf volumes/neo4j/data volumes/neo4j/logs volumes/milvus volumes/mysql/data
-docker compose up -d --build
+docker compose --profile infra up -d --build
 ```
 
 Windows PowerShell:
@@ -176,21 +181,21 @@ Windows PowerShell:
 cd docker
 docker compose down
 Remove-Item -Recurse -Force .\\volumes\\neo4j\\data, .\\volumes\\neo4j\\logs, .\\volumes\\milvus, .\\volumes\\mysql\\data
-docker compose up -d --build
+docker compose --profile infra up -d --build
 ```
 
 ### ✅ Verify It's Running
 
 - Web UI: http://localhost:3100/
 - API Ready: http://localhost:5050/readyz
-- Neo4j Browser: http://localhost:7474/
+- Neo4j Browser: http://localhost:7474/ (only if you started with `--profile infra`)
 
 Command checks:
 
 ```bash
 cd docker
 docker compose ps
-docker compose exec -T neo4j cypher-shell 'MATCH (n) RETURN count(n) AS nodes;'
+docker compose exec -T neo4j cypher-shell 'MATCH (n) RETURN count(n) AS nodes;'  # only with --profile infra
 ```
 
 ### 🧰 Troubleshooting (Docker)

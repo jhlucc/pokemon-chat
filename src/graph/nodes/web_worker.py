@@ -1,3 +1,4 @@
+import sys
 from typing import Any
 
 from langchain_core.prompts import ChatPromptTemplate
@@ -55,5 +56,27 @@ class WebWorker:
 
 
 def web_worker_node(state: AgentState):
-    worker = WebWorker()
+    worker = get_web_worker()
     return worker(state)
+
+
+_web_worker: WebWorker | None = None
+
+
+def get_web_worker() -> WebWorker:
+    """
+    Cached worker instance.
+
+    NOTE: tests patch classes heavily; avoid caching under pytest to keep patches effective.
+    """
+    if "pytest" in sys.modules:
+        return WebWorker()
+    global _web_worker
+    if _web_worker is None:
+        _web_worker = WebWorker()
+    return _web_worker
+
+
+def clear_web_worker_cache() -> None:
+    global _web_worker
+    _web_worker = None

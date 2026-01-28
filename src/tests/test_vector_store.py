@@ -61,6 +61,19 @@ class TestVectorStore(unittest.TestCase):
         args = col_instance.insert.call_args[0][0]
         self.assertEqual(args[1][0], [0.2] * 1024)
 
+    @patch("src.knowledge.store.vector.settings")
+    @patch("src.knowledge.store.vector.connections")
+    @patch("src.knowledge.store.vector.Collection")
+    @patch("src.knowledge.store.vector.utility")
+    def test_uses_settings_milvus_uri_when_default_host_port(self, mock_utility, mock_collection, mock_connections, mock_settings):
+        mock_utility.has_collection.return_value = False
+        mock_connections.has_connection.return_value = False
+        mock_settings.database.milvus_uri = "http://milvus:19530"
+
+        VectorStore(collection_name="test_collection", embedding_model=MagicMock(), reranker_model=MagicMock())
+
+        mock_connections.connect.assert_called_with(alias="default", host="milvus", port="19530")
+
 
 if __name__ == "__main__":
     unittest.main()

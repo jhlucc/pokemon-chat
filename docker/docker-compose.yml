@@ -7,9 +7,6 @@ services:
     restart: unless-stopped
     ports:
       - "5050:5050"
-    depends_on:
-      neo4j-bootstrap:
-        condition: service_completed_successfully
     # Unify backend env: use repo root `.env` for both local dev and Docker.
     # Copy `.env.example` -> `.env` (repo root), then run `docker compose up`.
     env_file:
@@ -75,6 +72,7 @@ services:
       - vector-net
 
   neo4j:
+    profiles: ["infra"]
     image: neo4j:5.14.0
     restart: always
     ports:
@@ -100,6 +98,7 @@ services:
   # One-shot bootstrap: import `resources/data/kg_data` into Neo4j.
   # Safe to re-run: the script will skip if the marker node exists.
   neo4j-bootstrap:
+    profiles: ["infra"]
     build:
       context: ..
       dockerfile: docker/Dockerfile.api
@@ -119,6 +118,7 @@ services:
       - vector-net
 
   etcd:
+    profiles: ["infra"]
     image: quay.io/coreos/etcd:v3.5.5
     restart: always
     environment:
@@ -139,6 +139,7 @@ services:
       - vector-net
 
   minio:
+    profiles: ["infra"]
     image: minio/minio:RELEASE.2023-09-20T22-49-55Z
     restart: always
     environment:
@@ -155,6 +156,7 @@ services:
     networks:
       - vector-net
   mysql:
+    profiles: ["infra"]
     image: mysql:5.7
     container_name: mysql-pokemon
     restart: unless-stopped
@@ -176,6 +178,7 @@ services:
       - vector-net
 
   milvus:
+    profiles: ["infra"]
     image: milvusdb/milvus:v2.3.0
     restart: always
     command: [ "milvus", "run", "standalone" ]

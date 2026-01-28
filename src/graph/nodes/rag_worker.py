@@ -1,3 +1,4 @@
+import sys
 from typing import Any
 
 from langchain_core.prompts import ChatPromptTemplate
@@ -211,5 +212,27 @@ class RagWorker:
 
 # Factory for node
 def rag_worker_node(state: AgentState) -> dict[str, Any]:
-    worker = RagWorker()
+    worker = get_rag_worker()
     return worker(state)
+
+
+_rag_worker: RagWorker | None = None
+
+
+def get_rag_worker() -> RagWorker:
+    """
+    Cached worker instance.
+
+    NOTE: tests patch classes heavily; avoid caching under pytest to keep patches effective.
+    """
+    if "pytest" in sys.modules:
+        return RagWorker()
+    global _rag_worker
+    if _rag_worker is None:
+        _rag_worker = RagWorker()
+    return _rag_worker
+
+
+def clear_rag_worker_cache() -> None:
+    global _rag_worker
+    _rag_worker = None

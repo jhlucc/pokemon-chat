@@ -1,3 +1,4 @@
+import sys
 from typing import Any
 
 from langchain_core.prompts import ChatPromptTemplate
@@ -35,5 +36,27 @@ class StatsWorker:
 
 
 def stats_worker_node(state: AgentState):
-    worker = StatsWorker()
+    worker = get_stats_worker()
     return worker(state)
+
+
+_stats_worker: StatsWorker | None = None
+
+
+def get_stats_worker() -> StatsWorker:
+    """
+    Cached worker instance.
+
+    NOTE: tests patch classes heavily; avoid caching under pytest to keep patches effective.
+    """
+    if "pytest" in sys.modules:
+        return StatsWorker()
+    global _stats_worker
+    if _stats_worker is None:
+        _stats_worker = StatsWorker()
+    return _stats_worker
+
+
+def clear_stats_worker_cache() -> None:
+    global _stats_worker
+    _stats_worker = None

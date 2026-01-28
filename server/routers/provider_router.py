@@ -35,6 +35,19 @@ def patch_providers(payload: dict = Body(...)):
             patch_provider_secrets(provider=provider, api_key=api_key, api_base=api_base)
         else:
             patch_provider_secrets_many(payload)
+        # Best-effort: clear cached clients so new provider keys/bases apply immediately.
+        try:
+            from src.runtime import reset_all
+
+            reset_all()
+        except Exception:
+            pass
+        try:
+            from src.graph.runtime import reset_graph_workers
+
+            reset_graph_workers()
+        except Exception:
+            pass
         return {"providers": build_provider_status()}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e)) from e

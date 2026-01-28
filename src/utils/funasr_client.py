@@ -10,11 +10,15 @@ import re
 
 from websocket import create_connection
 
+from src.utils.logger import get_logger
+
+_log = get_logger(__name__)
+
 
 class FunASRClient:
     """FunASR WebSocket 客户端"""
 
-    def __init__(self, url: str = "ws://localhost:10095"):
+    def __init__(self, url: str = "ws://localhost:10095", timeout_s: float = 15.0):
         """
         初始化 FunASR 客户端
 
@@ -22,6 +26,7 @@ class FunASRClient:
             url: FunASR WebSocket 服务地址，默认 ws://localhost:10095
         """
         self.url = url
+        self.timeout_s = timeout_s
 
     def transcribe(self, audio_bytes: bytes) -> str:
         """
@@ -33,9 +38,14 @@ class FunASRClient:
         Returns:
             识别出的文字内容
         """
+        ws = None
         try:
             # 建立 WebSocket 连接
-            ws = create_connection(self.url)
+            ws = create_connection(self.url, timeout=self.timeout_s)
+            try:
+                ws.settimeout(self.timeout_s)
+            except Exception:  # noqa: BLE001
+                pass
 
             # 发送开始信号
             start_msg = json.dumps(
@@ -60,8 +70,12 @@ class FunASRClient:
             # 接收识别结果
             result_text = ""
             while True:
-                response = ws.recv()
-                if not response:
+                try:
+                    response = ws.recv()
+                    if not response:
+                        break
+                except Exception:
+                    # Timeout / disconnect: return best-effort partial result.
                     break
 
                 result = json.loads(response)
@@ -72,12 +86,17 @@ class FunASRClient:
                 if result.get("is_final", False) or result.get("mode") == "offline":
                     break
 
-            ws.close()
             return result_text
 
         except Exception as e:
-            print(f"FunASRClient error: {e}")
+            _log.warning(f"FunASRClient transcribe failed: {e}")
             return ""
+        finally:
+            try:
+                if ws is not None:
+                    ws.close()
+            except Exception:  # noqa: BLE001
+                pass
 
     def _clean_text(self, text: str) -> str:
         """清理识别结果中的多余空格和换行"""

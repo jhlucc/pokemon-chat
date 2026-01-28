@@ -13,12 +13,7 @@ from pymilvus import (
 
 from src.core.settings import settings
 from src.utils.logger import get_logger
-
-# Optional dependencies
-try:
-    from langchain_openai import OpenAIEmbeddings
-except ImportError:
-    OpenAIEmbeddings = None
+from src.utils.net import parse_host_port
 
 try:
     from src.models.reranker_model import RerankerWrapper
@@ -27,6 +22,25 @@ except ImportError:
 
 warnings.filterwarnings("ignore", category=FutureWarning)
 _log = get_logger(__name__)
+
+
+class _EmbeddingAdapter:
+    """
+    Adapter for the project's embedding models.
+
+    The VectorStore expects an object that implements:
+      - embed_documents(list[str]) -> list[list[float]]
+      - embed_query(str) -> list[float]
+    """
+
+    def __init__(self, model: Any):
+        self._model = model
+
+    def embed_documents(self, texts: list[str]) -> list[list[float]]:
+        return self._model.embed(texts)
+
+    def embed_query(self, text: str) -> list[float]:
+        return self._model.embed(text)[0]
 
 
 class VectorStore:
@@ -51,6 +65,18 @@ class VectorStore:
         self.host = host
         self.port = port
         self.connection_alias = connection_alias
+
+        # If the caller kept the default host/port, prefer the project's unified setting
+        # (supports Docker service names like "milvus").
+        if (host, str(port)) == ("localhost", "19530"):
+            try:
+                uri = (getattr(settings.database, "milvus_uri", "") or "").strip()
+                if uri:
+                    resolved_host, resolved_port = parse_host_port(uri, default_port=19530)
+                    self.host = resolved_host
+                    self.port = str(resolved_port)
+            except Exception:  # noqa: BLE001
+                pass
 
         # Initialize models (optional, for on-the-fly embedding/reranking)
         self.embedder = self._resolve_embedder(embedding_model)
@@ -95,11 +121,20 @@ class VectorStore:
     def _resolve_embedder(self, model):
         if model is None:
             return None
-        if isinstance(model, str) and OpenAIEmbeddings:
-            # Basic default factory using settings for keys if not provided
-            return OpenAIEmbeddings(
-                model=model, openai_api_base=settings.llm.api_base, openai_api_key=settings.llm.api_key
-            )
+        if isinstance(model, str):
+            # Prefer the project's embedding factory so provider-specific endpoints
+            # (e.g. SiliconFlow) work with the same `.env` settings everywhere.
+            try:
+                from src.models.embedding import get_embedding_model
+
+                return _EmbeddingAdapter(get_embedding_model(model=model))
+            except Exception as e:  # noqa: BLE001
+                _log.warning(f"Embedding model init failed (will disable embedding): {e}")
+                return None
+
+        # Accept the project's embedding model instances directly.
+        if hasattr(model, "embed") and not hasattr(model, "embed_documents"):
+            return _EmbeddingAdapter(model)
         return model
 
     def _resolve_reranker(self, model):

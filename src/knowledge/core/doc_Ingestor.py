@@ -3,6 +3,9 @@ import os
 from src.knowledge.core.indexing import chunk_file
 from src.knowledge.core.Milvus import MilvusStorage
 from src.models.embedding import get_embedding_model
+from src.utils.logger import get_logger
+
+_log = get_logger(__name__)
 
 
 # 知识导入到向量数据库
@@ -40,7 +43,7 @@ class DocumentIngestor:
         """
         处理单文件 -> chunk -> embedding -> 写入 Milvus
         """
-        print(f"📄 正在处理文件: {file_path}")
+        _log.info(f"Processing file: {file_path}")
         # 步骤 1: chunk
         chunks = chunk_file(
             file_path=file_path,
@@ -60,7 +63,7 @@ class DocumentIngestor:
             doc.metadata["embedding"] = self._normalize_embedding(emb)
         # 步骤 4: 调用 MilvusStorage.insert
         self.store.insert(chunks)
-        print(f"✅ 文件 {file_path} 已完成向量化并存储到 Milvus！")
+        _log.info(f"File ingested into Milvus: {file_path}")
 
     @staticmethod
     def _normalize_embedding(emb) -> list[float]:
@@ -77,7 +80,7 @@ class DocumentIngestor:
         批量处理一个文件夹
         """
         suffixes = suffixes or [".pdf", ".docx", ".txt", ".md"]
-        print(f"📁 扫描目录: {directory_path}")
+        _log.info(f"Scanning directory: {directory_path}")
 
         for root, _dirs, files in os.walk(directory_path):
             for file in files:
@@ -88,7 +91,7 @@ class DocumentIngestor:
     def close(self):
         """关闭 Milvus 连接"""
         self.store.close()
-        print("🔌 向量数据库连接已关闭！")
+        _log.info("Milvus connection closed.")
 
 
 if __name__ == "__main__":

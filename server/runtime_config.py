@@ -87,6 +87,19 @@ def patch_ui_overrides(patch: dict[str, Any]) -> dict[str, Any]:
             clear_ui_overrides_cache()
         except Exception:
             pass
+        # Best-effort: clear any cached runtime singletons so UI changes apply immediately.
+        try:
+            from src.runtime import reset_all
+
+            reset_all()
+        except Exception:
+            pass
+        try:
+            from src.graph.runtime import reset_graph_workers
+
+            reset_graph_workers()
+        except Exception:
+            pass
         return cur
 
 

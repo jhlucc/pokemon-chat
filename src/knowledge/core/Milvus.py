@@ -3,7 +3,11 @@ import warnings
 from langchain_core.documents import Document
 from pymilvus import Collection, CollectionSchema, DataType, FieldSchema, connections, utility
 
+from src.utils.logger import get_logger
+
 warnings.filterwarnings("ignore", category=FutureWarning)
+
+_log = get_logger(__name__)
 
 
 class MilvusStorage:

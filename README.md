@@ -123,17 +123,20 @@ cp .env.example .env
 #   enable_knowledge_graph=true   # Neo4j 知识图谱
 #   enable_knowledge_base=true    # Milvus 知识库
 #   enable_web_search=true        # Web 搜索（需 tavily_api_key）
-#   enable_mcp=true               # MCP（配合 `--profile mcp`）
+#   enable_mcp=true               # MCP（通常配合 `--profile infra --profile mcp`）
 # 可选：开启语音识别（FunASR）-> enable_asr=true，funasr_url=ws://funasr:10095（Docker）
 # 可选：限制 CORS 来源（生产环境建议）-> cors_allow_origins=http://localhost:3100
 
-# 3. 启动服务 (API + Web + 数据库)
+# 3. 启动服务
 cd docker
-# 默认会拉起 API + Web + Neo4j/MySQL/Milvus 等依赖，并自动导入 Neo4j 图谱数据（neo4j-bootstrap）
+# 默认仅启动 App（API + Web）。
 docker compose up -d --build
 
-# 可选：启动 MCP SSE 服务
-# docker compose --profile mcp up -d --build
+# 可选：启动 Infra（Neo4j/MySQL/Milvus 等）+ 自动导入 Neo4j 图谱数据（neo4j-bootstrap）
+# docker compose --profile infra up -d --build
+
+# 可选：启动 MCP SSE 服务（需要 MySQL，因此通常与 infra 一起启用）
+# docker compose --profile infra --profile mcp up -d --build
 
 # 可选：启动语音识别（FunASR）
 # docker compose --profile asr up -d --build
@@ -145,7 +148,7 @@ docker compose up -d --build
 
 ### 📦 数据初始化（首次运行）
 
-默认会自动导入 Neo4j 图谱数据（由 `neo4j-bootstrap` 完成），数据来源：
+当你使用 `--profile infra` 启动时，会自动导入 Neo4j 图谱数据（由 `neo4j-bootstrap` 完成），数据来源：
 
 - `resources/data/kg_data/entities.json`
 - `resources/data/kg_data/relations.json`
@@ -165,14 +168,14 @@ cd docker
 docker compose exec api python scripts/import_pokemon_map.py
 ```
 
-如果你想彻底清空数据（Neo4j/Milvus/MySQL 等）重新来一遍：
+如果你想彻底清空数据（Neo4j/Milvus/MySQL 等）重新来一遍（需要你曾用 `--profile infra` 启动过）：
 
 ```bash
 cd docker
 docker compose down
 # 这些是 bind mount 的数据目录（不属于 named volumes），需要手动删除（Linux/macOS/WSL）
 rm -rf volumes/neo4j/data volumes/neo4j/logs volumes/milvus volumes/mysql/data
-docker compose up -d --build
+docker compose --profile infra up -d --build
 ```
 
 Windows PowerShell：
@@ -181,21 +184,21 @@ Windows PowerShell：
 cd docker
 docker compose down
 Remove-Item -Recurse -Force .\\volumes\\neo4j\\data, .\\volumes\\neo4j\\logs, .\\volumes\\milvus, .\\volumes\\mysql\\data
-docker compose up -d --build
+docker compose --profile infra up -d --build
 ```
 
 ### ✅ 启动验证
 
 - Web UI: http://localhost:3100/
 - API Ready: http://localhost:5050/readyz
-- Neo4j Browser: http://localhost:7474/
+- Neo4j Browser: http://localhost:7474/（仅当使用 `--profile infra` 启动）
 
 也可以用命令检查：
 
 ```bash
 cd docker
 docker compose ps
-docker compose exec -T neo4j cypher-shell 'MATCH (n) RETURN count(n) AS nodes;'
+docker compose exec -T neo4j cypher-shell 'MATCH (n) RETURN count(n) AS nodes;'  # 仅当使用 --profile infra 启动
 ```
 
 ### 🤝 开发/贡献

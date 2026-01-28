@@ -1,12 +1,14 @@
-.PHONY: help docker-up docker-up-infra docker-up-full docker-down docker-logs web-install web-dev web-build web-lint web-typecheck api-logs py-lint py-format py-format-check py-test check
+.PHONY: help docker-up docker-up-infra docker-up-full docker-up-asr docker-up-all docker-down docker-logs web-install web-dev web-build web-lint web-typecheck api-logs py-lint py-format py-format-check py-test check
 
 PY ?= python
 
 help:
 	@echo "Targets:"
-	@echo "  docker-up        Build+run web+api"
-	@echo "  docker-up-infra   Run infra profile (neo4j/milvus/mysql/funasr)"
+	@echo "  docker-up        Build+run app only (web+api)"
+	@echo "  docker-up-infra   Run app + infra (neo4j/milvus/mysql/etc)"
 	@echo "  docker-up-full    Run app + infra + mcp"
+	@echo "  docker-up-asr     Run app + asr (FunASR)"
+	@echo "  docker-up-all     Run app + infra + mcp + asr"
 	@echo "  docker-down      Stop the compose stack"
 	@echo "  docker-logs      Tail logs"
 	@echo "  web-install      Install frontend deps (npm ci)"
@@ -29,6 +31,12 @@ docker-up-infra:
 
 docker-up-full:
 	cd docker && docker compose --profile infra --profile mcp up -d --build
+
+docker-up-asr:
+	cd docker && docker compose --profile asr up -d --build
+
+docker-up-all:
+	cd docker && docker compose --profile infra --profile mcp --profile asr up -d --build
 
 docker-down:
 	cd docker && docker compose down

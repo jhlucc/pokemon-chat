@@ -1,3 +1,4 @@
+import sys
 from typing import Any
 
 from langchain_community.chains.graph_qa.cypher import GraphCypherQAChain
@@ -99,5 +100,27 @@ class GraphWorker:
 
 
 def graph_worker_node(state: AgentState):
-    worker = GraphWorker()
+    worker = get_graph_worker()
     return worker(state)
+
+
+_graph_worker: GraphWorker | None = None
+
+
+def get_graph_worker() -> GraphWorker:
+    """
+    Cached worker instance.
+
+    NOTE: tests patch classes heavily; avoid caching under pytest to keep patches effective.
+    """
+    if "pytest" in sys.modules:
+        return GraphWorker()
+    global _graph_worker
+    if _graph_worker is None:
+        _graph_worker = GraphWorker()
+    return _graph_worker
+
+
+def clear_graph_worker_cache() -> None:
+    global _graph_worker
+    _graph_worker = None

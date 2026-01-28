@@ -2,9 +2,6 @@ from fastapi import APIRouter, Body, HTTPException
 
 from server.runtime_config import build_ui_config, patch_ui_overrides
 
-# from src import config, knowledge_base
-from src.runtime import get_kb, get_retriever
-
 base = APIRouter()
 
 
@@ -42,6 +39,15 @@ async def update_config(key: str = Body(...), value=Body(...)):
 
 @base.post("/restart")
 async def restart():
-    get_kb().restart()
-    get_retriever().restart()
+    # Clear cached runtime singletons so subsequent requests rebuild clients/models.
+    # This avoids instantiating optional services (Milvus/Neo4j/etc) when the feature is disabled.
+    from src.runtime import reset_all
+
+    reset_all()
+    try:
+        from src.graph.runtime import reset_graph_workers
+
+        reset_graph_workers()
+    except Exception:
+        pass
     return {"message": "Restarted!"}

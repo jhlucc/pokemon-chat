@@ -1,3 +1,4 @@
+import sys
 from typing import Literal
 
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
@@ -72,6 +73,28 @@ class SupervisorNode:
         return {"next": result.next}
 
 
+_supervisor_node: SupervisorNode | None = None
+
+
+def get_supervisor_node() -> SupervisorNode:
+    """
+    Cached node instance.
+
+    NOTE: tests patch classes heavily; avoid caching under pytest to keep patches effective.
+    """
+    if "pytest" in sys.modules:
+        return SupervisorNode()
+    global _supervisor_node
+    if _supervisor_node is None:
+        _supervisor_node = SupervisorNode()
+    return _supervisor_node
+
+
+def clear_supervisor_node_cache() -> None:
+    global _supervisor_node
+    _supervisor_node = None
+
+
 def supervisor_node(state: AgentState):
-    node = SupervisorNode()
+    node = get_supervisor_node()
     return node(state)

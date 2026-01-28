@@ -143,6 +143,20 @@ def verify_agent_token(token_data: TokenVerify, db: Any = Depends(get_db)):
 # ---------------------------------------------------------------------------
 
 
+@admin.post("/runtime/reset")
+def reset_runtime():
+    """Clear cached runtime singletons (KB/Retriever/clients) and graph worker caches."""
+    try:
+        from src.graph.runtime import reset_graph_workers
+        from src.runtime import reset_all
+
+        reset_all()
+        reset_graph_workers()
+        return {"success": True}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e)) from e
+
+
 @admin.get("/cache/semantic")
 def get_semantic_cache_stats():
     """Inspect semantic cache status (size/ttl/threshold)."""

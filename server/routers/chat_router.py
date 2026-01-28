@@ -481,9 +481,36 @@ async def asr_upload(file: UploadFile = File(...)):
     if shutil.which("ffmpeg") is None:
         raise HTTPException(status_code=500, detail="ffmpeg not found (required for audio conversion).")
 
-    audio_bytes = await file.read()
+    # Guardrails: keep this endpoint safe by default.
+    max_bytes = int(os.getenv("ASR_MAX_UPLOAD_BYTES") or str(15 * 1024 * 1024))
+    audio_bytes = await file.read(max_bytes + 1)
+    if not audio_bytes:
+        raise HTTPException(status_code=400, detail="Empty audio upload.")
+    if len(audio_bytes) > max_bytes:
+        raise HTTPException(status_code=413, detail=f"Audio too large (>{max_bytes} bytes).")
 
-    with tempfile.NamedTemporaryFile(suffix=".ogg", delete=False) as temp_input:
+    allowed_types = {
+        "audio/wav",
+        "audio/x-wav",
+        "audio/mpeg",
+        "audio/mp3",
+        "audio/ogg",
+        "audio/webm",
+        "audio/mp4",
+        "audio/x-m4a",
+        "audio/aac",
+    }
+    if file.content_type and file.content_type not in allowed_types:
+        raise HTTPException(status_code=415, detail=f"Unsupported audio content-type: {file.content_type}")
+
+    input_suffix = ".ogg"
+    if file.filename:
+        _, ext = os.path.splitext(file.filename)
+        ext = (ext or "").lower()
+        if ext in {".wav", ".mp3", ".ogg", ".m4a", ".aac", ".webm", ".mp4"}:
+            input_suffix = ext
+
+    with tempfile.NamedTemporaryFile(suffix=input_suffix, delete=False) as temp_input:
         temp_input.write(audio_bytes)
         input_path = temp_input.name
 
@@ -492,7 +519,26 @@ async def asr_upload(file: UploadFile = File(...)):
 
     try:
         subprocess.run(
-            ["ffmpeg", "-y", "-i", input_path, "-ar", "16000", "-ac", "1", output_path], capture_output=True, check=True
+            [
+                "ffmpeg",
+                "-hide_banner",
+                "-loglevel",
+                "error",
+                "-y",
+                "-i",
+                input_path,
+                "-vn",
+                "-ar",
+                "16000",
+                "-ac",
+                "1",
+                "-f",
+                "wav",
+                output_path,
+            ],
+            capture_output=True,
+            text=True,
+            check=True,
         )
         with open(output_path, "rb") as f:
             wav_bytes = f.read()
@@ -500,12 +546,16 @@ async def asr_upload(file: UploadFile = File(...)):
         return {"text": result_text}
 
     except subprocess.CalledProcessError as e:
-        logger.error(f"音频转码失败: {e}")
+        stderr = (e.stderr or "").strip()
+        logger.error(f"音频转码失败: {e}. stderr={stderr}")
         raise HTTPException(status_code=500, detail="Audio conversion failed") from e
 
     finally:
-        try:
-            os.remove(input_path)
-            os.remove(output_path)
-        except Exception as cleanup_err:
-            print("临时文件删除失败", cleanup_err)
+        for p in (locals().get("input_path"), locals().get("output_path")):
+            if not p:
+                continue
+            try:
+                if os.path.exists(p):
+                    os.remove(p)
+            except Exception as cleanup_err:  # noqa: BLE001
+                logger.warning(f"Temp file cleanup failed: {cleanup_err}")
