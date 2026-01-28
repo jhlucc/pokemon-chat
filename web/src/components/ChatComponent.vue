@@ -1154,7 +1154,7 @@ const selectModel = (provider, name) => {
 
 .chat-box {
   width: 100%;
-  max-width: 640px;
+  max-width: 680px;
   margin: 0 auto;
   flex-grow: 1;
   padding: 1rem 2rem;
@@ -1164,7 +1164,7 @@ const selectModel = (provider, name) => {
   z-index: 1;
 
   &.wide-screen {
-    max-width: 720px;
+    max-width: 760px;
   }
 
   &.font-smaller {
@@ -1190,7 +1190,7 @@ const selectModel = (provider, name) => {
 
   .message-input-wrapper {
     width: 100%;
-    max-width: 640px;
+    max-width: 680px;
     margin: 0 auto;
 
     /* Glassmorphism Style - Cockpit feel */
@@ -1216,7 +1216,7 @@ const selectModel = (provider, name) => {
     }
 
     &.wide-screen {
-      max-width: 720px;
+      max-width: 760px;
     }
 
     .note {

@@ -440,7 +440,7 @@ div.header,
   .logo {
     width: 40px;
     height: 40px;
-    margin: 18px 0 18px 0;
+    margin: 18px 0 32px 0; /* increased bottom margin for spacing before nav */
 
     img {
       width: 100%;

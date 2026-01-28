@@ -191,7 +191,7 @@ const quickActions = [
   position: relative;
   z-index: 1;
   width: 100%;
-  max-width: 640px;
+  max-width: 680px;
 }
 
 .actions-label {

@@ -267,12 +267,12 @@ const kbTooltip = computed(() => {
 
   .chip-icon {
     font-size: 15px;
-    color: #5f6368; /* explicit dark gray for better visibility */
+    color: #444444; /* dark gray for clear visibility */
   }
 
   .chip-label {
     font-weight: 600;
-    color: #3c4043; /* explicit darker gray */
+    color: #333333; /* very dark gray */
   }
 
   .chip-caret {
@@ -328,11 +328,11 @@ const kbTooltip = computed(() => {
     border: 1px solid var(--gray-300);
 
     .chip-icon {
-      color: #5f6368; /* explicit dark gray */
+      color: #444444; /* dark gray */
     }
 
     .chip-label {
-      color: #3c4043; /* explicit darker gray */
+      color: #333333; /* very dark gray */
     }
 
     .chip-status {
