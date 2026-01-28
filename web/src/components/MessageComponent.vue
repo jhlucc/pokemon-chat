@@ -326,7 +326,7 @@ const shortenModelName = (name) => {
     .avatar {
       margin-left: var(--space-3);
       margin-right: 0;
-      margin-top: 4px;
+      margin-top: 0;
       box-shadow: 0 2px 8px rgba(255, 125, 0, 0.2);
     }
   }
@@ -353,7 +353,7 @@ const shortenModelName = (name) => {
     .avatar {
       margin-right: var(--space-3);
       margin-left: 0;
-      margin-top: 4px;
+      margin-top: 0;
       border: 2px solid var(--surface-color);
       box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
     }
@@ -381,12 +381,12 @@ const shortenModelName = (name) => {
 /* ===== message box ===== */
 .message-box {
   display: inline-block;
-  padding: 8px 14px; /* 减少垂直内边距，让气泡更紧凑 */
+  padding: 6px 12px; /* Tighten vertical padding to avoid airy bubbles */
   user-select: text;
   word-break: break-word;
   white-space: pre-wrap; /* 保留换行但允许正常折行 */
   font-size: var(--font-size-md);
-  line-height: var(--line-height-relaxed);
+  line-height: var(--line-height-base);
   position: relative;
   width: fit-content; /* 关键：宽度自适应内容 */
   max-width: min(640px, 85%); /* 最大宽度限制 */
@@ -742,6 +742,44 @@ const shortenModelName = (name) => {
   --md-scrollbar-thumb-color: var(--gray-400);
   --md-scrollbar-thumb-hover-color: var(--gray-500);
   --md-scrollbar-thumb-active-color: var(--gray-600);
+}
+
+.message-md.md-editor-previewOnly,
+.message-md.md-editor-previewOnly .md-editor-preview-wrapper,
+.message-md.md-editor-previewOnly .md-editor-preview {
+  width: fit-content;
+  max-width: 100%;
+  height: auto;
+}
+
+.message-md.md-editor-previewOnly .md-editor-preview-wrapper,
+.message-md.md-editor-previewOnly .md-editor-preview {
+  display: inline-block;
+}
+
+/* Hard clamp preview sizing inside chat bubbles (beats md-editor default layout). */
+.message-box .md-editor,
+.message-box .md-editor-preview-wrapper,
+.message-box .md-editor-preview {
+  width: fit-content !important;
+  max-width: 100% !important;
+  height: auto !important;
+  min-height: 0 !important;
+}
+
+.message-box .md-editor-preview-wrapper,
+.message-box .md-editor-preview {
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+.message-box .md-editor-preview p {
+  margin: 0 !important;
+  line-height: var(--line-height-base) !important;
+}
+
+.message-box .md-editor-preview p:not(:last-child) {
+  margin-bottom: 0.5em !important;
 }
 
 .message-md.md-editor-previewOnly .md-editor-content {

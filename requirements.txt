@@ -14,6 +14,7 @@ langgraph-checkpoint-sqlite>=2.0.11,<3.0.0
 # Vector & Graph databases
 pymilvus==2.5.0
 py2neo==2021.2.4
+neo4j>=5.14,<6
 
 # Document processing
 html2text==2024.2.26

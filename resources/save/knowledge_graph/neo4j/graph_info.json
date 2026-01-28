@@ -1,17 +1,18 @@
 {
   "graph_name": "neo4j",
-  "entity_count": 12876,
-  "relationship_count": 1631357,
-  "triples_count": 1631357,
+  "entity_count": 2147,
+  "relationship_count": 17681,
+  "triples_count": 17681,
   "labels": [
     "Town",
     "Pokémon",
     "Person",
     "identity",
-    "Region"
+    "Region",
+    "__PokemonChatBootstrap"
   ],
   "status": "open",
   "embed_model_name": null,
-  "unindexed_node_count": [],
-  "last_updated": "2025-05-25T17:52:13.519371"
+  "unindexed_node_count": 0,
+  "last_updated": "2026-01-28T16:58:16.398498"
 }
