@@ -365,6 +365,7 @@ const shortenModelName = (name) => {
     border-radius: 50%;
     object-fit: cover;
     flex-shrink: 0;
+    align-self: flex-start; /* 强制头像顶部对齐，即使多行气泡 */
   }
 }
 
