@@ -1,7 +1,6 @@
 import os
 from pathlib import Path
 
-from src.plugins.vision._ocr import OCRHandler2
 from src.utils.logger import get_logger
 
 from .deepdoc_parser import DeepDocParser
@@ -27,16 +26,36 @@ def parse_file(
     # 1. ORC specific overriding
     if ext == ".pdf" and do_ocr:
         _log.info(f"parse_file - Using OCR pipeline for {file_path}")
-        ocr_handler = OCRHandler2(det_threshold=ocr_det_threshold)
-        return ocr_handler.pdf_ocr_pipeline(file_path)
+        # Keep OCR optional: the OCR stack (rapidocr/onnxruntime) is heavy and may be
+        # intentionally absent in minimal deployments. Fallback to DeepDoc when missing.
+        try:
+            from src.plugins.vision._ocr import OCRHandler2  # noqa: WPS433 (lazy import)
+        except Exception as e:
+            _log.warning(f"parse_file - OCR backend unavailable ({e}); falling back to DeepDoc for {file_path}")
+        else:
+            ocr_handler = OCRHandler2(det_threshold=ocr_det_threshold)
+            return ocr_handler.pdf_ocr_pipeline(file_path)
 
     # 2. Routing Logic
     # Preference:
     # PDF/PPT -> DeepDoc (Better layout analysis)
     # DOCX/Excel/TXT -> MarkItDown (Better Markdown conversion)
 
-    if ext in [".pdf", ".ppt", ".pptx"]:
-        # DeepDoc Strategy
+    # PDFs: prefer a lightweight text-layer extractor for fast, dependency-light parsing.
+    # (OCR is handled above when `do_ocr=True` and optional OCR backends are available.)
+    if ext == ".pdf":
+        _log.info(f"parse_file - Using PyPDFLoader for {file_path}")
+        try:
+            from langchain_community.document_loaders import PyPDFLoader
+
+            docs = PyPDFLoader(file_path).load()
+            return "\n\n".join(d.page_content for d in docs)
+        except Exception as e:
+            _log.warning(f"PyPDFLoader failed for {file_path}: {e}. Falling back to MarkItDown.")
+            return MarkItDownParser.parse(file_path)
+
+    # PPT/PPTX: DeepDoc handles layout better.
+    if ext in [".ppt", ".pptx"]:
         _log.info(f"parse_file - Using DeepDoc for {file_path}")
         return DeepDocParser.parse(file_path)
 

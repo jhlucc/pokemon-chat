@@ -41,7 +41,17 @@ def get_default_resource_dir():
     Then the resource dir is: project_root/resources/data_parser/qieci
     If the directory does not exist, it will be created automatically.
     """
+    # Default location (matches upstream InfiniFlow layout)
     resource_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../resources/data_parser/qieci"))
+
+    # Repo-bundled fallback (this project vendors the ONNX assets under src/plugins/qieci)
+    bundled_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "qieci"))
+
+    markers = ("det.onnx", "rec.onnx", "tsr.onnx", "layout.onnx", "layout.paper.onnx", "ocr.res")
+    for d in (resource_dir, bundled_dir):
+        if any(os.path.exists(os.path.join(d, m)) for m in markers):
+            return d
+
     return resource_dir
 
 
