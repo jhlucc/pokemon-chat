@@ -8,7 +8,7 @@
 
       <div class="hero-content">
         <h1 class="hero-title">
-          <span class="wave">👋</span> 你好，我是可萌
+          <span class="wave">👋</span> 你好，我是<span class="brand-name">可萌</span>
         </h1>
         <p class="hero-subtitle">基于宝可梦知识图谱的智能助手</p>
       </div>
