@@ -256,8 +256,8 @@ const kbTooltip = computed(() => {
   gap: 6px;
   padding: 6px 12px;
   border-radius: var(--radius-md);
-  border: 1px solid var(--gray-300);
-  background: var(--surface-color);
+  border: 1px solid var(--gray-200);
+  background: var(--gray-50);
   font-size: var(--font-size-xs);
   cursor: pointer;
   transition: all var(--duration-fast) var(--ease-default);
@@ -267,17 +267,17 @@ const kbTooltip = computed(() => {
 
   .chip-icon {
     font-size: 15px;
-    color: #444444; /* dark gray for clear visibility */
+    color: #374151; /* dark gray - equivalent to text-gray-700 */
   }
 
   .chip-label {
     font-weight: 600;
-    color: #333333; /* very dark gray */
+    color: #1f2937; /* very dark - equivalent to text-gray-800 */
   }
 
   .chip-caret {
     font-size: 10px;
-    color: var(--gray-600);
+    color: var(--gray-500);
     margin-left: 2px;
   }
 
@@ -324,15 +324,15 @@ const kbTooltip = computed(() => {
 
   /* Agent 模式特殊样式 */
   &.capability-chip--agent {
-    background: var(--surface-color);
-    border: 1px solid var(--gray-300);
+    background: var(--gray-50);
+    border: 1px solid var(--gray-200);
 
     .chip-icon {
-      color: #444444; /* dark gray */
+      color: #374151; /* dark gray */
     }
 
     .chip-label {
-      color: #333333; /* very dark gray */
+      color: #1f2937; /* very dark */
     }
 
     .chip-status {

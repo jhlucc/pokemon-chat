@@ -291,12 +291,13 @@ const filteredRefs = computed(() => {
   &.from-user {
     flex-direction: row-reverse;
     .message-box {
-      background: var(--gradient-primary);
+      background: linear-gradient(135deg, #ff8a00 0%, #ff6b00 100%);
       color: var(--message-user-text);
       border: none;
-      box-shadow: var(--message-user-shadow);
-      border-radius: var(--message-user-radius);
-      max-width: var(--message-max-width);
+      box-shadow: 0 4px 12px rgba(255, 107, 0, 0.25);
+      border-radius: var(--radius-lg) var(--radius-lg) var(--radius-xs) var(--radius-lg);
+      max-width: min(600px, 85%);
+      width: fit-content;
 
       :deep(a) { color: var(--message-user-text); text-decoration: underline; }
     }
@@ -313,10 +314,11 @@ const filteredRefs = computed(() => {
     .message-box {
       background: var(--surface-color);
       color: var(--chat-assistant-text);
-      border: 1px solid var(--border-color);
-      box-shadow: var(--shadow-xs);
-      border-radius: var(--radius-xs) var(--radius-md) var(--radius-md) var(--radius-md);
-      max-width: 960px;
+      border: 1px solid var(--gray-100);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+      border-radius: var(--radius-xs) var(--radius-lg) var(--radius-lg) var(--radius-lg);
+      max-width: min(720px, 90%);
+      width: fit-content;
     }
 
     .avatar {
@@ -339,7 +341,7 @@ const filteredRefs = computed(() => {
 /* ===== message box ===== */
 .message-box {
   display: inline-block;
-  padding: var(--space-3) var(--space-5);
+  padding: var(--space-3) var(--space-4);
   user-select: text;
   word-break: break-word;
   font-size: var(--font-size-md);
@@ -348,8 +350,9 @@ const filteredRefs = computed(() => {
 
   &.assistant,
   &.received {
-    display: block;
-    width: 100%;
+    display: inline-block;
+    width: fit-content;
+    min-width: 60px;
   }
 }
 

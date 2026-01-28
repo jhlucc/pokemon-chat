@@ -1209,10 +1209,9 @@ const selectModel = (provider, name) => {
 
     &:focus-within {
       box-shadow:
-        0 4px 20px rgba(0, 0, 0, 0.08),
-        0 12px 48px rgba(255, 125, 0, 0.12);
-      border-color: color-mix(in srgb, var(--primary-color) 25%, transparent);
-      transform: translateY(-2px);
+        0 4px 20px rgba(0, 0, 0, 0.06),
+        0 8px 32px rgba(255, 125, 0, 0.06);
+      border-color: color-mix(in srgb, var(--primary-color) 35%, transparent);
     }
 
     &.wide-screen {
@@ -1221,10 +1220,10 @@ const selectModel = (provider, name) => {
 
     .note {
       width: 100%;
-      font-size: 11px;
+      font-size: 10px;
       text-align: center;
       padding: 0;
-      color: var(--gray-400);
+      color: var(--gray-300);
       margin-top: var(--space-2);
       margin-bottom: 0;
       user-select: none;
