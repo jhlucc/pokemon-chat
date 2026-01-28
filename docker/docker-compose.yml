@@ -102,6 +102,7 @@ services:
   neo4j-bootstrap:
     profiles: ["infra"]
     image: pk-api
+    pull_policy: never
     restart: "no"
     command: ["python", "scripts/import_graph.py", "--wait-seconds", "120"]
     environment:
@@ -211,9 +212,9 @@ services:
     ports:
       - "10095:10095"
     command: >
-      bash -c "cd /workspace/FunASR/runtime && 
-      nohup bash run_server.sh 
-      --download-model-dir /workspace/models 
+      bash -c "cd /workspace/FunASR/runtime &&
+      nohup bash run_server.sh
+      --download-model-dir /workspace/models
       --model-dir damo/speech_paraformer-large-vad-punc_asr_nat-zh-cn-16k-common-vocab8404-onnx
       --vad-dir damo/speech_fsmn_vad_zh-cn-16k-common-onnx
       --punc-dir damo/punc_ct-transformer_zh-cn-common-vocab272727-onnx
@@ -228,3 +229,6 @@ services:
 networks:
   vector-net:
     driver: bridge
+
+volumes:
+  mysql-data:
