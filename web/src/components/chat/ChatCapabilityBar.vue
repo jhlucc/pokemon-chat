@@ -254,12 +254,12 @@ const kbTooltip = computed(() => {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 4px 10px;
-  border-radius: var(--radius-sm);
+  padding: 5px 12px;
+  border-radius: var(--radius-md);
   border: none;
-  background: var(--gray-100);
+  background: var(--surface-color-2);
   font-size: var(--font-size-xs);
-  color: var(--gray-600);
+  color: var(--gray-700);
   cursor: pointer;
   transition: all var(--duration-fast) var(--ease-default);
   user-select: none;
@@ -267,8 +267,8 @@ const kbTooltip = computed(() => {
   flex-shrink: 0;
 
   .chip-icon {
-    font-size: 12px;
-    opacity: 0.7;
+    font-size: 13px;
+    opacity: 0.85;
   }
 
   .chip-label {
@@ -277,13 +277,17 @@ const kbTooltip = computed(() => {
 
   .chip-caret {
     font-size: 10px;
-    opacity: 0.5;
+    opacity: 0.6;
     margin-left: 2px;
   }
 
   &:hover:not(.disabled) {
-    color: var(--gray-700);
-    background: var(--gray-200);
+    color: var(--primary-color);
+    background: color-mix(in srgb, var(--primary-color) 10%, var(--surface-color));
+
+    .chip-icon {
+      opacity: 1;
+    }
   }
 
   &:focus-visible {
@@ -294,7 +298,7 @@ const kbTooltip = computed(() => {
   /* 激活状态：非常柔和的橙色背景 */
   &.active {
     color: var(--primary-color);
-    background: rgba(255, 125, 0, 0.1);
+    background: rgba(255, 125, 0, 0.12);
 
     .chip-icon {
       opacity: 1;

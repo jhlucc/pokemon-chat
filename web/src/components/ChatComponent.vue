@@ -1193,21 +1193,26 @@ const selectModel = (provider, name) => {
     max-width: 800px;
     margin: 0 auto;
 
-    /* Glassmorphism Style - blends with global background */
-    background-color: color-mix(in srgb, var(--surface-color) 85%, transparent);
+    /* Glassmorphism Style - Cockpit feel */
+    background-color: color-mix(in srgb, var(--surface-color) 90%, transparent);
     backdrop-filter: blur(var(--blur-lg));
     -webkit-backdrop-filter: blur(var(--blur-lg));
-    border-radius: var(--radius-lg);
-    box-shadow: var(--shadow-sm);
-    border: 1px solid color-mix(in srgb, var(--border-color) 80%, transparent);
+    border-radius: var(--radius-xl);
+    box-shadow:
+      0 4px 20px rgba(0, 0, 0, 0.06),
+      0 8px 40px rgba(255, 125, 0, 0.08);
+    border: 1px solid color-mix(in srgb, var(--border-color) 70%, transparent);
 
     padding: var(--space-1);
     animation: width var(--duration-slow) ease-in-out;
     transition: all var(--duration-slow) ease;
 
     &:focus-within {
-      box-shadow: var(--input-shadow-focus);
-      border-color: color-mix(in srgb, var(--primary-color) 30%, transparent);
+      box-shadow:
+        0 4px 20px rgba(0, 0, 0, 0.08),
+        0 12px 48px rgba(255, 125, 0, 0.12);
+      border-color: color-mix(in srgb, var(--primary-color) 25%, transparent);
+      transform: translateY(-2px);
     }
 
     &.wide-screen {

@@ -468,8 +468,8 @@ const escapeRegExp = (string) => {
   align-items: flex-start;
   justify-content: space-between;
   padding: var(--space-3) var(--space-4);
-  margin: 2px var(--space-3);
-  border-radius: var(--radius-lg);
+  margin: 3px var(--space-3);
+  border-radius: 12px;
   cursor: pointer;
   transition: all var(--duration-fast) var(--ease-default);
   position: relative;
@@ -485,8 +485,9 @@ const escapeRegExp = (string) => {
 
   /* 选中态：柔和的胶囊形晨光效果 */
   &.active {
-    background: color-mix(in srgb, var(--primary-color) 8%, var(--surface-color));
-    border-color: color-mix(in srgb, var(--primary-color) 15%, transparent);
+    background: color-mix(in srgb, var(--primary-color) 10%, var(--surface-color));
+    border-color: color-mix(in srgb, var(--primary-color) 20%, transparent);
+    box-shadow: 0 2px 8px rgba(255, 125, 0, 0.08);
 
     .item-title {
       color: var(--primary-color);
