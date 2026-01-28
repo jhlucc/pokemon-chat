@@ -6,152 +6,156 @@
     :aria-label="isUser ? '用户消息' : '助手消息'"
   >
     <img class="avatar" :src="`/${avatar}`" :alt="isUser ? '用户头像' : '助手头像'" />
-    <div class="message-box" :class="message.role">
-      <!-- 用户消息 -->
-      <template v-if="isUser">
-        {{ message.content }}
-      </template>
 
-      <!-- 助手消息 -->
-      <template v-else-if="message.role === 'assistant'">
-        <p v-if="debugMode" class="debug-status">{{ message.status }}</p>
+    <!-- 内容包装器：包含气泡 + 工具栏 -->
+    <div class="message-content-wrapper">
+      <div class="message-box" :class="message.role">
+        <!-- 用户消息 -->
+        <template v-if="isUser">
+          {{ message.content }}
+        </template>
 
-        <!-- 推理过程 -->
-        <div v-if="message.reasoning_content" class="reasoning-box">
-          <div class="reasoning-header" @click="reasoningOpen = !reasoningOpen">
-            <div class="reasoning-indicator">
-              <ThunderboltOutlined class="reasoning-icon" :class="{ active: message.status === 'reasoning' }" />
-              <span class="reasoning-title">
-                {{ message.status === 'reasoning' ? '正在思考...' : '推理过程' }}
-              </span>
+        <!-- 助手消息 -->
+        <template v-else-if="message.role === 'assistant'">
+          <p v-if="debugMode" class="debug-status">{{ message.status }}</p>
+
+          <!-- 推理过程 -->
+          <div v-if="message.reasoning_content" class="reasoning-box">
+            <div class="reasoning-header" @click="reasoningOpen = !reasoningOpen">
+              <div class="reasoning-indicator">
+                <ThunderboltOutlined class="reasoning-icon" :class="{ active: message.status === 'reasoning' }" />
+                <span class="reasoning-title">
+                  {{ message.status === 'reasoning' ? '正在思考...' : '推理过程' }}
+                </span>
+              </div>
+              <CaretRightOutlined class="reasoning-caret" :class="{ open: reasoningOpen }" />
             </div>
-            <CaretRightOutlined class="reasoning-caret" :class="{ open: reasoningOpen }" />
+            <transition name="collapse">
+              <div v-if="reasoningOpen" class="reasoning-body">
+                <p class="reasoning-content">{{ message.reasoning_content }}</p>
+              </div>
+            </transition>
           </div>
-          <transition name="collapse">
-            <div v-if="reasoningOpen" class="reasoning-body">
-              <p class="reasoning-content">{{ message.reasoning_content }}</p>
+
+          <!-- 加载状态 -->
+          <div v-if="isEmptyAndLoading" class="loading-state">
+            <div class="typing-indicator">
+              <div class="typing-indicator__dot"></div>
+              <div class="typing-indicator__dot"></div>
+              <div class="typing-indicator__dot"></div>
             </div>
-          </transition>
-        </div>
-
-        <!-- 加载状态 -->
-        <div v-if="isEmptyAndLoading" class="loading-state">
-          <div class="typing-indicator">
-            <div class="typing-indicator__dot"></div>
-            <div class="typing-indicator__dot"></div>
-            <div class="typing-indicator__dot"></div>
-          </div>
-        </div>
-
-        <!-- 检索状态 (详细进度) -->
-        <RetrievalStatus
-          v-else-if="showRetrievalStatus"
-          :status="message.status"
-          :refs="message.refs"
-          :active-step="message.meta?.active_step"
-          :show-knowledge-base="showKnowledgeBase"
-          :show-knowledge-graph="showKnowledgeGraph"
-          :show-web-search="showWebSearch"
-          :show-mcp="showMcp"
-        />
-
-        <!-- 错误状态 -->
-        <div v-else-if="message.status === 'error'" class="error-msg" @click="$emit('retry')">
-          <img src="/error-state.png" alt="" class="error-image" />
-          <div class="error-content">
-            <span class="error-text">请求出错，点击重试</span>
-            <span v-if="message.message" class="error-detail">{{ message.message }}</span>
-          </div>
-          <ReloadOutlined class="error-retry" />
-        </div>
-
-        <!-- Markdown 内容 -->
-        <MdPreview
-          v-else-if="message.content"
-          ref="editorRef"
-          editorId="preview-only"
-          previewTheme="github"
-          :showCodeRowNumber="false"
-          :modelValue="message.content"
-          :key="message.id"
-          class="message-md"
-        />
-        <div v-else-if="message.reasoning_content" class="empty-block"></div>
-
-        <!-- 工具调用 -->
-        <slot
-          v-else-if="message.toolCalls && Object.keys(message.toolCalls).length > 0"
-          name="tool-calls"
-        ></slot>
-
-        <!-- 回退错误 -->
-        <div v-else class="error-msg" @click="$emit('retry')">
-          <ExclamationCircleOutlined class="error-icon" />
-          <div class="error-content">
-            <span class="error-text">请求出错，点击重试</span>
-            <span v-if="message.message" class="error-detail">{{ message.message }}</span>
-          </div>
-          <ReloadOutlined class="error-retry" />
-        </div>
-
-        <!-- 停止生成提示 -->
-        <div v-if="message.isStoppedByUser" class="stopped-hint">
-          <span class="stopped-text">已停止生成</span>
-          <a class="stopped-link" @click="emit('retryStoppedMessage', message.id)">重新编辑问题</a>
-        </div>
-
-        <!-- 引用来源与工具栏 -->
-        <div v-if="message.status === 'finished'" class="message-footer">
-          <!-- 消息工具栏 (hover 显示) -->
-          <div class="message-toolbar hover-reveal">
-            <a-tooltip title="复制">
-              <button class="toolbar-btn" @click="copyContent">
-                <CopyOutlined />
-              </button>
-            </a-tooltip>
-            <a-tooltip title="重新生成">
-              <button class="toolbar-btn" @click="emit('retry')">
-                <ReloadOutlined />
-              </button>
-            </a-tooltip>
-            <span class="toolbar-divider"></span>
-            <a-tooltip title="有帮助">
-              <button
-                class="toolbar-btn"
-                :class="{ active: feedback === 'positive' }"
-                @click="setFeedback('positive')"
-              >
-                <LikeOutlined />
-              </button>
-            </a-tooltip>
-            <a-tooltip title="没帮助">
-              <button
-                class="toolbar-btn"
-                :class="{ active: feedback === 'negative' }"
-                @click="setFeedback('negative')"
-              >
-                <DislikeOutlined />
-              </button>
-            </a-tooltip>
-
-            <!-- 模型名和响应时间 -->
-            <span v-if="message.meta?.server_model_name" class="toolbar-meta">
-              {{ message.meta.server_model_name }}
-            </span>
           </div>
 
-          <!-- 引用来源 -->
-          <RefsComponent
-            v-if="showRefs"
-            :message="message"
-            :show-refs="filteredRefs"
-            @retry="emit('retry')"
+          <!-- 检索状态 (详细进度) -->
+          <RetrievalStatus
+            v-else-if="showRetrievalStatus"
+            :status="message.status"
+            :refs="message.refs"
+            :active-step="message.meta?.active_step"
+            :show-knowledge-base="showKnowledgeBase"
+            :show-knowledge-graph="showKnowledgeGraph"
+            :show-web-search="showWebSearch"
+            :show-mcp="showMcp"
           />
-        </div>
-      </template>
 
-      <!-- 自定义内容 -->
-      <slot></slot>
+          <!-- 错误状态 -->
+          <div v-else-if="message.status === 'error'" class="error-msg" @click="$emit('retry')">
+            <img src="/error-state.png" alt="" class="error-image" />
+            <div class="error-content">
+              <span class="error-text">请求出错，点击重试</span>
+              <span v-if="message.message" class="error-detail">{{ message.message }}</span>
+            </div>
+            <ReloadOutlined class="error-retry" />
+          </div>
+
+          <!-- Markdown 内容 -->
+          <MdPreview
+            v-else-if="message.content"
+            ref="editorRef"
+            editorId="preview-only"
+            previewTheme="github"
+            :showCodeRowNumber="false"
+            :modelValue="message.content"
+            :key="message.id"
+            class="message-md"
+          />
+          <div v-else-if="message.reasoning_content" class="empty-block"></div>
+
+          <!-- 工具调用 -->
+          <slot
+            v-else-if="message.toolCalls && Object.keys(message.toolCalls).length > 0"
+            name="tool-calls"
+          ></slot>
+
+          <!-- 回退错误 -->
+          <div v-else class="error-msg" @click="$emit('retry')">
+            <ExclamationCircleOutlined class="error-icon" />
+            <div class="error-content">
+              <span class="error-text">请求出错，点击重试</span>
+              <span v-if="message.message" class="error-detail">{{ message.message }}</span>
+            </div>
+            <ReloadOutlined class="error-retry" />
+          </div>
+
+          <!-- 停止生成提示 -->
+          <div v-if="message.isStoppedByUser" class="stopped-hint">
+            <span class="stopped-text">已停止生成</span>
+            <a class="stopped-link" @click="emit('retryStoppedMessage', message.id)">重新编辑问题</a>
+          </div>
+        </template>
+
+        <!-- 自定义内容 -->
+        <slot></slot>
+      </div>
+
+      <!-- 工具栏移到气泡外面 -->
+      <div v-if="!isUser && message.status === 'finished'" class="message-footer">
+        <!-- 消息工具栏 (hover 显示) -->
+        <div class="message-toolbar hover-reveal">
+          <!-- 模型名做成小标签 -->
+          <span v-if="message.meta?.server_model_name" class="toolbar-model-badge">
+            {{ shortenModelName(message.meta.server_model_name) }}
+          </span>
+
+          <a-tooltip title="复制">
+            <button class="toolbar-btn" @click="copyContent">
+              <CopyOutlined />
+            </button>
+          </a-tooltip>
+          <a-tooltip title="重新生成">
+            <button class="toolbar-btn" @click="emit('retry')">
+              <ReloadOutlined />
+            </button>
+          </a-tooltip>
+          <span class="toolbar-divider"></span>
+          <a-tooltip title="有帮助">
+            <button
+              class="toolbar-btn"
+              :class="{ active: feedback === 'positive' }"
+              @click="setFeedback('positive')"
+            >
+              <LikeOutlined />
+            </button>
+          </a-tooltip>
+          <a-tooltip title="没帮助">
+            <button
+              class="toolbar-btn"
+              :class="{ active: feedback === 'negative' }"
+              @click="setFeedback('negative')"
+            >
+              <DislikeOutlined />
+            </button>
+          </a-tooltip>
+        </div>
+
+        <!-- 引用来源 -->
+        <RefsComponent
+          v-if="showRefs"
+          :message="message"
+          :show-refs="filteredRefs"
+          @retry="emit('retry')"
+        />
+      </div>
     </div>
   </div>
 </template>
@@ -277,6 +281,18 @@ const filteredRefs = computed(() => {
   }
   return props.showRefs
 })
+
+// 缩短模型名称显示
+const shortenModelName = (name) => {
+  if (!name) return ''
+  // 移除提供商前缀 (如 "Qwen/")
+  const shortName = name.split('/').pop()
+  // 如果仍然太长，截断
+  if (shortName.length > 20) {
+    return shortName.slice(0, 18) + '...'
+  }
+  return shortName
+}
 </script>
 
 <!-- =============== scoped styles =============== -->
@@ -290,6 +306,11 @@ const filteredRefs = computed(() => {
 
   &.from-user {
     flex-direction: row-reverse;
+
+    .message-content-wrapper {
+      align-items: flex-end;
+    }
+
     .message-box {
       /* 渐变橙色 + 暖色投影 */
       background: linear-gradient(135deg, #FFA940 0%, #FF7D00 100%);
@@ -299,7 +320,6 @@ const filteredRefs = computed(() => {
       /* 右上角直角指向用户头像 */
       border-radius: var(--radius-md) var(--radius-xs) var(--radius-md) var(--radius-md);
       max-width: min(520px, 80%);
-      width: fit-content;
 
       :deep(a) { color: var(--message-user-text); text-decoration: underline; }
     }
@@ -314,6 +334,11 @@ const filteredRefs = computed(() => {
 
   &.from-ai {
     flex-direction: row;
+
+    .message-content-wrapper {
+      align-items: flex-start;
+    }
+
     .message-box {
       /* 微透玻璃感 */
       background: color-mix(in srgb, var(--surface-color) 95%, transparent);
@@ -325,7 +350,6 @@ const filteredRefs = computed(() => {
       /* 左上角直角指向 AI 头像 */
       border-radius: var(--radius-xs) var(--radius-md) var(--radius-md) var(--radius-md);
       max-width: min(640px, 85%);
-      width: fit-content;
     }
 
     .avatar {
@@ -346,6 +370,13 @@ const filteredRefs = computed(() => {
   }
 }
 
+/* ===== 内容包装器 ===== */
+.message-content-wrapper {
+  display: flex;
+  flex-direction: column;
+  max-width: min(640px, 85%);
+}
+
 /* ===== message box ===== */
 .message-box {
   display: inline-block;
@@ -355,11 +386,10 @@ const filteredRefs = computed(() => {
   font-size: var(--font-size-md);
   line-height: var(--line-height-relaxed);
   position: relative;
+  width: fit-content;
 
   &.assistant,
   &.received {
-    display: inline-block;
-    width: fit-content;
     min-width: 40px;
   }
 }
@@ -555,58 +585,68 @@ const filteredRefs = computed(() => {
   }
 }
 
-/* ===== message footer (toolbar + refs) ===== */
+/* ===== message footer (工具栏在气泡外面) ===== */
 .message-footer {
-  margin-top: var(--space-3);
-  padding-top: var(--space-2);
+  margin-top: var(--space-2);
+  margin-left: var(--space-1);
 }
 
-/* ===== message toolbar (hover reveal) ===== */
+/* ===== message toolbar (hover 显示) ===== */
 .message-toolbar {
   display: flex;
   align-items: center;
-  gap: var(--toolbar-gap);
-  margin-bottom: var(--space-2);
+  gap: var(--space-2);
+  opacity: 0;
   transition: opacity var(--duration-fast) var(--ease-default);
+}
+
+/* 父容器 hover 时显示工具栏 */
+.message-wrapper:hover .message-toolbar {
+  opacity: 1;
+}
+
+/* 模型名做成小标签 */
+.toolbar-model-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 6px;
+  font-size: 10px;
+  font-family: var(--font-family-mono);
+  background: var(--gray-100);
+  color: var(--gray-500);
+  border-radius: 4px;
+  margin-right: var(--space-1);
 }
 
 .toolbar-btn {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: var(--toolbar-btn-size);
-  height: var(--toolbar-btn-size);
+  width: 24px;
+  height: 24px;
   border: none;
   border-radius: var(--radius-sm);
   background: transparent;
-  color: var(--gray-500);
+  color: var(--gray-400);
   cursor: pointer;
   transition: all var(--duration-fast) var(--ease-default);
-  font-size: var(--font-size-base);
+  font-size: 13px;
 
   &:hover {
     background: var(--hover-bg);
-    color: var(--gray-700);
+    color: var(--primary-color);
   }
 
   &.active {
     color: var(--primary-color);
-    background: color-mix(in srgb, var(--primary-color) 5%, transparent);
   }
 }
 
 .toolbar-divider {
   width: 1px;
-  height: 16px;
+  height: 14px;
   background: var(--gray-200);
   margin: 0 var(--space-1);
-}
-
-.toolbar-meta {
-  margin-left: auto;
-  font-size: var(--font-size-xs);
-  color: var(--gray-400);
-  font-family: var(--font-family-mono);
 }
 
 /* ===== tool call capsules ===== */
