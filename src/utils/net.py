@@ -56,4 +56,3 @@ def parse_host_port(uri: str, default_port: int) -> tuple[str, int]:
         return host, default_port
 
     return uri, default_port
-

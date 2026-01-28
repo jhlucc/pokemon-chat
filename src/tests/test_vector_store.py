@@ -65,7 +65,9 @@ class TestVectorStore(unittest.TestCase):
     @patch("src.knowledge.store.vector.connections")
     @patch("src.knowledge.store.vector.Collection")
     @patch("src.knowledge.store.vector.utility")
-    def test_uses_settings_milvus_uri_when_default_host_port(self, mock_utility, mock_collection, mock_connections, mock_settings):
+    def test_uses_settings_milvus_uri_when_default_host_port(
+        self, mock_utility, mock_collection, mock_connections, mock_settings
+    ):
         mock_utility.has_collection.return_value = False
         mock_connections.has_connection.return_value = False
         mock_settings.database.milvus_uri = "http://milvus:19530"

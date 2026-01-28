@@ -1,6 +1,8 @@
+import os
 import sys
 import uuid
 from contextlib import asynccontextmanager
+from importlib import metadata
 from pathlib import Path
 
 import uvicorn
@@ -28,9 +30,30 @@ async def lifespan(app: FastAPI):
     yield
     # Best-effort cleanup for cached runtime singletons.
     await aclose_all()
+    # Stop background threads (used by `asyncio.run_in_executor` call sites).
+    try:
+        from src import shutdown_executor
+
+        shutdown_executor(wait=False)
+    except Exception:
+        pass
 
 
-app = FastAPI(lifespan=lifespan)
+def _app_version() -> str:
+    v = (os.getenv("APP_VERSION") or "").strip()
+    if v:
+        return v
+    try:
+        return metadata.version("pokemon-chat")
+    except Exception:
+        return "0.0.0"
+
+
+app = FastAPI(
+    title=(os.getenv("APP_TITLE") or "pokemon-chat").strip() or "pokemon-chat",
+    version=_app_version(),
+    lifespan=lifespan,
+)
 # Serve endpoints both at `/` and `/api` so the frontend can work:
 # - with Vite dev proxy (rewrites `/api/*` -> `/*`)
 # - without any proxy (calls `/api/*` directly)

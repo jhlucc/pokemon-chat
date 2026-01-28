@@ -42,11 +42,11 @@ class MilvusStorage:
         if utility.has_collection(collection_name):
             if overwrite:
                 utility.drop_collection(collection_name)
-                print(f"已覆盖并删除原有集合: {collection_name}")
+                _log.info(f"Dropped existing collection: {collection_name}")
                 self.collection = self._create_collection()
             else:
                 self.collection = Collection(collection_name)
-                print(f"已加载现有集合: {collection_name}")
+                _log.info(f"Loaded existing collection: {collection_name}")
         else:
             self.collection = self._create_collection()
 
@@ -54,7 +54,7 @@ class MilvusStorage:
             self._create_index()
 
     def _create_collection(self) -> Collection:
-        print(f"创建新集合: {self.collection_name}")
+        _log.info(f"Creating Milvus collection: {self.collection_name}")
         return Collection(name=self.collection_name, schema=self.schema, consistency_level="Strong")
 
     def _create_index(self, index_params: dict | None = None):
@@ -67,7 +67,7 @@ class MilvusStorage:
         注意：要求 doc.metadata["embedding"] 已经存在且维度 == self.dim
         """
         total_docs = len(documents)
-        print(f"开始插入 {total_docs} 个文档...")
+        _log.info(f"Inserting {total_docs} documents into Milvus collection={self.collection_name}")
 
         inserted = 0
         for i in range(0, total_docs, batch_size):
@@ -95,11 +95,6 @@ class MilvusStorage:
                 metas.append(clean_meta)
                 lengths.append(len(doc.page_content))
 
-                texts.append(doc.page_content)
-                embeddings.append(emb)
-                metas.append(doc.metadata)
-                lengths.append(len(doc.page_content))
-
             entities = [
                 texts,  # text
                 embeddings,  # embedding
@@ -108,12 +103,12 @@ class MilvusStorage:
             ]
             self.collection.insert(entities)
             inserted += len(batch)
-            print(f"已插入 {inserted}/{total_docs} 条...")
+            _log.info(f"Inserted {inserted}/{total_docs} docs...")
 
         self.collection.flush()
-        print(f"插入完成, {self.collection.num_entities} 条数据在集合 {self.collection_name} 中.")
+        _log.info(f"Insertion complete: {self.collection.num_entities} entities in collection={self.collection_name}")
 
     def close(self):
         # Milvus官方SDK: 指定alias (默认 "default")
         connections.disconnect(alias="default")
-        print("Milvus 连接已关闭")
+        _log.info("Milvus connection closed.")

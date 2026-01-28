@@ -22,6 +22,16 @@ from concurrent.futures import ThreadPoolExecutor
 executor = ThreadPoolExecutor()
 
 
+def shutdown_executor(*, wait: bool = False) -> None:
+    """Best-effort shutdown for the shared threadpool."""
+    global executor
+    try:
+        executor.shutdown(wait=wait, cancel_futures=True)
+    except TypeError:
+        # Older Python compatibility (no cancel_futures kwarg).
+        executor.shutdown(wait=wait)
+
+
 # =============================================================================
 # DEPRECATED: Legacy config proxy (for backward compatibility only)
 # New code should use `from src.core.settings import settings`

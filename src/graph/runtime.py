@@ -66,4 +66,3 @@ def reset_graph_workers() -> None:
 
     if cleared:
         _log.info(f"Graph worker caches cleared: {', '.join(cleared)}")
-
