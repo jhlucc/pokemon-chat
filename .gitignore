@@ -19,7 +19,6 @@ coverage/
 src/.env
 # ...but keep safe templates/examples tracked
 !.env.example
-!.env.template
 
 # Logs
 logs/

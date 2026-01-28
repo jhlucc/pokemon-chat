@@ -4,12 +4,16 @@ import { defineConfig, loadEnv } from 'vite'
 import vue from '@vitejs/plugin-vue'
 
 export default defineConfig(({ mode }) => {
-  const env = loadEnv(mode, process.cwd(), '')
+  // Unify env: load from repo root (one level above /web).
+  // Only load VITE_* keys to avoid pulling backend secrets into the build config.
+  const repoRoot = fileURLToPath(new URL('..', import.meta.url))
+  const env = loadEnv(mode, repoRoot, 'VITE_')
   const pkg = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf-8'))
   const buildTime = env.VITE_BUILD_TIME || new Date().toISOString()
   const buildSha = env.VITE_BUILD_SHA || process.env.GITHUB_SHA || ''
   return {
     plugins: [vue()],
+    envDir: repoRoot,
     define: {
       // Make app metadata available at runtime via import.meta.env.
       'import.meta.env.VITE_APP_VERSION': JSON.stringify(env.VITE_APP_VERSION || pkg.version),

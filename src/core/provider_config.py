@@ -29,7 +29,7 @@ def _canonical_provider(provider: str) -> str:
     return _ALIAS_TO_CANONICAL.get(p, p)
 
 
-# Provider -> env var mapping (compat with existing `.env.template` and code)
+# Provider -> env var mapping (compat with existing env patterns and code)
 _PROVIDER_ENV: dict[str, dict[str, str]] = {
     "siliconflow": {"api_key": "SILICONFLOW_API_KEY", "api_base": "SILICONFLOW_API_BASE"},
     "openai": {"api_key": "OPENAI_API_KEY", "api_base": "OPENAI_API_BASE"},

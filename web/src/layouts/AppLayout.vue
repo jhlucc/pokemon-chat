@@ -362,12 +362,6 @@ const mainList = computed(() => {
           <a :href="apiDocsUrl" target="_blank" rel="noopener noreferrer">{{ apiDocsUrl }}</a>
         </a-descriptions-item>
       </a-descriptions>
-      <a-alert
-        style="margin-top: 12px"
-        type="info"
-        show-icon
-        message="排查问题时请提供 Request ID（RID），可在错误提示或后端响应头 X-Request-ID 中找到。"
-      />
     </a-modal>
   </div>
 </template>

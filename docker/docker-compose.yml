@@ -152,7 +152,7 @@ services:
     networks:
       - vector-net
   mysql:
-    image: ${MYSQL_IMAGE:-mysql:5.7}
+    image: mysql:5.7
     container_name: mysql-pokemon
     restart: unless-stopped
     ports:

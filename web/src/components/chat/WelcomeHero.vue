@@ -14,23 +14,6 @@
       </div>
     </div>
 
-    <!-- Capabilities Card -->
-    <div class="capabilities-card">
-      <div class="capabilities-header">
-        <BulbOutlined class="capabilities-icon" />
-        <span>我可以帮你</span>
-      </div>
-      <ul class="capabilities-list">
-        <li v-for="(cap, index) in capabilities" :key="index">
-          <component :is="cap.icon" class="cap-icon" />
-          <span>{{ cap.text }}</span>
-        </li>
-      </ul>
-      <div class="disclaimer">
-        <InfoCircleOutlined />
-        <span>回复基于知识库生成，可能存在不准确之处，请注意甄别</span>
-      </div>
-    </div>
 
     <!-- Quick Actions Grid -->
     <div class="quick-actions">
@@ -57,8 +40,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import {
-  BulbOutlined,
-  InfoCircleOutlined,
   SearchOutlined,
   ThunderboltOutlined,
   ApartmentOutlined,
@@ -74,13 +55,6 @@ defineEmits<{
 }>()
 
 const avatarSrc = computed(() => props.avatarSrc || '/user.png')
-
-const capabilities = [
-  { icon: SearchOutlined, text: '查询宝可梦属性、技能、进化链' },
-  { icon: ThunderboltOutlined, text: '分析对战数据和战力评估' },
-  { icon: ApartmentOutlined, text: '探索角色关系和故事背景' },
-  { icon: MessageOutlined, text: '回答宝可梦相关的各种问题' }
-]
 
 const quickActions = [
   {
@@ -196,74 +170,6 @@ const quickActions = [
   50%, 100% { transform: rotate(0deg); }
 }
 
-/* Capabilities Card */
-.capabilities-card {
-  position: relative;
-  z-index: 1;
-  width: 100%;
-  max-width: 480px;
-  background: var(--surface-color);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-md);
-  padding: var(--space-4);
-  box-shadow: var(--shadow-xs);
-}
-
-.capabilities-header {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  font-size: var(--font-size-base);
-  font-weight: 600;
-  color: var(--text-color);
-  margin-bottom: var(--space-3);
-
-  .capabilities-icon {
-    color: var(--primary-color);
-  }
-}
-
-.capabilities-list {
-  list-style: none;
-  padding: 0;
-  margin: 0 0 var(--space-3) 0;
-
-  li {
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
-    padding: var(--space-2) 0;
-    font-size: var(--font-size-sm);
-    color: var(--gray-700);
-
-    .cap-icon {
-      color: var(--gray-500);
-      font-size: 14px;
-    }
-  }
-}
-
-.disclaimer {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--space-2);
-  padding: var(--space-3);
-  background: var(--gray-50);
-  border-radius: var(--radius-sm);
-  font-size: var(--font-size-xs);
-  color: var(--gray-600);
-  line-height: var(--line-height-base);
-
-  :deep(.anticon) {
-    flex-shrink: 0;
-    margin-top: 2px;
-  }
-}
-
-:root[data-theme='dark'] .disclaimer {
-  background: var(--gray-100);
-}
-
 /* Quick Actions */
 .quick-actions {
   position: relative;
@@ -290,26 +196,35 @@ const quickActions = [
   align-items: flex-start;
   gap: var(--space-3);
   padding: var(--space-3) var(--space-4);
-  background: var(--surface-color);
-  border: 1px solid var(--border-color);
+  /* Glassmorphism Style */
+  background: color-mix(in srgb, var(--surface-color) 70%, transparent);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid color-mix(in srgb, var(--border-color) 60%, transparent);
   border-radius: var(--radius-md);
   cursor: pointer;
   text-align: left;
   transition: all var(--duration-fast) var(--ease-default);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
 
   &:hover {
-    background: var(--surface-color-2);
-    border-color: color-mix(in srgb, var(--primary-color) 30%, var(--border-color));
-    transform: translateY(-2px);
-    box-shadow: var(--shadow-sm);
+    background: var(--surface-color);
+    border-color: color-mix(in srgb, var(--primary-color) 40%, var(--border-color));
+    transform: translateY(-3px);
+    box-shadow: 0 8px 24px rgba(255, 125, 0, 0.12);
 
     .action-icon {
-      transform: scale(1.1);
+      transform: scale(1.15);
+      background: color-mix(in srgb, var(--primary-color) 18%, transparent);
+    }
+
+    .action-label {
+      color: var(--primary-color);
     }
   }
 
   &:active {
-    transform: translateY(0);
+    transform: translateY(-1px);
   }
 
   .action-icon {

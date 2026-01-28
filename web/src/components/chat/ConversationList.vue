@@ -469,7 +469,7 @@ const escapeRegExp = (string) => {
   justify-content: space-between;
   padding: var(--space-3) var(--space-4);
   margin: 2px var(--space-3);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-lg);
   cursor: pointer;
   transition: all var(--duration-fast) var(--ease-default);
   position: relative;
@@ -483,25 +483,19 @@ const escapeRegExp = (string) => {
     }
   }
 
-  /* 选中态：柔和的晨光效果 */
+  /* 选中态：柔和的胶囊形晨光效果 */
   &.active {
-    background: rgba(255, 125, 0, 0.06);
-    border-color: transparent;
-
-    &::before {
-      content: '';
-      position: absolute;
-      left: 0;
-      top: 20%;
-      bottom: 20%;
-      width: 3px;
-      background: var(--primary-color);
-      border-radius: 0 2px 2px 0;
-    }
+    background: color-mix(in srgb, var(--primary-color) 8%, var(--surface-color));
+    border-color: color-mix(in srgb, var(--primary-color) 15%, transparent);
 
     .item-title {
-      color: var(--text-color);
+      color: var(--primary-color);
       font-weight: 600;
+    }
+
+    .item-time {
+      color: var(--primary-color);
+      opacity: 0.7;
     }
   }
 }
