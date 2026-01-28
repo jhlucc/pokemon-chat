@@ -24,7 +24,10 @@ services:
       funasr_url: ws://funasr:10095
 
     volumes:
-      - ./volumes/app/save:/app/resources/save
+      # Persist runtime state (agentic memory / checkpoints / uploads).
+      # Use repo-owned `resources/save` to avoid root-owned bind-mount dirs created by Docker
+      # (which would make the container's non-root user unable to write).
+      - ../resources/save:/app/resources/save
       # Read-only data mounted from the repo (kg/map/ner/etc). Required for bootstrap scripts.
       - ../resources/data:/app/resources/data:ro
     networks:
