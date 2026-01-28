@@ -12,6 +12,30 @@ export default defineConfig(({ mode }) => {
   const pkg = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf-8'))
   const buildTime = env.VITE_BUILD_TIME || new Date().toISOString()
   const buildSha = env.VITE_BUILD_SHA || process.env.GITHUB_SHA || ''
+  // Shared proxy config so both `vite dev` and `vite preview` can access the backend
+  // via `/api/*` + Swagger assets (`/openapi.json`, `/docs`).
+  const apiProxy = {
+    // Vite dev/preview server proxy. Mirrors docker/nginx reverse-proxy behavior:
+    // - `/api/*` -> backend `/*`
+    // - `/openapi.json` is required for Swagger UI (`/docs`) to render correctly.
+    '^/api': {
+      target: apiTarget,
+      changeOrigin: true,
+      rewrite: (path) => path.replace(/^\/api/, '')
+    },
+    '^/openapi.json': {
+      target: apiTarget,
+      changeOrigin: true
+    },
+    '^/docs': {
+      target: apiTarget,
+      changeOrigin: true
+    },
+    '^/redoc': {
+      target: apiTarget,
+      changeOrigin: true
+    }
+  }
   return {
     plugins: [vue()],
     envDir: repoRoot,
@@ -96,34 +120,20 @@ export default defineConfig(({ mode }) => {
       },
     },
     server: {
-      proxy: {
-        // Vite dev server proxy. Mirrors the docker/nginx reverse-proxy behavior:
-        // - `/api/*` -> backend `/*`
-        // - `/openapi.json` is required for Swagger UI (`/docs`) to render correctly.
-        '^/api': {
-          target: apiTarget,
-          changeOrigin: true,
-          rewrite: (path) => path.replace(/^\/api/, '')
-        },
-        '^/openapi.json': {
-          target: apiTarget,
-          changeOrigin: true
-        },
-        '^/docs': {
-          target: apiTarget,
-          changeOrigin: true
-        },
-        '^/redoc': {
-          target: apiTarget,
-          changeOrigin: true
-        }
-      },
+      proxy: apiProxy,
       watch: {
         usePolling: true,
         ignored: ['**/node_modules/**', '**/dist/**'],
       },
       host: '0.0.0.0',
       port: 3100,
+    },
+    preview: {
+      // `vite preview` runs on 4173 by default; keep it consistent with the user's expectation.
+      // Provide the same proxy rules as dev so `/api/docs` works (Swagger UI needs `/openapi.json`).
+      proxy: apiProxy,
+      host: '0.0.0.0',
+      port: 4173
     }
   }
 })

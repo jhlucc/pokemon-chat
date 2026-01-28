@@ -291,12 +291,14 @@ const filteredRefs = computed(() => {
   &.from-user {
     flex-direction: row-reverse;
     .message-box {
-      background: linear-gradient(135deg, #ff8a00 0%, #ff6b00 100%);
+      /* 渐变橙色 + 暖色投影 */
+      background: linear-gradient(135deg, #FFA940 0%, #FF7D00 100%);
       color: var(--message-user-text);
       border: none;
-      box-shadow: 0 4px 12px rgba(255, 107, 0, 0.25);
-      border-radius: var(--radius-lg) var(--radius-lg) var(--radius-xs) var(--radius-lg);
-      max-width: min(600px, 85%);
+      box-shadow: 0 4px 12px rgba(255, 125, 0, 0.25);
+      /* 右上角直角指向用户头像 */
+      border-radius: var(--radius-md) var(--radius-xs) var(--radius-md) var(--radius-md);
+      max-width: min(520px, 80%);
       width: fit-content;
 
       :deep(a) { color: var(--message-user-text); text-decoration: underline; }
@@ -305,27 +307,33 @@ const filteredRefs = computed(() => {
     .avatar {
       margin-left: var(--space-3);
       margin-right: 0;
-      box-shadow: var(--message-user-shadow);
+      margin-top: 2px;
+      box-shadow: 0 2px 8px rgba(255, 125, 0, 0.2);
     }
   }
 
   &.from-ai {
     flex-direction: row;
     .message-box {
-      background: var(--surface-color);
-      color: var(--chat-assistant-text);
+      /* 微透玻璃感 */
+      background: color-mix(in srgb, var(--surface-color) 95%, transparent);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      color: var(--text-color);
       border: 1px solid var(--gray-100);
       box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
-      border-radius: var(--radius-xs) var(--radius-lg) var(--radius-lg) var(--radius-lg);
-      max-width: min(720px, 90%);
+      /* 左上角直角指向 AI 头像 */
+      border-radius: var(--radius-xs) var(--radius-md) var(--radius-md) var(--radius-md);
+      max-width: min(640px, 85%);
       width: fit-content;
     }
 
     .avatar {
       margin-right: var(--space-3);
       margin-left: 0;
+      margin-top: 2px;
       border: 2px solid var(--surface-color);
-      box-shadow: var(--shadow-xs);
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
     }
   }
 
@@ -341,7 +349,7 @@ const filteredRefs = computed(() => {
 /* ===== message box ===== */
 .message-box {
   display: inline-block;
-  padding: var(--space-3) var(--space-4);
+  padding: 10px 14px;
   user-select: text;
   word-break: break-word;
   font-size: var(--font-size-md);
@@ -352,7 +360,7 @@ const filteredRefs = computed(() => {
   &.received {
     display: inline-block;
     width: fit-content;
-    min-width: 60px;
+    min-width: 40px;
   }
 }
 
@@ -663,6 +671,11 @@ const filteredRefs = computed(() => {
 <!-- =============== global styles: markdown / font =============== -->
 <style lang="less">
 .message-md.md-editor {
+  /* md-editor-v3 preview root is a flex layout by default and tends to "fill available space",
+     which makes chat bubbles look bloated. Force it to size to content. */
+  display: inline-block;
+  width: fit-content;
+  max-width: 100%;
   height: auto;
   background-color: transparent;
   border: none;
@@ -678,6 +691,19 @@ const filteredRefs = computed(() => {
   --md-scrollbar-thumb-color: var(--gray-400);
   --md-scrollbar-thumb-hover-color: var(--gray-500);
   --md-scrollbar-thumb-active-color: var(--gray-600);
+}
+
+.message-md.md-editor-previewOnly .md-editor-content {
+  /* md-editor-v3 sets `.md-editor-content` to `display:flex; flex:1; height:0` (editor layout),
+     and previewOnly overrides it to `height:100%`. In chat bubbles we want natural height. */
+  flex: none;
+  height: auto;
+}
+
+.message-md.md-editor-previewOnly .md-editor-preview-wrapper {
+  /* Avoid nested scrolling + flex stretching inside bubbles; let code blocks handle their own overflow. */
+  flex: none;
+  overflow: visible;
 }
 
 .message-md .md-editor-preview-wrapper {

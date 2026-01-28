@@ -210,11 +210,11 @@
             />
           </template>
         </MessageInputComponent>
-        <p class="note">
-          请注意辨别内容的可靠性 By {{ configStore.config?.model_provider }}:
-          {{ configStore.config?.model_name }}
-        </p>
       </div>
+      <!-- 免责声明移到输入框外面 -->
+      <p class="input-disclaimer">
+        请注意辨别内容的可靠性 · {{ configStore.config?.model_provider }}/{{ configStore.config?.model_name }}
+      </p>
     </div>
   </div>
 </template>
@@ -1154,7 +1154,7 @@ const selectModel = (provider, name) => {
 
 .chat-box {
   width: 100%;
-  max-width: 680px;
+  max-width: 760px;
   margin: 0 auto;
   flex-grow: 1;
   padding: 1rem 2rem;
@@ -1164,7 +1164,7 @@ const selectModel = (provider, name) => {
   z-index: 1;
 
   &.wide-screen {
-    max-width: 760px;
+    max-width: 960px;
   }
 
   &.font-smaller {
@@ -1190,20 +1190,21 @@ const selectModel = (provider, name) => {
 
   .message-input-wrapper {
     width: 100%;
-    max-width: 680px;
+    max-width: 760px;
     margin: 0 auto;
 
     /* Glassmorphism Style - Cockpit feel */
     background-color: color-mix(in srgb, var(--surface-color) 90%, transparent);
     backdrop-filter: blur(var(--blur-lg));
     -webkit-backdrop-filter: blur(var(--blur-lg));
-    border-radius: var(--radius-xl);
+    border-radius: var(--radius-lg);
     box-shadow:
       0 4px 20px rgba(0, 0, 0, 0.06),
       0 8px 40px rgba(255, 125, 0, 0.08);
     border: 1px solid color-mix(in srgb, var(--border-color) 70%, transparent);
 
-    padding: var(--space-1);
+    padding: var(--space-2);
+    overflow: visible;
     animation: width var(--duration-slow) ease-in-out;
     transition: all var(--duration-slow) ease;
 
@@ -1215,20 +1216,18 @@ const selectModel = (provider, name) => {
     }
 
     &.wide-screen {
-      max-width: 760px;
+      max-width: 960px;
     }
+  }
 
-    .note {
-      width: 100%;
-      font-size: 10px;
-      text-align: center;
-      padding: 0;
-      color: var(--gray-300);
-      margin-top: var(--space-2);
-      margin-bottom: 0;
-      user-select: none;
-      opacity: 0.8;
-    }
+  /* 免责声明 - 移到输入框外部 */
+  .input-disclaimer {
+    font-size: 10px;
+    text-align: center;
+    color: var(--gray-400);
+    margin-top: var(--space-2);
+    user-select: none;
+    opacity: 0.6;
   }
 }
 

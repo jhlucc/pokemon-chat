@@ -426,6 +426,8 @@ div.header,
 }
 
 .header {
+  position: relative;
+  z-index: 30;
   display: flex;
   flex-direction: column;
   flex: 0 0 70px;
@@ -732,7 +734,7 @@ div.header,
   display: none;
 }
 
-@media (max-width: 520px) {
+@media (max-width: 640px) {
   .app-layout {
     flex-direction: column-reverse;
 

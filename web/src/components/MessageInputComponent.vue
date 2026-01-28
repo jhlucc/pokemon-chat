@@ -239,15 +239,13 @@ const handleSendOrStop = () => {
   height: auto;
   margin: 0 auto;
   padding: var(--space-3) var(--space-4);
-  border: 1px solid var(--border-color);
+  border: none;
   border-radius: var(--radius-lg);
-  background: var(--surface-color);
-  box-shadow: var(--shadow-xs);
+  background: transparent;
   transition: all var(--duration-base) var(--ease-default);
 
   &.is-focused {
-    border-color: color-mix(in srgb, var(--primary-color) 40%, var(--border-color));
-    box-shadow: var(--focus-ring), var(--shadow-sm);
+    /* 轻微的聚焦效果，由外层 wrapper 控制主要效果 */
   }
 
   .input-area {
@@ -286,7 +284,9 @@ const handleSendOrStop = () => {
     align-items: center;
     padding-top: var(--space-2);
     margin-top: var(--space-2);
-    border-top: 1px solid color-mix(in srgb, var(--border-color) 50%, transparent);
+    border-top: 1px solid color-mix(in srgb, var(--border-color) 30%, transparent);
+    position: relative;
+    z-index: 5;
 
     .options__left,
     .options__right {
@@ -297,11 +297,18 @@ const handleSendOrStop = () => {
 
     .options__right {
       flex-shrink: 0;
+      position: relative;
+      z-index: 5;
     }
 
     .options__left {
       flex: 1;
+      /* In flex layouts, allow the left area to shrink so overflow-x scrolling works
+         (prevents right-side hints/buttons from visually covering the last chip like MCP). */
+      min-width: 0;
       overflow-x: auto;
+      position: relative;
+      z-index: 5;
 
       &::-webkit-scrollbar {
         height: 0;
@@ -347,18 +354,18 @@ const handleSendOrStop = () => {
   }
 }
 
-/* 快捷键提示 - 默认隐藏，聚焦时显示 */
+/* 快捷键提示 - 始终可见但淡化 */
 .input-hints {
   display: flex;
   align-items: center;
   gap: 4px;
   font-size: var(--font-size-xs);
-  color: var(--gray-300);
-  opacity: 0;
+  color: var(--gray-400);
+  opacity: 0.5;
   transition: opacity var(--duration-fast) var(--ease-default);
 
   .input-box.is-focused & {
-    opacity: 1;
+    opacity: 0.8;
   }
 
   kbd {
@@ -378,12 +385,12 @@ const handleSendOrStop = () => {
   }
 }
 
-/* 字符计数 - 默认隐藏，聚焦时显示 */
+/* 字符计数 - 始终可见但淡化 */
 .char-count {
   font-size: var(--font-size-xs);
-  color: var(--gray-300);
+  color: var(--gray-400);
   font-family: var(--font-family-mono);
-  opacity: 0;
+  opacity: 0.6;
   transition: opacity var(--duration-fast) var(--ease-default), color var(--duration-fast) var(--ease-default);
 
   .input-box.is-focused & {
@@ -467,13 +474,16 @@ const handleSendOrStop = () => {
 }
 
 /* 响应式 */
+@media (max-width: 900px) {
+  /* Hint is low-frequency; hide it earlier so left-side capability chips keep enough room. */
+  .input-hints {
+    display: none;
+  }
+}
+
 @media (max-width: 640px) {
   .input-box {
     padding: var(--space-2) var(--space-3);
-  }
-
-  .input-hints {
-    display: none;
   }
 
   .char-count {
