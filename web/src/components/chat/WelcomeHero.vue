@@ -143,21 +143,29 @@ const quickActions = [
 
 .hero-content {
   .hero-title {
-    font-size: var(--font-size-3xl);
-    font-weight: 700;
+    font-size: clamp(1.75rem, 5vw, 2.5rem);
+    font-weight: 800;
     color: var(--text-color);
     margin: 0 0 var(--space-2) 0;
+    letter-spacing: -0.02em;
 
     .wave {
       display: inline-block;
       animation: wave 2.5s ease-in-out infinite;
       transform-origin: 70% 70%;
     }
+
+    .brand-name {
+      background: linear-gradient(135deg, #ff7d00 0%, #ff5350 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
   }
 
   .hero-subtitle {
-    font-size: var(--font-size-md);
-    color: var(--gray-600);
+    font-size: var(--font-size-base);
+    color: var(--gray-500);
     margin: 0;
   }
 }
