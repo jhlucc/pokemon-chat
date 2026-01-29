@@ -300,7 +300,7 @@ const shortenModelName = (name) => {
 /* ===== wrapper layout ===== */
 .message-wrapper {
   display: flex;
-  align-items: flex-start !important; /* 头像顶部对齐 - 强制 */
+  align-items: flex-end !important; /* 头像底部对齐 - 强制 */
   margin-bottom: var(--space-6);
   animation: fadeInUp var(--duration-slow) var(--ease-out);
 
@@ -317,8 +317,8 @@ const shortenModelName = (name) => {
       color: var(--message-user-text);
       border: none;
       box-shadow: 0 4px 12px rgba(255, 125, 0, 0.25);
-      /* 右上角直角指向用户头像 */
-      border-radius: var(--radius-md) var(--radius-xs) var(--radius-md) var(--radius-md);
+      /* 右下角直角指向用户头像 */
+      border-radius: var(--radius-md) var(--radius-md) var(--radius-xs) var(--radius-md);
 
       :deep(a) { color: var(--message-user-text); text-decoration: underline; }
     }
@@ -346,8 +346,8 @@ const shortenModelName = (name) => {
       color: var(--text-color);
       border: 1px solid var(--gray-100);
       box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
-      /* 左上角直角指向 AI 头像 */
-      border-radius: var(--radius-xs) var(--radius-md) var(--radius-md) var(--radius-md);
+      /* 左下角直角指向 AI 头像 */
+      border-radius: var(--radius-md) var(--radius-md) var(--radius-md) var(--radius-xs);
     }
 
     .avatar {
@@ -365,7 +365,7 @@ const shortenModelName = (name) => {
     border-radius: 50%;
     object-fit: cover;
     flex-shrink: 0;
-    align-self: flex-start !important; /* 强制头像顶部对齐 */
+    align-self: flex-end !important; /* 强制头像底部对齐 */
   }
 }
 
@@ -381,9 +381,10 @@ const shortenModelName = (name) => {
 /* ===== message box ===== */
 .message-box {
   display: inline-block;
-  padding: 6px 12px; /* Tighten vertical padding to avoid airy bubbles */
+  padding: 8px 12px; /* Slightly increase vertical padding for better visual balance */
   user-select: text;
-  word-break: break-word;
+  word-break: normal; /* Use normal word break to avoid breaking words */
+  overflow-wrap: break-word; /* standard property for preventing overflow */
   white-space: pre-wrap; /* 保留换行但允许正常折行 */
   font-size: var(--font-size-md);
   line-height: var(--line-height-base);
@@ -947,5 +948,17 @@ const shortenModelName = (name) => {
   h3, h4 { font-size: 1.2rem; }
   h5, h6 { font-size: 1.1rem; }
   code { font-size: var(--font-size-base); }
+}
+
+/* Aggressively remove margin from the last element in the preview, whatever it is */
+.message-md .md-editor-preview.github-theme > :last-child,
+#preview-only-preview > :last-child {
+  margin-bottom: 0 !important;
+  padding-bottom: 0 !important;
+}
+
+/* Hide empty paragraphs that might cause extra spacing */
+.message-md .md-editor-preview.github-theme p:empty {
+  display: none;
 }
 </style>
