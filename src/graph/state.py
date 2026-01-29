@@ -20,6 +20,8 @@ class AgentState(TypedDict, total=False):
     # Optional routing constraints (set by the frontend in Agent mode)
     # Example: ["rag_worker", "graph_worker", "web_worker", "stats_worker", "mcp_worker"]
     allowed_workers: NotRequired[list[str]]
+    # Optional: knowledge base selection (Milvus collection id)
+    db_id: NotRequired[str]
 
     # Optional: specialized state keys
     # rag_query: str

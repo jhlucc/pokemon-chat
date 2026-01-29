@@ -28,6 +28,33 @@ class RagWorker:
             reranker_model=settings.reranker.model_name if feature_enabled("enable_reranker") else None,
         )
 
+    def _retrieve_from_kb(self, query: str, db_id: str) -> str:
+        if not feature_enabled("enable_knowledge_base"):
+            return "Knowledge base is disabled."
+        try:
+            from src.knowledge.store.knowledgebase import KnowledgeBase
+
+            kb = KnowledgeBase()
+            kb_res = kb.search(
+                query=query,
+                db_id=db_id,
+                rerank=feature_enabled("enable_reranker"),
+                top_k=5,
+            )
+            results = kb_res.get("results") or []
+            if not results:
+                return "No relevant information found in the selected knowledge base."
+            context_lines = []
+            for i, item in enumerate(results, start=1):
+                entity = item.get("entity") or {}
+                text = entity.get("text") or ""
+                if not text:
+                    continue
+                context_lines.append(f"[KB {i}] {text}")
+            return "\n\n".join(context_lines) if context_lines else "No relevant information found."
+        except Exception as e:
+            return f"Error retrieving knowledge base: {e}"
+
     def retrieve(self, query: str) -> str:
         try:
             results = self.vector_store.search(query, top_k=5, rerank=feature_enabled("enable_reranker"))
@@ -150,48 +177,52 @@ class RagWorker:
                 response = chain.invoke({"query": query})
                 return {"messages": [response]}
 
-        # 0. Query Decomposition for complex questions
-        decomposer = get_query_decomposer()
-        if decomposer.is_complex(query):
-            sub_queries = decomposer.decompose(query)
-            logger.info(f"Query decomposed into {len(sub_queries)} sub-queries")
+        db_id = state.get("db_id")
+        if isinstance(db_id, str) and db_id.strip():
+            context = self._retrieve_from_kb(query, db_id.strip())
         else:
-            sub_queries = [query]
-
-        # 1. HyDE Expansion (Optional but recommended)
-        hyde_query = query
-        try:
-            # Basic HyDE: Generate a hypothetical answer
-            hyde_operator = HyDEOperator()
-
-            # We need a callable for the model, simplest is using self.llm.invoke
-            # HyDEOperator expects a callable that takes a prompt string.
-            # ChatOpenAI.invoke takes string or messages.
-            # We wrap it.
-            def model_wrapper(prompt_str):
-                return self.llm.invoke(prompt_str).content
-
-            hyde_doc = hyde_operator.call(model_wrapper, query, "")
-            # Extend query with hypothetical document for retrieval?
-            # Standard HyDE uses the vector of the hypothetical doc.
-            # Our VectorStore.search takes a string and embeds it.
-            # So we can pass the hypothetical doc as the query string.
-            hyde_query = hyde_doc
-        except Exception:
-            # Fallback to original query
-            pass
-
-        # 2. Retrieve with CRAG (Self-Correcting) for each sub-query
-        all_contexts = []
-        for sq in sub_queries:
-            if feature_enabled("enable_web_search"):
-                ctx = self.retrieve_with_crag(hyde_query if sq == query else sq)  # Use HyDE for main query
+            # 0. Query Decomposition for complex questions
+            decomposer = get_query_decomposer()
+            if decomposer.is_complex(query):
+                sub_queries = decomposer.decompose(query)
+                logger.info(f"Query decomposed into {len(sub_queries)} sub-queries")
             else:
-                ctx = self.retrieve(hyde_query if sq == query else sq)
-            if ctx:
-                all_contexts.append(f"[Sub-Q: {sq[:50]}...]\n{ctx}")
+                sub_queries = [query]
 
-        context = "\n\n---\n\n".join(all_contexts) if all_contexts else "No relevant information found."
+            # 1. HyDE Expansion (Optional but recommended)
+            hyde_query = query
+            try:
+                # Basic HyDE: Generate a hypothetical answer
+                hyde_operator = HyDEOperator()
+
+                # We need a callable for the model, simplest is using self.llm.invoke
+                # HyDEOperator expects a callable that takes a prompt string.
+                # ChatOpenAI.invoke takes string or messages.
+                # We wrap it.
+                def model_wrapper(prompt_str):
+                    return self.llm.invoke(prompt_str).content
+
+                hyde_doc = hyde_operator.call(model_wrapper, query, "")
+                # Extend query with hypothetical document for retrieval?
+                # Standard HyDE uses the vector of the hypothetical doc.
+                # Our VectorStore.search takes a string and embeds it.
+                # So we can pass the hypothetical doc as the query string.
+                hyde_query = hyde_doc
+            except Exception:
+                # Fallback to original query
+                pass
+
+            # 2. Retrieve with CRAG (Self-Correcting) for each sub-query
+            all_contexts = []
+            for sq in sub_queries:
+                if feature_enabled("enable_web_search"):
+                    ctx = self.retrieve_with_crag(hyde_query if sq == query else sq)  # Use HyDE for main query
+                else:
+                    ctx = self.retrieve(hyde_query if sq == query else sq)
+                if ctx:
+                    all_contexts.append(f"[Sub-Q: {sq[:50]}...]\n{ctx}")
+
+            context = "\n\n---\n\n".join(all_contexts) if all_contexts else "No relevant information found."
 
         # 2. Generate
         prompt = ChatPromptTemplate.from_messages(

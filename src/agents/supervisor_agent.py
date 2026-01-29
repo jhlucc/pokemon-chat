@@ -77,6 +77,9 @@ class SupervisorAgent(BaseAgent):
         input_state: dict[str, Any] = {"messages": [HumanMessage(content=query)]}
         if allowed_workers is not None:
             input_state["allowed_workers"] = allowed_workers
+        db_id = meta.get("db_id")
+        if isinstance(db_id, str) and db_id.strip():
+            input_state["db_id"] = db_id.strip()
 
         config = {"configurable": {"thread_id": meta.get("thread_id", "default")}}
 
