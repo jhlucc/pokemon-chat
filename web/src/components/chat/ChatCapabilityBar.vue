@@ -361,12 +361,12 @@ const agentTooltip = computed(() => {
 
   .chip-icon {
     font-size: 15px;
-    color: #374151;
+    color: var(--gray-700);
   }
 
   .chip-label {
     font-weight: 600;
-    color: #1f2937;
+    color: var(--text-color);
   }
 
   &:hover:not(.disabled) {

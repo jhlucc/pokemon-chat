@@ -280,10 +280,11 @@ button.ant-btn-icon-only:hover {
   border: none !important;
   /* 2. 顶部高光：增加立体感 */
   border-top: 1px solid rgba(255, 255, 255, 0.2) !important;
-  /* 3. 字体优化 */
+  /* 3. 字体优化 - 确保白色文字在所有模式下可读 */
+  color: #ffffff !important;
   font-weight: 600 !important;
   letter-spacing: 0.02em;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
   /* 4. 柔和的橙色投影 */
   box-shadow: 0 4px 14px rgba(255, 125, 0, 0.3) !important;
   /* 5. 平滑过渡 */

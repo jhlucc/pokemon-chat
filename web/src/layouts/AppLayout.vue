@@ -238,20 +238,22 @@ const mainList = computed(() => {
       </div>
       <div class="fill" style="flex-grow: 1"></div>
 
+      <!-- 侧边栏边缘触发器（替代 Collapse 按钮） -->
       <div
         v-if="!layoutSettings.useTopBar"
-        class="nav-item collapse-toggle"
+        class="edge-trigger"
         @click="toggleSider"
         role="button"
         tabindex="0"
-        aria-label="Toggle sidebar"
+        :aria-label="siderCollapsed ? '展开侧边栏' : '收起侧边栏'"
         @keydown.enter.prevent="toggleSider"
         @keydown.space.prevent="toggleSider"
       >
-        <a-tooltip placement="right">
-          <template #title>{{ siderCollapsed ? 'Expand sidebar' : 'Collapse sidebar' }}</template>
-          <component class="icon" :is="siderCollapsed ? MenuUnfoldOutlined : MenuFoldOutlined" />
-          <span class="text">{{ siderCollapsed ? 'Expand' : 'Collapse' }}</span>
+        <div class="edge-line"></div>
+        <a-tooltip placement="right" :title="siderCollapsed ? '展开' : '收起'">
+          <div class="edge-arrow">
+            <component :is="siderCollapsed ? MenuUnfoldOutlined : MenuFoldOutlined" />
+          </div>
         </a-tooltip>
       </div>
 
@@ -706,8 +708,61 @@ div.header,
   width: 100%;
 }
 
-.header.is-collapsed .nav-item.collapse-toggle .text {
-  display: none;
+/* 侧边栏边缘触发器 */
+.edge-trigger {
+  position: absolute;
+  top: 0;
+  right: -6px;
+  width: 12px;
+  height: 100%;
+  cursor: ew-resize;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  .edge-line {
+    position: absolute;
+    top: 0;
+    right: 5px;
+    width: 2px;
+    height: 100%;
+    background: transparent;
+    transition: background var(--duration-fast) var(--ease-default);
+  }
+
+  .edge-arrow {
+    position: absolute;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 40px;
+    background: var(--surface-color);
+    border: 1px solid var(--border-color);
+    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+    color: var(--gray-400);
+    font-size: 12px;
+    opacity: 0;
+    transform: translateX(-4px);
+    transition: all var(--duration-base) var(--ease-default);
+    box-shadow: var(--shadow-xs);
+  }
+
+  &:hover {
+    .edge-line {
+      background: var(--primary-color);
+    }
+    .edge-arrow {
+      opacity: 1;
+      transform: translateX(0);
+      color: var(--primary-color);
+    }
+  }
+
+  &:active .edge-arrow {
+    transform: translateX(2px) scale(0.95);
+  }
 }
 
 .header .nav {

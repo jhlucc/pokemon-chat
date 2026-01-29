@@ -45,7 +45,7 @@
                    </div>
                    <div class="metric">
                       <span class="label">响应延迟</span>
-                      <span class="value active">24ms</span>
+                      <span class="value" :class="{ active: latency !== null }">{{ latency !== null ? latency + 'ms' : '--' }}</span>
                    </div>
                 </div>
               </div>
@@ -64,7 +64,7 @@
                   </div>
                   <RightOutlined class="arrow" />
                 </button>
-                <button class="bento-btn secondary" @click="refreshProviders" :disabled="providersState.loading">
+                <button class="bento-btn ghost" @click="refreshProviders" :disabled="providersState.loading">
                   <div class="btn-content">
                     <SyncOutlined class="icon" :spin="providersState.loading" />
                     <span class="btn-text">重新加载配置</span>
@@ -210,17 +210,6 @@
                   <span class="group-label">布局密度</span>
                   <a-segmented v-model:value="uiDensity" :options="densityOptions" @change="onUiDensityChange" size="small" class="tech-segment"/>
                 </div>
-                <div class="divider-v"></div>
-                <div class="ui-group">
-                  <span class="group-label">导航显示</span>
-                  <div class="checkbox-group">
-                    <a-checkbox :checked="uiVisibility.show_knowledge_base" @change="(e) => setUiVisibility('show_knowledge_base', e.target.checked)">知识库</a-checkbox>
-                    <a-checkbox :checked="uiVisibility.show_knowledge_graph" @change="(e) => setUiVisibility('show_knowledge_graph', e.target.checked)">图谱</a-checkbox>
-                    <a-checkbox :checked="uiVisibility.show_web_search" @change="(e) => setUiVisibility('show_web_search', e.target.checked)">联网搜索</a-checkbox>
-                    <a-checkbox :checked="uiVisibility.show_mcp" @change="(e) => setUiVisibility('show_mcp', e.target.checked)">MCP</a-checkbox>
-                    <a-checkbox :checked="uiVisibility.show_map" @change="(e) => setUiVisibility('show_map', e.target.checked)">地图</a-checkbox>
-                  </div>
-                </div>
               </div>
             </div>
 
@@ -232,7 +221,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import { message } from 'ant-design-vue'
 import { 
   RedoOutlined, SyncOutlined, RightOutlined, LoadingOutlined,
@@ -241,7 +230,6 @@ import {
 } from '@ant-design/icons-vue'
 import HeaderComponent from '@/components/HeaderComponent.vue'
 import { useConfigStore } from '@/stores/config'
-import { DEFAULT_CONFIG } from '@/config/defaultConfig'
 import { BUILD_SHA } from '@/config/appMeta'
 import { apiFetch } from '@/api/http'
 import { setUiDensity } from '@/utils/uiDensity'
@@ -259,6 +247,24 @@ const state = reactive({
 
 const backendOnline = computed(() => Boolean(configStore.config.backend?.online))
 const backendReady = computed(() => Boolean(configStore.config.backend?.ready))
+const latency = ref(null)
+let latencyInterval = null
+
+const pingLatency = async () => {
+  if (!backendOnline.value) {
+    latency.value = null
+    return
+  }
+  try {
+    const start = performance.now()
+    await fetch('/api/healthz', { method: 'GET', cache: 'no-store' })
+    const end = performance.now()
+    latency.value = Math.round(end - start)
+  } catch {
+    latency.value = null
+  }
+}
+
 const themePreset = ref(getThemePreset())
 const uiDensity = ref('comfortable')
 
@@ -267,8 +273,6 @@ const providerKeys = computed(() => Object.keys(modelCatalog.value || {}).filter
 const modelProvider = ref(configStore.config.model_provider)
 const modelName = ref(configStore.config.model_name)
 const providerModels = computed(() => modelCatalog.value?.[modelProvider.value]?.models || [])
-
-const uiVisibility = computed(() => ({ ...(DEFAULT_CONFIG.ui || {}), ...(configStore.config?.ui || {}) }))
 
 const modulesList = [
   { key: 'enable_knowledge_base', label: '知识库', icon: BookFilled },
@@ -358,11 +362,19 @@ const onModelChange = async (m) => await configStore.setConfigValue('model_name'
 const commitModelInput = async () => { if(modelName.value) await configStore.setConfigValue('model_name', modelName.value) }
 const onUiDensityChange = (v) => setUiDensity(v)
 const onThemePresetChange = (v) => { themePreset.value = setThemePreset(v) }
-const setUiVisibility = (k, v) => configStore.patchLocal({ ui: { ...uiVisibility.value, [k]: v } })
 
 watch(() => configStore.config.model_provider, (v) => (modelProvider.value = v))
 watch(() => configStore.config.model_name, (v) => (modelName.value = v))
-onMounted(() => refreshProviders())
+
+onMounted(() => {
+  refreshProviders()
+  pingLatency()
+  latencyInterval = setInterval(pingLatency, 5000)
+})
+
+onUnmounted(() => {
+  if (latencyInterval) clearInterval(latencyInterval)
+})
 </script>
 
 <style scoped lang="less">
@@ -397,7 +409,7 @@ onMounted(() => refreshProviders())
   height: 550px;
   bottom: -15%;
   right: -15%;
-  background: radial-gradient(circle, rgba(139, 92, 246, 0.25) 0%, rgba(180, 150, 255, 0.1) 40%, transparent 70%);
+  background: radial-gradient(circle, rgba(139, 92, 246, 0.15) 0%, rgba(180, 150, 255, 0.06) 40%, transparent 70%);
   animation-delay: -7s;
 }
 
@@ -437,7 +449,7 @@ onMounted(() => refreshProviders())
 .bento-grid {
   display: grid;
   grid-template-columns: repeat(12, 1fr);
-  gap: 16px;
+  gap: 20px;
   grid-auto-rows: minmax(auto, auto);
 }
 
@@ -635,12 +647,27 @@ onMounted(() => refreshProviders())
   @media (min-width: 768px) { grid-column: span 4; }
   display: flex; flex-direction: column;
 }
-.action-buttons { flex: 1; display: flex; flex-direction: column; gap: 10px; justify-content: center; }
+.action-buttons { flex: 1; display: flex; flex-direction: column; gap: 12px; justify-content: center; }
 .bento-btn {
   border: none; padding: 12px 16px; border-radius: 10px; cursor: pointer; display: flex; align-items: center; justify-content: space-between; font-weight: 500; transition: all 0.2s; font-size: 13px; width: 100%;
   .btn-content { display: flex; align-items: center; gap: 10px; }
   .icon { font-size: 14px; }
   &.primary { background: var(--pokedex-red); color: white; &:hover { background: color-mix(in srgb, var(--pokedex-red), white 10%); } &:disabled { background: #cbd5e1; cursor: not-allowed; } }
+  /* Ghost Button - 描边风格，降低优先级 */
+  &.ghost {
+    background: transparent;
+    color: var(--gray-600);
+    border: 1px solid var(--gray-200);
+    &:hover {
+      background: var(--gray-50);
+      border-color: var(--gray-300);
+      color: var(--gray-700);
+    }
+    &:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+  }
   &.secondary { background: #f8fafc; color: #475569; border: 1px solid #e2e8f0; &:hover { background: #f1f5f9; border-color: #cbd5e1; } }
 }
 
@@ -649,12 +676,27 @@ onMounted(() => refreshProviders())
   grid-column: span 12; @media (min-width: 768px) { grid-column: span 6; }
 }
 .model-selector-area { display: flex; flex-direction: column; height: 100%; }
-.model-row { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; }
-.model-row .label { font-size: 13px; font-weight: 600; color: #64748b; }
-.bento-select, .bento-input { width: 100%; max-width: 200px; text-align: right; font-size: 13px; font-family: 'JetBrains Mono', monospace; }
+.model-row { display: flex; align-items: center; justify-content: space-between; padding: 8px 0; }
+.model-row .label { font-size: 13px; font-weight: 500; color: var(--gray-500); }
+.model-input-wrap { flex: 1; max-width: 200px; }
+.bento-select, .bento-input {
+  width: 100%;
+  max-width: 200px;
+  text-align: right;
+  font-size: 13px;
+  font-family: 'JetBrains Mono', monospace;
+  background: var(--gray-50) !important;
+  border-radius: var(--radius-sm);
+  padding: 4px 8px;
+}
+.bento-select :deep(.ant-select-selector) {
+  background: transparent !important;
+  border: none !important;
+  padding-right: 0 !important;
+}
 .select-option { display: flex; align-items: center; justify-content: flex-end; gap: 6px; font-size: 13px; }
 .opt-icon { width: 14px; height: 14px; border-radius: 3px; }
-.divider { height: 1px; background: #f1f5f9; margin: 2px 0; }
+.divider { height: 1px; background: var(--gray-100); margin: 4px 0; }
 
 /* Providers Card */
 .providers-card {
@@ -736,7 +778,7 @@ onMounted(() => refreshProviders())
 .capabilities-card { grid-column: span 12; }
 .modules-container { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 12px; }
 .module-tile {
-  background: rgba(255, 255, 255, 0.5);
+  background: rgba(255, 255, 255, 0.4);
   border-radius: 14px;
   padding: 14px;
   display: flex;
@@ -745,7 +787,7 @@ onMounted(() => refreshProviders())
   height: 95px;
   cursor: pointer;
   transition: all 0.25s ease;
-  border: 1px solid rgba(0, 0, 0, 0.04);
+  border: 1px solid rgba(0, 0, 0, 0.03);
   position: relative;
   overflow: hidden;
 
@@ -753,7 +795,7 @@ onMounted(() => refreshProviders())
     position: absolute;
     inset: 0;
     opacity: 0;
-    background: linear-gradient(135deg, rgba(255, 125, 0, 0.08), rgba(255, 125, 0, 0.02));
+    background: linear-gradient(135deg, rgba(255, 125, 0, 0.06), rgba(255, 125, 0, 0.01));
     transition: opacity 0.25s;
   }
 
@@ -767,10 +809,10 @@ onMounted(() => refreshProviders())
   }
 
   .tile-icon {
-    font-size: 22px;
+    font-size: 20px;
     color: var(--gray-400);
     transition: all 0.25s;
-    opacity: 0.6;
+    opacity: 0.5;
   }
 
   .tile-name {
@@ -793,29 +835,29 @@ onMounted(() => refreshProviders())
     bottom: 0;
     left: 0;
     width: 100%;
-    height: 3px;
-    background: var(--gray-200);
+    height: 2px;
+    background: var(--gray-100);
     transition: all 0.25s;
   }
 
   &.active {
-    background: rgba(255, 125, 0, 0.06);
-    border-color: rgba(255, 125, 0, 0.2);
-    box-shadow: 0 4px 16px rgba(255, 125, 0, 0.08);
+    background: rgba(255, 125, 0, 0.05);
+    border-color: rgba(255, 125, 0, 0.15);
+    box-shadow: 0 2px 12px rgba(255, 125, 0, 0.06);
 
     .tile-bg { opacity: 1; }
-    .tile-icon { color: var(--pokedex-red); opacity: 1; }
+    .tile-icon { color: var(--pokedex-red); opacity: 0.85; }
     .tile-name { color: var(--text-color); }
     .tile-status { color: var(--pokedex-red); }
-    .tile-bar { background: var(--pokedex-red); }
+    .tile-bar { background: var(--pokedex-red); height: 2px; }
   }
 
   &:hover {
-    transform: translateY(-2px);
-    border-color: rgba(255, 125, 0, 0.15);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
+    transform: translateY(-1px);
+    border-color: rgba(255, 125, 0, 0.1);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
 
-    .tile-icon { opacity: 0.8; }
+    .tile-icon { opacity: 0.7; }
   }
 }
 
@@ -823,7 +865,7 @@ onMounted(() => refreshProviders())
 .ui-card { grid-column: span 12; }
 .ui-options { display: flex; gap: 40px; align-items: center; flex-wrap: wrap; }
 .ui-group { display: flex; flex-direction: column; gap: 8px; }
-.group-label { font-size: 11px; font-weight: 600; color: #64748b; letter-spacing: 0.05em; text-transform: uppercase; }
+.group-label { font-size: 11px; font-weight: 600; color: var(--gray-500); letter-spacing: 0.05em; text-transform: uppercase; }
 .theme-picker { display: flex; gap: 10px; }
 .color-dot {
   width: 24px;
@@ -843,12 +885,10 @@ onMounted(() => refreshProviders())
     box-shadow: 0 0 0 3px rgba(255, 125, 0, 0.2), 0 4px 12px rgba(0, 0, 0, 0.15);
   }
 }
-.checkbox-group { display: flex; gap: 16px; }
 .divider-v { width: 1px; height: 32px; background: #f1f5f9; }
 
 /* Ant Design Overrides */
 :deep(.ant-input), :deep(.ant-select-selector) { background: transparent !important; font-size: 13px; }
-:deep(.ant-checkbox-wrapper) { font-size: 13px; }
 :deep(.tech-modal .ant-modal-content) { border-radius: 16px; padding: 24px; }
 .tech-input { border-radius: 8px; background: #f8fafc !important; border-color: #e2e8f0 !important; &:focus { background: white !important; border-color: var(--pokedex-red) !important; } }
 
@@ -910,6 +950,18 @@ onMounted(() => refreshProviders())
     &:hover {
       background: rgba(50, 50, 50, 0.9);
       border-color: rgba(255, 255, 255, 0.15);
+    }
+  }
+
+  .bento-btn.ghost {
+    background: transparent;
+    color: var(--gray-400);
+    border-color: rgba(255, 255, 255, 0.08);
+
+    &:hover {
+      background: rgba(255, 255, 255, 0.05);
+      border-color: rgba(255, 255, 255, 0.12);
+      color: var(--gray-300);
     }
   }
 
