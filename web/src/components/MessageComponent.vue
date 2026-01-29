@@ -342,20 +342,17 @@ const shortenModelName = (name) => {
 /* ===== message box ===== */
 .message-box {
   grid-row: 1; /* Always in the first row */
-  display: flex; /* Changed to flex for internal centering */
-  flex-direction: column;
-  justify-content: center; /* Vertical centering of content */
-  align-items: center;    /* Horizontal centering of content */
-  padding: 14px 16px;     /* Increased vertical padding for airier feel */
+  display: inline-block; /* Standard behavior for chat bubbles */
+  padding: 12px 16px;     /* Balanced padding */
   user-select: text;
   word-break: normal;
   overflow-wrap: break-word;
   white-space: pre-wrap;
-  text-align: center;     /* Horizontal text centering */
+  text-align: left;       /* Standard left alignment */
   font-size: var(--font-size-md);
-  line-height: 1.5;
+  line-height: 1.6;
   position: relative;
-  width: fit-content;
+  width: fit-content;     /* Crucial: Shrink to fit content */
   max-width: min(640px, 85%);
 
   /* AI Box Position */
@@ -381,6 +378,29 @@ const shortenModelName = (name) => {
     border: none;
     box-shadow: 0 4px 12px rgba(255, 125, 0, 0.25);
     :deep(a) { color: var(--message-user-text); text-decoration: underline; }
+  }
+
+  /* --- Deep Markdown Fixes (The ultimate shrink-wrap) --- */
+  :deep(.message-md),
+  :deep(.md-editor-preview-wrapper),
+  :deep(.md-editor-preview) {
+    display: inline-block !important;
+    width: auto !important;
+    min-width: 0 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    background: transparent !important;
+    border: none !important;
+    vertical-align: top;
+  }
+
+  :deep(.md-editor-preview p) {
+    margin: 0 !important;
+    line-height: inherit !important;
+  }
+
+  :deep(.md-editor-preview p:not(:last-child)) {
+    margin-bottom: 12px !important;
   }
 }
 
@@ -529,219 +549,6 @@ const shortenModelName = (name) => {
 
 <!-- =============== global styles: markdown / font =============== -->
 <style lang="less">
-.message-md.md-editor {
-  /* md-editor-v3 preview root is a flex layout by default and tends to "fill available space",
-     which makes chat bubbles look bloated. Force it to size to content. */
-  display: inline-block;
-  width: fit-content;
-  max-width: 100%;
-  height: auto;
-  min-height: 0 !important; /* 移除默认最小高度 */
-  background-color: transparent;
-  border: none;
-  padding: 0 !important; /* 确保没有额外内边距 */
-  margin: 0 !important; /* 确保没有额外外边距 */
-  --md-color: var(--text-color);
-  --md-hover-color: var(--text-color);
-  --md-bk-color: transparent;
-  --md-bk-color-outstand: var(--surface-color-2);
-  --md-bk-hover-color: var(--hover-bg);
-  --md-border-color: var(--border-color);
-  --md-border-hover-color: var(--border-color);
-  --md-border-active-color: var(--primary-color);
-  --md-scrollbar-bg-color: transparent;
-  --md-scrollbar-thumb-color: var(--gray-400);
-  --md-scrollbar-thumb-hover-color: var(--gray-500);
-  --md-scrollbar-thumb-active-color: var(--gray-600);
-}
-
-.message-md.md-editor-previewOnly,
-.message-md.md-editor-previewOnly .md-editor-preview-wrapper,
-.message-md.md-editor-previewOnly .md-editor-preview {
-  width: fit-content;
-  max-width: 100%;
-  height: auto;
-}
-
-.message-md.md-editor-previewOnly .md-editor-preview-wrapper,
-.message-md.md-editor-previewOnly .md-editor-preview {
-  display: inline-block;
-}
-
-/* Hard clamp preview sizing inside chat bubbles (beats md-editor default layout). */
-.message-box .md-editor,
-.message-box .md-editor-preview-wrapper,
-.message-box .md-editor-preview {
-  width: fit-content !important;
-  max-width: 100% !important;
-  height: auto !important;
-  min-height: 0 !important;
-}
-
-.message-box .md-editor-preview-wrapper,
-.message-box .md-editor-preview {
-  padding: 0 !important;
-  margin: 0 !important;
-}
-
-.message-box .md-editor-preview p {
-  margin: 0 !important;
-  line-height: inherit !important;
-}
-
-.message-box .md-editor-preview p:not(:last-child) {
-  margin-bottom: 12px !important;
-}
-
-.message-md.md-editor-previewOnly .md-editor-content {
-  flex: none;
-  height: auto;
-  padding: 0 !important;
-}
-
-.message-md.md-editor-previewOnly .md-editor-preview-wrapper {
-  flex: none;
-  overflow: visible;
-  padding: 0 !important;
-}
-
-.message-md .md-editor-preview-wrapper {
-  color: var(--text-color);
-  max-width: 100%;
-  padding: 0 !important;
-  font-family: var(--font-family-base);
-
-  .md-editor-preview {
-    padding: 0 !important;
-    margin: 0 !important;
-  }
-
-  article {
-    padding: 0 !important;
-    margin: 0 !important;
-  }
-
-  #preview-only-preview {
-    font-size: var(--font-size-md);
-    padding: 0 !important;
-    margin: 0 !important;
-
-    /* Reset all children margins */
-    > * {
-      margin-top: 0 !important;
-      margin-bottom: 12px !important;
-    }
-
-    /* Force first and last child spacing */
-    > *:first-child {
-      margin-top: 0 !important;
-    }
-    > *:last-child {
-      margin-bottom: 0 !important;
-    }
-
-    /* Handle specific elements */
-    p {
-      margin-bottom: 12px !important;
-      &:last-child { margin-bottom: 0 !important; }
-    }
-
-    ul, ol {
-      padding-left: 24px;
-      margin-bottom: 12px !important;
-    }
-
-    li > p {
-      margin-bottom: 4px !important;
-    }
-  }
-
-  /* 覆盖 github-theme 的默认样式 */
-  &.github-theme {
-    p {
-      margin: 0 !important;
-      margin-bottom: 12px !important;
-      &:last-child { margin-bottom: 0 !important; }
-    }
-  }
-  h1,
-  h2 {
-    font-size: 1.2rem;
-  }
-  h3,
-  h4 {
-    font-size: 1.1rem;
-  }
-  h5,
-  h6 {
-    font-size: 1rem;
-  }
-  a {
-    color: var(--primary-color);
-    text-decoration: none;
-  }
-  a:hover {
-    color: var(--primary-light-color);
-    text-decoration: underline;
-  }
-  code {
-    font-size: var(--font-size-sm);
-    font-family: var(--font-family-mono);
-    line-height: var(--line-height-base);
-    letter-spacing: 0.025em;
-    tab-size: 4;
-    -moz-tab-size: 4;
-    background: var(--surface-color-2);
-    color: var(--text-color);
-  }
-
-  pre {
-    background: var(--surface-color-2);
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-sm);
-    padding: var(--space-3);
-    overflow: auto;
-  }
-
-  pre code {
-    background: transparent;
-  }
-}
-
-/* 覆盖 github-theme 的默认样式 - 使用高优先级选择器 */
-.message-md .md-editor-preview.github-theme {
-  p {
-    margin: 0 !important;
-    &:not(:last-child) {
-      margin-bottom: 0.5em !important;
-    }
-  }
-  > *:first-child {
-    margin-top: 0 !important;
-  }
-  > *:last-child {
-    margin-bottom: 0 !important;
-  }
-}
-
-/* 使用 ID 选择器确保最高优先级 */
-#preview-only-preview.github-theme,
-#preview-only-preview.md-editor-preview {
-  padding: 0 !important;
-  margin: 0 !important;
-}
-
-#preview-only-preview.github-theme p:not(:last-child),
-.md-editor-preview.github-theme p:not(:last-child) {
-  margin-bottom: 12px !important;
-}
-
-.model-name {
-  display: inline;
-  font-weight: 600;
-  margin-right: 0.5em;
-}
-
 /* font size scaling */
 .chat-box.font-smaller #preview-only-preview {
   font-size: var(--font-size-base);
@@ -754,17 +561,5 @@ const shortenModelName = (name) => {
   h3, h4 { font-size: 1.2rem; }
   h5, h6 { font-size: 1.1rem; }
   code { font-size: var(--font-size-base); }
-}
-
-/* Aggressively remove margin from the last element in the preview, whatever it is */
-#preview-only-preview > :last-child,
-.message-md .md-editor-preview.github-theme > :last-child {
-  margin-bottom: 0 !important;
-  padding-bottom: 0 !important;
-}
-
-/* Hide empty paragraphs that might cause extra spacing */
-.message-md .md-editor-preview.github-theme p:empty {
-  display: none;
 }
 </style>
