@@ -342,7 +342,9 @@ const shortenModelName = (name) => {
 /* ===== message box ===== */
 .message-box {
   grid-row: 1; /* Always in the first row */
-  display: inline-block; /* Standard behavior for chat bubbles */
+  display: inline-flex; /* Use flex for perfect vertical centering */
+  flex-direction: column;
+  justify-content: center; /* Center content vertically */
   padding: 12px 16px;     /* Balanced padding */
   user-select: text;
   word-break: normal;
@@ -350,7 +352,7 @@ const shortenModelName = (name) => {
   white-space: pre-wrap;
   text-align: left;       /* Standard left alignment */
   font-size: var(--font-size-md);
-  line-height: 1.6;
+  line-height: 1.5;       /* Slightly tighter for better visual center */
   position: relative;
   width: fit-content;     /* Crucial: Shrink to fit content */
   max-width: min(640px, 85%);
@@ -366,6 +368,9 @@ const shortenModelName = (name) => {
     color: var(--text-color);
     border: 1px solid var(--gray-200);
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+    /* Fine-tuning: Shift text down further (Top 15px, Bottom 9px) */
+    font-size: var(--font-size-base); 
+    padding: 15px 16px 9px 16px;
   }
 
   /* User Box Position */
@@ -384,19 +389,20 @@ const shortenModelName = (name) => {
   :deep(.message-md),
   :deep(.md-editor-preview-wrapper),
   :deep(.md-editor-preview) {
-    display: inline-block !important;
+    display: block !important; /* Block inside flex item works better */
     width: auto !important;
     min-width: 0 !important;
     padding: 0 !important;
     margin: 0 !important;
     background: transparent !important;
     border: none !important;
-    vertical-align: top;
+    font-size: inherit !important; /* Force AI font size to propagate */
   }
 
   :deep(.md-editor-preview p) {
     margin: 0 !important;
     line-height: inherit !important;
+    font-size: inherit !important;
   }
 
   :deep(.md-editor-preview p:not(:last-child)) {
