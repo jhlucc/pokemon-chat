@@ -1,5 +1,6 @@
 @import './base.css';
 @import './tokens.css';
+@import './animations.css';
 
 /* layout */
 :root {

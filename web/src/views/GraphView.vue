@@ -18,6 +18,8 @@
           </div>
           <h2 class="empty-title">探索知识图谱</h2>
           <p class="empty-desc">搜索实体开始探索，发现有趣的关系网络</p>
+
+          <!-- 快速开始按钮 -->
           <a-button
             type="primary"
             size="large"
@@ -28,6 +30,25 @@
             <template #icon><CompassOutlined /></template>
             随机探索
           </a-button>
+
+          <!-- 服务状态提示（整合到空状态区域） -->
+          <p v-if="!canUseGraph" class="empty-warning">
+            <ExclamationCircleOutlined />
+            {{ backendOnline ? '图谱服务未启用' : '后端服务已断开' }}
+          </p>
+
+          <!-- 热门搜索标签 -->
+          <div v-if="canUseGraph" class="quick-tags">
+            <span class="quick-tags-label">热门搜索：</span>
+            <button
+              v-for="tag in quickTags"
+              :key="tag"
+              class="quick-tag"
+              @click="quickSearch(tag)"
+            >
+              {{ tag }}
+            </button>
+          </div>
         </div>
       </div>
     </Transition>
@@ -207,13 +228,6 @@
       </div>
     </Transition>
 
-    <!-- 警告提示 -->
-    <Transition name="slide-down">
-      <div v-if="!canUseGraph" class="warning-banner">
-        <ExclamationCircleOutlined />
-        <span>{{ backendOnline ? '后端未启用知识图谱' : '服务已断开' }}</span>
-      </div>
-    </Transition>
   </div>
 </template>
 
@@ -245,6 +259,9 @@ const configStore = useConfigStore()
 const container = ref(null)
 const sampleNodeCount = ref(100)
 const graphData = reactive({ nodes: [], edges: [] })
+
+// 热门搜索标签
+const quickTags = ['皮卡丘', '喷火龙', '关都地区', '火属性', '进化石']
 
 let graphInstance
 let GraphCtor = null
@@ -351,6 +368,11 @@ const onSearch = async () => {
   } finally {
     state.searchLoading = false
   }
+}
+
+const quickSearch = (tag) => {
+  state.searchInput = tag
+  onSearch()
 }
 
 const getG6Data = () => {
@@ -675,7 +697,7 @@ onUnmounted(() => {
   overflow: hidden;
 }
 
-/* 画布背景 - 图纸/地图网格 */
+/* 画布背景 - 降低对比度 */
 .canvas-grid {
   position: absolute;
   top: 0;
@@ -683,10 +705,10 @@ onUnmounted(() => {
   right: 0;
   bottom: 0;
   background-image:
-    radial-gradient(circle, rgba(255, 125, 0, 0.08) 1px, transparent 1px),
-    radial-gradient(circle, rgba(255, 125, 0, 0.04) 1px, transparent 1px);
-  background-size: 20px 20px, 100px 100px;
-  background-position: 0 0, 10px 10px;
+    radial-gradient(circle, rgba(255, 125, 0, 0.04) 1px, transparent 1px),
+    radial-gradient(circle, rgba(255, 125, 0, 0.02) 1px, transparent 1px);
+  background-size: 24px 24px, 120px 120px;
+  background-position: 0 0, 12px 12px;
   pointer-events: none;
 }
 
@@ -717,74 +739,150 @@ onUnmounted(() => {
 .empty-content {
   text-align: center;
   pointer-events: auto;
-  padding: 40px;
-  /* 去卡片化 - 直接浮在网格背景上 */
+  padding: var(--space-12) var(--space-10);
+  max-width: 420px;
+  position: relative;
+
+  /* 去容器化：用径向渐变光晕替代硬边界卡片 */
+  &::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 500px;
+    height: 500px;
+    background: radial-gradient(
+      circle,
+      rgba(255, 255, 255, 0.85) 0%,
+      rgba(255, 255, 255, 0.6) 25%,
+      rgba(255, 255, 255, 0.2) 50%,
+      transparent 70%
+    );
+    pointer-events: none;
+    z-index: -1;
+  }
 
   .empty-illustration {
-    margin-bottom: 24px;
+    margin-bottom: var(--space-5);
+    animation: fadeInUp var(--duration-slower) var(--ease-out) both;
 
     .empty-icon-group {
       position: relative;
-      width: 120px;
-      height: 120px;
+      width: 100px;
+      height: 100px;
       margin: 0 auto;
-      animation: float 3s ease-in-out infinite;
-      /* 白色光晕 - 洗掉背景点阵，让图标"着陆" */
-      background: radial-gradient(circle, rgba(255, 255, 255, 0.85) 0%, rgba(255, 255, 255, 0.4) 40%, transparent 70%);
+      animation: gentleFloat 3s ease-in-out infinite;
+      background: radial-gradient(circle, rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0.3) 50%, transparent 70%);
       border-radius: 50%;
       display: flex;
       align-items: center;
       justify-content: center;
 
       .icon-main {
-        font-size: 56px;
+        font-size: 48px;
         color: var(--primary-color, #FF7D00);
         filter: drop-shadow(0 2px 8px rgba(255, 125, 0, 0.3));
       }
 
       .icon-accent {
         position: absolute;
-        bottom: 12px;
-        right: 12px;
-        font-size: 24px;
+        bottom: 8px;
+        right: 8px;
+        font-size: 20px;
         color: var(--primary-color, #FF7D00);
-        background: #fff;
+        background: var(--surface-color);
         border-radius: 50%;
-        padding: 6px;
-        box-shadow: 0 2px 8px rgba(255, 125, 0, 0.2);
+        padding: 5px;
+        box-shadow: var(--shadow-xs);
       }
     }
   }
 
   .empty-title {
-    font-size: 22px;
+    font-size: var(--font-size-2xl);
     font-weight: 600;
-    color: var(--text-color, #333);
-    margin: 0 0 8px;
+    color: var(--text-color);
+    margin: 0 0 var(--space-2);
+    animation: fadeInUp var(--duration-slower) var(--ease-out) 80ms both;
   }
 
   .empty-desc {
-    font-size: 14px;
-    color: var(--gray-500, #888);
-    margin: 0 0 28px;
+    font-size: var(--font-size-base);
+    color: var(--gray-500);
+    margin: 0 0 var(--space-6);
+    animation: fadeInUp var(--duration-slower) var(--ease-out) 160ms both;
   }
 
-  /* 按钮呼吸感优化 */
+  /* 按钮 */
   :deep(.ant-btn-primary) {
-    padding: 0 24px;
-    height: 44px;
-    font-size: 15px;
-    border-radius: 22px;
+    padding: 0 var(--space-6);
+    height: var(--button-height-lg);
+    font-size: var(--font-size-md);
+    border-radius: var(--radius-full);
+    animation: fadeInUp var(--duration-slower) var(--ease-out) 240ms both;
 
     .anticon {
-      margin-right: 8px;
+      margin-right: var(--space-2);
+    }
+  }
+
+  /* 服务状态提示（透明底，仅文字+图标） */
+  .empty-warning {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-2);
+    margin: var(--space-4) 0 0;
+    font-size: var(--font-size-sm);
+    color: #ad6800;
+    animation: fadeInUp var(--duration-slower) var(--ease-out) 320ms both;
+  }
+
+  /* 热门搜索标签 */
+  .quick-tags {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    margin-top: var(--space-6);
+    animation: fadeInUp var(--duration-slower) var(--ease-out) 320ms both;
+  }
+
+  .quick-tags-label {
+    font-size: var(--font-size-xs);
+    color: var(--gray-500);
+  }
+
+  .quick-tag {
+    padding: var(--space-1) var(--space-3);
+    font-size: var(--font-size-xs);
+    color: var(--gray-600);
+    background: rgba(255, 255, 255, 0.8);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-full);
+    cursor: pointer;
+    transition: all var(--duration-fast) var(--ease-default);
+    backdrop-filter: blur(4px);
+
+    &:hover {
+      color: var(--primary-color);
+      border-color: var(--primary-color);
+      background: rgba(255, 125, 0, 0.1);
     }
   }
 }
 
-@keyframes float {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-8px); }
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 /* ==================== 悬浮搜索栏 ==================== */
@@ -806,15 +904,17 @@ onUnmounted(() => {
   width: 420px;
   max-width: calc(100vw - 48px);
   padding: 6px 6px 6px 14px;
-  background: #fff;
-  border: 1px solid var(--border-color, #e5e5e5);
-  border-radius: 24px;
-  box-shadow: 0 4px 20px rgba(255, 125, 0, 0.08);
-  transition: all 0.2s ease;
+  background: var(--glass-bg);
+  border: var(--glass-border);
+  border-radius: var(--radius-full);
+  box-shadow: var(--shadow-sm);
+  backdrop-filter: blur(var(--blur-md));
+  -webkit-backdrop-filter: blur(var(--blur-md));
+  transition: all var(--duration-base) var(--ease-default);
 
   &:focus-within {
     border-color: var(--primary-color, #FF7D00);
-    box-shadow: 0 4px 20px rgba(255, 125, 0, 0.15);
+    box-shadow: var(--focus-ring), var(--shadow-sm);
   }
 
   /* 状态呼吸灯 */
@@ -876,7 +976,7 @@ onUnmounted(() => {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
 }
 
-/* ==================== 底部工具栏 - 轻量化胶囊条 ==================== */
+/* ==================== 底部工具栏 - 磨砂玻璃胶囊条 ==================== */
 .floating-toolbar {
   position: absolute;
   bottom: 24px;
@@ -887,10 +987,12 @@ onUnmounted(() => {
   align-items: center;
   gap: 4px;
   padding: 6px 10px;
-  background: #fff;
-  border: 1px solid var(--border-color, #e5e5e5);
-  border-radius: 20px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
+  background: var(--glass-bg);
+  border: var(--glass-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  backdrop-filter: blur(var(--blur-md));
+  -webkit-backdrop-filter: blur(var(--blur-md));
 }
 
 .toolbar-group {
@@ -954,12 +1056,14 @@ onUnmounted(() => {
   right: 0;
   width: 300px;
   height: 100%;
-  background: #fff;
-  border-left: 1px solid var(--border-color, #e5e5e5);
-  box-shadow: -4px 0 20px rgba(0, 0, 0, 0.05);
+  background: var(--glass-bg);
+  border-left: var(--glass-border);
+  box-shadow: var(--shadow-md);
+  backdrop-filter: blur(var(--blur-lg));
+  -webkit-backdrop-filter: blur(var(--blur-lg));
   z-index: 200;
   overflow-y: auto;
-  padding: 20px;
+  padding: var(--space-5);
 }
 
 .detail-header {
@@ -1158,24 +1262,6 @@ onUnmounted(() => {
   }
 }
 
-/* ==================== 警告横幅 ==================== */
-.warning-banner {
-  position: absolute;
-  top: 90px;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 100;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 16px;
-  background: #fffbe6;
-  border: 1px solid #ffe58f;
-  border-radius: 8px;
-  font-size: 13px;
-  color: #ad6800;
-}
-
 /* ==================== 过渡动画 ==================== */
 .fade-enter-active,
 .fade-leave-active {
@@ -1195,14 +1281,26 @@ onUnmounted(() => {
   transform: translateX(100%);
 }
 
-.slide-down-enter-active,
-.slide-down-leave-active {
-  transition: all 0.3s ease;
-}
-.slide-down-enter-from,
-.slide-down-leave-to {
-  opacity: 0;
-  transform: translate(-50%, -20px);
+/* ==================== 暗色模式适配 ==================== */
+:root[data-theme='dark'] {
+  .empty-content::before {
+    background: radial-gradient(
+      circle,
+      rgba(30, 30, 30, 0.9) 0%,
+      rgba(30, 30, 30, 0.6) 25%,
+      rgba(30, 30, 30, 0.2) 50%,
+      transparent 70%
+    );
+  }
+
+  .quick-tag {
+    background: rgba(40, 40, 40, 0.8);
+    color: var(--gray-400);
+
+    &:hover {
+      background: rgba(255, 125, 0, 0.15);
+    }
+  }
 }
 
 /* ==================== 响应式 ==================== */
