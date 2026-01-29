@@ -1021,45 +1021,47 @@ onUnmounted(() => {
   border-radius: 4px;
 
   &:hover {
-    background-color: var(--main-light-4);
+    background-color: color-mix(in srgb, var(--primary-color) 8%, transparent);
   }
 }
 
 .upload-section {
-  display: flex;
+  display: grid;
+  grid-template-columns: 280px 1fr;
   gap: 20px;
 
   .upload-sidebar {
-    width: 280px;
     padding: 20px;
-    background-color: var(--main-light-6);
-    border-radius: 8px;
-    border: 1px solid var(--main-light-3);
-    // box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    background: rgba(255, 255, 255, 0.75);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border-radius: var(--radius-lg);
+    border: 1px solid rgba(255, 255, 255, 0.5);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03), 0 4px 12px color-mix(in srgb, var(--primary-color) 3%, transparent);
 
     .chunking-params {
       h4 {
         margin-top: 0;
         margin-bottom: 16px;
-        color: var(--main-color);
-        font-size: 18px;
-        text-align: center;
-        font-weight: bold;
-        padding-bottom: 10px;
-        border-bottom: 1px dashed var(--main-light-3);
+        color: var(--primary-color);
+        font-size: 16px;
+        font-weight: 650;
+        padding-bottom: 12px;
+        border-bottom: 1px solid var(--border-color);
       }
 
       .params-info {
-        background-color: var(--main-light-4);
-        border-radius: 6px;
-        padding: 10px 12px;
+        background: color-mix(in srgb, var(--primary-color) 6%, var(--surface-color));
+        border-radius: var(--radius-md);
+        padding: 12px 14px;
         margin-bottom: 16px;
+        border: 1px solid color-mix(in srgb, var(--primary-color) 10%, transparent);
 
         p {
           margin: 0;
           font-size: 13px;
           line-height: 1.5;
-          color: var(--gray-700);
+          color: var(--gray-600);
         }
       }
 
@@ -1070,34 +1072,31 @@ onUnmounted(() => {
           padding-bottom: 6px;
 
           label {
-            color: var(--gray-800);
+            color: var(--text-color);
             font-weight: 500;
-            font-size: 15px;
+            font-size: 14px;
           }
         }
       }
 
       .ant-input-number {
         width: 100%;
-        border-radius: 6px;
+        border-radius: var(--radius-sm);
 
         &:hover,
         &:focus {
-          border-color: var(--main-color);
+          border-color: var(--primary-color);
         }
       }
 
       .ant-switch {
-        background-color: var(--gray-400);
-
         &.ant-switch-checked {
-          background-color: var(--main-color);
+          background-color: var(--primary-color);
         }
       }
 
-      // 添加参数说明
       .param-description {
-        color: var(--gray-600);
+        color: var(--gray-500);
         font-size: 12px;
         margin-top: 4px;
         margin-bottom: 0;
@@ -1107,84 +1106,130 @@ onUnmounted(() => {
 
   .upload-main {
     flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+
+    .upload {
+      :deep(.ant-upload-dragger) {
+        background: rgba(255, 247, 237, 0.7);
+        border: 2px dashed color-mix(in srgb, var(--primary-color) 50%, transparent);
+        border-radius: var(--radius-lg);
+        transition: all 0.25s ease;
+
+        &:hover {
+          border-color: var(--primary-color);
+          background: rgba(255, 237, 213, 0.9);
+          box-shadow: 0 0 0 4px color-mix(in srgb, var(--primary-color) 8%, transparent);
+        }
+      }
+
+      :deep(.ant-upload-drag-hover) {
+        border-style: solid !important;
+        border-color: var(--primary-color) !important;
+        background: rgba(255, 237, 213, 1) !important;
+        box-shadow: 0 0 0 4px color-mix(in srgb, var(--primary-color) 15%, transparent) !important;
+      }
+
+      :deep(.ant-upload-text) {
+        font-size: 15px;
+        font-weight: 500;
+        color: var(--text-color);
+      }
+
+      :deep(.ant-upload-hint) {
+        color: var(--gray-500);
+      }
+    }
   }
 }
 
 .chunk-preview {
-  margin-top: 20px;
+  margin-top: 24px;
+  padding: 20px;
+  background: rgba(255, 255, 255, 0.75);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-radius: var(--radius-lg);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
 
   .preview-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
     margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border-color);
 
     h3 {
       margin: 0;
-      color: var(--main-color);
-      font-size: 18px;
+      color: var(--text-color);
+      font-size: 16px;
+      font-weight: 650;
     }
   }
 
   .result-cards {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(600px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
     gap: 12px;
     margin-top: 10px;
   }
 
   .chunk {
-    background-color: var(--main-light-5);
-    border: 1px solid var(--main-light-3);
-    border-radius: 8px;
-    padding: 16px;
+    background: color-mix(in srgb, var(--primary-color) 4%, var(--surface-color));
+    border: 1px solid color-mix(in srgb, var(--primary-color) 10%, transparent);
+    border-radius: var(--radius-md);
+    padding: 14px 16px;
     word-wrap: break-word;
     word-break: break-all;
     transition: all 0.2s ease;
 
     &:hover {
-      background-color: var(--main-light-4);
-      border-color: var(--main-light-2);
-      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
+      background: color-mix(in srgb, var(--primary-color) 8%, var(--surface-color));
+      border-color: color-mix(in srgb, var(--primary-color) 20%, transparent);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px color-mix(in srgb, var(--primary-color) 8%, transparent);
     }
 
     p {
       margin: 0;
       line-height: 1.6;
+      font-size: 13px;
+      color: var(--gray-700);
+      display: -webkit-box;
+      -webkit-line-clamp: 4;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
 
       strong {
-        color: var(--main-color);
+        color: var(--primary-color);
         margin-right: 6px;
+        font-size: 12px;
       }
     }
   }
-}
-</style>
 
-<style lang="less">
-.atab-container {
-  padding: 0;
-  width: 100%;
-  max-height: 100%;
-  overflow: auto;
-
-  div.ant-tabs-nav {
-    background: var(--main-light-5);
-    padding: 8px 20px;
-    padding-bottom: 0;
+  :deep(.ant-collapse) {
+    background: transparent;
+    border: none;
   }
 
-  .ant-tabs-content-holder {
-    padding: 0 20px;
+  :deep(.ant-collapse-item) {
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md) !important;
+    margin-bottom: 8px;
+    overflow: hidden;
   }
-}
 
-.params-item.col .ant-segmented {
-  width: 100%;
+  :deep(.ant-collapse-header) {
+    font-weight: 500;
+    color: var(--text-color);
+  }
 
-  div.ant-segmented-group {
-    display: flex;
-    justify-content: space-around;
+  :deep(.ant-collapse-content) {
+    border-top: 1px solid var(--border-color);
   }
 }
 </style>
@@ -1198,13 +1243,14 @@ onUnmounted(() => {
     overflow: auto;
 
     div.ant-tabs-nav {
-      background: var(--main-light-5);
+      background: var(--surface-color);
       padding: 8px 20px;
       padding-bottom: 0;
+      border-bottom: 1px solid var(--border-color);
     }
 
     .ant-tabs-content-holder {
-      padding: 0 20px;
+      padding: 20px;
     }
   }
 
@@ -1221,6 +1267,55 @@ onUnmounted(() => {
       div.ant-segmented-item-label > div > p {
         font-size: small;
       }
+    }
+  }
+}
+
+/* 暗色模式 */
+:root[data-theme='dark'] {
+  .upload-section {
+    .upload-sidebar {
+      background: rgba(40, 40, 40, 0.85);
+      border-color: rgba(255, 255, 255, 0.08);
+    }
+
+    .upload-main .upload {
+      :deep(.ant-upload-dragger) {
+        background: color-mix(in srgb, var(--primary-color) 8%, transparent);
+        border-color: color-mix(in srgb, var(--primary-color) 35%, transparent);
+
+        &:hover {
+          background: color-mix(in srgb, var(--primary-color) 12%, transparent);
+        }
+      }
+
+      :deep(.ant-upload-drag-hover) {
+        background: color-mix(in srgb, var(--primary-color) 15%, transparent) !important;
+      }
+    }
+  }
+
+  .chunk-preview {
+    background: rgba(40, 40, 40, 0.85);
+    border-color: rgba(255, 255, 255, 0.08);
+
+    .chunk {
+      background: color-mix(in srgb, var(--primary-color) 8%, transparent);
+      border-color: color-mix(in srgb, var(--primary-color) 15%, transparent);
+
+      &:hover {
+        background: color-mix(in srgb, var(--primary-color) 12%, transparent);
+      }
+
+      p {
+        color: var(--gray-300);
+      }
+    }
+  }
+
+  .custom-class .line-text {
+    &:hover {
+      background-color: var(--gray-800);
     }
   }
 }

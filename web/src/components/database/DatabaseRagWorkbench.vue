@@ -191,7 +191,7 @@
                   <div class="chunk-text">{{ c.text }}</div>
                 </div>
               </div>
-              <a-empty v-else description="暂无分块" :image="null" />
+              <a-empty v-else description="暂无分块" :image="false" />
             </div>
           </div>
         </a-collapse-panel>
@@ -580,7 +580,7 @@ const advancedKeys = ref([])
   border-radius: 20px;
   padding: 24px 32px;
   /* 有色阴影：微微带橙 */
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03), 0 4px 12px rgba(255, 125, 0, 0.03);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03), 0 4px 12px color-mix(in srgb, var(--primary-color) 3%, transparent);
 }
 
 /* 状态指示器 - 隐形化处理 */
@@ -636,13 +636,13 @@ const advancedKeys = ref([])
     background: var(--primary-color);
     border-color: var(--primary-color);
     /* 外发光效果 - 呼吸感 */
-    box-shadow: 0 0 0 4px rgba(255, 125, 0, 0.15);
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--primary-color) 15%, transparent);
   }
 
   :deep(.ant-steps-item-finish .ant-steps-item-icon) {
     border-color: var(--primary-color);
     /* 完成状态也有淡淡光晕 */
-    box-shadow: 0 0 0 3px rgba(255, 125, 0, 0.1);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary-color) 10%, transparent);
 
     .ant-steps-icon {
       color: var(--primary-color);
@@ -663,7 +663,7 @@ const advancedKeys = ref([])
   border-radius: 20px;
   padding: 20px;
   /* 有色阴影：微微带橙 */
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03), 0 4px 12px rgba(255, 125, 0, 0.03);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03), 0 4px 12px color-mix(in srgb, var(--primary-color) 3%, transparent);
 }
 
 .panel-header {
@@ -684,7 +684,7 @@ const advancedKeys = ref([])
 .panel-badge {
   font-size: 12px;
   padding: 2px 10px;
-  background: rgba(255, 125, 0, 0.1);
+  background: color-mix(in srgb, var(--primary-color) 10%, transparent);
   color: var(--primary-color);
   border-radius: 100px;
   font-weight: 500;
@@ -732,7 +732,7 @@ const advancedKeys = ref([])
 
     &.ant-select-focused .ant-select-selector {
       border-color: var(--primary-color) !important;
-      box-shadow: 0 0 0 3px rgba(255, 125, 0, 0.1) !important;
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary-color) 10%, transparent) !important;
     }
   }
 }
@@ -759,7 +759,7 @@ const advancedKeys = ref([])
 
   &:hover:not(:disabled) {
     color: var(--primary-color);
-    background: rgba(255, 125, 0, 0.1);
+    background: color-mix(in srgb, var(--primary-color) 10%, transparent);
   }
 
   &:disabled {
@@ -817,7 +817,7 @@ const advancedKeys = ref([])
   :deep(.ant-upload-drag) {
     /* 更明显的背景和边框 */
     background: rgba(255, 247, 237, 0.7);
-    border: 2px dashed rgba(255, 125, 0, 0.5);
+    border: 2px dashed color-mix(in srgb, var(--primary-color) 50%, transparent);
     border-radius: 16px;
     transition: all 0.25s ease;
 
@@ -826,7 +826,7 @@ const advancedKeys = ref([])
       border-style: dashed;
       background: rgba(255, 237, 213, 0.9);
       /* hover时加阴影增强立体感 */
-      box-shadow: 0 0 0 4px rgba(255, 125, 0, 0.08);
+      box-shadow: 0 0 0 4px color-mix(in srgb, var(--primary-color) 8%, transparent);
     }
   }
 
@@ -836,7 +836,7 @@ const advancedKeys = ref([])
     border-width: 2px !important;
     border-color: var(--primary-color) !important;
     background: rgba(255, 237, 213, 1) !important;
-    box-shadow: 0 0 0 4px rgba(255, 125, 0, 0.15) !important;
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--primary-color) 15%, transparent) !important;
   }
 
   :deep(.ant-upload-btn) {
@@ -912,8 +912,8 @@ const advancedKeys = ref([])
 .chunk-card {
   padding: 12px;
   border-radius: 12px;
-  background: rgba(255, 125, 0, 0.04);
-  border: 1px solid rgba(255, 125, 0, 0.1);
+  background: color-mix(in srgb, var(--primary-color) 4%, transparent);
+  border: 1px solid color-mix(in srgb, var(--primary-color) 10%, transparent);
 }
 
 .chunk-meta {
@@ -1009,7 +1009,7 @@ const advancedKeys = ref([])
   box-shadow:
     0 -4px 20px -5px rgba(0, 0, 0, 0.06),
     0 8px 32px rgba(0, 0, 0, 0.1),
-    0 4px 16px rgba(255, 125, 0, 0.06),
+    0 4px 16px color-mix(in srgb, var(--primary-color) 6%, transparent),
     inset 0 1px 0 rgba(255, 255, 255, 0.6);
   pointer-events: auto;
 }
@@ -1068,24 +1068,24 @@ const advancedKeys = ref([])
   height: 42px;
   font-weight: 600;
   letter-spacing: 0.02em;
-  /* 渐变背景 */
-  background: linear-gradient(180deg, #FFA940 0%, #FF7D00 100%) !important;
+  /* 渐变背景 - 跟随主题色 */
+  background: linear-gradient(180deg, var(--primary-light-color) 0%, var(--primary-color) 100%) !important;
   border: none !important;
   border-top: 1px solid rgba(255, 255, 255, 0.25) !important;
-  /* 橙色投影 */
-  box-shadow: 0 4px 14px rgba(255, 125, 0, 0.35);
+  /* 主题色投影 */
+  box-shadow: 0 4px 14px color-mix(in srgb, var(--primary-color) 35%, transparent);
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 
   &:hover:not(:disabled) {
-    background: linear-gradient(180deg, #FFB347 0%, #FF8C1A 100%) !important;
-    box-shadow: 0 6px 20px rgba(255, 125, 0, 0.45);
+    background: linear-gradient(180deg, color-mix(in srgb, var(--primary-light-color) 85%, #ffffff) 0%, var(--primary-light-color) 100%) !important;
+    box-shadow: 0 6px 20px color-mix(in srgb, var(--primary-color) 45%, transparent);
     transform: translateY(-1px);
   }
 
   &:active:not(:disabled) {
     transform: translateY(0) scale(0.98);
-    box-shadow: 0 2px 8px rgba(255, 125, 0, 0.3);
+    box-shadow: 0 2px 8px color-mix(in srgb, var(--primary-color) 30%, transparent);
   }
 }
 
@@ -1143,16 +1143,16 @@ const advancedKeys = ref([])
 
   .upload-dragger {
     :deep(.ant-upload-drag) {
-      background: rgba(255, 125, 0, 0.08);
-      border-color: rgba(255, 125, 0, 0.35);
+      background: color-mix(in srgb, var(--primary-color) 8%, transparent);
+      border-color: color-mix(in srgb, var(--primary-color) 35%, transparent);
 
       &:hover {
-        background: rgba(255, 125, 0, 0.12);
+        background: color-mix(in srgb, var(--primary-color) 12%, transparent);
       }
     }
 
     :deep(.ant-upload-drag-hover) {
-      background: rgba(255, 125, 0, 0.15) !important;
+      background: color-mix(in srgb, var(--primary-color) 15%, transparent) !important;
     }
   }
 
@@ -1166,8 +1166,8 @@ const advancedKeys = ref([])
   }
 
   .chunk-card {
-    background: rgba(255, 125, 0, 0.08);
-    border-color: rgba(255, 125, 0, 0.15);
+    background: color-mix(in srgb, var(--primary-color) 8%, transparent);
+    border-color: color-mix(in srgb, var(--primary-color) 15%, transparent);
   }
 
   .chunk-more {

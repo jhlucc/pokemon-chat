@@ -138,7 +138,7 @@
       </a-tooltip>
     </a-popover>
 
-    <!-- Agent 模式主开关 -->
+    <!-- 智能模式主开关 — 始终可见 -->
     <a-tooltip :title="agentTooltip">
       <div
         :class="{
@@ -150,10 +150,10 @@
         role="button"
         :tabindex="canAgent ? 0 : -1"
         :aria-disabled="!canAgent"
-        aria-label="切换 Agent 模式"
-        @click="emit('toggle-agent')"
-        @keydown.enter.prevent="emit('toggle-agent')"
-        @keydown.space.prevent="emit('toggle-agent')"
+        aria-label="切换智能模式"
+        @click="handleToggleAgent"
+        @keydown.enter.prevent="handleToggleAgent"
+        @keydown.space.prevent="handleToggleAgent"
       >
         <RobotOutlined class="chip-icon" />
         <span class="chip-label">智能模式</span>
@@ -219,7 +219,7 @@ const hasAnyCapability = computed(
   () => showWebSearch.value || showKnowledgeGraph.value || showMcp.value || showKnowledgeBase.value
 )
 
-// Count active tools for badge
+// Count active tools for badge (only counts tools in the popover, not Agent chip)
 const activeToolCount = computed(() => {
   let count = 0
   if (props.useWeb) count++
@@ -247,6 +247,12 @@ const handleToggleGraph = () => {
 const handleToggleMcp = () => {
   if (props.canMcp) {
     emit('toggle-mcp')
+  }
+}
+
+const handleToggleAgent = () => {
+  if (props.canAgent) {
+    emit('toggle-agent')
   }
 }
 
@@ -343,7 +349,7 @@ const agentTooltip = computed(() => {
   }
 }
 
-/* Agent 模式芯片 */
+/* 智能模式芯片 */
 .capability-chip {
   display: inline-flex;
   align-items: center;

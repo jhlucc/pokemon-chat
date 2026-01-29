@@ -652,7 +652,7 @@ onUnmounted(() => {
   border: none; padding: 12px 16px; border-radius: 10px; cursor: pointer; display: flex; align-items: center; justify-content: space-between; font-weight: 500; transition: all 0.2s; font-size: 13px; width: 100%;
   .btn-content { display: flex; align-items: center; gap: 10px; }
   .icon { font-size: 14px; }
-  &.primary { background: var(--pokedex-red); color: white; &:hover { background: color-mix(in srgb, var(--pokedex-red), white 10%); } &:disabled { background: #cbd5e1; cursor: not-allowed; } }
+  &.primary { background: var(--primary-color); color: white; &:hover { background: color-mix(in srgb, var(--primary-color), white 10%); } &:disabled { background: #cbd5e1; cursor: not-allowed; } }
   /* Ghost Button - 描边风格，降低优先级 */
   &.ghost {
     background: transparent;
@@ -841,20 +841,20 @@ onUnmounted(() => {
   }
 
   &.active {
-    background: rgba(255, 125, 0, 0.05);
-    border-color: rgba(255, 125, 0, 0.15);
-    box-shadow: 0 2px 12px rgba(255, 125, 0, 0.06);
+    background: color-mix(in srgb, var(--primary-color) 5%, transparent);
+    border-color: color-mix(in srgb, var(--primary-color) 15%, transparent);
+    box-shadow: 0 2px 12px color-mix(in srgb, var(--primary-color) 6%, transparent);
 
     .tile-bg { opacity: 1; }
-    .tile-icon { color: var(--pokedex-red); opacity: 0.85; }
+    .tile-icon { color: var(--primary-color); opacity: 0.85; }
     .tile-name { color: var(--text-color); }
-    .tile-status { color: var(--pokedex-red); }
-    .tile-bar { background: var(--pokedex-red); height: 2px; }
+    .tile-status { color: var(--primary-color); }
+    .tile-bar { background: var(--primary-color); height: 2px; }
   }
 
   &:hover {
     transform: translateY(-1px);
-    border-color: rgba(255, 125, 0, 0.1);
+    border-color: color-mix(in srgb, var(--primary-color) 10%, transparent);
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
 
     .tile-icon { opacity: 0.7; }
@@ -890,7 +890,7 @@ onUnmounted(() => {
 /* Ant Design Overrides */
 :deep(.ant-input), :deep(.ant-select-selector) { background: transparent !important; font-size: 13px; }
 :deep(.tech-modal .ant-modal-content) { border-radius: 16px; padding: 24px; }
-.tech-input { border-radius: 8px; background: #f8fafc !important; border-color: #e2e8f0 !important; &:focus { background: white !important; border-color: var(--pokedex-red) !important; } }
+.tech-input { border-radius: 8px; background: #f8fafc !important; border-color: #e2e8f0 !important; &:focus { background: white !important; border-color: var(--primary-color) !important; } }
 
 /* 暗色模式 */
 :root[data-theme='dark'] {

@@ -256,6 +256,56 @@ async def upload_file(file: UploadFile = File(...), db_id: str | None = Form(Non
     return {"file_path": path, "db_id": db_id}
 
 
+@data.get("/document")
+async def get_document(db_id: str = Query(...), file_id: str = Query(...)):
+    """获取单个文档的详细信息，包括分块内容"""
+    from pymilvus import Collection, MilvusException, connections
+
+    try:
+        # 获取文件基本信息
+        file_info = kb.db_manager.get_file_by_id(file_id)
+        if not file_info:
+            raise HTTPException(404, "文件不存在")
+
+        # 确保 Milvus 已初始化
+        kb._ensure_ready()
+
+        # 查询文件对应的所有分块
+        lines = []
+        if kb.client.has_collection(db_id):
+            try:
+                connections.connect(alias="default", uri=settings.database.milvus_uri)
+                collection = Collection(db_id)
+                try:
+                    collection.load()
+                except MilvusException as e:
+                    if "index doesn't exist" not in str(e):
+                        raise e
+                    # 没有索引则跳过，返回空分块
+
+                rows = kb.client.query(
+                    collection_name=db_id,
+                    filter=f'file_id == "{file_id}"',
+                    output_fields=["id", "text"],
+                )
+                # 按 id 排序（id 格式为 file_id_index）
+                rows.sort(key=lambda r: int(r["id"].split("_")[-1]) if r["id"].split("_")[-1].isdigit() else 0)
+                lines = [{"id": r["id"], "text": r["text"]} for r in rows]
+            except Exception as e:
+                logger.warning(f"查询分块失败，返回空列表: {e}")
+                lines = []
+
+        return {
+            **file_info,
+            "lines": lines,
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"get_document failed: {e}\n{traceback.format_exc()}")
+        raise HTTPException(500, str(e)) from e
+
+
 @data.delete("/document")
 async def delete_document(db_id: str = Body(...), file_id: str = Body(...)):
     # Lazy import: keep server startup cheap when KB features are unused.
