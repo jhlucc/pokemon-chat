@@ -189,19 +189,19 @@
               :backend-online="backendOnline"
               :use-agent="meta.use_agent"
               :can-agent="canAgent"
-              :use-web="meta.use_web"
+              :use-web="effectiveUseWeb"
               :can-web-search="canWebSearch"
-              :use-graph="meta.use_graph"
+              :use-graph="effectiveUseGraph"
               :can-graph="canGraph"
-              :use-mcp="meta.use_mcp"
+              :use-mcp="effectiveUseMcp"
               :can-mcp="canMcp"
-              :selected-kb-index="meta.selectedKB"
+              :selected-kb-index="meta.use_agent ? null : meta.selectedKB"
               :can-kb="canKb"
               :databases="opts.databases"
               :show-web-search="configStore.config?.ui?.show_web_search"
               :show-knowledge-graph="configStore.config?.ui?.show_knowledge_graph"
               :show-mcp="configStore.config?.ui?.show_mcp"
-              :show-knowledge-base="configStore.config?.ui?.show_knowledge_base"
+              :show-knowledge-base="!meta.use_agent && configStore.config?.ui?.show_knowledge_base"
               @toggle-agent="toggleAgent"
               @toggle-web="toggleWebSearch"
               @toggle-graph="toggleGraph"
@@ -269,6 +269,12 @@ const toggleWebSearch = () => {
     message.info(backendOnline.value ? '后端未启用联网搜索' : '后端离线/不可用')
     return
   }
+  if (meta.use_agent) {
+    // Agent mode: treat as "allow web worker" constraint (null/undefined => allowed).
+    meta.agent_allow_web = meta.agent_allow_web !== false ? false : true
+    return
+  }
+  // Manual mode: force retrieval in /chat/
   meta.use_web = !meta.use_web
 }
 
@@ -277,12 +283,20 @@ const toggleGraph = () => {
     message.info(backendOnline.value ? '后端未启用知识图谱' : '后端离线/不可用')
     return
   }
+  if (meta.use_agent) {
+    meta.agent_allow_graph = meta.agent_allow_graph !== false ? false : true
+    return
+  }
   meta.use_graph = !meta.use_graph
 }
 
 const toggleMcp = () => {
   if (!canMcp.value) {
     message.info(backendOnline.value ? '后端未启用 MCP' : '后端离线/不可用')
+    return
+  }
+  if (meta.use_agent) {
+    meta.agent_allow_mcp = meta.agent_allow_mcp !== false ? false : true
     return
   }
   meta.use_mcp = !meta.use_mcp
@@ -294,19 +308,7 @@ const toggleAgent = () => {
     message.info('后端离线/不可用')
     return
   }
-  const next = !meta.use_agent
-  meta.use_agent = next
-
-  // Agent mode is handled server-side (supervisor_agent routes to workers).
-  // Keep client meta deterministic by clearing manual retrieval toggles when entering Agent mode.
-  if (next) {
-    meta.use_web = false
-    meta.use_graph = false
-    meta.use_mcp = false
-    meta.mcp_id = null
-    meta.selectedKB = null
-    meta.db_id = null
-  }
+  meta.use_agent = !meta.use_agent
 }
 
 const isStreaming = ref(false)
@@ -343,6 +345,12 @@ function defaultMeta() {
     use_graph: false,
     use_web: false,
     use_mcp: false,
+    // Agent-mode tool constraints:
+    // - null/undefined => allowed (subject to backend feature flags)
+    // - false => explicitly disallow
+    agent_allow_web: null,
+    agent_allow_graph: null,
+    agent_allow_mcp: null,
     graph_name: 'neo4j',
     selectedKB: null,
     mcp_id: null,
@@ -356,6 +364,13 @@ function defaultMeta() {
 }
 
 const meta = reactive(readJson(META_STORAGE_KEY, readJson(LEGACY_META_STORAGE_KEY, defaultMeta())))
+
+// Effective toggle values:
+// - Manual mode: use_{tool}
+// - Agent mode: agent_allow_{tool} (null/undefined => allowed)
+const effectiveUseWeb = computed(() => (meta.use_agent ? meta.agent_allow_web !== false : meta.use_web))
+const effectiveUseGraph = computed(() => (meta.use_agent ? meta.agent_allow_graph !== false : meta.use_graph))
+const effectiveUseMcp = computed(() => (meta.use_agent ? meta.agent_allow_mcp !== false : meta.use_mcp))
 
 const persistMeta = useDebounceFn(
   () => {
@@ -596,11 +611,19 @@ const fetchChatResponse = async (user_input, cur_res_id) => {
   activeChatAbortController.value = controller
 
   const isAgentMode = Boolean(meta.use_agent)
+  const requestMeta = { ...meta }
+  if (isAgentMode) {
+    const allowedWorkers = ['rag_worker', 'stats_worker']
+    if (canWebSearch.value && effectiveUseWeb.value) allowedWorkers.push('web_worker')
+    if (canGraph.value && effectiveUseGraph.value) allowedWorkers.push('graph_worker')
+    if (canMcp.value && effectiveUseMcp.value) allowedWorkers.push('mcp_worker')
+    requestMeta.agent_constraints = { allowed_workers: allowedWorkers }
+  }
   const params = isAgentMode
     ? {
         query: user_input,
         history: getHistory().slice(0, -1), // 去掉最后一条刚添加的用户消息
-        meta,
+        meta: requestMeta,
         cfg: {
           // Keep thread stable per conversation so the backend agent can checkpoint.
           thread_id: conv.value?.id || undefined,
@@ -612,7 +635,7 @@ const fetchChatResponse = async (user_input, cur_res_id) => {
     : {
         query: user_input,
         history: getHistory().slice(0, -1), // 去掉最后一条刚添加的用户消息
-        meta,
+        meta: requestMeta,
         cur_res_id
       }
 

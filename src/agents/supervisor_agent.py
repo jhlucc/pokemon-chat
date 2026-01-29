@@ -57,6 +57,49 @@ class SupervisorAgent(BaseAgent):
             config["callbacks"] = [FileTraceCallbackHandler()]
         return super().invoke(input, config)
 
+    async def query(self, query: str, meta: dict[str, Any] | None = None, history: list[dict[str, Any]] | None = None):
+        """
+        Streaming query entrypoint used by `/chat/agent/{agent}`.
+
+        This overrides BaseAgent.query so the frontend can constrain which workers the supervisor
+        may route to (e.g. disable web/graph/mcp) via `meta.agent_constraints.allowed_workers`.
+        """
+        from langchain_core.messages import HumanMessage
+
+        meta = meta or {}
+        constraints = meta.get("agent_constraints") or {}
+        allowed_workers = constraints.get("allowed_workers")
+        if isinstance(allowed_workers, list):
+            allowed_workers = [w for w in allowed_workers if isinstance(w, str)]
+        else:
+            allowed_workers = None
+
+        input_state: dict[str, Any] = {"messages": [HumanMessage(content=query)]}
+        if allowed_workers is not None:
+            input_state["allowed_workers"] = allowed_workers
+
+        config = {"configurable": {"thread_id": meta.get("thread_id", "default")}}
+
+        async for event in self.graph.astream_events(input_state, config, version="v1"):
+            kind = event["event"]
+
+            if kind == "on_chat_model_stream":
+                content = event["data"]["chunk"].content
+                if content:
+                    yield content
+            elif kind == "on_tool_start":
+                tool_name = event["name"]
+                tool_input = event["data"].get("input")
+                yield {
+                    "status": "tool_start",
+                    "status_text": f"正在使用工具 {tool_name}...",
+                    "tool": tool_name,
+                    "input": tool_input,
+                }
+            elif kind == "on_tool_end":
+                tool_name = event["name"]
+                yield {"status": "tool_end", "status_text": f"工具 {tool_name} 执行完成", "tool": tool_name}
+
     def get_info(self) -> dict:
         return {
             "name": "supervisor_agent",

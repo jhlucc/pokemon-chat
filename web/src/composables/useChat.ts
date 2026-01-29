@@ -93,6 +93,13 @@ export function useChat(conversation: Ref<Conversation>, options: UseChatOptions
       db_id: dbId,
       mcp_id: meta.use_mcp ? 'default' : null
     }
+    if (isAgentMode) {
+      const allowedWorkers = ['rag_worker', 'stats_worker']
+      if (meta.agent_allow_web !== false) allowedWorkers.push('web_worker')
+      if (meta.agent_allow_graph !== false) allowedWorkers.push('graph_worker')
+      if (meta.agent_allow_mcp !== false) allowedWorkers.push('mcp_worker')
+      requestMeta.agent_constraints = { allowed_workers: allowedWorkers }
+    }
 
     const params = isAgentMode
       ? {

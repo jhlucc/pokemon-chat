@@ -139,6 +139,21 @@ export interface ChatMeta {
   use_graph: boolean
   use_web: boolean
   use_mcp: boolean
+  /**
+   * Agent-mode constraints (used when `use_agent=true`):
+   * - null/undefined: allow (subject to backend feature flags)
+   * - false: explicitly disallow
+   */
+  agent_allow_web?: boolean | null
+  agent_allow_graph?: boolean | null
+  agent_allow_mcp?: boolean | null
+  /**
+   * Computed constraints sent to backend (derived from allow flags).
+   * The backend reads this to restrict supervisor routing.
+   */
+  agent_constraints?: {
+    allowed_workers: string[]
+  }
   graph_name: string
   selectedKB: number | null
   mcp_id: string | null

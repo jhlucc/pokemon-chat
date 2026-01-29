@@ -1,8 +1,8 @@
 <template>
   <div class="capability-bar">
-    <!-- 工具选择弹出框 (Agent 关闭时显示) -->
+    <!-- 工具选择弹出框 -->
     <a-popover
-      v-if="!useAgent && hasAnyCapability"
+      v-if="hasAnyCapability"
       v-model:open="popoverOpen"
       trigger="click"
       placement="topLeft"
@@ -266,15 +266,12 @@ const agentTooltip = computed(() => {
 
   if (props.useAgent) {
     const features = []
-    if (props.canWebSearch) features.push('联网')
-    if (props.canGraph) features.push('图谱')
-    if (props.canMcp) features.push('MCP')
+    if (props.useWeb) features.push('联网')
+    if (props.useGraph) features.push('图谱')
+    if (props.useMcp) features.push('MCP')
 
-    const featureText = features.length > 0
-      ? `（已自动启用: ${features.join('、')}）`
-      : ''
-
-    return `智能模式：AI 自动选择最佳检索策略 ${featureText}。点击关闭可手动控制`
+    const featureText = features.length > 0 ? `（允许使用: ${features.join('、')}）` : '（未允许外部工具）'
+    return `智能模式：AI 自动决策使用哪些工具 ${featureText}。点击关闭可手动控制`
   }
 
   return '开启智能模式（推荐）：AI 将自动决策使用哪些工具'
