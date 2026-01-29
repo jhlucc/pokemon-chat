@@ -143,13 +143,13 @@ import {
 } from '@ant-design/icons-vue'
 
 import ThemeToggle from '@/components/common/ThemeToggle.vue'
-import { useConfigStore } from '@/stores/config'
+import { useConfigStore, type UIState } from '@/stores/config'
 import { APP_NAME } from '@/config/appMeta'
 
 const router = useRouter()
 const configStore = useConfigStore()
 
-const ui = computed(() => configStore.config?.ui || {})
+const ui = computed<Partial<UIState>>(() => configStore.config?.ui || {})
 const apiDocsUrl = computed(() => `${window.location.origin}/api/docs`)
 
 // 滚动状态 - 控制 Header 透明度
