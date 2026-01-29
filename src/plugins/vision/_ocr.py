@@ -49,6 +49,60 @@ def pdf_contains_text(pdf_path: str) -> bool:
     return text_ratio > 0.5
 
 
+def _is_garbled_text(text: str, threshold: float = 0.5) -> bool:
+    """
+    检测文本是否是乱码。
+    通过检查有效字符（中文、英文、数字、常见标点）的比例来判断。
+    同时检测是否有大量非常见 Unicode 字符（乱码特征）。
+
+    :param text: 要检测的文本
+    :param threshold: 有效字符比例阈值，低于此值认为是乱码
+    :return: True 表示是乱码
+    """
+    import re
+    if not text or len(text.strip()) == 0:
+        return True
+
+    # 检查是否包含 CID 标记 (cid:xxx)
+    cid_pattern = r'\(cid:\d+\)'
+    if re.search(cid_pattern, text):
+        logging.info("检测到 CID 编码标记，判定为乱码")
+        return True
+
+    non_space_text = re.sub(r'\s', '', text)
+    if len(non_space_text) == 0:
+        return True
+
+    # 统计中文字符
+    chinese_chars = re.findall(r'[\u4e00-\u9fff\u3400-\u4dbf]', text)
+
+    # 统计基本 ASCII 可打印字符（英文、数字、常见标点）
+    ascii_printable = re.findall(r'[a-zA-Z0-9,.!?;:\'"()\[\]{}<>/\\@#$%^&*+=_|~`\-]', text)
+
+    # 统计中文标点
+    chinese_punct = re.findall(r'[，。！？、；：""''（）【】《》—…·]', text)
+
+    # 计算有效字符总数
+    valid_count = len(chinese_chars) + len(ascii_printable) + len(chinese_punct)
+    valid_ratio = valid_count / len(non_space_text)
+
+    # 检测乱码特征：大量 Latin Extended / 特殊 Unicode 字符
+    weird_chars = re.findall(r'[\u0080-\u00ff\u0100-\u017f\u0180-\u024f]', text)
+    weird_ratio = len(weird_chars) / len(non_space_text) if len(non_space_text) > 0 else 0
+
+    # 如果有效字符比例低于阈值，判定为乱码
+    if valid_ratio < threshold:
+        logging.info(f"有效字符比例 {valid_ratio:.2%} 低于阈值 {threshold:.0%}，判定为乱码")
+        return True
+
+    # 如果异常字符超过 20%，很可能是乱码
+    if weird_ratio > 0.2:
+        logging.info(f"异常字符比例 {weird_ratio:.2%} 过高，判定为乱码")
+        return True
+
+    return False
+
+
 def _extract_text_pdf(pdf_file_path: str) -> str:
     """
     如果 PDF 可以直接读取文字，则使用 langchain 的 PyPDFLoader 提取文本。
@@ -82,14 +136,16 @@ class OCRHandler2:
     def _download_onnx_if_needed(self, engine_path: str):
         """
         若本地不存在 det/rec ONNX 文件，则从 Hugging Face SWHL/RapidOCR 自动下载。
-        采用 subfolder="PP-OCRv4" 避免多余目录。
         """
         logging.info("本地模型文件不存在，开始从 Hugging Face 下载...")
+
+        det_path = os.path.join(engine_path, "ch_PP-OCRv4_det_infer.onnx")
+        rec_path = os.path.join(engine_path, "ch_PP-OCRv4_rec_infer.onnx")
 
         # 下载检测模型 det
         det_local_path = hf_hub_download(
             repo_id="SWHL/RapidOCR",
-            subfolder="PP-OCRv4",  # 仓库子目录
+            subfolder="PP-OCRv4",
             filename="ch_PP-OCRv4_det_infer.onnx",
             local_dir=engine_path,
         )
@@ -103,6 +159,14 @@ class OCRHandler2:
         )
 
         logging.info("模型文件已下载:\n%s\n%s", det_local_path, rec_local_path)
+
+        # 如果文件下载到了子目录，移动到正确位置
+        if not os.path.exists(det_path) and os.path.exists(det_local_path):
+            import shutil
+            shutil.move(det_local_path, det_path)
+        if not os.path.exists(rec_path) and os.path.exists(rec_local_path):
+            import shutil
+            shutil.move(rec_local_path, rec_path)
 
     def _lazy_load_ocr_engine(self):
         """
@@ -169,12 +233,19 @@ class OCRHandler2:
         if not os.path.exists(pdf_path):
             raise FileNotFoundError(f"指定的 PDF 文件不存在: {pdf_path}")
 
-        # 1,先检查是否有可选文字
+        # 1. 先检查是否有可选文字
         if pdf_contains_text(pdf_path):
-            logging.info("PDF 有可选文字，直接读取（langchain）。")
-            return _extract_text_pdf(pdf_path)
+            logging.info("PDF 有可选文字，尝试直接读取...")
+            extracted_text = _extract_text_pdf(pdf_path)
 
-        # 2.逐页转换图像再 OCR
+            # 2. 检查提取的文本是否是乱码
+            if not _is_garbled_text(extracted_text):
+                logging.info("文本提取成功，使用 langchain 结果。")
+                return extracted_text
+            else:
+                logging.info("检测到乱码，改用 OCR 处理。")
+
+        # 3. 逐页转换图像再 OCR
         pdf_filename = os.path.splitext(os.path.basename(pdf_path))[0]
         storage_dir = os.path.join(str(settings.paths.data_parser_data), "pdf2txt", pdf_filename)
         os.makedirs(storage_dir, exist_ok=True)
