@@ -297,307 +297,117 @@ const shortenModelName = (name) => {
 
 <!-- =============== scoped styles =============== -->
 <style lang="less" scoped>
-/* ===== wrapper layout ===== */
+/* ===== wrapper layout (CSS Grid Transformation) ===== */
 .message-wrapper {
-  display: flex;
-  align-items: flex-end !important; /* 头像底部对齐 - 强制 */
+  display: grid;
+  grid-template-columns: auto 1fr; /* Avatar | Content */
+  grid-template-rows: auto auto;   /* Bubble | Footer */
+  column-gap: var(--space-3);      /* Gap between avatar and bubble */
+  row-gap: 4px;                    /* Gap between bubble and footer */
   margin-bottom: var(--space-6);
   animation: fadeInUp var(--duration-slow) var(--ease-out);
 
-  &.from-user {
-    flex-direction: row-reverse;
-
-    .message-content-wrapper {
-      align-items: flex-end;
-    }
-
-    .message-box {
-      /* 渐变橙色 + 暖色投影 */
-      background: linear-gradient(135deg, #FFA940 0%, #FF7D00 100%);
-      color: var(--message-user-text);
-      border: none;
-      box-shadow: 0 4px 12px rgba(255, 125, 0, 0.25);
-      /* 右下角直角指向用户头像 */
-      border-radius: var(--radius-md) var(--radius-md) var(--radius-xs) var(--radius-md);
-
-      :deep(a) { color: var(--message-user-text); text-decoration: underline; }
-    }
-
-    .avatar {
-      margin-left: var(--space-3);
-      margin-right: 0;
-      margin-top: 0;
-      box-shadow: 0 2px 8px rgba(255, 125, 0, 0.2);
-    }
-  }
-
-  &.from-ai {
-    flex-direction: row;
-
-    .message-content-wrapper {
-      align-items: flex-start;
-    }
-
-    .message-box {
-      /* 微透玻璃感 */
-      background: color-mix(in srgb, var(--surface-color) 95%, transparent);
-      backdrop-filter: blur(8px);
-      -webkit-backdrop-filter: blur(8px);
-      color: var(--text-color);
-      border: 1px solid var(--gray-100);
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
-      /* 左下角直角指向 AI 头像 */
-      border-radius: var(--radius-md) var(--radius-md) var(--radius-md) var(--radius-xs);
-    }
-
-    .avatar {
-      margin-right: var(--space-3);
-      margin-left: 0;
-      margin-top: 0;
-      border: 2px solid var(--surface-color);
-      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
-    }
-  }
-
+  /* AI Message Layout (Default) */
   .avatar {
+    grid-row: 1;
+    grid-column: 1;
+    align-self: center; /* Vertically center relative to the BUBBLE only */
     width: 36px;
     height: 36px;
     border-radius: 50%;
     object-fit: cover;
-    flex-shrink: 0;
-    align-self: flex-end !important; /* 强制头像底部对齐 */
+  }
+
+  &.from-ai .avatar {
+    border: 2px solid var(--surface-color);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+  }
+
+  /* User Message Layout (Reversed) */
+  &.from-user {
+    grid-template-columns: 1fr auto; /* Content | Avatar */
+
+    .avatar {
+      grid-column: 2;
+      box-shadow: 0 2px 8px rgba(255, 125, 0, 0.2);
+    }
   }
 }
 
-/* ===== 内容包装器 ===== */
+/* Flatten the content wrapper so children participate in the grid directly */
 .message-content-wrapper {
-  display: flex;
-  flex-direction: column;
-  /* 不限制 max-width，让气泡自己决定宽度 */
-  flex: 1;
-  min-width: 0; /* 防止 flex 子元素溢出 */
+  display: contents;
 }
 
 /* ===== message box ===== */
 .message-box {
-  display: inline-block;
-  padding: 8px 12px; /* Slightly increase vertical padding for better visual balance */
+  grid-row: 1; /* Always in the first row */
+  display: flex; /* Changed to flex for internal centering */
+  flex-direction: column;
+  justify-content: center; /* Vertical centering of content */
+  align-items: center;    /* Horizontal centering of content */
+  padding: 14px 16px;     /* Increased vertical padding for airier feel */
   user-select: text;
-  word-break: normal; /* Use normal word break to avoid breaking words */
-  overflow-wrap: break-word; /* standard property for preventing overflow */
-  white-space: pre-wrap; /* 保留换行但允许正常折行 */
-  font-size: var(--font-size-md);
-  line-height: var(--line-height-base);
-  position: relative;
-  width: fit-content; /* 关键：宽度自适应内容 */
-  max-width: min(640px, 85%); /* 最大宽度限制 */
-
-  &.assistant,
-  &.received {
-    min-width: 40px;
-  }
-
-  &.user,
-  &.sent {
-    max-width: min(520px, 80%);
-  }
-}
-
-.debug-status {
-  font-size: var(--font-size-xs);
-  color: var(--gray-500);
-  margin: 0 0 var(--space-2);
-  font-family: var(--font-family-mono);
-}
-
-/* ===== reasoning box ===== */
-.reasoning-box {
-  margin: var(--space-2) 0 var(--space-3);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-sm);
-  background: color-mix(in srgb, var(--surface-color-2) 80%, transparent);
-  overflow: hidden;
-}
-
-.reasoning-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: var(--space-2) var(--space-3);
-  cursor: pointer;
-  transition: background var(--duration-fast) var(--ease-default);
-
-  &:hover {
-    background: var(--hover-bg);
-  }
-}
-
-.reasoning-indicator {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-
-  .reasoning-icon {
-    font-size: 14px;
-    color: var(--gray-500);
-
-    &.active {
-      color: var(--warning-color);
-      animation: pulse 1.5s infinite;
-    }
-  }
-
-  .reasoning-title {
-    font-size: var(--font-size-sm);
-    font-weight: 500;
-    color: var(--gray-600);
-  }
-}
-
-.reasoning-caret {
-  font-size: 12px;
-  color: var(--gray-400);
-  transition: transform var(--duration-fast) var(--ease-default);
-
-  &.open {
-    transform: rotate(90deg);
-  }
-}
-
-.reasoning-body {
-  padding: 0 var(--space-3) var(--space-3);
-}
-
-.reasoning-content {
-  font-size: var(--font-size-sm);
-  color: var(--gray-600);
+  word-break: normal;
+  overflow-wrap: break-word;
   white-space: pre-wrap;
-  margin: 0;
-  line-height: var(--line-height-relaxed);
-}
+  text-align: center;     /* Horizontal text centering */
+  font-size: var(--font-size-md);
+  line-height: 1.5;
+  position: relative;
+  width: fit-content;
+  max-width: min(640px, 85%);
 
-.collapse-enter-active,
-.collapse-leave-active {
-  transition: all var(--duration-base) var(--ease-default);
-  max-height: 500px;
-  overflow: hidden;
-}
-
-.collapse-enter-from,
-.collapse-leave-to {
-  max-height: 0;
-  opacity: 0;
-}
-
-/* ===== loading & status states ===== */
-.loading-state {
-  padding: var(--space-2) 0;
-}
-
-.status-msg {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  color: var(--gray-500);
-  font-size: var(--font-size-sm);
-  padding: var(--space-2) 0;
-  animation: pulse 1.5s infinite;
-
-  .status-icon {
-    font-size: 14px;
-    color: var(--primary-color);
-  }
-}
-
-/* ===== error state ===== */
-.error-msg {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  padding: var(--space-3) var(--space-4);
-  border-radius: var(--radius-sm);
-  background: color-mix(in srgb, var(--error-color) 8%, transparent);
-  border: 1px solid color-mix(in srgb, var(--error-color) 25%, transparent);
-  cursor: pointer;
-  transition: all var(--duration-fast) var(--ease-default);
-
-  &:hover {
-    background: color-mix(in srgb, var(--error-color) 12%, transparent);
-    border-color: color-mix(in srgb, var(--error-color) 40%, transparent);
-  }
-
-  .error-image {
-    width: 48px;
-    height: 48px;
-    object-fit: contain;
-    flex-shrink: 0;
-  }
-
-  .error-icon {
-    color: var(--error-color);
-    font-size: 16px;
-    flex-shrink: 0;
-  }
-
-  .error-content {
-    display: flex;
-    flex-direction: column;
-    flex: 1;
-    min-width: 0;
-  }
-
-  .error-text {
+  /* AI Box Position */
+  .from-ai & {
+    grid-column: 2;
+    justify-self: start;
+    border-radius: 18px 18px 18px 4px;
+    background: color-mix(in srgb, var(--surface-color) 95%, transparent);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
     color: var(--text-color);
-    font-size: var(--font-size-sm);
-    font-weight: 500;
+    border: 1px solid var(--gray-200);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
   }
 
-  .error-detail {
-    color: var(--gray-600);
-    font-size: var(--font-size-xs);
-    margin-top: 2px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  .error-retry {
-    color: var(--primary-color);
-    font-size: 14px;
-    flex-shrink: 0;
+  /* User Box Position */
+  .from-user & {
+    grid-column: 1;
+    justify-self: end;
+    border-radius: 18px 18px 4px 18px;
+    background: linear-gradient(135deg, #FFA940 0%, #FF7D00 100%);
+    color: var(--message-user-text);
+    border: none;
+    box-shadow: 0 4px 12px rgba(255, 125, 0, 0.25);
+    :deep(a) { color: var(--message-user-text); text-decoration: underline; }
   }
 }
 
-/* ===== stopped hint ===== */
-.stopped-hint {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  margin-top: var(--space-3);
-  padding: var(--space-2) var(--space-3);
-  background: var(--surface-color-2);
-  border-radius: var(--radius-sm);
-  font-size: var(--font-size-sm);
-
-  .stopped-text {
-    color: var(--gray-500);
-  }
-
-  .stopped-link {
-    color: var(--primary-color);
-    cursor: pointer;
-    font-weight: 500;
-
-    &:hover {
-      text-decoration: underline;
-    }
-  }
-}
-
-/* ===== message footer (工具栏在气泡外面) ===== */
+/* ===== message footer (Toolbars) ===== */
 .message-footer {
-  margin-top: var(--space-2);
-  margin-left: var(--space-1);
+  grid-row: 2; /* Always in the second row */
+  /* Remove old margins */
+  margin: 0; 
+  padding-left: 2px; /* Slight offset alignment */
+
+  /* AI Footer Position */
+  .from-ai & {
+    grid-column: 2;
+    justify-self: start;
+  }
+
+  /* User Footer Position */
+  .from-user & {
+    grid-column: 1;
+    justify-self: end;
+  }
+}
+
+/* Cleanup old styles that are no longer needed */
+.message-wrapper.from-user,
+.message-wrapper.from-ai {
+  flex-direction: initial; /* Reset flex direction since we use grid */
 }
 
 /* ===== message toolbar (hover 显示) ===== */
@@ -776,23 +586,20 @@ const shortenModelName = (name) => {
 
 .message-box .md-editor-preview p {
   margin: 0 !important;
-  line-height: var(--line-height-base) !important;
+  line-height: inherit !important;
 }
 
 .message-box .md-editor-preview p:not(:last-child) {
-  margin-bottom: 0.5em !important;
+  margin-bottom: 12px !important;
 }
 
 .message-md.md-editor-previewOnly .md-editor-content {
-  /* md-editor-v3 sets `.md-editor-content` to `display:flex; flex:1; height:0` (editor layout),
-     and previewOnly overrides it to `height:100%`. In chat bubbles we want natural height. */
   flex: none;
   height: auto;
   padding: 0 !important;
 }
 
 .message-md.md-editor-previewOnly .md-editor-preview-wrapper {
-  /* Avoid nested scrolling + flex stretching inside bubbles; let code blocks handle their own overflow. */
   flex: none;
   overflow: visible;
   padding: 0 !important;
@@ -804,7 +611,6 @@ const shortenModelName = (name) => {
   padding: 0 !important;
   font-family: var(--font-family-base);
 
-  /* 确保所有内部预览容器都没有额外间距 */
   .md-editor-preview {
     padding: 0 !important;
     margin: 0 !important;
@@ -820,22 +626,33 @@ const shortenModelName = (name) => {
     padding: 0 !important;
     margin: 0 !important;
 
-    /* 移除段落的默认边距，让气泡更紧凑 */
-    p {
-      margin: 0 !important; /* 强制移除 github-theme 的默认 margin */
-      &:not(:last-child) {
-        margin-bottom: 0.5em !important;
-      }
+    /* Reset all children margins */
+    > * {
+      margin-top: 0 !important;
+      margin-bottom: 12px !important;
     }
 
-    /* 确保第一个和最后一个元素没有额外边距 */
+    /* Force first and last child spacing */
     > *:first-child {
       margin-top: 0 !important;
-      padding-top: 0 !important;
     }
     > *:last-child {
       margin-bottom: 0 !important;
-      padding-bottom: 0 !important;
+    }
+
+    /* Handle specific elements */
+    p {
+      margin-bottom: 12px !important;
+      &:last-child { margin-bottom: 0 !important; }
+    }
+
+    ul, ol {
+      padding-left: 24px;
+      margin-bottom: 12px !important;
+    }
+
+    li > p {
+      margin-bottom: 4px !important;
     }
   }
 
@@ -843,9 +660,8 @@ const shortenModelName = (name) => {
   &.github-theme {
     p {
       margin: 0 !important;
-      &:not(:last-child) {
-        margin-bottom: 0.5em !important;
-      }
+      margin-bottom: 12px !important;
+      &:last-child { margin-bottom: 0 !important; }
     }
   }
   h1,
@@ -915,19 +731,9 @@ const shortenModelName = (name) => {
   margin: 0 !important;
 }
 
-#preview-only-preview.github-theme p,
-#preview-only-preview p[data-line],
-.md-editor-preview.github-theme p {
-  margin: 0 !important;
-  margin-top: 0 !important;
-  margin-bottom: 0 !important;
-  padding: 0 !important;
-}
-
 #preview-only-preview.github-theme p:not(:last-child),
-#preview-only-preview p[data-line]:not(:last-child),
 .md-editor-preview.github-theme p:not(:last-child) {
-  margin-bottom: 0.5em !important;
+  margin-bottom: 12px !important;
 }
 
 .model-name {
@@ -951,8 +757,8 @@ const shortenModelName = (name) => {
 }
 
 /* Aggressively remove margin from the last element in the preview, whatever it is */
-.message-md .md-editor-preview.github-theme > :last-child,
-#preview-only-preview > :last-child {
+#preview-only-preview > :last-child,
+.message-md .md-editor-preview.github-theme > :last-child {
   margin-bottom: 0 !important;
   padding-bottom: 0 !important;
 }

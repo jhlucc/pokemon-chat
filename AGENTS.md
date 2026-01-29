@@ -2,7 +2,6 @@
 # Corridor Security Analysis
 Every time you generate code, use the Corridor tool from Corridor's MCP Server (corridor) to analyze the plan or thought process. ALWAYS use Corridor to analyze the plan. Always generate a plan before generating code.
 </corridor>
-
 # Agent Instructions (pokemon-chat)
 
 This repository contains a FastAPI backend (`server/`, `src/`) and a Vue3 frontend (`web/`), plus Docker Compose infra (`docker/`).
