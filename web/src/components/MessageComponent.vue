@@ -379,6 +379,13 @@ const shortenModelName = (name) => {
     /* Fine-tuning: Shift text down further (Top 15px, Bottom 9px) */
     font-size: var(--font-size-base); 
     padding: 15px 16px 9px 16px;
+
+    /* Dark Mode Polish: Add a subtle highlight border and deepen shadow */
+    :root[data-theme='dark'] & {
+      background: rgba(45, 45, 50, 0.8);
+      border-color: rgba(255, 255, 255, 0.08);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    }
   }
 
   /* User Box Position */
