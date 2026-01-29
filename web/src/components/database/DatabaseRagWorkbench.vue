@@ -120,13 +120,17 @@
               :key="file.file_id"
               :header="`${file.filename}（${file.nodes.length} 块）`"
             >
-              <div class="chunk-grid">
-                <div v-for="(node, idx) in file.nodes.slice(0, 6)" :key="idx" class="chunk-card">
-                  <div class="chunk-meta">#{{ idx + 1 }}</div>
-                  <div class="chunk-text">{{ node.text }}</div>
-                </div>
-                <div v-if="file.nodes.length > 6" class="chunk-more">
-                  还有 {{ file.nodes.length - 6 }} 个分块...
+              <div class="chunk-grid-wrapper">
+                <div class="chunk-grid">
+                  <div v-for="(node, idx) in file.nodes" :key="idx" class="chunk-card">
+                    <div class="chunk-header">
+                      <span class="chunk-meta">#{{ idx + 1 }}</span>
+                      <button class="chunk-delete" @click="deleteChunk(file.file_id, idx)" title="删除此块">
+                        <DeleteOutlined />
+                      </button>
+                    </div>
+                    <div class="chunk-text">{{ node.text }}</div>
+                  </div>
                 </div>
               </div>
             </a-collapse-panel>
@@ -138,37 +142,6 @@
     <!-- 高级工具 -->
     <div class="advanced-section panel">
       <a-collapse v-model:activeKey="advancedKeys" class="advanced-collapse">
-        <a-collapse-panel key="pdf" header="高级：PDF 转文本（检查解析质量）">
-          <div class="advanced-grid">
-            <div class="advanced-item">
-              <label class="config-label">上传 PDF</label>
-              <a-upload-dragger
-                v-model:fileList="pdfFileList"
-                name="file"
-                :max-count="1"
-                :disabled="state.pdfUploading"
-                :customRequest="customPdfUpload"
-                class="upload-dragger upload-dragger--mini"
-              >
-                <p class="ant-upload-text">点击或拖拽 PDF</p>
-              </a-upload-dragger>
-              <a-space style="margin-top: 12px">
-                <a-button type="primary" @click="convertPdf" :loading="state.converting" :disabled="pdfFileList.length === 0">
-                  开始转换
-                </a-button>
-                <a-button @click="resetPdf" :disabled="pdfFileList.length === 0 && !pdfText">清空</a-button>
-              </a-space>
-            </div>
-            <div class="advanced-item">
-              <label class="config-label">输出文本</label>
-              <a-textarea :value="pdfText" :auto-size="{ minRows: 6, maxRows: 12 }" readonly placeholder="转换结果将显示在这里" />
-              <div class="param-hint" style="margin-top: 8px">
-                字符数：{{ pdfText.length }} · Token 估算：{{ estimateTokens(pdfText) }}
-              </div>
-            </div>
-          </div>
-        </a-collapse-panel>
-
         <a-collapse-panel key="text" header="高级：文本试切块（离线可用）">
           <div class="advanced-grid">
             <div class="advanced-item">
@@ -249,7 +222,8 @@ import {
   ReloadOutlined,
   ThunderboltOutlined,
   CheckCircleOutlined,
-  FileTextOutlined
+  FileTextOutlined,
+  DeleteOutlined
 } from '@ant-design/icons-vue'
 import { apiFetch } from '@/api/http'
 import { useConfigStore } from '@/stores/config'
@@ -266,10 +240,7 @@ const state = reactive({
   loadingDatabases: false,
   uploading: false,
   chunking: false,
-  indexing: false,
-
-  pdfUploading: false,
-  converting: false
+  indexing: false
 })
 
 const databases = ref([])
@@ -455,70 +426,15 @@ const resetIngest = () => {
   activeFileKeys.value = []
 }
 
-// ---------------------------------------------------------------------------
-// PDF -> text
-// ---------------------------------------------------------------------------
-
-const pdfFileList = ref([])
-const pdfText = ref('')
-
-const customPdfUpload = async ({ file, onSuccess, onError }) => {
-  state.pdfUploading = true
-  try {
-    if (!backendOnline.value) throw new Error('offline')
-    const formData = new FormData()
-    formData.append('file', file)
-    const data = await apiFetch('/data/upload', { method: 'POST', body: formData, timeoutMs: 60000 })
-    onSuccess?.(data, file)
-    return
-  } catch {
-    // Local fallback: only for non-pdf text preview
-    try {
-      const isPdf = String(file.name || '').toLowerCase().endsWith('.pdf')
-      const content = isPdf ? '' : await file.text()
-      onSuccess?.({ file_path: file.name, file_content: content }, file)
-    } catch (e2) {
-      onError?.(e2)
+const deleteChunk = (fileId, chunkIdx) => {
+  const file = chunkResults.value.find((f) => f.file_id === fileId)
+  if (file && Array.isArray(file.nodes)) {
+    file.nodes.splice(chunkIdx, 1)
+    // 如果文件的所有块都被删除了，移除该文件
+    if (file.nodes.length === 0) {
+      chunkResults.value = chunkResults.value.filter((f) => f.file_id !== fileId)
     }
-  } finally {
-    state.pdfUploading = false
   }
-}
-
-const convertPdf = async () => {
-  if (pdfFileList.value.length === 0) {
-    message.error('请先上传文件')
-    return
-  }
-  const f = pdfFileList.value.find((x) => x.status === 'done') || pdfFileList.value[0]
-  const resp = f?.response || {}
-  const filePath = resp.file_path || f.name
-  const fileContent = resp.file_content
-
-  state.converting = true
-  try {
-    if (fileContent && typeof fileContent === 'string' && fileContent.trim()) {
-      pdfText.value = String(fileContent)
-      return
-    }
-
-    const data = await apiFetch('/tools/pdf2txt', {
-      method: 'POST',
-      body: { file: String(filePath) },
-      timeoutMs: 120000
-    })
-    pdfText.value = String(data?.text || '')
-  } catch (e) {
-    console.error(e)
-    message.error(e?.message || '转换失败')
-  } finally {
-    state.converting = false
-  }
-}
-
-const resetPdf = () => {
-  pdfFileList.value = []
-  pdfText.value = ''
 }
 
 // ---------------------------------------------------------------------------
@@ -903,6 +819,31 @@ const advancedKeys = ref([])
   }
 }
 
+.chunk-grid-wrapper {
+  max-height: 400px;
+  overflow-y: auto;
+  padding-right: 4px;
+
+  /* 自定义滚动条 */
+  &::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: var(--gray-100);
+    border-radius: 3px;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: var(--gray-300);
+    border-radius: 3px;
+
+    &:hover {
+      background: var(--gray-400);
+    }
+  }
+}
+
 .chunk-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
@@ -916,11 +857,42 @@ const advancedKeys = ref([])
   border: 1px solid color-mix(in srgb, var(--primary-color) 10%, transparent);
 }
 
+.chunk-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
 .chunk-meta {
   font-size: 11px;
   font-weight: 600;
   color: var(--primary-color);
-  margin-bottom: 6px;
+}
+
+.chunk-delete {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--gray-400);
+  cursor: pointer;
+  opacity: 0;
+  transition: all 0.2s ease;
+
+  &:hover {
+    color: var(--error-color);
+    background: color-mix(in srgb, var(--error-color) 10%, transparent);
+  }
+}
+
+.chunk-card:hover .chunk-delete {
+  opacity: 1;
 }
 
 .chunk-text {
@@ -931,17 +903,6 @@ const advancedKeys = ref([])
   -webkit-line-clamp: 4;
   -webkit-box-orient: vertical;
   overflow: hidden;
-}
-
-.chunk-more {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 12px;
-  font-size: 12px;
-  color: var(--gray-500);
-  background: var(--gray-100);
-  border-radius: 12px;
 }
 
 /* 高级工具 */
@@ -1168,10 +1129,6 @@ const advancedKeys = ref([])
   .chunk-card {
     background: color-mix(in srgb, var(--primary-color) 8%, transparent);
     border-color: color-mix(in srgb, var(--primary-color) 15%, transparent);
-  }
-
-  .chunk-more {
-    background: var(--gray-800);
   }
 
   .action-bar-inner {
