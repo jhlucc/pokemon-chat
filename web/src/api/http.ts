@@ -8,30 +8,45 @@ import { createRequestId } from '@/utils/id'
 
 const DEFAULT_TIMEOUT_MS = 15000
 const DEFAULT_API_PREFIX = '/api'
-const RAW_API_ORIGIN = (import.meta?.env?.VITE_API_URL || '').trim()
+const RAW_API_ORIGIN = (import.meta.env.VITE_API_URL || '').trim()
 const API_ORIGIN = RAW_API_ORIGIN.replace(/\/+$/, '')
-const IS_DEV = Boolean(import.meta?.env?.DEV)
-// In production we normally call same-origin `/api/*` (Nginx reverse proxy).
-// For local `vite preview` or when hosting frontend+backend on different origins,
-// allow setting VITE_API_URL to an absolute backend origin (e.g. http://127.0.0.1:5050).
+const IS_DEV = Boolean(import.meta.env.DEV)
+
 const BASE_ORIGIN = !IS_DEV && API_ORIGIN ? API_ORIGIN : window.location.origin
 const API_PREFIX =
-  (import.meta?.env?.VITE_API_BASE_PATH || DEFAULT_API_PREFIX).replace(/\/+$/, '') ||
+  (import.meta.env.VITE_API_BASE_PATH || DEFAULT_API_PREFIX).replace(/\/+$/, '') ||
   DEFAULT_API_PREFIX
 
-/**
- * @typedef {Object} ApiRequestOptions
- * @property {string=} method
- * @property {Record<string, unknown>=} query
- * @property {unknown=} body
- * @property {Record<string, string>=} headers
- * @property {number=} timeoutMs
- * @property {AbortSignal=} signal
- */
+export interface ApiRequestOptions {
+  method?: string
+  query?: Record<string, unknown> | URLSearchParams
+  body?: unknown
+  headers?: Record<string, string>
+  timeoutMs?: number
+  signal?: AbortSignal
+}
+
+export interface ApiErrorOptions {
+  status?: number | null
+  data?: unknown
+  isNetworkError?: boolean
+  isCancelled?: boolean
+  requestId?: string | null
+  url?: string | null
+  method?: string | null
+}
 
 export class ApiError extends Error {
+  status: number | null
+  data: unknown
+  isNetworkError: boolean
+  isCancelled: boolean
+  requestId: string | null
+  url: string | null
+  method: string | null
+
   constructor(
-    message,
+    message: string,
     {
       status = null,
       data = null,
@@ -40,7 +55,7 @@ export class ApiError extends Error {
       requestId = null,
       url = null,
       method = null
-    } = {}
+    }: ApiErrorOptions = {}
   ) {
     super(message)
     this.name = 'ApiError'
@@ -54,7 +69,7 @@ export class ApiError extends Error {
   }
 }
 
-function normalizePath(path) {
+function normalizePath(path: string): string {
   if (!path) return API_PREFIX
   if (/^https?:\/\//i.test(path)) return path
   const p = path.startsWith('/') ? path : `/${path}`
@@ -62,18 +77,22 @@ function normalizePath(path) {
   return `${API_PREFIX}${p}`
 }
 
-function buildUrl(path, query) {
+function buildUrl(path: string, query?: Record<string, unknown> | URLSearchParams): string {
   const url = new URL(normalizePath(path), BASE_ORIGIN)
-  if (query && typeof query === 'object') {
-    Object.entries(query).forEach(([k, v]) => {
-      if (v === undefined || v === null) return
-      url.searchParams.set(k, String(v))
-    })
+  if (query) {
+    if (query instanceof URLSearchParams) {
+      query.forEach((value, key) => url.searchParams.append(key, value))
+    } else if (typeof query === 'object') {
+      Object.entries(query).forEach(([k, v]) => {
+        if (v === undefined || v === null) return
+        url.searchParams.set(k, String(v))
+      })
+    }
   }
   return url.toString()
 }
 
-function buildHeaders(body, headers) {
+function buildHeaders(body: unknown, headers?: Record<string, string>): Record<string, string> {
   const hasJsonBody =
     body !== undefined &&
     body !== null &&
@@ -89,7 +108,7 @@ function buildHeaders(body, headers) {
   }
 }
 
-function buildBody(body) {
+function buildBody(body: unknown): BodyInit | null | undefined {
   const hasJsonBody =
     body !== undefined &&
     body !== null &&
@@ -98,20 +117,27 @@ function buildBody(body) {
     !(body instanceof Blob) &&
     !(body instanceof ArrayBuffer) &&
     !(body instanceof URLSearchParams)
-  if (!hasJsonBody) return body
+  
+  if (!hasJsonBody) return body as BodyInit | null | undefined
   return JSON.stringify(body)
 }
 
-function anyAbortSignal(signals) {
+function anyAbortSignal(signals: (AbortSignal | undefined | null)[]): AbortSignal {
   const controller = new AbortController()
 
   const onAbort = () => controller.abort()
+  
+  // Check if already aborted
   for (const s of signals) {
     if (!s) continue
     if (s.aborted) {
       controller.abort()
-      break
+      return controller.signal
     }
+  }
+
+  for (const s of signals) {
+    if (!s) continue
     s.addEventListener('abort', onAbort, { once: true })
   }
 
@@ -121,12 +147,11 @@ function anyAbortSignal(signals) {
 /**
  * Low-level request function.
  * Returns the raw `Response` so callers can handle streaming bodies.
- *
- * @param {string} path
- * @param {ApiRequestOptions=} options
- * @returns {Promise<Response>}
  */
-export async function apiRequest(path, { method = 'GET', query, body, headers, timeoutMs, signal } = {}) {
+export async function apiRequest(
+  path: string,
+  { method = 'GET', query, body, headers, timeoutMs, signal }: ApiRequestOptions = {}
+): Promise<Response> {
   const reqId = headers?.['X-Request-ID'] || headers?.['x-request-id'] || createRequestId()
   const finalHeaders = { ...buildHeaders(body, headers), 'X-Request-ID': reqId }
 
@@ -149,15 +174,20 @@ export async function apiRequest(path, { method = 'GET', query, body, headers, t
     if (!res.ok) {
       const requestId = res.headers.get('x-request-id') || reqId
       const contentType = res.headers.get('content-type') || ''
-      const data = contentType.includes('application/json')
-        ? await res.json().catch(() => null)
-        : await res.text().catch(() => null)
+      
+      let data: any = null
+      if (contentType.includes('application/json')) {
+        data = await res.json().catch(() => null)
+      } else {
+        data = await res.text().catch(() => null)
+      }
+      
       const msg = (data && (data.detail || data.message)) || `HTTP ${res.status}`
       throw new ApiError(msg, { status: res.status, data, requestId, url: res.url, method })
     }
 
     return res
-  } catch (e) {
+  } catch (e: any) {
     if (e?.name === 'AbortError') {
       if (timedOut) {
         throw new ApiError('Request timeout', {
@@ -188,12 +218,11 @@ export async function apiRequest(path, { method = 'GET', query, body, headers, t
 
 /**
  * Convenience helper for non-streaming requests.
- *
- * @param {string} path
- * @param {ApiRequestOptions=} options
- * @returns {Promise<unknown>}
  */
-export async function apiFetch(path, { method = 'GET', query, body, headers, timeoutMs, signal } = {}) {
+export async function apiFetch<T = any>(
+  path: string, 
+  { method = 'GET', query, body, headers, timeoutMs, signal }: ApiRequestOptions = {}
+): Promise<T> {
   try {
     const res = await apiRequest(path, { method, query, body, headers, timeoutMs, signal })
 
@@ -222,8 +251,8 @@ export async function apiFetch(path, { method = 'GET', query, body, headers, tim
       })
     }
 
-    return data
-  } catch (e) {
+    return data as T
+  } catch (e: any) {
     if (e instanceof ApiError) throw e
     throw new ApiError(e?.message || 'Network error', {
       isNetworkError: true,
