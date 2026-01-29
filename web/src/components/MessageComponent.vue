@@ -69,16 +69,11 @@
           </div>
 
           <!-- Markdown 内容 -->
-          <MdPreview
+          <div
             v-else-if="message.content"
-            ref="editorRef"
-            editorId="preview-only"
-            previewTheme="github"
-            :showCodeRowNumber="false"
-            :modelValue="message.content"
-            :key="message.id"
-            class="message-md"
-          />
+            class="markdown-body"
+            v-html="renderedContent"
+          ></div>
           <div v-else-if="message.reasoning_content" class="empty-block"></div>
 
           <!-- 工具调用 -->
@@ -161,9 +156,14 @@
 </template>
 
 <script setup>
-import { computed, defineAsyncComponent, ref } from 'vue'
+import { computed, ref } from 'vue'
 import { useClipboard } from '@vueuse/core'
 import { message as antdMessage } from 'ant-design-vue'
+import { Marked } from 'marked'
+import { markedHighlight } from 'marked-highlight'
+import hljs from 'highlight.js'
+import 'highlight.js/styles/atom-one-light.css'
+
 import {
   CaretRightOutlined,
   ThunderboltOutlined,
@@ -176,15 +176,19 @@ import {
 import RefsComponent from '@/components/RefsComponent.vue'
 import RetrievalStatus from '@/components/chat/RetrievalStatus.vue'
 
-// Lazy-load markdown preview to keep the initial chat bundle smaller.
-const MdPreview = defineAsyncComponent({
-  loader: async () => {
-    const mod = await import('md-editor-v3')
-    await import('md-editor-v3/lib/preview.css')
-    return mod.MdPreview
-  },
-  delay: 120,
-  timeout: 20000
+// Configure Marked with Highlight.js
+const marked = new Marked(
+  markedHighlight({
+    langPrefix: 'hljs language-',
+    highlight(code, lang) {
+      const language = hljs.getLanguage(lang) ? lang : 'plaintext'
+      return hljs.highlight(code, { language }).value
+    }
+  })
+)
+marked.setOptions({
+  breaks: true, // Enable GFM line breaks
+  gfm: true
 })
 
 const props = defineProps({
@@ -228,6 +232,10 @@ const props = defineProps({
 const isUser = computed(() => props.message.role === 'user' || props.message.role === 'sent')
 const avatar = computed(() => (isUser.value ? 'avatar.jpg' : 'user.png'))
 const editorRef = ref()
+
+const renderedContent = computed(() => {
+  return marked.parse(props.message.content || '')
+})
 
 const emit = defineEmits(['retry', 'retryStoppedMessage'])
 
@@ -556,12 +564,12 @@ const shortenModelName = (name) => {
 <!-- =============== global styles: markdown / font =============== -->
 <style lang="less">
 /* font size scaling */
-.chat-box.font-smaller #preview-only-preview {
+.chat-box.font-smaller .markdown-body {
   font-size: var(--font-size-base);
   h1, h2 { font-size: 1.1rem; }
   h3, h4 { font-size: 1rem; }
 }
-.chat-box.font-larger #preview-only-preview {
+.chat-box.font-larger .markdown-body {
   font-size: var(--font-size-lg);
   h1, h2 { font-size: 1.3rem; }
   h3, h4 { font-size: 1.2rem; }
