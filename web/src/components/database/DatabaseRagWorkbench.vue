@@ -32,29 +32,44 @@
         <!-- 目标知识库 -->
         <div class="config-section">
           <label class="config-label">目标知识库</label>
-          <div class="select-with-action">
-            <a-select
-              v-model:value="selectedDbId"
-              :disabled="!backendOnline"
-              placeholder="选择一个知识库"
-              @change="onDatabaseChange"
-            >
-              <a-select-option v-for="db in databases" :key="db.db_id" :value="db.db_id">
-                {{ db.name }}
-              </a-select-option>
-            </a-select>
-            <button
-              class="select-action-btn"
-              @click="loadDatabases"
-              :disabled="state.loadingDatabases"
-              title="刷新列表"
-            >
-              <ReloadOutlined :spin="state.loadingDatabases" />
-            </button>
-          </div>
-          <div v-if="selectedDb" class="config-hint">
-            向量模型：{{ selectedDb.embed_model || '-' }} · 维度：{{ selectedDb.dimension || '-' }}
-          </div>
+          <!-- 加载中骨架屏 -->
+          <a-skeleton v-if="state.loadingDatabases" active :paragraph="{ rows: 1 }" />
+          <!-- 空状态 -->
+          <a-empty
+            v-else-if="databases.length === 0"
+            description="暂无知识库"
+            :image="Empty.PRESENTED_IMAGE_SIMPLE"
+          >
+            <a-button type="primary" @click="$router.push('/database')">
+              创建知识库
+            </a-button>
+          </a-empty>
+          <!-- 正常选择器 -->
+          <template v-else>
+            <div class="select-with-action">
+              <a-select
+                v-model:value="selectedDbId"
+                :disabled="!backendOnline"
+                placeholder="选择一个知识库"
+                @change="onDatabaseChange"
+              >
+                <a-select-option v-for="db in databases" :key="db.db_id" :value="db.db_id">
+                  {{ db.name }}
+                </a-select-option>
+              </a-select>
+              <button
+                class="select-action-btn"
+                @click="loadDatabases"
+                :disabled="state.loadingDatabases"
+                title="刷新列表"
+              >
+                <ReloadOutlined :spin="state.loadingDatabases" />
+              </button>
+            </div>
+            <div v-if="selectedDb" class="config-hint">
+              向量模型：{{ selectedDb.embed_model || '-' }} · 维度：{{ selectedDb.dimension || '-' }}
+            </div>
+          </template>
         </div>
 
         <a-divider style="margin: 16px 0" />
@@ -218,7 +233,7 @@
 
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
-import { message } from 'ant-design-vue'
+import { message, Empty } from 'ant-design-vue'
 import {
   InboxOutlined,
   ReloadOutlined,
