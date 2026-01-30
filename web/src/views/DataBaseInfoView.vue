@@ -220,6 +220,13 @@
           </div>
         </a-tab-pane>
 
+        <a-tab-pane key="batch">
+          <template #tab><span><FolderOpenOutlined />批量导入</span></template>
+          <div class="db-tab-container">
+            <BatchImportPanel :db-id="databaseId" />
+          </div>
+        </a-tab-pane>
+
         <a-tab-pane key="search">
           <template #tab><span><SearchOutlined />检索测试</span></template>
           <div class="db-tab-container">
@@ -363,8 +370,10 @@ import {
   ClockCircleFilled,
   DeleteOutlined,
   CloudUploadOutlined,
-  SearchOutlined
+  SearchOutlined,
+  FolderOpenOutlined
 } from '@ant-design/icons-vue'
+import BatchImportPanel from '@/components/database/BatchImportPanel.vue'
 
 const route = useRoute()
 const router = useRouter()
