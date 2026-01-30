@@ -423,3 +423,42 @@ async def query_graph_node(entity_name: str = Query(...)):
     except Exception as e:
         logger.error(f"query_graph_node failed: {e}\n{traceback.format_exc()}")
         raise HTTPException(500, str(e)) from e
+
+
+@data.get("/parsers")
+async def get_parser_info():
+    """返回支持的文件格式和解析器信息"""
+    parsers = {
+        "supported_formats": [
+            {"ext": ".pdf", "parser": "PyPDFLoader + OCR fallback", "ocr_support": True},
+            {"ext": ".docx", "parser": "MarkItDown", "ocr_support": False},
+            {"ext": ".doc", "parser": "MarkItDown", "ocr_support": False},
+            {"ext": ".pptx", "parser": "DeepDoc", "ocr_support": False},
+            {"ext": ".ppt", "parser": "DeepDoc", "ocr_support": False},
+            {"ext": ".xlsx", "parser": "MarkItDown", "ocr_support": False},
+            {"ext": ".xls", "parser": "MarkItDown", "ocr_support": False},
+            {"ext": ".csv", "parser": "MarkItDown", "ocr_support": False},
+            {"ext": ".txt", "parser": "Direct read", "ocr_support": False},
+            {"ext": ".md", "parser": "MarkItDown", "ocr_support": False},
+            {"ext": ".html", "parser": "MarkItDown", "ocr_support": False},
+            {"ext": ".json", "parser": "MarkItDown", "ocr_support": False},
+        ],
+        "ocr_available": False,
+        "markitdown_version": None
+    }
+
+    # Check OCR availability
+    try:
+        from src.plugins.vision._ocr import OCRHandler2  # noqa: F811
+        parsers["ocr_available"] = True
+    except ImportError:
+        pass
+
+    # Check MarkItDown version
+    try:
+        import markitdown
+        parsers["markitdown_version"] = getattr(markitdown, "__version__", "unknown")
+    except ImportError:
+        pass
+
+    return parsers
