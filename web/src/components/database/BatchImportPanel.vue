@@ -6,19 +6,13 @@
       </a-tooltip>
     </template>
 
-    <a-alert
-      type="info"
-      show-icon
-      message="从服务器本地目录导入文件，适用于大批量文档处理"
-      style="margin-bottom: 16px"
-    />
-
     <a-form layout="vertical">
       <a-form-item label="服务器目录路径">
         <a-input
           v-model:value="folderPath"
           placeholder="/path/to/documents"
         />
+        <p class="field-hint">输入服务器上的绝对路径，适用于大批量文档处理</p>
       </a-form-item>
 
       <a-form-item label="文件后缀过滤（可选）">
@@ -151,5 +145,12 @@ const startImport = async () => {
   margin-top: 24px;
   padding-top: 24px;
   border-top: 1px solid var(--border-color);
+}
+
+.field-hint {
+  margin: 6px 0 0;
+  font-size: 12px;
+  color: var(--gray-400);
+  line-height: 1.4;
 }
 </style>
