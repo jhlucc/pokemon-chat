@@ -1,11 +1,7 @@
 <template>
-  <div class="database-hub">
-    <!-- 背景层：复用主页的暖光氛围 -->
-    <div class="ambient-glow glow--orange"></div>
-    <div class="ambient-glow glow--purple"></div>
-    <div class="dot-grid"></div>
-
-    <HeaderComponent
+  <DatabaseLayout>
+    <div class="database-hub">
+      <HeaderComponent
       :title="headerTitle"
       :description="headerDescription"
       :breadcrumbs="breadcrumbs"
@@ -128,6 +124,7 @@
       </div>
     </div>
   </div>
+  </DatabaseLayout>
 </template>
 
 <script setup>
@@ -137,6 +134,7 @@ import { message } from 'ant-design-vue'
 import { PlusOutlined, ReadFilled, BookOutlined, ReloadOutlined } from '@ant-design/icons-vue'
 
 import HeaderComponent from '@/components/HeaderComponent.vue'
+import DatabaseLayout from '@/components/database/DatabaseLayout.vue'
 import DatabaseRagWorkbench from '@/components/database/DatabaseRagWorkbench.vue'
 import { apiFetch } from '@/api/http'
 import { useConfigStore } from '@/stores/config'
@@ -259,57 +257,6 @@ onMounted(async () => {
   /* 透明化：让光晕透出来 */
   background: transparent;
   overflow-x: hidden;
-}
-
-/* 背景层：暖光氛围 - 更强烈的光晕 */
-.ambient-glow {
-  position: fixed;
-  border-radius: 50%;
-  filter: blur(100px);
-  pointer-events: none;
-  z-index: 0;
-  /* 使用 normal 让光晕在浅色背景上可见 */
-  mix-blend-mode: normal;
-  animation: glow-drift 20s ease-in-out infinite;
-}
-
-.glow--orange {
-  width: 700px;
-  height: 700px;
-  top: -25%;
-  left: -20%;
-  /* 增强可见度 */
-  background: radial-gradient(circle, rgba(255, 125, 0, 0.35) 0%, rgba(255, 180, 100, 0.15) 40%, transparent 70%);
-}
-
-.glow--purple {
-  width: 550px;
-  height: 550px;
-  bottom: -15%;
-  right: -15%;
-  background: radial-gradient(circle, rgba(139, 92, 246, 0.25) 0%, rgba(180, 150, 255, 0.1) 40%, transparent 70%);
-  animation-delay: -7s;
-}
-
-@keyframes glow-drift {
-  0%, 100% { transform: translate(0, 0) scale(1); }
-  33% { transform: translate(20px, -15px) scale(1.03); }
-  66% { transform: translate(-15px, 15px) scale(0.97); }
-}
-
-/* 点阵背景 */
-.dot-grid {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-image:
-    radial-gradient(circle, rgba(255, 125, 0, 0.05) 1px, transparent 1px),
-    radial-gradient(circle, rgba(255, 125, 0, 0.025) 1px, transparent 1px);
-  background-size: 24px 24px, 96px 96px;
-  pointer-events: none;
-  z-index: 0;
 }
 
 .ui-page {
@@ -588,25 +535,6 @@ onMounted(async () => {
   .database-hub {
     /* 暗色模式也透明，让光晕透出 */
     background: transparent;
-  }
-
-  .ambient-glow {
-    mix-blend-mode: screen;
-    opacity: 0.7;
-  }
-
-  .glow--orange {
-    background: radial-gradient(circle, rgba(255, 125, 0, 0.25) 0%, rgba(255, 180, 100, 0.1) 40%, transparent 70%);
-  }
-
-  .glow--purple {
-    background: radial-gradient(circle, rgba(139, 92, 246, 0.2) 0%, rgba(180, 150, 255, 0.08) 40%, transparent 70%);
-  }
-
-  .dot-grid {
-    background-image:
-      radial-gradient(circle, rgba(255, 125, 0, 0.06) 1px, transparent 1px),
-      radial-gradient(circle, rgba(255, 125, 0, 0.03) 1px, transparent 1px);
   }
 
   .segmented-tabs {
