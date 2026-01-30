@@ -108,6 +108,8 @@
           </div>
         </a-upload-dragger>
 
+        <SupportedFormats class="formats-info" />
+
         <!-- 分块预览 -->
         <div v-if="chunkResults.length > 0" class="preview-section">
           <div class="preview-header">
@@ -228,6 +230,7 @@ import {
 import { apiFetch } from '@/api/http'
 import { useConfigStore } from '@/stores/config'
 import { chunkPlainText } from '@/utils/chunking'
+import SupportedFormats from '@/components/database/SupportedFormats.vue'
 
 const configStore = useConfigStore()
 
@@ -1140,5 +1143,9 @@ const advancedKeys = ref([])
       0 8px 32px rgba(0, 0, 0, 0.4),
       inset 0 1px 0 rgba(255, 255, 255, 0.08);
   }
+}
+
+.formats-info {
+  margin-top: 16px;
 }
 </style>
