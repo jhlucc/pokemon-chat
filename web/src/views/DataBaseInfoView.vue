@@ -20,8 +20,8 @@
         </div>
       </template>
       <template #actions>
-        <a-button type="primary" @click="backToDatabase"> <LeftOutlined /> 返回 </a-button>
-        <a-button type="primary" danger @click="deleteDatabse">
+        <a-button @click="backToDatabase"> <LeftOutlined /> 返回 </a-button>
+        <a-button class="btn-danger-ghost" @click="deleteDatabse">
           <DeleteOutlined /> 删除数据库
         </a-button>
       </template>
@@ -42,7 +42,7 @@
         />
         <!--  <a-alert v-if="configStore.config.embed_model &&database.embed_model != configStore.config.embed_model" message="向量模型不匹配，请重新选择" type="warning" style="margin: 10px 20px;" />-->
         <div class="db-main-container">
-          <a-tabs v-model:activeKey="state.curPage" class="atab-container" type="card">
+          <a-tabs v-model:activeKey="state.curPage" class="atab-container">
         <a-tab-pane key="files">
           <template #tab
             ><span><ReadOutlined />文件列表</span></template
@@ -737,6 +737,14 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   gap: 12px;
+
+  .actions {
+    display: flex;
+    justify-content: flex-end;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border-color);
+    margin-bottom: 4px;
+  }
 }
 
 .query-test-container {
@@ -1256,6 +1264,31 @@ onUnmounted(() => {
 </style>
 
 <style lang="less">
+/* 危险操作按钮样式 - Ghost 风格 */
+.btn-danger-ghost {
+  background-color: #fff1f0 !important;
+  border: 1px solid #ffa39e !important;
+  color: #f5222d !important;
+
+  &:hover, &:focus {
+    background-color: #ffccc7 !important;
+    border-color: #ff7875 !important;
+    color: #cf1322 !important;
+  }
+}
+
+:root[data-theme='dark'] .btn-danger-ghost {
+  background-color: rgba(245, 34, 45, 0.15) !important;
+  border-color: rgba(255, 77, 79, 0.5) !important;
+  color: #ff7875 !important;
+
+  &:hover, &:focus {
+    background-color: rgba(245, 34, 45, 0.25) !important;
+    border-color: rgba(255, 77, 79, 0.7) !important;
+    color: #ff4d4f !important;
+  }
+}
+
 .db-main-container {
   .atab-container {
     padding: 0;
@@ -1263,11 +1296,53 @@ onUnmounted(() => {
     max-height: 100%;
     overflow: auto;
 
+    /* Tabs 导航栏 - 下划线风格 */
     div.ant-tabs-nav {
       background: var(--surface-color);
-      padding: 8px 20px;
-      padding-bottom: 0;
-      border-bottom: 1px solid var(--border-color);
+      padding: 0 20px;
+      margin-bottom: 0;
+
+      &::before {
+        border-bottom: 1px solid var(--border-color);
+      }
+    }
+
+    /* Tab 标签项样式 */
+    .ant-tabs-tab {
+      padding: 12px 16px;
+      margin: 0 4px 0 0;
+      color: var(--gray-500);
+      font-weight: 500;
+      transition: all 0.2s ease;
+      border: none !important;
+      background: transparent !important;
+
+      &:hover {
+        color: var(--primary-color);
+      }
+
+      span {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+    }
+
+    /* Tab 选中态 - 底部下划线风格 */
+    .ant-tabs-tab-active {
+      color: var(--primary-color) !important;
+
+      .ant-tabs-tab-btn {
+        color: var(--primary-color) !important;
+        font-weight: 600;
+      }
+    }
+
+    /* 下划线指示器 */
+    .ant-tabs-ink-bar {
+      background: var(--primary-color);
+      height: 3px;
+      border-radius: 2px 2px 0 0;
     }
 
     .ant-tabs-content-holder {

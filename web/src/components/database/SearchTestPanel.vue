@@ -161,6 +161,38 @@ const runSearch = async () => {
     color: var(--gray-600);
     font-weight: 500;
   }
+
+  /* 优化滑动条样式 */
+  :deep(.ant-slider) {
+    margin: 4px 0;
+
+    .ant-slider-rail {
+      height: 4px;
+      background-color: var(--gray-200);
+      border-radius: 2px;
+    }
+
+    .ant-slider-track {
+      height: 4px;
+      background-color: var(--primary-color);
+      border-radius: 2px;
+    }
+
+    .ant-slider-handle {
+      width: 16px;
+      height: 16px;
+      margin-top: -6px;
+      border: 2px solid var(--primary-color);
+      background-color: #fff;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+      transition: all 0.2s ease;
+
+      &:hover, &:focus {
+        border-color: var(--primary-color);
+        box-shadow: 0 2px 8px rgba(255, 125, 0, 0.3);
+      }
+    }
+  }
 }
 
 .results-section {
