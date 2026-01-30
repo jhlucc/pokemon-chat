@@ -980,56 +980,59 @@ onUnmounted(() => {
 }
 
 .my-table {
+  :deep(.ant-table) {
+    background: transparent;
+  }
+
+  :deep(.ant-table-thead > tr > th) {
+    background: color-mix(in srgb, var(--primary-color) 4%, transparent);
+    font-weight: 600;
+    color: var(--gray-700);
+    border-bottom: 1px solid var(--border-color);
+  }
+
+  :deep(.ant-table-tbody > tr > td) {
+    border-bottom: 1px solid var(--border-color);
+  }
+
+  :deep(.ant-table-tbody > tr:hover > td) {
+    background: color-mix(in srgb, var(--primary-color) 6%, transparent);
+  }
+
   button.ant-btn-link {
     padding: 0;
+    font-weight: 500;
   }
 
   .span-type {
-    color: white;
-    padding: 2px 4px;
+    display: inline-block;
+    padding: 2px 8px;
     border-radius: 4px;
-    font-size: 10px;
-    font-weight: bold;
-    opacity: 0.8;
-    user-select: none;
-    background: var(--badge-file-pdf);
-  }
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
 
-  .pdf {
-    background: var(--badge-file-pdf);
-  }
-
-  .txt {
-    background: var(--badge-file-txt);
-  }
-
-  .docx,
-  .doc {
-    background: var(--badge-file-doc);
-  }
-
-  .md {
-    background: var(--badge-file-md);
+    &.pdf { background: #fee2e2; color: #dc2626; }
+    &.txt { background: #e0f2fe; color: #0284c7; }
+    &.docx, &.doc { background: #dbeafe; color: #2563eb; }
+    &.md { background: #f3e8ff; color: #9333ea; }
+    &.xlsx, &.xls { background: #dcfce7; color: #16a34a; }
   }
 
   button.main-btn {
-    font-weight: bold;
-    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-color);
+
     &:hover {
-      cursor: pointer;
-      color: var(--main-color);
-      font-weight: bold;
+      color: var(--primary-color);
     }
   }
 
   button.del-btn {
-    cursor: pointer;
+    color: var(--gray-400);
 
-    &:hover {
+    &:hover:not(:disabled) {
       color: var(--error-color);
-    }
-    &:disabled {
-      cursor: not-allowed;
     }
   }
 }
