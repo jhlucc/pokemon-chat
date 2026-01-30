@@ -220,6 +220,13 @@
           </div>
         </a-tab-pane>
 
+        <a-tab-pane key="search">
+          <template #tab><span><SearchOutlined />检索测试</span></template>
+          <div class="db-tab-container">
+            <SearchTestPanel :db-id="databaseId" />
+          </div>
+        </a-tab-pane>
+
         <!--      <a-tab-pane key="query-test" force-render>-->
         <!--        <template #tab><span><SearchOutlined />检索测试</span></template>-->
         <!--        <div class="query-test-container db-tab-container">-->
@@ -346,6 +353,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useConfigStore } from '@/stores/config'
 import { apiFetch } from '@/api/http'
 import HeaderComponent from '@/components/HeaderComponent.vue'
+import SearchTestPanel from '@/components/database/SearchTestPanel.vue'
 import {
   ReadOutlined,
   LeftOutlined,
@@ -354,7 +362,8 @@ import {
   CloseCircleFilled,
   ClockCircleFilled,
   DeleteOutlined,
-  CloudUploadOutlined
+  CloudUploadOutlined,
+  SearchOutlined
 } from '@ant-design/icons-vue'
 
 const route = useRoute()
