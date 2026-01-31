@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import threading
+from concurrent.futures import ThreadPoolExecutor
 from typing import Any
 
 from src.core.feature_flags import feature_enabled
@@ -70,10 +71,36 @@ class Retriever:
         refs = {"query": query, "history": history, "meta": meta}
         refs["model_name"] = settings.llm.model_name
         refs["entities"] = self.reco_entities(query, history, refs)
-        refs["knowledge_base"] = self.query_knowledgebase(query, history, refs)
-        refs["graph_base"] = self.query_graph(query, history, refs)  # 图谱
-        refs["web_search"] = self.query_web(query, history, refs)
-        refs["mysql_mcp"] = self.query_mysql_mcp(query, history, refs)
+
+        # Parallelize independent retrieval steps when multiple tools are requested.
+        # This keeps end-to-end latency closer to max(step_latency) than sum(step_latency).
+        requested = sum(
+            1
+            for v in (
+                bool(meta.get("db_id")),
+                bool(meta.get("use_graph")),
+                bool(meta.get("use_web")),
+                bool(meta.get("mcp_id")),
+            )
+            if v
+        )
+
+        if requested >= 2:
+            with ThreadPoolExecutor(max_workers=4) as ex:
+                fut_kb = ex.submit(self.query_knowledgebase, query, history, refs)
+                fut_graph = ex.submit(self.query_graph, query, history, refs)
+                fut_web = ex.submit(self.query_web, query, history, refs)
+                fut_mcp = ex.submit(self.query_mysql_mcp, query, history, refs)
+
+                refs["knowledge_base"] = fut_kb.result()
+                refs["graph_base"] = fut_graph.result()  # 图谱
+                refs["web_search"] = fut_web.result()
+                refs["mysql_mcp"] = fut_mcp.result()
+        else:
+            refs["knowledge_base"] = self.query_knowledgebase(query, history, refs)
+            refs["graph_base"] = self.query_graph(query, history, refs)  # 图谱
+            refs["web_search"] = self.query_web(query, history, refs)
+            refs["mysql_mcp"] = self.query_mysql_mcp(query, history, refs)
         return refs
 
     async def _call_mcp(self, query: str, *, timeout_s: float) -> dict:
