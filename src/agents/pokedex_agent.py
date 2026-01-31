@@ -14,66 +14,11 @@ from langgraph.prebuilt import ToolNode
 from pydantic import BaseModel, Field
 
 from src.agents.base import ToolAgent
+from src.agents.pokemon_data import get_pokemon_data
+from src.agents.pokemon_facts import evolution_chain
 from src.utils.logger import get_logger
 
 logger = get_logger(__name__)
-
-# 宝可梦图鉴数据
-POKEDEX = {
-    "001": {
-        "name": "妙蛙种子",
-        "types": ["草", "毒"],
-        "generation": 1,
-        "category": "种子宝可梦",
-        "height": 0.7,
-        "weight": 6.9,
-    },
-    "004": {"name": "小火龙", "types": ["火"], "generation": 1, "category": "蜥蜴宝可梦", "height": 0.6, "weight": 8.5},
-    "007": {"name": "杰尼龟", "types": ["水"], "generation": 1, "category": "小龟宝可梦", "height": 0.5, "weight": 9.0},
-    "025": {"name": "皮卡丘", "types": ["电"], "generation": 1, "category": "鼠宝可梦", "height": 0.4, "weight": 6.0},
-    "143": {
-        "name": "卡比兽",
-        "types": ["普通"],
-        "generation": 1,
-        "category": "睡觉宝可梦",
-        "height": 2.1,
-        "weight": 460.0,
-    },
-    "150": {
-        "name": "超梦",
-        "types": ["超能力"],
-        "generation": 1,
-        "category": "基因宝可梦",
-        "height": 2.0,
-        "weight": 122.0,
-    },
-    "149": {
-        "name": "快龙",
-        "types": ["龙", "飞行"],
-        "generation": 1,
-        "category": "龙宝可梦",
-        "height": 2.2,
-        "weight": 210.0,
-    },
-    "094": {
-        "name": "耿鬼",
-        "types": ["幽灵", "毒"],
-        "generation": 1,
-        "category": "影子宝可梦",
-        "height": 1.5,
-        "weight": 40.5,
-    },
-}
-
-# 进化链
-EVOLUTION_CHAINS = {
-    "妙蛙种子": ["妙蛙种子", "妙蛙草", "妙蛙花"],
-    "小火龙": ["小火龙", "火恐龙", "喷火龙"],
-    "杰尼龟": ["杰尼龟", "卡咪龟", "水箭龟"],
-    "皮卡丘": ["皮丘", "皮卡丘", "雷丘"],
-    "迷你龙": ["迷你龙", "哈克龙", "快龙"],
-    "鬼斯": ["鬼斯", "鬼斯通", "耿鬼"],
-}
 
 # 招式数据
 MOVES = {
@@ -110,36 +55,100 @@ class AbilitySchema(BaseModel):
 @tool(args_schema=SearchSchema)
 def search_pokedex(query: str) -> str:
     """按名称、属性或世代搜索宝可梦"""
-    results = []
-    query.lower()
+    q = (query or "").strip()
+    if not q:
+        return "请输入搜索关键词（宝可梦名称 / 属性 / 编号）"
 
-    for pid, data in POKEDEX.items():
-        # 名称匹配
-        if query in data["name"]:
-            results.append(f"#{pid} {data['name']} ({'/'.join(data['types'])}) - {data['category']}")
-        # 属性匹配
-        elif query in data["types"]:
-            results.append(f"#{pid} {data['name']} ({'/'.join(data['types'])}) - {data['category']}")
-        # 世代匹配
-        elif query.isdigit() and int(query) == data["generation"]:
-            results.append(f"#{pid} {data['name']} ({'/'.join(data['types'])}) - 第{data['generation']}世代")
+    data = get_pokemon_data()
+    results: list[tuple[int, str]] = []  # (id, formatted)
 
-    if not results:
-        return f"未找到匹配 '{query}' 的宝可梦"
+    # 1) Exact-ish name match (CN/EN/JP)
+    resolved = data.resolve_name(q)
+    if resolved:
+        rec = data.get_by_cn_name(resolved)
+        if rec:
+            pid = rec.get("id")
+            pid_int = int(pid) if isinstance(pid, int) else None
+            types = rec.get("type") or []
+            types_str = "/".join(types) if isinstance(types, list) else str(types)
+            line = f"#{pid_int:03d} {resolved} ({types_str})" if isinstance(pid_int, int) else f"{resolved} ({types_str})"
+            results.append((pid_int or 0, line))
 
-    return f"**搜索结果 ({len(results)})**:\n" + "\n".join(results)
+    # 2) Numeric id match
+    if q.isdigit():
+        rec = data.get_by_id(q)
+        if rec:
+            name = rec.get("chinese_name") or ""
+            pid = rec.get("id")
+            pid_int = int(pid) if isinstance(pid, int) else None
+            types = rec.get("type") or []
+            types_str = "/".join(types) if isinstance(types, list) else str(types)
+            line = f"#{pid_int:03d} {name} ({types_str})" if isinstance(pid_int, int) else f"{name} ({types_str})"
+            results.append((pid_int or 0, line))
+
+    # 3) Fuzzy search over dataset (type match / substring name match)
+    q_lower = q.lower()
+    for rec in data.iter_all():
+        name = rec.get("chinese_name") or ""
+        if not isinstance(name, str) or not name:
+            continue
+        en = rec.get("english_name") or ""
+        jp = rec.get("japanese_name") or ""
+        types = rec.get("type") or []
+
+        hit = False
+        if isinstance(types, list) and q in types:
+            hit = True
+        elif isinstance(name, str) and q in name:
+            hit = True
+        elif isinstance(en, str) and en and q_lower in en.lower():
+            hit = True
+        elif isinstance(jp, str) and jp and q in jp:
+            hit = True
+
+        if not hit:
+            continue
+
+        pid = rec.get("id")
+        pid_int = int(pid) if isinstance(pid, int) else None
+        types_str = "/".join(types) if isinstance(types, list) else str(types)
+        line = f"#{pid_int:03d} {name} ({types_str})" if isinstance(pid_int, int) else f"{name} ({types_str})"
+        results.append((pid_int or 0, line))
+
+    # Dedupe while keeping smallest id for stable ordering.
+    best: dict[str, int] = {}
+    formatted: dict[str, str] = {}
+    for pid_int, line in results:
+        if line not in best or pid_int < best[line]:
+            best[line] = pid_int
+            formatted[line] = line
+
+    lines = sorted(formatted.values(), key=lambda s: best[s])
+    if not lines:
+        return f"未找到匹配 '{q}' 的宝可梦"
+    return f"**搜索结果 ({len(lines)})**:\n" + "\n".join(lines)
 
 
 @tool(args_schema=PokemonNameSchema)
 def get_evolution_chain(pokemon_name: str) -> str:
     """获取宝可梦的进化链"""
-    for _starter, chain in EVOLUTION_CHAINS.items():
-        if pokemon_name in chain:
-            index = chain.index(pokemon_name)
-            chain_display = " → ".join([f"**{p}**" if p == pokemon_name else p for p in chain])
-            return f"**{pokemon_name}** 的进化链:\n{chain_display}\n\n当前为第 {index + 1}/{len(chain)} 阶段"
+    q = (pokemon_name or "").strip()
+    if not q:
+        return "请提供宝可梦名称"
 
-    return f"{pokemon_name} 没有进化链信息(可能是无法进化的宝可梦)"
+    data = get_pokemon_data()
+    resolved = data.resolve_name(q) or q
+    rec = data.get_by_cn_name(resolved)
+    if not rec:
+        return f"未找到宝可梦: {q}"
+
+    chain = evolution_chain(resolved, data=data)
+    if len(chain) <= 1:
+        return f"{resolved} 没有进化链信息(可能是无法进化或数据缺失)"
+
+    index = chain.index(resolved) if resolved in chain else 0
+    chain_display = " → ".join([f"**{p}**" if p == resolved else p for p in chain])
+    return f"**{resolved}** 的进化链:\n{chain_display}\n\n当前为第 {index + 1}/{len(chain)} 阶段"
 
 
 @tool(args_schema=PokemonNameSchema)
