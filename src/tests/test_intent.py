@@ -21,3 +21,12 @@ def test_classify_intent_web_search():
     decision = classify_intent("宝可梦 最新 活动")
     assert decision.intent == Intent.WEB_SEARCH
 
+
+def test_classify_intent_asks_clarification_when_missing_entity():
+    from src.agents.intent import Intent, classify_intent
+
+    decision = classify_intent("属性相性怎么查？")
+    assert decision.intent == Intent.POKEDEX_FACTS
+    assert decision.needs_clarification is True
+    assert decision.clarification_question
+    assert "宝可梦" in decision.clarification_question

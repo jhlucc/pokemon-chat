@@ -48,21 +48,39 @@ def classify_intent(text: str, entities: list[str] | None = None) -> IntentDecis
     ents = list(entities) if entities is not None else extract_pokemon_entities(raw)
     low = raw.lower()
 
+    decision: IntentDecision
+
     if any(k in raw for k in _WEB_KEYWORDS):
-        return IntentDecision(intent=Intent.WEB_SEARCH, confidence=0.9, reason="time_sensitive", entities=ents)
+        decision = IntentDecision(intent=Intent.WEB_SEARCH, confidence=0.9, reason="time_sensitive", entities=ents)
+    elif any(k in raw for k in _TEAM_KEYWORDS):
+        decision = IntentDecision(intent=Intent.TEAM_BUILDING, confidence=0.8, reason="team_keywords", entities=ents)
+    elif any(k in low for k in _CHAT_KEYWORDS):
+        decision = IntentDecision(intent=Intent.CHAT, confidence=0.7, reason="greeting", entities=ents)
+    elif any(k in raw for k in _FACT_KEYWORDS):
+        # Even if we didn't extract a Pokemon name, treat this as a pokedex intent
+        # and ask a targeted clarification question in the next step.
+        confidence = 0.85 if ents else 0.45
+        reason = "entity+fact_keywords" if ents else "fact_keywords_missing_entity"
+        decision = IntentDecision(intent=Intent.POKEDEX_FACTS, confidence=confidence, reason=reason, entities=ents)
+    elif ents:
+        # If we at least recognized an entity, assume pokedex facts by default (conservative).
+        decision = IntentDecision(intent=Intent.POKEDEX_FACTS, confidence=0.6, reason="entity_detected", entities=ents)
+    else:
+        decision = IntentDecision(intent=Intent.UNKNOWN, confidence=0.3, reason="no_match", entities=ents)
 
-    if any(k in raw for k in _TEAM_KEYWORDS):
-        return IntentDecision(intent=Intent.TEAM_BUILDING, confidence=0.8, reason="team_keywords", entities=ents)
+    q = clarify(decision)
+    if q:
+        decision.needs_clarification = True
+        decision.clarification_question = q
+    return decision
 
-    if any(k in low for k in _CHAT_KEYWORDS):
-        return IntentDecision(intent=Intent.CHAT, confidence=0.7, reason="greeting", entities=ents)
 
-    if ents and any(k in raw for k in _FACT_KEYWORDS):
-        return IntentDecision(intent=Intent.POKEDEX_FACTS, confidence=0.85, reason="entity+fact_keywords", entities=ents)
+def clarify(decision: IntentDecision) -> str | None:
+    """
+    Generate a targeted clarification question for missing critical info.
 
-    # If we at least recognized an entity, assume pokedex facts by default (conservative).
-    if ents:
-        return IntentDecision(intent=Intent.POKEDEX_FACTS, confidence=0.6, reason="entity_detected", entities=ents)
-
-    return IntentDecision(intent=Intent.UNKNOWN, confidence=0.3, reason="no_match", entities=ents)
-
+    Keep this deterministic and short; the graph can decide whether to ask it.
+    """
+    if decision.intent == Intent.POKEDEX_FACTS and not decision.entities:
+        return "你想查询哪只宝可梦的图鉴信息/属性相性？请告诉我宝可梦名字（例如：皮卡丘）。"
+    return None
