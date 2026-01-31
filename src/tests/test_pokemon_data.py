@@ -22,3 +22,11 @@ def test_pokemon_data_has_expected_size():
     data = get_pokemon_data()
     assert len(list(data.iter_all())) >= 800
 
+
+def test_pokemon_name_alias_resolution():
+    from src.agents.pokemon_data import get_pokemon_data
+
+    data = get_pokemon_data()
+
+    assert data.resolve_name("Pikachu") == "皮卡丘"
+    assert data.resolve_name("ピカチュウ") == "皮卡丘"
