@@ -54,6 +54,8 @@ def build_chat_llm(
     model_name: str | None = None,
     temperature: float | None = None,
     max_tokens: int | None = None,
+    api_key_override: str | None = None,
+    base_url_override: str | None = None,
 ) -> ChatOpenAI:
     """
     Build a ChatOpenAI instance using the project's provider resolution rules.
@@ -69,8 +71,14 @@ def build_chat_llm(
     provider = (model_provider or overrides.get("model_provider") or "siliconflow").strip().lower()
     name = (model_name or overrides.get("model_name") or settings.llm.model_name).strip() or settings.llm.model_name
 
-    api_key = (get_provider_api_key(provider) or settings.get_api_key(provider) or settings.llm.api_key or "").strip()
-    base_url = (get_provider_api_base(provider) or settings.llm.api_base or "").strip()
+    resolved_api_key = (
+        get_provider_api_key(provider) or settings.get_api_key(provider) or settings.llm.api_key or ""
+    ).strip()
+    resolved_base_url = (get_provider_api_base(provider) or settings.llm.api_base or "").strip()
+
+    # Allow callers (like legacy agents) to override provider resolution.
+    api_key = (api_key_override.strip() if isinstance(api_key_override, str) else resolved_api_key).strip()
+    base_url = (base_url_override.strip() if isinstance(base_url_override, str) else resolved_base_url).strip()
 
     if not api_key and "pytest" not in sys.modules:
         _log.warning(f"LLM api_key is empty for provider='{provider}'. Calls may fail until configured.")

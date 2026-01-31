@@ -8,9 +8,9 @@ from langgraph.graph import END
 from src.agents.chat_agent import PokemonKGChatAgent
 
 
-class _FakeChatOpenAI:
+class _FakeLLM:
     """
-    Minimal stub for langchain_openai.ChatOpenAI used by PokemonKGChatAgent in unit tests.
+    Minimal stub for ChatOpenAI-like objects used by PokemonKGChatAgent in unit tests.
 
     We intentionally return an invalid supervisor route to ensure the agent
     falls back safely (this test is RED before the structured-output migration).
@@ -36,7 +36,7 @@ class _FakeChatOpenAI:
 def test_supervisor_invalid_next_falls_back_to_finish():
     # Patch heavyweight subcomponents so we only test routing logic.
     with (
-        patch("src.agents.chat_agent.ChatOpenAI", _FakeChatOpenAI),
+        patch("src.agents.chat_agent.build_chat_llm", return_value=_FakeLLM()),
         patch("src.agents.chat_agent.PokemonLightRAG"),
         patch("src.agents.chat_agent.LiteBaseSearcher"),
         patch("src.agents.chat_agent.PokemonStatsAgent"),

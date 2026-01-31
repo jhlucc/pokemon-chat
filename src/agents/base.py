@@ -4,12 +4,11 @@ from typing import Any, Generic, TypeVar
 
 from langchain_core.language_models import BaseChatModel
 from langchain_core.tools import BaseTool
-from langchain_openai import ChatOpenAI
 from langgraph.checkpoint.base import BaseCheckpointSaver
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph.state import CompiledStateGraph
 
-from src.core.settings import settings
+from src.core.llm_factory import build_chat_llm
 
 # Type variable for state schema
 TState = TypeVar("TState", bound=dict[str, Any])
@@ -86,12 +85,7 @@ class BaseAgent(ABC, Generic[TState]):
 
         子类可以覆盖此方法以使用不同的模型配置
         """
-        return ChatOpenAI(
-            model=settings.llm.model_name,
-            api_key=settings.llm.api_key,
-            base_url=settings.llm.api_base,
-            temperature=0.7,
-        )
+        return build_chat_llm(temperature=0.7)
 
     def _init_components(self, **kwargs) -> None:
         """

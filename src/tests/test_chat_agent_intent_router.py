@@ -8,7 +8,7 @@ from langchain_core.messages import AIMessage, HumanMessage
 from src.agents.chat_agent import PokemonKGChatAgent
 
 
-class _FakeChatOpenAI:
+class _FakeLLM:
     def __init__(self, *args, **kwargs):  # noqa: D401, ANN001
         pass
 
@@ -25,7 +25,7 @@ class _FakeChatOpenAI:
 @pytest.mark.asyncio
 async def test_intent_router_routes_pokedex_to_facts_answerer():
     with (
-        patch("src.agents.chat_agent.ChatOpenAI", _FakeChatOpenAI),
+        patch("src.agents.chat_agent.build_chat_llm", return_value=_FakeLLM()),
         patch("src.agents.chat_agent.PokemonLightRAG"),
         patch("src.agents.chat_agent.LiteBaseSearcher"),
         patch("src.agents.chat_agent.PokemonStatsAgent"),
@@ -42,7 +42,7 @@ async def test_intent_router_routes_pokedex_to_facts_answerer():
 @pytest.mark.asyncio
 async def test_intent_router_routes_greeting_to_chat():
     with (
-        patch("src.agents.chat_agent.ChatOpenAI", _FakeChatOpenAI),
+        patch("src.agents.chat_agent.build_chat_llm", return_value=_FakeLLM()),
         patch("src.agents.chat_agent.PokemonLightRAG"),
         patch("src.agents.chat_agent.LiteBaseSearcher"),
         patch("src.agents.chat_agent.PokemonStatsAgent"),
@@ -54,4 +54,3 @@ async def test_intent_router_routes_greeting_to_chat():
         state = {"messages": [HumanMessage(content="你好")]}
         out = await agent._intent_router_node(state)  # type: ignore[attr-defined]
         assert out["next"] == "chat"
-

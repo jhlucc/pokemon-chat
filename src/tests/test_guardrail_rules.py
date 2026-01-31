@@ -22,7 +22,7 @@ class _NoLLMGuardrailChatOpenAI:
 @pytest.mark.asyncio
 async def test_guardrail_blocks_obviously_offtopic_without_llm_call():
     with (
-        patch("src.agents.chat_agent.ChatOpenAI", _NoLLMGuardrailChatOpenAI),
+        patch("src.agents.chat_agent.build_chat_llm", return_value=_NoLLMGuardrailChatOpenAI()),
         patch("src.agents.chat_agent.PokemonLightRAG"),
         patch("src.agents.chat_agent.LiteBaseSearcher"),
         patch("src.agents.chat_agent.PokemonStatsAgent"),
@@ -38,7 +38,7 @@ async def test_guardrail_blocks_obviously_offtopic_without_llm_call():
 @pytest.mark.asyncio
 async def test_guardrail_allows_pokemon_entity_without_llm_call():
     with (
-        patch("src.agents.chat_agent.ChatOpenAI", _NoLLMGuardrailChatOpenAI),
+        patch("src.agents.chat_agent.build_chat_llm", return_value=_NoLLMGuardrailChatOpenAI()),
         patch("src.agents.chat_agent.PokemonLightRAG"),
         patch("src.agents.chat_agent.LiteBaseSearcher"),
         patch("src.agents.chat_agent.PokemonStatsAgent"),
@@ -49,4 +49,3 @@ async def test_guardrail_allows_pokemon_entity_without_llm_call():
         agent = PokemonKGChatAgent()
         out = await agent._guardrail_node({"messages": [HumanMessage(content="皮卡丘")]})
         assert out["next"] != "end_with_block"
-

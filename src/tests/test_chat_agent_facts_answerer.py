@@ -7,7 +7,7 @@ from langchain_core.messages import AIMessage, HumanMessage
 from src.agents.chat_agent import PokemonKGChatAgent
 
 
-class _FakeChatOpenAI:
+class _FakeLLM:
     def __init__(self, *args, **kwargs):  # noqa: D401, ANN001
         pass
 
@@ -17,7 +17,7 @@ class _FakeChatOpenAI:
 
 def test_facts_answerer_returns_height_and_weight_from_dataset():
     with (
-        patch("src.agents.chat_agent.ChatOpenAI", _FakeChatOpenAI),
+        patch("src.agents.chat_agent.build_chat_llm", return_value=_FakeLLM()),
         patch("src.agents.chat_agent.PokemonLightRAG"),
         patch("src.agents.chat_agent.LiteBaseSearcher"),
         patch("src.agents.chat_agent.PokemonStatsAgent"),
@@ -34,4 +34,3 @@ def test_facts_answerer_returns_height_and_weight_from_dataset():
         text = msg.content
         assert "0.4m" in text
         assert "6.0kg" in text
-

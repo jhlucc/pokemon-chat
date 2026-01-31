@@ -35,6 +35,7 @@ from src.agents.pokemon_stats_agent import PokemonStatsAgent
 from src.agents.tools.websearch.websearcher import LiteBaseSearcher
 from src.agents.trainer_agent import TrainerAgent
 from src.core.feature_flags import feature_enabled
+from src.core.llm_factory import build_chat_llm
 
 # Project Imports
 from src.core.settings import settings
@@ -144,12 +145,12 @@ class PokemonKGChatAgent(BaseAgent):
         self._init_middleware()
 
         # 初始化 LLM - 包装重试和回退中间件
-        self.base_llm = ChatOpenAI(
-            model=self.model_name,
-            base_url=self.openai_base_url,
-            api_key=self.openai_api_key,
+        self.base_llm = build_chat_llm(
+            model_name=self.model_name,
             temperature=settings.llm.temperature,
             max_tokens=settings.llm.max_tokens,
+            api_key_override=self.openai_api_key,
+            base_url_override=self.openai_base_url,
         )
 
         # 使用中间件包装 LLM 调用
