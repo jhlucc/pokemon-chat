@@ -161,6 +161,10 @@ def counter_team(opponent_types: list[str]) -> str:
 @tool(args_schema=CoverageSchema)
 def type_coverage(team_types: list[str]) -> str:
     """分析队伍属性覆盖"""
+    team_types = [t.strip() for t in team_types if isinstance(t, str) and t.strip()]
+    unknown_types = [t for t in team_types if t not in ALL_TYPES]
+    known_types = [t for t in team_types if t in ALL_TYPES]
+
     covered = set()
 
     # 简化的克制表
@@ -180,7 +184,7 @@ def type_coverage(team_types: list[str]) -> str:
         "妖精": ["格斗", "龙", "恶"],
     }
 
-    for t in team_types:
+    for t in known_types:
         if t in coverage_map:
             covered.update(coverage_map[t])
 
@@ -190,7 +194,8 @@ def type_coverage(team_types: list[str]) -> str:
 
     return f"""## 属性覆盖分析
 
-**队伍属性**: {", ".join(team_types)}
+**队伍属性**: {", ".join(team_types) if team_types else "无"}
+{f"**未知属性**: {', '.join(unknown_types)}" if unknown_types else ""}
 
 **可有效打击** ({len(covered)}/{len(ALL_TYPES)}):
 {", ".join(sorted(covered)) if covered else "无"}
