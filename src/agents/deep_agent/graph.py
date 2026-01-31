@@ -20,38 +20,59 @@ from langgraph.graph import END, START, StateGraph
 
 from src.agents.base import BaseAgent
 from src.agents.deep_agent.context import DeepContext
+from src.agents.pokemon_data import get_pokemon_data
+from src.agents.pokemon_entities import extract_pokemon_entities
 from src.utils.logger import get_logger
 
 logger = get_logger(__name__)
 
 
-# ============== Pokemon Research Data ==============
-POKEMON_KNOWLEDGE = {
-    "皮卡丘": {
-        "facts": ["电属性宝可梦", "主角小智的伙伴", "进化自皮丘", "可使用十万伏特"],
-        "type": "电",
-        "generation": 1,
-        "category": "鼠宝可梦",
-    },
-    "喷火龙": {
-        "facts": ["火/飞行属性", "小火龙的最终进化", "可mega进化为X和Y两种形态"],
-        "type": "火/飞行",
-        "generation": 1,
-        "category": "火焰宝可梦",
-    },
-    "超梦": {
-        "facts": ["由梦幻基因改造而来", "超能力属性", "种族值680是准神级别"],
-        "type": "超能力",
-        "generation": 1,
-        "category": "基因宝可梦",
-    },
-    "快龙": {
-        "facts": ["龙/飞行属性", "第一世代准神", "可学习神速招式"],
-        "type": "龙/飞行",
-        "generation": 1,
-        "category": "龙宝可梦",
-    },
-}
+# ============== Helpers ==============
+
+
+def _is_noneish(value: Any) -> bool:
+    if value is None:
+        return True
+    if isinstance(value, str) and value.strip().lower() in {"", "none", "null", "nan"}:
+        return True
+    return False
+
+
+def _as_list(value: Any) -> list[str]:
+    if _is_noneish(value):
+        return []
+    if isinstance(value, list):
+        return [str(v).strip() for v in value if not _is_noneish(v) and str(v).strip()]
+    if isinstance(value, str):
+        return [value.strip()] if value.strip() else []
+    return [str(value).strip()] if str(value).strip() else []
+
+
+def _facts_for_pokemon(cn_name: str) -> list[str]:
+    """Deterministic facts from local dataset (no LLM)."""
+    data = get_pokemon_data()
+    rec = data.get_by_cn_name(cn_name)
+    if not rec:
+        return []
+
+    facts: list[str] = []
+    types = _as_list(rec.get("type"))
+    if types:
+        facts.append(f"{cn_name} 属性: {'/'.join(types)}")
+
+    abilities = _as_list(rec.get("ability"))
+    if abilities:
+        facts.append(f"{cn_name} 特性: {', '.join(abilities)}")
+
+    hidden = _as_list(rec.get("隐藏特性"))
+    if hidden:
+        facts.append(f"{cn_name} 隐藏特性: {', '.join(hidden)}")
+
+    evo = rec.get("进化")
+    if isinstance(evo, str) and not _is_noneish(evo):
+        facts.append(f"{cn_name} 可进化为: {evo.strip()}")
+
+    return facts
 
 
 # ============== Graph Nodes ==============
@@ -96,16 +117,32 @@ async def search_knowledge_node(state: DeepContext, config: RunnableConfig) -> d
 
     logger.info(f"[DeepResearch] 搜索知识库 | Directions: {directions}")
 
-    new_learnings = []
-    new_entities = []
+    new_learnings: list[str] = []
+    new_entities: list[str] = []
 
-    # 模拟知识库搜索 (实际应用中调用 Retriever)
-    for direction in directions:
-        for pokemon, data in POKEMON_KNOWLEDGE.items():
-            if pokemon in direction or any(fact_word in direction for fact_word in ["属性", "进化", "招式"]):
-                new_learnings.extend(data["facts"][:2])
-                if pokemon not in pokemon_entities:
-                    new_entities.append(pokemon)
+    # Use local dataset as the first truth source.
+    topic = state.get("topic", "")
+    candidates: list[str] = []
+    candidates.extend(extract_pokemon_entities(topic))
+    for d in directions:
+        candidates.extend(extract_pokemon_entities(d))
+    candidates.extend([e for e in pokemon_entities if isinstance(e, str)])
+
+    # De-dupe while keeping order.
+    seen: set[str] = set()
+    ordered_candidates: list[str] = []
+    for c in candidates:
+        if c in seen:
+            continue
+        seen.add(c)
+        ordered_candidates.append(c)
+
+    for pokemon in ordered_candidates:
+        facts = _facts_for_pokemon(pokemon)
+        if facts:
+            new_learnings.extend(facts[:4])
+            if pokemon not in pokemon_entities:
+                new_entities.append(pokemon)
 
     # 去重
     all_learnings = list(set(current_learnings + new_learnings))
