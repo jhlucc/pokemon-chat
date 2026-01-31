@@ -131,13 +131,14 @@ class PokemonKGChatAgent(BaseAgent):
         self.middleware.add(RetryMiddleware(max_retries=2))
 
         # [NEW] 语义长期记忆中间件
-        try:
-            from src.agents.middleware.long_term_memory import LongTermMemoryMiddleware
+        if feature_enabled("enable_long_term_memory"):
+            try:
+                from src.agents.middleware.long_term_memory import LongTermMemoryMiddleware
 
-            self.middleware.add(LongTermMemoryMiddleware())
-            logger.info("✅ Semantic Long-Term Memory middleware added")
-        except Exception as e:
-            logger.error(f"❌ Failed to add LongTermMemoryMiddleware: {e}")
+                self.middleware.add(LongTermMemoryMiddleware())
+                logger.info("✅ Semantic Long-Term Memory middleware added")
+            except Exception as e:
+                logger.error(f"❌ Failed to add LongTermMemoryMiddleware: {e}")
 
     def _init_components(self, **kwargs):
         """初始化所有组件"""

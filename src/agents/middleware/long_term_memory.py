@@ -1,17 +1,38 @@
-from typing import Any
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Any
 
 from langchain_core.messages import HumanMessage, SystemMessage
 
 from src.agents.middleware.base import BaseMiddleware, MiddlewareContext
-from src.knowledge.memory.semantic import SemanticMemoryManager
+from src.core.llm_factory import build_chat_llm
 from src.utils.logger import get_logger
 
 logger = get_logger(__name__)
 
+if TYPE_CHECKING:  # pragma: no cover
+    from src.knowledge.memory.semantic import SemanticMemoryManager
+
 
 class LongTermMemoryMiddleware(BaseMiddleware):
-    def __init__(self, memory_manager: SemanticMemoryManager = None):
-        self.memory_manager = memory_manager or SemanticMemoryManager()
+    """
+    Semantic long-term memory middleware.
+
+    Notes:
+    - Keep imports and heavy initialization lazy to avoid slowing server startup.
+    - BaseMiddleware hooks are synchronous; do NOT implement async hooks here.
+    """
+
+    def __init__(self, memory_manager: "SemanticMemoryManager | None" = None):
+        self._memory_manager = memory_manager
+
+    def _get_manager(self) -> "SemanticMemoryManager":
+        if self._memory_manager is None:
+            # Lazy import: SemanticMemoryManager may initialize Chroma/embeddings.
+            from src.knowledge.memory.semantic import SemanticMemoryManager
+
+            self._memory_manager = SemanticMemoryManager()
+        return self._memory_manager
 
     def before_model(self, messages: list, context: MiddlewareContext) -> list:
         """模型调用前：检索相关长期记忆并注入"""
@@ -23,7 +44,7 @@ class LongTermMemoryMiddleware(BaseMiddleware):
         query = last_human_msg.content
 
         # 检索记忆
-        memories = self.memory_manager.search_memory_sync(query, k=3)
+        memories = self._get_manager().search_memory_sync(query, k=3)
 
         if memories:
             memory_context = "\n".join([f"- {doc.page_content}" for doc in memories])
@@ -47,7 +68,7 @@ class LongTermMemoryMiddleware(BaseMiddleware):
         # BaseMiddleware definition actually allows access to state in after_agent
         return response
 
-    async def after_agent(self, state: dict[str, Any], context: MiddlewareContext) -> dict[str, Any]:
+    def after_agent(self, state: dict[str, Any], context: MiddlewareContext) -> dict[str, Any]:
         """Agent执行后：保存本轮对话 (使用后台线程总结)"""
         messages = state.get("messages", [])
         if len(messages) < 2:
@@ -82,17 +103,8 @@ class LongTermMemoryMiddleware(BaseMiddleware):
             # 为演示，这里假设 memory_manager 有某种 smart add 或者是直接保存 raw for now
             # (优化计划中提到要 summarize, 所以我们尝试实例化一个 LLM)
 
-            from langchain_openai import ChatOpenAI
-
-            from src.core.settings import settings
-
-            # 使用轻量模型进行总结
-            llm = ChatOpenAI(
-                model=settings.llm.model_name,
-                base_url=settings.llm.api_base,
-                api_key=settings.llm.api_key,
-                temperature=0.1,
-            )
+            # 使用轻量模型进行总结（best-effort; may be offline）
+            llm = build_chat_llm(temperature=0.1, max_tokens=256)
 
             prompt = f"""
             请从以下对话中提取用户的重要偏好、事实或正在进行的任务状态。
@@ -110,7 +122,7 @@ class LongTermMemoryMiddleware(BaseMiddleware):
             if summary and summary != "无":
                 logger.info(f"[LongTermMemory] 生成记忆摘要: {summary}")
                 # 3. 保存到向量数据库
-                self.memory_manager.add_memory_sync(
+                self._get_manager().add_memory_sync(
                     summary,
                     metadata={
                         "user_id": context.user_id,
