@@ -371,6 +371,53 @@ class PokemonKGChatAgent(BaseAgent):
         """
         messages = state["messages"]
         last_user_msg = messages[-1]
+        text = getattr(last_user_msg, "content", "") or ""
+
+        # -------------------------------------------------------------------
+        # Rules-first guardrail: avoid LLM calls for obvious allow/block cases.
+        # -------------------------------------------------------------------
+        entities = extract_pokemon_entities(text)
+        lower = text.lower()
+
+        # Allow: greetings
+        if any(k in lower for k in ("你好", "您好", "hello", "hi", "hey", "早上好", "晚上好", "在吗")):
+            return {"next": "supervisor"}
+
+        # Allow: explicit Pokemon entity mention
+        if entities:
+            return {"next": "supervisor"}
+
+        # Allow: explicit Pokemon topic keywords
+        if any(k in lower for k in ("pokemon", "宝可梦", "口袋妖怪")):
+            return {"next": "supervisor"}
+
+        # Allow: recognizable Pokemon intent (even if entity is missing)
+        if classify_intent(text, entities=[]).intent != Intent.UNKNOWN:
+            return {"next": "supervisor"}
+
+        # Block: clearly off-topic developer/coding requests unless Pokemon is mentioned.
+        off_topic = (
+            "python",
+            "爬虫",
+            "股票",
+            "政治",
+            "java",
+            "c++",
+            "javascript",
+            "react",
+            "vue",
+            "fastapi",
+            "docker",
+            "kubernetes",
+            "k8s",
+        )
+        if any(k in lower for k in off_topic):
+            return {
+                "next": "end_with_block",
+                "messages": [
+                    AIMessage(content="抱歉，作为一个宝可梦专家，我只能回答与宝可梦相关的问题。让我们聊聊宝可梦吧！")
+                ],
+            }
 
         # 定义系统的守卫提示词
         guardrail_prompt = ChatPromptTemplate.from_template("""
