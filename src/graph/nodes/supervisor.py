@@ -2,10 +2,12 @@ import sys
 from enum import Enum
 from typing import Any
 
+from langchain_core.messages import BaseMessage, HumanMessage
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from pydantic import create_model
 
 from src.core.llm_factory import build_chat_llm
+from src.graph.nodes.rule_router import rule_route
 from src.graph.state import AgentState
 
 # Define the set of workers
@@ -53,6 +55,21 @@ class SupervisorNode:
     def __call__(self, state: AgentState):
         allowed = _normalized_allowed_workers(state)
         options = ["FINISH"] + allowed
+
+        # Fast-path: when a simple heuristic can confidently route the request,
+        # skip LLM routing entirely to reduce misroutes and improve latency.
+        last_human: str | None = None
+        for msg in reversed(state.get("messages") or []):
+            if isinstance(msg, HumanMessage):
+                last_human = msg.content
+                break
+            if isinstance(msg, BaseMessage) and getattr(msg, "type", None) == "human":
+                last_human = getattr(msg, "content", None)
+                break
+
+        route = rule_route(last_human or "", allowed)
+        if route:
+            return {"next": route}
 
         capabilities = "\n".join([f"- {w}: {_WORKER_CAPABILITIES.get(w, '')}".rstrip() for w in allowed])
         system_prompt = (
