@@ -342,6 +342,20 @@ class PokemonKGChatAgent(BaseAgent):
         if not rec:
             return {"messages": [AIMessage(content=f"我没找到宝可梦：{name}。你可以换个名字试试吗？")]}
 
+        # Targeted facts: keep units compact (helps UI + tests).
+        if any(k in text for k in ("身高", "体重")):
+            h = rec.get("height")
+            w = rec.get("weight")
+            h_s = str(h).strip() if h is not None else ""
+            w_s = str(w).strip() if w is not None else ""
+            parts = []
+            if h_s and h_s.lower() != "none":
+                parts.append(f"身高{h_s}m")
+            if w_s and w_s.lower() != "none":
+                parts.append(f"体重{w_s}kg")
+            if parts:
+                return {"messages": [AIMessage(content=f"{name}：" + "，".join(parts))]}
+
         content = format_basic_facts(rec) + "\n\n" + format_evolution(rec)
         return {"messages": [AIMessage(content=content)]}
 
