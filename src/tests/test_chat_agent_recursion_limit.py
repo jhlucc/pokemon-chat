@@ -26,9 +26,9 @@ class _StubGraph:
     def __init__(self):
         self.last_config = None
 
-    async def astream(self, _input, config, stream_mode=None):  # noqa: ANN001
+    async def astream_events(self, _input, config, version="v1"):  # noqa: ANN001
         self.last_config = config
-        yield {"messages": [AIMessage(content="ok")]}
+        yield {"event": "on_chat_model_stream", "data": {"chunk": AIMessage(content="ok")}}
 
 
 @pytest.mark.asyncio
@@ -53,4 +53,3 @@ async def test_chat_agent_query_sets_recursion_limit_in_config():
         assert chunks == ["ok"]
         assert stub.last_config is not None
         assert stub.last_config.get("recursion_limit") == 25
-

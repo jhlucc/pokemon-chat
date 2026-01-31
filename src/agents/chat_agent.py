@@ -705,20 +705,52 @@ class PokemonKGChatAgent(BaseAgent):
         context = MiddlewareContext(agent_name="chat_agent", thread_id="0", user_id="user")
         input_message = self.middleware.run_before_agent(input_message, context)
 
-        chunks = []
+        emitted_token = False
+        last_message: Any | None = None
+
         try:
-            async for chunk in self.graph.astream(input_message, config, stream_mode="values"):
-                if "messages" in chunk and chunk["messages"]:
-                    chunks.append(chunk["messages"][-1])
+            async for event in self.graph.astream_events(input_message, config, version="v1"):
+                kind = event["event"]
+
+                if kind == "on_chat_model_stream":
+                    content = event["data"]["chunk"].content
+                    if content:
+                        emitted_token = True
+                        yield content
+
+                elif kind == "on_tool_start":
+                    tool_name = event["name"]
+                    tool_input = event["data"].get("input")
+                    yield {
+                        "status": "tool_start",
+                        "status_text": f"正在使用工具 {tool_name}...",
+                        "tool": tool_name,
+                        "input": tool_input,
+                    }
+
+                elif kind == "on_tool_end":
+                    tool_name = event["name"]
+                    yield {"status": "tool_end", "status_text": f"工具 {tool_name} 执行完成", "tool": tool_name}
+
+                # Fallback capture for non-streaming paths (e.g. deterministic facts node).
+                output = (event.get("data") or {}).get("output")
+                if isinstance(output, dict) and output.get("messages"):
+                    last_message = output["messages"][-1]
+                elif hasattr(output, "content"):
+                    last_message = output
+
         except Exception as e:
             logger.error(f"Agent execution error: {e}")
             yield f"发生错误: {e}"
             return
+        finally:
+            # 运行 middleware after_agent hook
+            self.middleware.run_after_agent(input_message, context)
 
-        # 运行 middleware after_agent hook
-        self.middleware.run_after_agent(input_message, context)
-
-        yield chunks[-1].content if chunks else None
+        if not emitted_token and last_message is not None:
+            content = getattr(last_message, "content", None)
+            if content:
+                yield content
 
     def get_info(self):
         return {
