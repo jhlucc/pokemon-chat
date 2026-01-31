@@ -27,6 +27,10 @@ from src.agents.middleware import (
     RetryMiddleware,
 )
 from src.agents.pokedex_agent import PokedexAgent
+from src.agents.intent import Intent, classify_intent
+from src.agents.pokemon_data import get_pokemon_data
+from src.agents.pokemon_entities import extract_pokemon_entities
+from src.agents.pokemon_facts import format_basic_facts, format_evolution
 from src.agents.pokemon_stats_agent import PokemonStatsAgent
 from src.agents.tools.websearch.websearcher import LiteBaseSearcher
 from src.agents.trainer_agent import TrainerAgent
@@ -224,6 +228,8 @@ class PokemonKGChatAgent(BaseAgent):
 
         # 添加节点
         builder.add_node("guardrail", self._guardrail_node)
+        builder.add_node("intent_router", self._intent_router_node)
+        builder.add_node("facts_answerer", self._facts_answerer_node)
         builder.add_node("supervisor", self._supervisor)
         builder.add_node("chat", self._chat)
         builder.add_node("kg_sqler", self._kgsql_node)
@@ -263,10 +269,20 @@ class PokemonKGChatAgent(BaseAgent):
             nxt = state.get("next")
             if nxt == "end_with_block":
                 return END
-            return "supervisor"
+            return "intent_router"
 
         builder.add_edge(START, "guardrail")
         builder.add_conditional_edges("guardrail", route_guardrail)
+
+        # intent_router: deterministic routing before LLM supervisor
+        def route_intent_router(state):
+            nxt = state.get("next")
+            if nxt == "end_with_clarification":
+                return END
+            return nxt or "supervisor"
+
+        builder.add_conditional_edges("intent_router", route_intent_router)
+        builder.add_edge("facts_answerer", END)
 
         # 添加条件边 for supervisor
         def route_supervisor(state):
@@ -285,6 +301,49 @@ class PokemonKGChatAgent(BaseAgent):
         # 编译图 - 使用 checkpointer
         self._graph = builder.compile(checkpointer=self.checkpointer)
         return self._graph
+
+    async def _intent_router_node(self, state: AgentState):
+        """规则优先的意图路由：能确定就直接走子节点，否则交给 supervisor."""
+        messages = state["messages"]
+        last = messages[-1] if messages else None
+        text = getattr(last, "content", "") if last else ""
+
+        decision = classify_intent(text)
+        if decision.needs_clarification and decision.clarification_question:
+            return {
+                "next": "end_with_clarification",
+                "messages": [AIMessage(content=decision.clarification_question)],
+            }
+
+        if decision.intent == Intent.CHAT:
+            return {"next": "chat"}
+        if decision.intent == Intent.POKEDEX_FACTS:
+            return {"next": "facts_answerer"}
+        if decision.intent == Intent.TEAM_BUILDING:
+            return {"next": "trainer_agent"}
+        if decision.intent == Intent.WEB_SEARCH:
+            return {"next": "web_searcher"}
+
+        return {"next": "supervisor"}
+
+    def _facts_answerer_node(self, state: AgentState):
+        """从本地数据集确定性回答简单图鉴问题（无 LLM）。"""
+        messages = state["messages"]
+        last = messages[-1] if messages else None
+        text = getattr(last, "content", "") if last else ""
+
+        entities = extract_pokemon_entities(text)
+        if not entities:
+            return {"messages": [AIMessage(content="你想查询哪只宝可梦？请告诉我宝可梦名字。")]}
+
+        name = entities[0]
+        data = get_pokemon_data()
+        rec = data.get_by_cn_name(name)
+        if not rec:
+            return {"messages": [AIMessage(content=f"我没找到宝可梦：{name}。你可以换个名字试试吗？")]}
+
+        content = format_basic_facts(rec) + "\n\n" + format_evolution(rec)
+        return {"messages": [AIMessage(content=content)]}
 
     @property
     def graph(self):
