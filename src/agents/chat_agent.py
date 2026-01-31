@@ -692,7 +692,9 @@ class PokemonKGChatAgent(BaseAgent):
                 "thread_id": thread_id,
                 "user_id": user_id,
                 # "checkpoint_ns": ""
-            }
+            },
+            # Safety guard: prevent runaway loops in conditional graphs.
+            "recursion_limit": 25,
         }
 
         # 运行 middleware before_agent hook
