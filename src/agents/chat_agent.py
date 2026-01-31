@@ -31,6 +31,7 @@ from src.agents.intent import Intent, classify_intent
 from src.agents.pokemon_data import get_pokemon_data
 from src.agents.pokemon_entities import extract_pokemon_entities
 from src.agents.pokemon_facts import format_basic_facts, format_evolution
+from src.agents.web_gating import should_web_search
 from src.agents.pokemon_stats_agent import PokemonStatsAgent
 from src.agents.tools.websearch.websearcher import LiteBaseSearcher
 from src.agents.trainer_agent import TrainerAgent
@@ -324,7 +325,9 @@ class PokemonKGChatAgent(BaseAgent):
         if decision.intent == Intent.TEAM_BUILDING:
             return {"next": "trainer_agent"}
         if decision.intent == Intent.WEB_SEARCH:
-            return {"next": "web_searcher"}
+            if should_web_search(text) and feature_enabled("enable_web_search"):
+                return {"next": "web_searcher"}
+            return {"next": "supervisor"}
 
         return {"next": "supervisor"}
 
