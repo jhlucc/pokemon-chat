@@ -1,16 +1,17 @@
 import asyncio
+from enum import Enum
 from typing import Any
 
 # LangChain Imports
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
-from langchain_core.output_parsers import JsonOutputParser
-from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.runnables import RunnableLambda
 from langchain_openai import ChatOpenAI
 
 # LangGraph Imports
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph import END, START, MessagesState, StateGraph
+from pydantic import BaseModel, create_model
 
 from src.agents.base import BaseAgent
 from src.agents.deep_agent.graph import DeepAgent
@@ -38,6 +39,30 @@ from src.models.schemas import AgentResponse
 from src.utils.logger import get_logger
 
 logger = get_logger(__name__)
+
+
+# ---------------------------------------------------------------------------
+# Structured output schemas (LangChain 1.x)
+# ---------------------------------------------------------------------------
+
+
+class GuardrailDecision(BaseModel):
+    status: str  # "pass" | "block"
+    reason: str | None = None
+
+
+def _route_schema(options: list[str]):
+    """
+    Build a constrained Pydantic schema for structured output.
+
+    We use Enum because Literal cannot be parameterized dynamically in python 3.10 syntax.
+    """
+
+    def _name(opt: str) -> str:
+        return (opt or "UNKNOWN").upper().replace("-", "_")
+
+    RouteEnum = Enum("RouteEnum", {_name(opt): opt for opt in options})
+    return create_model("RouteResponse", next=(RouteEnum, ...))
 
 
 # 状态定义
@@ -292,11 +317,13 @@ class PokemonKGChatAgent(BaseAgent):
         用户输入: {input}
         """)
 
-        chain = guardrail_prompt | self.llm | JsonOutputParser()
+        # Use structured output to avoid brittle JSON parsing.
+        chain = guardrail_prompt | self.base_llm.with_structured_output(GuardrailDecision)
 
         try:
-            result = await chain.ainvoke({"input": last_user_msg.content})
-            status = result.get("status", "pass")
+            result: Any = await chain.ainvoke({"input": last_user_msg.content})
+            status = getattr(result, "status", None) or (result.get("status") if isinstance(result, dict) else None)  # type: ignore[union-attr]
+            status = (status or "pass").strip().lower()
 
             if status == "block":
                 return {
@@ -316,81 +343,46 @@ class PokemonKGChatAgent(BaseAgent):
 
     def _supervisor(self, state: AgentState):
         """监督员节点"""
-        # (保持原有的 prompt 逻辑，但可以使用 prompt template 功能)
-        system_prompt = (
-            "你是 Pokemon 世界的顶尖博士助手 (Supervisor)，负责协调以下专家的工作：{members}\n\n"
-            "专家职能：\n"
-            "- chat：【日常闲聊与兜底】\n"
-            "  • 处理问候、感谢等日常对话\n"
-            "  • 当其他专家无法回答时进行尝试\n"
-            "- kg_sqler：【知识图谱查询】\n"
-            "  • 查询精确数据：身高体重、属性、特性效果\n"
-            "  • 查询特定关系：某人的宝可梦、某地的道馆\n"
-            "- graph_rager：【知识库RAG】\n"
-            "  • 回答复杂问题：剧情背景、人物生平、传说故事\n"
-            "- stats_agent：【数值与战斗专家】\n"
-            "  • 分析宝可梦种族值强弱、对比两只宝可梦\n"
-            "  • 计算属性克制关系、预测战斗胜负\n"
-            "- pokedex_agent：【图鉴查询专家】\n"
-            "  • 搜索宝可梦（按世代/属性）、查询进化链\n"
-            "  • 查询招式列表、特性详细效果\n"
-            "- trainer_agent：【训练师顾问】\n"
-            "  • 组建队伍建议（雨天队/空间队等）、分析队伍打击面\n"
-            "  • 推荐宝可梦配招（性格/努力值思路）\n"
-            "- deep_researcher：【深度研究员】\n"
-            "  • 执行复杂、多步骤的深度研究任务\n"
-            "  • 生成详细的研究报告（如：进化历史、生态系统分析）\n"
-            "- web_searcher：【情报探员】\n"
-            "  • 查询最新发售信息、新闻、活动、当前对战环境 meta\n\n"
-            "调度逻辑：\n"
-            "1. 仔细分析用户意图，选择最匹配的专家。\n"
-            "2. 优先使用 stats_agent 进行数值分析和对比。\n"
-            "3. 优先使用 pokedex_agent 查询招式和进化。\n"
-            "4. 优先使用 trainer_agent 进行配招和组队。\n"
-            "4. 优先使用 trainer_agent 进行配招和组队。\n"
-            "5. 对于需要深入调研、撰写报告的任务，使用 deep_researcher。\n"
-            "6. kg_sqler 用于简单的实体属性查询。\n"
-            "7. 涉及最新消息用 web_searcher。\n"
-            "8. 任务完成返回 FINISH。\n"
+        allowed_members = list(self.members)
+        options = ["FINISH", "approval"] + allowed_members
+
+        capabilities = (
+            "- chat: 日常闲聊与兜底\n"
+            "- kg_sqler: 知识图谱精确查询（实体属性/关系）\n"
+            "- graph_rager: 知识库RAG（背景/剧情/传说）\n"
+            "- stats_agent: 数值/对战分析\n"
+            "- pokedex_agent: 图鉴/进化/招式/特性\n"
+            "- trainer_agent: 配招/组队建议\n"
+            "- deep_researcher: 多步骤深度研究\n"
+            "- web_searcher: 最新新闻/活动/版本环境\n"
+            "- approval: 需要用户审批/确认时使用\n"
         )
 
-        prompt = ChatPromptTemplate.from_template("""
-        {system_prompt}
+        system_prompt = (
+            "你是 Pokemon 世界的顶尖博士助手 (Supervisor)，负责协调专家完成用户任务。\n\n"
+            f"可用专家：{', '.join(allowed_members)}\n\n"
+            f"专家能力：\n{capabilities}\n"
+            "当任务完成时，选择 FINISH。\n"
+        )
 
-        请严格按以下JSON格式回复:
-        {{
-            "next": "模块名称" (或 "FINISH")
-        }}
+        prompt = ChatPromptTemplate.from_messages(
+            [
+                ("system", system_prompt),
+                MessagesPlaceholder(variable_name="messages"),
+                ("system", "下一步由谁执行？从 {options} 中选择一个。"),
+            ]
+        ).partial(options=str(options))
 
-        当前对话:
-        {history}
-
-        最新输入: {input}
-        """)
-
-        # 获取最后几条消息作为输入 context
-        messages = state["messages"]
-
-        # 提取最近几条历史作为 history 文本，避免传入过多 token
-        history_msgs = messages[:-1]
-        last_msg = messages[-1]
-
-        history_text = "\n".join([f"{m.type}: {m.content}" for m in history_msgs[-5:]])
-
-        chain = prompt | self.llm | JsonOutputParser()
-
-        # 动态构建 members 描述
-        members_desc = ", ".join(self.members)
+        RouteResponse = _route_schema(options)
+        chain = prompt | self.base_llm.with_structured_output(RouteResponse)
 
         try:
-            response = chain.invoke(
-                {
-                    "system_prompt": system_prompt.format(members=members_desc),
-                    "history": history_text,
-                    "input": last_msg.content,
-                }
-            )
-            next_ = response.get("next", "FINISH")
+            response: Any = chain.invoke({"messages": state["messages"]})
+            next_ = getattr(response, "next", None)
+            if hasattr(next_, "value"):
+                next_ = next_.value
+            if not next_:
+                next_ = "FINISH"
         except Exception as e:
             logger.error(f"Supervisor parsing error: {e}")
             next_ = "FINISH"
