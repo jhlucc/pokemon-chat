@@ -48,7 +48,43 @@
 
 
 ---
+## 📋 更新日志
 
+<details>
+<summary>[2025/02/01] v0.4.0 版本发布</summary>
+
+### 新功能
+- 多智能体协同：Supervisor + Workers (RAG/Web/Graph/Stats/MCP) 并行执行
+- 规则优先路由，本地宝可梦数据支持确定性回答（无需 LLM 调用）
+- 新增 DeepDoc 文档解析器，支持 PDF/Word 等复杂格式
+- 知识库工作台：批量导入、检索测试、分块管理
+- 全新 Rotom-Dex OS 主题，支持暗黑模式
+
+### 优化
+- 集成 CRAG、Self-RAG、HyDE 等高级 RAG 技术
+- 并行子查询检索 + 自适应 Top-K
+- SQLite 持久化嵌入缓存
+- 统一 LLM 工厂函数，支持多 Provider 切换
+
+### 修复
+- 修复 Agent 模式多个崩溃问题（tool_calls 检查、闭包绑定、竞态条件）
+- 修复知识库搜索参数未生效、L2 距离显示错误
+- 修复 Neo4j 无密码模式连接失败
+- 修复 Milvus 稀疏向量兼容性
+
+### 破坏性更新
+- 移除旧版 GraphRAG，替换为 LightRAG
+- 前端重构，移除旧版组件
+</details>
+
+<details>
+<summary>[2025/11/05] v0.3.0 版本发布</summary>
+
+- 全面适配 LangChain/LangGraph v1 版本的特性，使用 create_agent 创建智能体入口
+- 文档解析升级，适配 mineru-2.6 以及 mineru-api
+- 更多智能体开发套件：中间件、子智能体，更简洁，更易上手
+</details>
+---
 ## 📝 项目介绍
 
 宝可梦（Pokémon）作为全球最具影响力的 IP 之一，拥有庞大的世界观设定与海量角色数据。在游戏、动画、卡牌、电影等多领域的多年积累下，其知识体系庞杂且高度结构化，非常适合应用于知识图谱建模与智能问答场景。
@@ -175,46 +211,6 @@ Remove-Item -Recurse -Force .\volumes\neo4j\data, .\volumes\neo4j\logs, .\volume
 docker compose --profile infra up -d --build
 
 ```
-
----
-
-## 📋 更新日志
-
-<details>
-<summary>[2025/02/01] v0.4.0 版本发布</summary>
-
-### 新功能
-- 多智能体协同：Supervisor + Workers (RAG/Web/Graph/Stats/MCP) 并行执行
-- 规则优先路由，本地宝可梦数据支持确定性回答（无需 LLM 调用）
-- 新增 DeepDoc 文档解析器，支持 PDF/Word 等复杂格式
-- 知识库工作台：批量导入、检索测试、分块管理
-- 全新 Rotom-Dex OS 主题，支持暗黑模式
-
-### 优化
-- 集成 CRAG、Self-RAG、HyDE 等高级 RAG 技术
-- 并行子查询检索 + 自适应 Top-K
-- SQLite 持久化嵌入缓存
-- 统一 LLM 工厂函数，支持多 Provider 切换
-
-### 修复
-- 修复 Agent 模式多个崩溃问题（tool_calls 检查、闭包绑定、竞态条件）
-- 修复知识库搜索参数未生效、L2 距离显示错误
-- 修复 Neo4j 无密码模式连接失败
-- 修复 Milvus 稀疏向量兼容性
-
-### 破坏性更新
-- 移除旧版 GraphRAG，替换为 LightRAG
-- 前端重构，移除旧版组件
-</details>
-
-<details>
-<summary>[2025/11/05] v0.3.0 版本发布</summary>
-
-- 全面适配 LangChain/LangGraph v1 版本的特性，使用 create_agent 创建智能体入口
-- 文档解析升级，适配 mineru-2.6 以及 mineru-api
-- 更多智能体开发套件：中间件、子智能体，更简洁，更易上手
-</details>
-
 ---
 
 ## 🔭 参考项目
