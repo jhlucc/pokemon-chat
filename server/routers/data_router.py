@@ -164,10 +164,24 @@ async def ingest_file(
 
 
 @data.post("/ingest/dir")
-async def ingest_directory(db_id: str = Body(...), folder: str = Body(...), suffixes: list[str] | None = Body(None)):
+async def ingest_directory(
+    db_id: str = Body(...),
+    folder: str = Body(...),
+    suffixes: list[str] | None = Body(None),
+    chunk_size: int = Body(1000),
+    chunk_overlap: int = Body(100),
+    do_ocr: bool = Body(False),
+):
     """把服务器目录下所有支持后缀的文件批量导入"""
     try:
-        ids = kb.ingest_directory(db_id, folder, suffixes)
+        ids = kb.ingest_directory(
+            db_id,
+            folder,
+            suffixes,
+            chunk_size=chunk_size,
+            chunk_overlap=chunk_overlap,
+            do_ocr=do_ocr,
+        )
         return {"file_ids": ids, "status": "success"}
     except Exception as e:
         logger.error(f"ingest_directory failed: {e}\n{traceback.format_exc()}")

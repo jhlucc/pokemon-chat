@@ -104,7 +104,10 @@ const startImport = async () => {
       body: {
         db_id: props.dbId,
         folder: folderPath.value,
-        suffixes: suffixes.value.length > 0 ? suffixes.value : null
+        suffixes: suffixes.value.length > 0 ? suffixes.value : null,
+        chunk_size: params.chunkSize,
+        chunk_overlap: params.chunkOverlap,
+        do_ocr: params.doOcr
       },
       timeoutMs: 600000
     })
