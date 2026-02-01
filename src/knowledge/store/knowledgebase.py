@@ -350,14 +350,19 @@ class KnowledgeBase:
         else:
             filtered = [r for r in results if r["distance"] < dt]
 
-        # 重排序
+        # 重排序（带错误处理）
         if rerank and self.reranker and filtered:
-            texts = [r["entity"]["text"] for r in filtered]
-            scores = self.reranker.compute_score(query, texts, normalize=False)
-            for r, s in zip(filtered, scores):
-                r["rerank_score"] = float(s)  # 转 float，保证可 JSON
-            # 只排序，不过滤 - 让用户看到所有结果
-            filtered.sort(key=lambda x: x["rerank_score"], reverse=True)
+            try:
+                texts = [r["entity"]["text"] for r in filtered]
+                scores = self.reranker.compute_score(query, texts, normalize=False)
+                for r, s in zip(filtered, scores):
+                    r["rerank_score"] = float(s)  # 转 float，保证可 JSON
+                # 只排序，不过滤 - 让用户看到所有结果
+                filtered.sort(key=lambda x: x["rerank_score"], reverse=True)
+            except Exception as e:
+                logger.warning(f"Rerank failed, using distance order: {e}")
+                # 失败时按距离排序
+                filtered.sort(key=lambda x: x["distance"])
 
         return {"results": filtered[:tk], "all_results": results}
 
