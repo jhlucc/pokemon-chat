@@ -41,7 +41,6 @@ def test_chat_agent_uses_llm_factory():
     fake = _FakeLLM()
     with (
         patch("src.agents.chat_agent.build_chat_llm", return_value=fake, create=True) as m,
-        patch("src.agents.chat_agent.ChatOpenAI", _FakeLLM),
         patch("src.agents.chat_agent.PokemonLightRAG"),
         patch("src.agents.chat_agent.LiteBaseSearcher"),
         patch("src.agents.chat_agent.PokemonStatsAgent"),
