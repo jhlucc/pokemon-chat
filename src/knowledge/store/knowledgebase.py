@@ -333,12 +333,14 @@ class KnowledgeBase:
         hits: list[dict[str, Any]] = raw_res[0]
         results: list[dict[str, Any]] = []
         for h in hits:
+            # MilvusClient.search() 返回 {'id': ..., 'distance': ..., 'entity': {'text': ..., 'file_id': ...}}
+            entity = h.get("entity", {})
             results.append(
                 {
                     "entity": {
-                        "text": h.get("text", ""),
-                        "file_id": h.get("file_id"),
-                        "id": h.get("id"),  # 其它字段按需保留
+                        "text": entity.get("text", ""),
+                        "file_id": entity.get("file_id"),
+                        "id": h.get("id"),
                     },
                     "distance": h.get("distance", h.get("score", 0.0)),
                 }
