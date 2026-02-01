@@ -8,13 +8,18 @@ Unified Embedding - 统一的多厂商 Embedding 接口
 - dashscope: 阿里 DashScope API
 
 特性:
-- 内置 LRU 缓存，避免重复计算
+- SQLite 持久化缓存 (可配置)
+- 内置 LRU 内存缓存，避免重复计算
 - 批量编码支持
 - 异步 API (aembed, abatch_encode)
 """
 
 import asyncio
 import hashlib
+import json
+import os
+import sqlite3
+import time
 import warnings
 from abc import ABC, abstractmethod
 from typing import Any
@@ -29,14 +34,78 @@ warnings.filterwarnings("ignore")
 
 logger = get_logger(__name__)
 
-# 全局 embedding 缓存 (可配置大小)
+# 全局 embedding 缓存 (内存 LRU)
 _CACHE_SIZE = 10000
 _embedding_cache: dict[str, list[float]] = {}
+
+# SQLite 持久化缓存
+_CACHE_TTL_DAYS = 30
+_db_conn: sqlite3.Connection | None = None
+
+
+def _get_cache_db_path() -> str:
+    """Get the SQLite cache database path."""
+    cache_dir = os.path.join(settings.paths.resources_dir, "cache")
+    os.makedirs(cache_dir, exist_ok=True)
+    return os.path.join(cache_dir, "embeddings.db")
+
+
+def _init_cache_db() -> sqlite3.Connection:
+    """Initialize or open the persistent cache database."""
+    global _db_conn
+    if _db_conn is not None:
+        return _db_conn
+
+    db_path = _get_cache_db_path()
+    _db_conn = sqlite3.connect(db_path, check_same_thread=False)
+    _db_conn.execute("""
+        CREATE TABLE IF NOT EXISTS embedding_cache (
+            key TEXT PRIMARY KEY,
+            embedding TEXT NOT NULL,
+            created_at REAL NOT NULL
+        )
+    """)
+    _db_conn.execute("CREATE INDEX IF NOT EXISTS idx_created ON embedding_cache(created_at)")
+    _db_conn.commit()
+
+    # Clean up expired entries
+    cutoff = time.time() - (_CACHE_TTL_DAYS * 24 * 3600)
+    _db_conn.execute("DELETE FROM embedding_cache WHERE created_at < ?", (cutoff,))
+    _db_conn.commit()
+
+    logger.info(f"Embedding cache DB initialized at {db_path}")
+    return _db_conn
 
 
 def _cache_key(text: str, model: str) -> str:
     """生成缓存键"""
     return hashlib.md5(f"{model}:{text}".encode()).hexdigest()
+
+
+def _get_from_persistent_cache(key: str) -> list[float] | None:
+    """Retrieve embedding from SQLite cache."""
+    try:
+        db = _init_cache_db()
+        cursor = db.execute("SELECT embedding FROM embedding_cache WHERE key = ?", (key,))
+        row = cursor.fetchone()
+        if row:
+            return json.loads(row[0])
+    except Exception as e:
+        logger.debug(f"Persistent cache read failed: {e}")
+    return None
+
+
+def _save_to_persistent_cache(key: str, embedding: list[float]) -> None:
+    """Save embedding to SQLite cache."""
+    try:
+        db = _init_cache_db()
+        db.execute(
+            "INSERT OR REPLACE INTO embedding_cache (key, embedding, created_at) VALUES (?, ?, ?)",
+            (key, json.dumps(embedding), time.time()),
+        )
+        db.commit()
+    except Exception as e:
+        logger.debug(f"Persistent cache write failed: {e}")
 
 
 def hashstr(data: str | list[str]) -> str:
@@ -58,36 +127,48 @@ class BaseEmbeddingModel(ABC):
         pass
 
     def embed(self, texts: str | list[str]) -> list[list[float]]:
-        """生成文本向量 (带缓存)"""
+        """生成文本向量 (带两级缓存: 内存 + SQLite)"""
         if isinstance(texts, str):
             texts = [texts]
 
         if not self.use_cache:
             return self._embed_impl(texts)
 
-        # 检查缓存
+        # 检查缓存 (两级: 内存 -> SQLite)
         results = [None] * len(texts)
         uncached_indices = []
         uncached_texts = []
 
         for i, text in enumerate(texts):
             key = _cache_key(text, getattr(self, "model", "default"))
+            # Level 1: Memory cache
             if key in _embedding_cache:
                 results[i] = _embedding_cache[key]
             else:
-                uncached_indices.append(i)
-                uncached_texts.append(text)
+                # Level 2: Persistent SQLite cache
+                cached = _get_from_persistent_cache(key)
+                if cached:
+                    results[i] = cached
+                    # Warm up memory cache
+                    if len(_embedding_cache) < _CACHE_SIZE:
+                        _embedding_cache[key] = cached
+                else:
+                    uncached_indices.append(i)
+                    uncached_texts.append(text)
 
         # 仅计算未缓存的
         if uncached_texts:
             logger.debug(f"Cache miss for {len(uncached_texts)}/{len(texts)} texts")
             new_embeddings = self._embed_impl(uncached_texts)
 
-            # 存入缓存
+            # 存入两级缓存 (内存 + SQLite)
             for idx, text, emb in zip(uncached_indices, uncached_texts, new_embeddings):
                 key = _cache_key(text, getattr(self, "model", "default"))
+                # Memory cache
                 if len(_embedding_cache) < _CACHE_SIZE:
                     _embedding_cache[key] = emb
+                # Persistent cache (async-safe, won't block)
+                _save_to_persistent_cache(key, emb)
                 results[idx] = emb
         else:
             logger.debug(f"Cache hit for all {len(texts)} texts")
