@@ -1,4 +1,5 @@
 import sys
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any
 
 from langchain_core.prompts import ChatPromptTemplate
@@ -15,6 +16,15 @@ from src.knowledge.store.vector import VectorStore
 from src.utils.logger import get_logger
 
 logger = get_logger(__name__)
+
+
+def _adaptive_top_k(query: str, sub_query_count: int) -> int:
+    """Determine top_k based on query complexity."""
+    if sub_query_count > 1:
+        return 8  # Complex multi-part queries need more docs
+    if len(query) > 100:
+        return 6  # Long queries may need broader context
+    return 5  # Default for simple queries
 
 
 class RagWorker:
@@ -193,44 +203,62 @@ class RagWorker:
         else:
             # 0. Query Decomposition for complex questions
             decomposer = get_query_decomposer()
-            if decomposer.is_complex(query):
+            is_complex = decomposer.is_complex(query)
+            if is_complex:
                 sub_queries = decomposer.decompose(query)
                 logger.info(f"Query decomposed into {len(sub_queries)} sub-queries")
             else:
                 sub_queries = [query]
 
-            # 1. HyDE Expansion (Optional but recommended)
+            # Adaptive top_k based on complexity
+            top_k = _adaptive_top_k(query, len(sub_queries))
+
+            # 1. Conditional HyDE - only for complex or long queries (saves LLM calls)
+            use_hyde = is_complex or len(query) > 50
             hyde_query = query
-            try:
-                # Basic HyDE: Generate a hypothetical answer
-                hyde_operator = HyDEOperator()
+            if use_hyde:
+                try:
+                    hyde_operator = HyDEOperator()
 
-                # We need a callable for the model, simplest is using self.llm.invoke
-                # HyDEOperator expects a callable that takes a prompt string.
-                # ChatOpenAI.invoke takes string or messages.
-                # We wrap it.
-                def model_wrapper(prompt_str):
-                    return self.llm.invoke(prompt_str).content
+                    def model_wrapper(prompt_str):
+                        return self.llm.invoke(prompt_str).content
 
-                hyde_doc = hyde_operator.call(model_wrapper, query, "")
-                # Extend query with hypothetical document for retrieval?
-                # Standard HyDE uses the vector of the hypothetical doc.
-                # Our VectorStore.search takes a string and embeds it.
-                # So we can pass the hypothetical doc as the query string.
-                hyde_query = hyde_doc
-            except Exception:
-                # Fallback to original query
-                pass
+                    hyde_doc = hyde_operator.call(model_wrapper, query, "")
+                    hyde_query = hyde_doc
+                    logger.debug("HyDE expansion applied")
+                except Exception:
+                    # Fallback to original query
+                    pass
 
-            # 2. Retrieve with CRAG (Self-Correcting) for each sub-query
+            # 2. Parallel sub-query retrieval for better performance
             all_contexts = []
-            for sq in sub_queries:
-                if feature_enabled("enable_web_search"):
-                    ctx = self.retrieve_with_crag(hyde_query if sq == query else sq)  # Use HyDE for main query
-                else:
-                    ctx = self.retrieve(hyde_query if sq == query else sq)
+            use_crag = feature_enabled("enable_web_search")
+
+            def retrieve_single(sq: str) -> str:
+                """Retrieve for a single sub-query."""
+                # Use HyDE query only for the main query
+                effective_query = hyde_query if sq == query else sq
+                if use_crag:
+                    return self.retrieve_with_crag(effective_query, top_k=top_k)
+                return self.retrieve(effective_query, top_k=top_k)
+
+            if len(sub_queries) > 1:
+                # Parallel retrieval for multiple sub-queries
+                with ThreadPoolExecutor(max_workers=min(len(sub_queries), 4)) as executor:
+                    future_to_sq = {executor.submit(retrieve_single, sq): sq for sq in sub_queries}
+                    for future in as_completed(future_to_sq):
+                        sq = future_to_sq[future]
+                        try:
+                            ctx = future.result()
+                            if ctx:
+                                all_contexts.append(f"[Sub-Q: {sq[:50]}...]\n{ctx}")
+                        except Exception as e:
+                            logger.warning(f"Sub-query retrieval failed for '{sq[:30]}': {e}")
+            else:
+                # Single query - no parallelism needed
+                ctx = retrieve_single(sub_queries[0])
                 if ctx:
-                    all_contexts.append(f"[Sub-Q: {sq[:50]}...]\n{ctx}")
+                    all_contexts.append(ctx)
 
             context = "\n\n---\n\n".join(all_contexts) if all_contexts else "No relevant information found."
 
