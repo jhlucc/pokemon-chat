@@ -22,10 +22,13 @@ class GraphStore:
             return
 
         try:
+            # docker-compose.yml may use `NEO4J_AUTH=none` (no auth).
+            # In that case, neo4j_password is empty and we should skip auth.
+            password = settings.database.neo4j_password or None
             self.graph = Neo4jGraph(
                 url=settings.database.neo4j_uri,
-                username=settings.database.neo4j_username,
-                password=settings.database.neo4j_password,
+                username=settings.database.neo4j_username if password else None,
+                password=password,
                 refresh_schema=refresh_schema,
             )
             logger.info("Connected to Neo4j GraphStore.")
