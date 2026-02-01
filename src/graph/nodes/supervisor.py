@@ -1,16 +1,14 @@
 import sys
-from enum import Enum
 from typing import Any
 
 from langchain_core.messages import BaseMessage, HumanMessage
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
-from pydantic import create_model
+from langchain_core.tools import tool
 
 from src.core.llm_factory import build_chat_llm
 from src.graph.nodes.rule_router import rule_route
 from src.graph.state import AgentState
 
-# Define the set of workers
 # Definition of workers
 AVAILABLE_WORKERS = ["rag_worker", "web_worker", "graph_worker", "stats_worker", "mcp_worker"]
 
@@ -33,18 +31,53 @@ def _normalized_allowed_workers(state: AgentState) -> list[str]:
     return allowed or list(AVAILABLE_WORKERS)
 
 
-def _route_schema(options: list[str]):
-    """
-    Build a constrained Pydantic schema for structured output.
+# ---- Handoff tools ----
+# Each tool represents a routing decision. The supervisor calls one of these
+# tools to indicate which worker should handle the request next.
+# This leverages the LLM's native tool-calling for more reliable routing.
 
-    We use Enum because Literal cannot be parameterized dynamically in python 3.10 syntax.
-    """
 
-    def _name(opt: str) -> str:
-        return (opt or "UNKNOWN").upper().replace("-", "_")
+def _build_handoff_tools(allowed: list[str]) -> list:
+    """Build handoff tools dynamically based on allowed workers."""
+    tools = []
+    for worker in allowed:
+        cap = _WORKER_CAPABILITIES.get(worker, "")
 
-    RouteEnum = Enum("RouteEnum", {_name(opt): opt for opt in options})
-    return create_model("RouteResponse", next=(RouteEnum, ...))
+        @tool(name=f"route_to_{worker}", description=f"Hand off to {worker}: {cap}")
+        def _handoff(reason: str = "") -> str:  # noqa: ARG001
+            """Route to this worker. Provide a brief reason for the routing decision."""
+            return "routed"
+
+        tools.append(_handoff)
+
+    # FINISH tool signals the conversation is complete
+    @tool(name="finish", description="End the conversation. Use when the task is complete or already answered.")
+    def _finish(reason: str = "") -> str:  # noqa: ARG001
+        """Finish the conversation."""
+        return "finished"
+
+    tools.append(_finish)
+    return tools
+
+
+def _parse_tool_call_route(response) -> str:
+    """Extract the routing decision from the LLM's tool call response."""
+    tool_calls = getattr(response, "tool_calls", None)
+    if not tool_calls:
+        return "FINISH"
+
+    tool_name = tool_calls[0]["name"]
+
+    if tool_name == "finish":
+        return "FINISH"
+
+    # Extract worker name from "route_to_{worker}" pattern
+    if tool_name.startswith("route_to_"):
+        worker = tool_name[len("route_to_"):]
+        if worker in AVAILABLE_WORKERS:
+            return worker
+
+    return "FINISH"
 
 
 class SupervisorNode:
@@ -54,7 +87,6 @@ class SupervisorNode:
 
     def __call__(self, state: AgentState):
         allowed = _normalized_allowed_workers(state)
-        options = ["FINISH"] + allowed
 
         # Fast-path: when a simple heuristic can confidently route the request,
         # skip LLM routing entirely to reduce misroutes and improve latency.
@@ -73,20 +105,25 @@ class SupervisorNode:
         # If so, the worker's response is already in messages – finish immediately
         # without an extra LLM call.
         if state.get("forward_directly") and len(state.get("messages", [])) > 1:
-            # There are worker messages already – finish.
             return {"next": "FINISH"}
 
         route = rule_route(last_human or "", allowed)
         if route:
             # Rule-based match is high-confidence → mark for direct forwarding
-            # so the supervisor skips LLM re-evaluation after the worker responds.
             return {"next": route, "forward_directly": True}
+
+        # --- Tool-based LLM routing ---
+        # Bind handoff tools to the LLM and let it choose via native tool calling.
+        # This is more reliable than structured output for routing decisions.
+        handoff_tools = _build_handoff_tools(allowed)
+        llm_with_tools = self.llm.bind_tools(handoff_tools, tool_choice="required")
 
         capabilities = "\n".join([f"- {w}: {_WORKER_CAPABILITIES.get(w, '')}".rstrip() for w in allowed])
         system_prompt = (
-            "You are a supervisor tasked with managing a conversation between the following workers: {members}. "
-            "Given the user request and the conversation so far, respond with the worker to act next. "
-            "Each worker will perform a task and respond with their results. When finished, respond with FINISH.\n\n"
+            "You are a supervisor managing specialized workers. "
+            "Given the user request and conversation, call ONE tool to route to the appropriate worker. "
+            "Each worker will perform a task and respond with results. "
+            "When the task is already answered or finished, call the finish tool.\n\n"
             "Worker capabilities:\n"
             f"{capabilities}"
         )
@@ -95,22 +132,14 @@ class SupervisorNode:
             [
                 ("system", system_prompt),
                 MessagesPlaceholder(variable_name="messages"),
-                (
-                    "system",
-                    "Given the conversation above, who should act next? Or should we FINISH? Select one of: {options}",
-                ),
             ]
-        ).partial(options=str(options), members=", ".join(allowed))
+        )
 
-        RouteResponse = _route_schema(options)
-        chain = prompt | self.llm.with_structured_output(RouteResponse)
+        chain = prompt | llm_with_tools
 
-        # The prompt only needs `messages`; other state keys are ignored.
         result: Any = chain.invoke({"messages": state["messages"]})
-        next_ = getattr(result, "next", None)
-        if hasattr(next_, "value"):
-            next_ = next_.value
-        return {"next": next_ or "FINISH"}
+        next_ = _parse_tool_call_route(result)
+        return {"next": next_}
 
 
 _supervisor_node: SupervisorNode | None = None
