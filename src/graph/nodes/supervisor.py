@@ -50,15 +50,20 @@ def _get_last_human_message(state: AgentState) -> str | None:
 def _build_handoff_tools(allowed: list[str], support_parallel: bool = True) -> list:
     """Build handoff tools dynamically based on allowed workers."""
     tools = []
-    for worker in allowed:
-        cap = _WORKER_CAPABILITIES.get(worker, "")
 
-        @tool(name=f"route_to_{worker}", description=f"Hand off to {worker}: {cap}")
+    def _make_handoff_tool(worker_name: str, capability: str):
+        """Create a handoff tool with proper closure binding."""
+
+        @tool(name=f"route_to_{worker_name}", description=f"Hand off to {worker_name}: {capability}")
         def _handoff(reason: str = "") -> str:  # noqa: ARG001
             """Route to this worker. Provide a brief reason for the routing decision."""
-            return "routed"
+            return f"routed to {worker_name}"
 
-        tools.append(_handoff)
+        return _handoff
+
+    for worker in allowed:
+        cap = _WORKER_CAPABILITIES.get(worker, "")
+        tools.append(_make_handoff_tool(worker, cap))
 
     # FINISH tool signals the conversation is complete
     @tool(name="finish", description="End the conversation. Use when the task is complete or already answered.")
@@ -96,10 +101,10 @@ def _parse_tool_call_route(response, allowed: list[str]) -> dict[str, Any]:
     - {"next": "FINISH"} to end
     """
     tool_calls = getattr(response, "tool_calls", None)
-    if not tool_calls:
+    if not tool_calls or len(tool_calls) == 0:
         return {"next": "FINISH"}
 
-    tool_name = tool_calls[0]["name"]
+    tool_name = tool_calls[0].get("name", "")
     tool_args = tool_calls[0].get("args", {})
 
     if tool_name == "finish":

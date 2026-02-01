@@ -62,50 +62,56 @@ class GraphWorker:
             self.chain = None
 
     def __call__(self, state: AgentState) -> dict[str, Any]:
-        messages = state["messages"]
-        last_message = messages[-1]
-        query = last_message.content
-
-        if not self.chain:
-            response_text = "Graph database is not connected or enabled."
+        messages = state.get("messages", [])
+        if not messages:
+            response_text = "No messages to process."
         else:
-            try:
-                # Invoke the chain
-                response = self.chain.invoke({"query": query})
-                response_text = response.get("result", "I couldn't find an answer in the graph.")
+            last_message = messages[-1]
+            query = getattr(last_message, "content", "") or ""
 
-                # Extract graph data
-                intermediate = response.get("intermediate_steps", [])
-                if intermediate:
-                    # intermediate_steps is tuple (str(cypher), List[Dict](context))
-                    cypher_query = intermediate[0].get("query", "")
-                    graph_data = intermediate[1]  # This is the context/result
+            if not self.chain:
+                response_text = "Graph database is not connected or enabled."
+            elif not query.strip():
+                response_text = "Empty query received."
+            else:
+                try:
+                    # Invoke the chain
+                    response = self.chain.invoke({"query": query})
+                    response_text = response.get("result", "I couldn't find an answer in the graph.")
 
-                    # Serialize graph_data to JSON-Graph format
-                    # Need to convert Neo4j objects (nodes/rels) to simple dicts
-                    # Usually graph_data is a list of dicts like [{ 'p.name': 'Pikachu', ... }]
-                    # We might need to construct nodes/edges.
+                    # Extract graph data with proper validation
+                    intermediate = response.get("intermediate_steps", [])
+                    cypher_query = ""
+                    graph_data = []
 
-                    # For now, let's just dump the raw data into a json block
-                    # effectively giving the frontend the visual data
-                    import json
+                    if intermediate and len(intermediate) >= 1:
+                        # First element could be dict with "query" or a string
+                        first = intermediate[0]
+                        if isinstance(first, dict):
+                            cypher_query = first.get("query", "")
+                        elif isinstance(first, str):
+                            cypher_query = first
 
-                    # Helper to serialize Neo4j types if they leak out,
-                    # but LangChain usually converts them to dicts/values?
-                    # Let's hope it's serializable.
-                    try:
-                        graph_json = json.dumps(graph_data, default=str, ensure_ascii=False)
-                        response_text += f"\n\n```json-graph\n{graph_json}\n```"
+                    if intermediate and len(intermediate) >= 2:
+                        graph_data = intermediate[1]
 
-                        # We also append the cypher for debugging
-                        response_text += f"\n\n> **Cypher**: `{cypher_query}`"
+                    if cypher_query or graph_data:
+                        import json
 
-                    except Exception as json_err:
-                        logger.warning(f"Failed to serialize graph data: {json_err}")
+                        try:
+                            if graph_data:
+                                graph_json = json.dumps(graph_data, default=str, ensure_ascii=False)
+                                response_text += f"\n\n```json-graph\n{graph_json}\n```"
 
-            except Exception as e:
-                logger.error(f"GraphWorker query failed: {e}")
-                response_text = f"Error querying knowledge graph: {str(e)}"
+                            if cypher_query:
+                                response_text += f"\n\n> **Cypher**: `{cypher_query}`"
+
+                        except Exception as json_err:
+                            logger.warning(f"Failed to serialize graph data: {json_err}")
+
+                except Exception as e:
+                    logger.error(f"GraphWorker query failed: {e}")
+                    response_text = f"Error querying knowledge graph: {str(e)}"
 
         # Wrap response in AIMessage
         from langchain_core.messages import AIMessage
