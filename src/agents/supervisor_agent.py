@@ -4,6 +4,7 @@ from typing import Any
 
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph.state import CompiledStateGraph
+from langgraph.store.memory import InMemoryStore
 
 try:
     # Optional dependency: provided by `langgraph-checkpoint-sqlite`.
@@ -14,6 +15,17 @@ from src.agents.base import BaseAgent
 from src.core.settings import settings
 from src.graph.workflow import workflow
 from src.utils.callbacks import FileTraceCallbackHandler
+
+# Module-level singleton so the store survives across SupervisorAgent re-creations.
+_memory_store: InMemoryStore | None = None
+
+
+def _get_memory_store() -> InMemoryStore:
+    """Return a singleton InMemoryStore for cross-session long-term memory."""
+    global _memory_store
+    if _memory_store is None:
+        _memory_store = InMemoryStore()
+    return _memory_store
 
 
 class SupervisorAgent(BaseAgent):
@@ -47,7 +59,10 @@ class SupervisorAgent(BaseAgent):
         # BaseAgent.invoke methods should support passing config.
         # But we can also set default config here? No, better in BaseAgent.
 
-        return workflow.compile(checkpointer=self._checkpointer)
+        return workflow.compile(
+            checkpointer=self._checkpointer,
+            store=_get_memory_store(),
+        )
 
     def invoke(self, input: dict[str, Any], config: dict[str, Any] | None = None) -> dict[str, Any]:
         """Override to inject callbacks by default."""

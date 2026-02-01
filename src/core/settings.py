@@ -286,6 +286,11 @@ class AgentSettings(BaseSettings):
         default="memory",
         validation_alias=AliasChoices("checkpointer_type", "CHECKPOINTER_TYPE"),
     )
+    # 长期记忆存储类型: memory (跨会话持久化)
+    memory_store_type: str = Field(
+        default="memory",
+        validation_alias=AliasChoices("memory_store_type", "MEMORY_STORE_TYPE"),
+    )
     # 对话最大消息数
     conversation_max_messages: int = Field(
         default=50,
