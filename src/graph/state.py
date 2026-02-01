@@ -23,6 +23,7 @@ class AgentState(TypedDict, total=False):
     # Optional: knowledge base selection (Milvus collection id)
     db_id: NotRequired[str]
 
-    # Optional: specialized state keys
-    # rag_query: str
-    # documents: List[Document]
+    # When True, the worker's response is forwarded directly to output
+    # without returning to the supervisor for re-evaluation.
+    # Set by supervisor when rule-based routing gives a confident match.
+    forward_directly: NotRequired[bool]

@@ -67,9 +67,20 @@ class SupervisorNode:
                 last_human = getattr(msg, "content", None)
                 break
 
+        # --- Forward-directly fast-path ---
+        # When we return here after a worker has responded, check if
+        # forward_directly was set on the initial routing pass.
+        # If so, the worker's response is already in messages – finish immediately
+        # without an extra LLM call.
+        if state.get("forward_directly") and len(state.get("messages", [])) > 1:
+            # There are worker messages already – finish.
+            return {"next": "FINISH"}
+
         route = rule_route(last_human or "", allowed)
         if route:
-            return {"next": route}
+            # Rule-based match is high-confidence → mark for direct forwarding
+            # so the supervisor skips LLM re-evaluation after the worker responds.
+            return {"next": route, "forward_directly": True}
 
         capabilities = "\n".join([f"- {w}: {_WORKER_CAPABILITIES.get(w, '')}".rstrip() for w in allowed])
         system_prompt = (
