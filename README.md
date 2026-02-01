@@ -153,7 +153,6 @@ docker compose up -d --build
 - `resources/data/kg_data/entities.json`
 - `resources/data/kg_data/relations.json`
 
-如需强制重导（危险：会清空 Neo4j 数据库）：
 
 ```bash
 cd docker
@@ -173,9 +172,10 @@ docker compose exec api python scripts/import_pokemon_map.py
 ```bash
 cd docker
 docker compose down
-# 这些是 bind mount 的数据目录（不属于 named volumes），需要手动删除（Linux/macOS/WSL）
+# 删除数据目录（Linux/macOS/WSL）
 rm -rf volumes/neo4j/data volumes/neo4j/logs volumes/milvus volumes/mysql/data
 docker compose --profile infra up -d --build
+# Neo4j 图谱数据会由 neo4j-bootstrap 自动重新导入
 ```
 
 Windows PowerShell：
@@ -183,8 +183,9 @@ Windows PowerShell：
 ```powershell
 cd docker
 docker compose down
-Remove-Item -Recurse -Force .\\volumes\\neo4j\\data, .\\volumes\\neo4j\\logs, .\\volumes\\milvus, .\\volumes\\mysql\\data
+Remove-Item -Recurse -Force .\volumes\neo4j\data, .\volumes\neo4j\logs, .\volumes\milvus, .\volumes\mysql\data
 docker compose --profile infra up -d --build
+# Neo4j 图谱数据会由 neo4j-bootstrap 自动重新导入
 ```
 
 ### ✅ 启动验证
