@@ -1,32 +1,45 @@
 import os
 
 from langchain_core.documents import Document
-from langchain_text_splitters import CharacterTextSplitter
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 from src.knowledge.ingestion.parsers.base import parse_file
 from src.knowledge.store.vector import VectorStore
 from src.utils.logger import get_logger
 
 _log = get_logger(__name__)
-_warned_tiktoken = False
+
+# Pokemon-specific separators for semantic-aware chunking
+# Priority: double newlines (paragraphs) > headers > sentences > words
+_POKEMON_SEPARATORS = [
+    "\n\n",      # Paragraph breaks
+    "\n## ",     # Markdown H2 headers
+    "\n### ",    # Markdown H3 headers
+    "\n",        # Line breaks
+    "。",        # Chinese period
+    "！",        # Chinese exclamation
+    "？",        # Chinese question mark
+    ". ",        # English period
+    "! ",        # English exclamation
+    "? ",        # English question mark
+    "；",        # Chinese semicolon
+    "; ",        # English semicolon
+    "，",        # Chinese comma
+    ", ",        # English comma
+    " ",         # Spaces
+    "",          # Character-level fallback
+]
 
 
-def _get_splitter(chunk_size: int, chunk_overlap: int) -> CharacterTextSplitter:
-    global _warned_tiktoken
-    try:
-        return CharacterTextSplitter.from_tiktoken_encoder(
-            chunk_size=chunk_size,
-            chunk_overlap=chunk_overlap,
-        )
-    except Exception as exc:
-        if not _warned_tiktoken:
-            _log.warning("tiktoken splitter unavailable; falling back to char splitter. (%s)", exc)
-            _warned_tiktoken = True
-        return CharacterTextSplitter(
-            chunk_size=chunk_size,
-            chunk_overlap=chunk_overlap,
-            length_function=len,
-        )
+def _get_splitter(chunk_size: int, chunk_overlap: int) -> RecursiveCharacterTextSplitter:
+    """Get a semantic-aware text splitter with Pokemon-specific separators."""
+    return RecursiveCharacterTextSplitter(
+        chunk_size=chunk_size,
+        chunk_overlap=chunk_overlap,
+        separators=_POKEMON_SEPARATORS,
+        length_function=len,
+        is_separator_regex=False,
+    )
 
 
 class IngestionPipeline:
@@ -36,8 +49,8 @@ class IngestionPipeline:
     def ingest_file(
         self,
         file_path: str,
-        chunk_size: int = 1000,
-        chunk_overlap: int = 100,
+        chunk_size: int = 800,  # Smaller chunks for better retrieval matching
+        chunk_overlap: int = 150,  # More overlap to preserve context
         do_ocr: bool = False,
         file_id: str | None = None,
     ) -> str:
