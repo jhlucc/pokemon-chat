@@ -20,6 +20,8 @@ services:
       mysql_port: 3306
       mcp_sse_url: http://mcp:8000/sse
       funasr_url: ws://funasr:10095
+      # Required for LangChain Neo4jGraph when NEO4J_AUTH=none (ignored by Neo4j)
+      NEO4J_PASSWORD: "not-used"
 
     volumes:
       # Persist runtime state (agentic memory / checkpoints / uploads).

@@ -1,3 +1,4 @@
+import os
 from typing import Any
 
 from langchain_community.graphs import Neo4jGraph
@@ -22,12 +23,12 @@ class GraphStore:
             return
 
         try:
-            # docker-compose.yml may use `NEO4J_AUTH=none` (no auth).
-            # In that case, neo4j_password is empty and we should skip auth.
-            password = settings.database.neo4j_password or None
+            # LangChain Neo4jGraph requires password or NEO4J_PASSWORD env var.
+            # For NEO4J_AUTH=none, we use a dummy password (Neo4j ignores it).
+            password = settings.database.neo4j_password or os.getenv("NEO4J_PASSWORD") or "not-used"
             self.graph = Neo4jGraph(
                 url=settings.database.neo4j_uri,
-                username=settings.database.neo4j_username if password else None,
+                username=settings.database.neo4j_username or "neo4j",
                 password=password,
                 refresh_schema=refresh_schema,
             )
