@@ -318,8 +318,8 @@ class KnowledgeBase:
         top_k: int | None = None,
     ) -> dict[str, Any]:
         self._ensure_ready()
-        dt = distance_threshold or self.default_distance_threshold
-        tk = top_k or self.top_k
+        dt = distance_threshold if distance_threshold is not None else self.default_distance_threshold
+        tk = top_k if top_k is not None else self.top_k
 
         #  向量化查询
         vector = self.embed_model.batch_encode([query])[0]
