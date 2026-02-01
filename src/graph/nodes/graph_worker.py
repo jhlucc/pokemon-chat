@@ -12,19 +12,33 @@ from src.utils.logger import get_logger
 
 logger = get_logger(__name__)
 
-# Custom Cypher Generation Prompt
-CYPHER_GENERATION_TEMPLATE = """Task:Generate Cypher statement to query a graph database.
+# Custom Cypher Generation Prompt with few-shot examples
+CYPHER_GENERATION_TEMPLATE = """Task: Generate a Cypher statement to query a graph database.
+
 Instructions:
-Use only the provided relationship types and properties in the schema.
-Do not use any other relationship types or properties that are not provided.
+- Use only the provided relationship types and properties in the schema.
+- Always start with MATCH, then specify the pattern, then RETURN the results.
+- Do not include any explanations, only output the Cypher query.
+
 Schema:
 {schema}
-Note: Do not include any explanations or apologies in your responses.
-Do not respond to any questions that might ask anything else than for you to construct a Cypher statement.
-Do not include any text except the generated Cypher statement.
 
-The question is:
-{question}"""
+Examples:
+Question: 皮卡丘进化是什么？
+Cypher: MATCH (p:Pokémon {{name: "皮卡丘"}})-[:evolves_into]->(e:Pokémon) RETURN e.name AS evolution
+
+Question: 小智有哪些宝可梦？
+Cypher: MATCH (t:Person {{name: "小智"}})-[:has_pokemon]->(p:Pokémon) RETURN p.name AS pokemon
+
+Question: 真新镇在哪个地区？
+Cypher: MATCH (t:Town {{name: "真新镇"}})-[:located_in]->(r:Region) RETURN r.name AS region
+
+Question: 皮卡丘是什么属性？
+Cypher: MATCH (p:Pokémon {{name: "皮卡丘"}})-[:has_type]->(t:identity) RETURN t.name AS type
+
+Now generate a Cypher query for this question:
+Question: {question}
+Cypher:"""
 
 CYPHER_GENERATION_PROMPT = PromptTemplate(input_variables=["schema", "question"], template=CYPHER_GENERATION_TEMPLATE)
 
