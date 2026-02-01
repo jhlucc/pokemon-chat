@@ -381,7 +381,7 @@ const chunkFiles = async () => {
               chunk_overlap: ingestParams.chunkOverlap,
               do_ocr: Boolean(ingestParams.doOcr)
             },
-            timeoutMs: 120000
+            timeoutMs: 300000  // 5 minutes for DeepDoc parsing
           })
           nodes = data?.chunks || []
         }

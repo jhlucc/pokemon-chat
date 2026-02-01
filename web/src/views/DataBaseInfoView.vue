@@ -620,7 +620,7 @@ const chunkFiles = () => {
           chunk_overlap: chunkParams.value.chunk_overlap,
           use_deepdoc: chunkParams.value.use_parser
         },
-        timeoutMs: 60000
+        timeoutMs: 300000  // 5 minutes for DeepDoc parsing
       })
       nodes = data?.chunks || []
 
