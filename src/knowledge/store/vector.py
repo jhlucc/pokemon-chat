@@ -292,9 +292,6 @@ class VectorStore:
                 doc.metadata["score"] = score
                 results.append(doc)
 
-                doc.metadata["score"] = score
-                results.append(doc)
-
         # Rerank
         if rerank and self.reranker:
             return self._rerank(query, results, top_k)

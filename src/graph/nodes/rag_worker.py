@@ -55,9 +55,16 @@ class RagWorker:
         except Exception as e:
             return f"Error retrieving knowledge base: {e}"
 
-    def retrieve(self, query: str) -> str:
+    def retrieve(self, query: str, top_k: int = 5) -> str:
         try:
-            results = self.vector_store.search(query, top_k=5, rerank=feature_enabled("enable_reranker"))
+            # Use configured distance threshold for quality filtering
+            threshold = getattr(settings.kb_config, "default_distance_threshold", 0.0)
+            results = self.vector_store.search(
+                query,
+                top_k=top_k,
+                rerank=feature_enabled("enable_reranker"),
+                score_threshold=threshold,
+            )
             if not results:
                 return "No relevant information found in the knowledge base."
 
@@ -92,12 +99,15 @@ class RagWorker:
         except Exception as e:
             return f"Error retrieving knowledge: {e}"
 
-    def retrieve_with_crag(self, query: str) -> str:
+    def retrieve_with_crag(self, query: str, top_k: int = 5) -> str:
         """
         Retrieve with CRAG (Corrective RAG) - evaluates and corrects retrieval quality.
         """
         # 1. Initial retrieval
-        results = self.vector_store.search(query, top_k=5, rerank=feature_enabled("enable_reranker"))
+        threshold = getattr(settings.kb_config, "default_distance_threshold", 0.0)
+        results = self.vector_store.search(
+            query, top_k=top_k, rerank=feature_enabled("enable_reranker"), score_threshold=threshold,
+        )
 
         if not results:
             # No docs - use web search directly

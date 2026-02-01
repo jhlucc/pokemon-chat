@@ -50,8 +50,9 @@ class TestGraphRAG(unittest.TestCase):
         # Verify HyDE was called
         mock_hyde_instance.call.assert_called()
         # Verify Search called with HyDE result (Hypothetical Answer)
+        # score_threshold comes from settings.kb_config.default_distance_threshold
         mock_store.search.assert_called_with(
-            "Hypothetical Answer", top_k=5, rerank=True
+            "Hypothetical Answer", top_k=5, rerank=True, score_threshold=0.5,
         )  # rerank defaults to settings (True)
 
 
