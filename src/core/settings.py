@@ -255,6 +255,11 @@ class FeatureSettings(BaseSettings):
         default=True,
         validation_alias=AliasChoices("enable_reranker", "ENABLE_RERANKER"),
     )
+    # Self-RAG: adaptive retrieval decision (skip retrieval for simple factual queries)
+    enable_self_rag: bool = Field(
+        default=False,  # Off by default for offline-safe testing; enable in production
+        validation_alias=AliasChoices("enable_self_rag", "ENABLE_SELF_RAG"),
+    )
     enable_ner_bert: bool = Field(
         default=False,
         validation_alias=AliasChoices("enable_ner_bert", "ENABLE_NER_BERT"),

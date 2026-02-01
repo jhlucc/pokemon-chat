@@ -149,9 +149,31 @@ class RagWorker:
             # Fallback to original if web fails
             return self._format_context(results)
 
-    def _format_context(self, docs) -> str:
-        """Format documents into context string."""
-        return "\n\n".join([f"[{i + 1}] {doc.page_content}" for i, doc in enumerate(docs)])
+    def _format_context(self, docs, include_source: bool = True) -> str:
+        """Format documents into context string with relevance sorting and source labels."""
+        if not docs:
+            return ""
+
+        # Sort by score (higher is better) if available
+        sorted_docs = sorted(docs, key=lambda d: d.metadata.get("score", 0), reverse=True)
+
+        lines = []
+        for i, doc in enumerate(sorted_docs):
+            meta = doc.metadata
+            source = meta.get("file_id") or meta.get("source", "unknown")
+            score = meta.get("score")
+
+            # Format: [1] (来源: xxx, 相关度: 0.85) Content...
+            if include_source and score is not None:
+                header = f"[{i + 1}] (来源: {source}, 相关度: {score:.2f})"
+            elif include_source:
+                header = f"[{i + 1}] (来源: {source})"
+            else:
+                header = f"[{i + 1}]"
+
+            lines.append(f"{header}\n{doc.page_content}")
+
+        return "\n\n".join(lines)
 
     def _web_search_context(self, query: str) -> str:
         """Perform web search and return context."""
