@@ -136,9 +136,7 @@
 ---
 
 
-## 🐳 Docker Compose 一键启动（推荐）
-
-无需手动配置复杂环境，直接使用 Docker Compose 启动所有服务：
+##  Docker Compose 
 
 ```bash
 # 1. 克隆仓库
