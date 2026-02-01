@@ -340,12 +340,15 @@ class KnowledgeBase:
                         "file_id": h.get("file_id"),
                         "id": h.get("id"),  # 其它字段按需保留
                     },
-                    "distance": h.get("score", h.get("distance", 0.0)),
+                    "distance": h.get("distance", h.get("score", 0.0)),
                 }
             )
 
-        # 距离阈值过滤
-        filtered = [r for r in results if r["distance"] < dt]
+        # 距离阈值过滤 - 当 dt >= 1.0 时禁用过滤（用于调试）
+        if dt >= 1.0:
+            filtered = results
+        else:
+            filtered = [r for r in results if r["distance"] < dt]
 
         # 重排序
         if rerank and self.reranker and filtered:
@@ -353,7 +356,7 @@ class KnowledgeBase:
             scores = self.reranker.compute_score(query, texts, normalize=False)
             for r, s in zip(filtered, scores):
                 r["rerank_score"] = float(s)  # 转 float，保证可 JSON
-            filtered = [r for r in filtered if r["rerank_score"] > self.default_rerank_threshold]
+            # 只排序，不过滤 - 让用户看到所有结果
             filtered.sort(key=lambda x: x["rerank_score"], reverse=True)
 
         return {"results": filtered[:tk], "all_results": results}

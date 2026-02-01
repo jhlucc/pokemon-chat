@@ -31,8 +31,8 @@
             <a-input-number v-model:value="params.topK" :min="1" :max="20" />
           </div>
           <div class="param-item">
-            <label>距离阈值</label>
-            <a-slider v-model:value="params.distanceThreshold" :min="0" :max="1" :step="0.01" />
+            <label>距离阈值 (越大越宽松): {{ params.distanceThreshold }}</label>
+            <a-slider v-model:value="params.distanceThreshold" :min="0" :max="2" :step="0.05" />
           </div>
           <div class="param-item">
             <label>启用重排序</label>
@@ -45,6 +45,9 @@
     <div v-if="results" class="results-section">
       <div class="results-header">
         <span>找到 {{ results.results?.length || 0 }} 条结果</span>
+        <span class="results-debug" v-if="results.all_results?.length > results.results?.length">
+          (原始 {{ results.all_results?.length }} 条)
+        </span>
         <span class="results-time" v-if="searchTime">耗时 {{ searchTime }}ms</span>
       </div>
 
@@ -86,7 +89,7 @@ const paramsOpen = ref([])
 
 const params = reactive({
   topK: 5,
-  distanceThreshold: 0.5,
+  distanceThreshold: 1.0,
   rerank: true
 })
 
@@ -210,6 +213,11 @@ const runSearch = async () => {
 
 .results-time {
   color: var(--gray-400);
+  font-size: 12px;
+}
+
+.results-debug {
+  color: var(--warning-color);
   font-size: 12px;
 }
 

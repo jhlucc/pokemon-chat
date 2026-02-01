@@ -1,7 +1,41 @@
+import re
+
 from src.plugins.parser import DocxParser, ExcelParser, PdfParser, PptParser
 from src.utils.logger import get_logger
 
 _log = get_logger(__name__)
+
+
+def _clean_spaced_text(text: str) -> str:
+    """
+    清理 PDF 解析产生的异常空格。
+    某些 PDF 会将每个字符单独存储，导致 "H e l l o" 这样的输出。
+    策略：多空格=词边界，单空格=字符间距。
+    """
+    if not text:
+        return text
+
+    lines = text.split('\n')
+    cleaned_lines = []
+    for line in lines:
+        words = line.split()
+        if not words:
+            cleaned_lines.append(line)
+            continue
+
+        single_char_count = sum(1 for w in words if len(w) == 1 and w.isalpha())
+        if len(words) > 5 and single_char_count / len(words) > 0.3:
+            # 先保护多空格（词边界）为占位符
+            cleaned = re.sub(r' {2,}', '\x00', line)
+            # 移除单个空格（字符间距）
+            cleaned = re.sub(r'(?<=[a-zA-Z]) (?=[a-zA-Z])', '', cleaned)
+            # 恢复词边界空格
+            cleaned = cleaned.replace('\x00', ' ')
+            cleaned_lines.append(cleaned)
+        else:
+            cleaned_lines.append(line)
+
+    return '\n'.join(cleaned_lines)
 
 
 class DeepDocParser:
@@ -44,4 +78,6 @@ class DeepDocParser:
                 # block[0] is typically text
                 all_text.append(str(block[0]))
 
-        return "\n".join(all_text)
+        # 清理异常空格并返回
+        result = "\n".join(all_text)
+        return _clean_spaced_text(result)
