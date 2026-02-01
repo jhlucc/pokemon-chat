@@ -9,8 +9,6 @@ PokedexAgent - 宝可梦图鉴查询代理
 """
 
 from langchain_core.tools import tool
-from langgraph.graph import END, START, MessagesState, StateGraph
-from langgraph.prebuilt import ToolNode
 from pydantic import BaseModel, Field
 
 from src.agents.base import ToolAgent
@@ -178,12 +176,11 @@ def get_ability_info(ability_name: str) -> str:
 
 
 class PokedexAgent(ToolAgent):
-    """宝可梦图鉴查询代理"""
+    """宝可梦图鉴查询代理 - 搜索宝可梦、进化链、招式、特性"""
 
     def __init__(self):
         tools = [search_pokedex, get_evolution_chain, get_pokemon_moves, get_ability_info]
         super().__init__(tools=tools, bind_tools=True)
-        self.tool_node = ToolNode(self._tools)
         logger.info("PokedexAgent initialized")
 
     def get_info(self) -> dict:
@@ -193,41 +190,11 @@ class PokedexAgent(ToolAgent):
             "tools": [t.name for t in self._tools],
         }
 
-    def _call_model(self, state):
-        messages = state["messages"]
-        response = self.llm_with_tools.invoke(messages)
-        return {"messages": [response]}
-
-    def _should_continue(self, state):
-        last_msg = state["messages"][-1]
-        if not last_msg.tool_calls:
-            return "end"
-        return "run_tool"
-
-    def _run_tool(self, state):
-        new_messages = []
-        tool_calls = state["messages"][-1].tool_calls
-        tool_map = {t.name: t for t in self._tools}
-
-        for call in tool_calls:
-            tool = tool_map.get(call["name"])
-            if tool:
-                result = tool.invoke(call["args"])
-                new_messages.append(
-                    {"role": "tool", "name": call["name"], "content": result, "tool_call_id": call["id"]}
-                )
-        return {"messages": new_messages}
-
-    def _build_graph(self):
-        workflow = StateGraph(MessagesState)
-        workflow.add_node("agent", self._call_model)
-        workflow.add_node("run_tool", self._run_tool)
-
-        workflow.add_edge(START, "agent")
-        workflow.add_conditional_edges("agent", self._should_continue, {"run_tool": "run_tool", "end": END})
-        workflow.add_edge("run_tool", "agent")
-
-        return workflow.compile(checkpointer=self.checkpointer)
+    # 使用 ToolAgent 基类的默认实现:
+    # - _build_graph()
+    # - _call_model()
+    # - _should_continue()
+    # - _run_tool()
 
 
 if __name__ == "__main__":

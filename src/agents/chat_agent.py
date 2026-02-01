@@ -6,7 +6,6 @@ from typing import Any
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.runnables import RunnableLambda
-from langchain_openai import ChatOpenAI
 
 # LangGraph Imports
 from langgraph.checkpoint.memory import MemorySaver
@@ -15,6 +14,7 @@ from pydantic import BaseModel, create_model
 
 from src.agents.base import BaseAgent
 from src.agents.deep_agent.graph import DeepAgent
+from src.agents.intent import Intent, classify_intent
 from src.agents.interrupts import approval_node
 from src.agents.kg_agent import KGQueryAgent
 
@@ -27,14 +27,13 @@ from src.agents.middleware import (
     RetryMiddleware,
 )
 from src.agents.pokedex_agent import PokedexAgent
-from src.agents.intent import Intent, classify_intent
 from src.agents.pokemon_data import get_pokemon_data
 from src.agents.pokemon_entities import extract_pokemon_entities
 from src.agents.pokemon_facts import format_basic_facts, format_evolution
-from src.agents.web_gating import should_web_search
 from src.agents.pokemon_stats_agent import PokemonStatsAgent
 from src.agents.tools.websearch.websearcher import LiteBaseSearcher
 from src.agents.trainer_agent import TrainerAgent
+from src.agents.web_gating import should_web_search
 from src.core.feature_flags import feature_enabled
 from src.core.llm_factory import build_chat_llm
 
@@ -487,7 +486,11 @@ class PokemonKGChatAgent(BaseAgent):
             "你是 Pokemon 世界的顶尖博士助手 (Supervisor)，负责协调专家完成用户任务。\n\n"
             f"可用专家：{', '.join(allowed_members)}\n\n"
             f"专家能力：\n{capabilities}\n"
-            "当任务完成时，选择 FINISH。\n"
+            "决策规则：\n"
+            "1. 如果某个专家已经给出了完整、准确的回答，直接选择 FINISH，不要重复派发\n"
+            "2. 如果当前回答不完整或需要其他维度补充，选择对应专家\n"
+            "3. 当任务完成时，选择 FINISH\n"
+            "4. 不要在已有完整答案的情况下派给 chat 节点重新润色\n"
         )
 
         prompt = ChatPromptTemplate.from_messages(
@@ -629,15 +632,33 @@ class PokemonKGChatAgent(BaseAgent):
 
     # [NEW] 子代理调用节点
     def _invoke_subagent(self, agent, state: AgentState, name: str):
-        """通用子代理调用逻辑"""
+        """通用子代理调用逻辑 - 带上下文清理"""
         if not agent:
             return {"messages": [HumanMessage(content=f"{name} 未初始化", name=name)]}
         try:
+            # [优化] 过滤消息，移除路由相关内容
+            from src.agents.utils.message_filter import filter_messages_for_worker
+
+            clean_messages = filter_messages_for_worker(
+                state["messages"],
+                keep_system=True,
+                keep_last_n_exchanges=5,
+            )
+
+            # 创建清理后的 state
+            clean_state = {**state, "messages": clean_messages}
+
+            # 记录过滤效果
+            original_count = len(state["messages"])
+            filtered_count = len(clean_messages)
+            if original_count != filtered_count:
+                logger.debug(f"{name}: 消息从 {original_count} 过滤到 {filtered_count}")
+
             # 计算调用前的消息数量，用于提取新增消息
-            start_len = len(state["messages"])
+            start_len = len(clean_state["messages"])
 
             # 调用子图
-            result = agent.graph.invoke(state)
+            result = agent.graph.invoke(clean_state)
 
             # 获取结果消息
             all_msgs = result["messages"]
@@ -648,10 +669,6 @@ class PokemonKGChatAgent(BaseAgent):
             # 如果没有新消息（异常？），至少返回最后一条
             if not new_msgs and all_msgs:
                 new_msgs = [all_msgs[-1]]
-
-            # 确保名字标记（可选）
-            # for m in new_msgs:
-            #    if not m.name: m.name = name
 
             return {"messages": new_msgs}
         except Exception as e:

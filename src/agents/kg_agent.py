@@ -279,30 +279,235 @@ class KGQueryAgent:
         return {"answer": final_answer, "subgraph": subgraph_json}
 
     def _init_tools(self) -> list:
-        """初始化所有查询工具"""
+        """初始化语义分组查询工具 (32 → 8 工具)"""
 
-        # 定义查询模型
-        class PokemonQuery(BaseModel):
-            pokemon: str
+        # ---- Schema 定义 ----
+        class PokemonInfoQuery(BaseModel):
+            pokemon: str = Field(description="宝可梦名称")
+            attributes: list[str] = Field(
+                default=["all"],
+                description="要查询的属性列表，可选: name, english_name, ability, hidden_ability, "
+                "height, weight, evolution_level, attr_ability, types, evolution, 或 'all'",
+            )
 
-        class PersonQuery(BaseModel):
-            person: str
+        class PersonInfoQuery(BaseModel):
+            person: str = Field(description="人物名称")
+            attributes: list[str] = Field(
+                default=["all"],
+                description="可选: gender, english_name, japanese_name, hometown, town, 或 'all'",
+            )
 
-        class TownQuery(BaseModel):
-            town: str
+        class PersonRelationQuery(BaseModel):
+            person: str = Field(description="人物名称")
+            relation: str = Field(
+                description="关系类型: challengers, partners, enemies, relatives, pokemons",
+            )
 
-        class RegionQuery(BaseModel):
-            region: str
+        class LocationQuery(BaseModel):
+            name: str = Field(description="城镇或地区名称")
+            query_type: str = Field(
+                description="查询类型: town_region, region_towns, region_people, town_people, town_pokemons",
+            )
 
-        class IdentityQuery(BaseModel):
-            identity: str
+        class CrossEntityQuery(BaseModel):
+            entity: str = Field(description="实体名称 (宝可梦/人物)")
+            query_type: str = Field(
+                description="查询类型: pokemon_owners, pokemon_towns, person_pokemons",
+            )
+
+        class CountQuery(BaseModel):
+            entity: str = Field(description="实体名称")
+            count_type: str = Field(
+                description="统计类型: region_towns, town_pokemons, person_pokemons, pokemon_types",
+            )
+
+        class SubgraphQuery(BaseModel):
+            entity: str = Field(description="实体名称")
+            hops: int = Field(2, description="跳数 1~4")
 
         class Entity(BaseModel):
             question: str
 
-        class SubgraphQuery(BaseModel):
-            entity: str = Field(..., description="实体名称")
-            hops: int = Field(2, description="跳数 1~4 等")
+        # ---- 内部查询辅助 ----
+        def execute_query(sql: str, result_key: str, not_found_msg: str):
+            try:
+                result = self.graph.run(sql).data()
+                if result:
+                    val = result[0].get(result_key)
+                    return {result_key: val}
+                return {"message": not_found_msg}
+            except Exception as e:
+                return {"error": f"查询失败: {str(e)}", "sql": sql}
+
+        # ---- 工具实现 ----
+
+        @tool(args_schema=PokemonInfoQuery)
+        def query_pokemon(pokemon: str, attributes: list[str] | None = None) -> dict:
+            """查询宝可梦的各种属性：名字、特性、身高、体重、进化、属性等。一次可查多个属性。"""
+            attr_map = {
+                "name": ("p.name", "name"),
+                "english_name": ("p.english_name", "english_name"),
+                "ability": ("p.ability", "ability"),
+                "hidden_ability": ("p.hidden_ability", "hidden_ability"),
+                "height": ("p.height", "height"),
+                "weight": ("p.weight", "weight"),
+                "evolution_level": ("p.evolution_level", "evolution_level"),
+                "attr_ability": ("p.attr_ability", "attr_ability"),
+            }
+            if attributes is None or "all" in attributes:
+                attributes = list(attr_map.keys()) + ["types", "evolution"]
+
+            result = {}
+
+            # 简单属性：一条 Cypher 查出
+            simple = [a for a in attributes if a in attr_map]
+            if simple:
+                returns = ", ".join(f"{attr_map[a][0]} AS {attr_map[a][1]}" for a in simple)
+                sql = f"MATCH (p:Pokémon) WHERE p.name = '{pokemon}' RETURN {returns};"
+                data = self.graph.run(sql).data()
+                if data:
+                    result.update(data[0])
+
+            # 关系属性：types
+            if "types" in attributes:
+                sql = f"MATCH (p:Pokémon)-[:has_type]->(i:identity) WHERE p.name = '{pokemon}' RETURN COLLECT(i.name) AS types;"
+                data = self.graph.run(sql).data()
+                if data:
+                    result["types"] = data[0].get("types", [])
+
+            # 关系属性：evolution
+            if "evolution" in attributes:
+                sql = f"MATCH (p1:Pokémon)-[:evolves_into]->(p2:Pokémon) WHERE p1.name = '{pokemon}' RETURN p2.name AS evolution;"
+                data = self.graph.run(sql).data()
+                if data:
+                    result["evolution"] = data[0].get("evolution")
+
+            return result if result else {"message": f"未找到宝可梦: {pokemon}"}
+
+        @tool(args_schema=PersonInfoQuery)
+        def query_person(person: str, attributes: list[str] | None = None) -> dict:
+            """查询人物基本信息：性别、英文名、日文名、家乡等。"""
+            attr_map = {
+                "gender": ("per.gender", "gender"),
+                "english_name": ("per.english_name", "english_name"),
+                "japanese_name": ("per.japanese_name", "japanese_name"),
+            }
+            if attributes is None or "all" in attributes:
+                attributes = list(attr_map.keys()) + ["hometown", "town"]
+
+            result = {}
+            simple = [a for a in attributes if a in attr_map]
+            if simple:
+                returns = ", ".join(f"{attr_map[a][0]} AS {attr_map[a][1]}" for a in simple)
+                sql = f"MATCH (per:Person) WHERE per.name = '{person}' RETURN {returns};"
+                data = self.graph.run(sql).data()
+                if data:
+                    result.update(data[0])
+
+            if "hometown" in attributes:
+                r = execute_query(
+                    f"MATCH (per:Person)-[:come_from]->(r:Region) WHERE per.name = '{person}' RETURN r.name AS region;",
+                    "region",
+                    "",
+                )
+                if "region" in r:
+                    result["hometown_region"] = r["region"]
+
+            if "town" in attributes:
+                r = execute_query(
+                    f"MATCH (per:Person)-[:come_from]->(t:Town) WHERE per.name = '{person}' RETURN t.name AS town;",
+                    "town",
+                    "",
+                )
+                if "town" in r:
+                    result["hometown_town"] = r["town"]
+
+            return result if result else {"message": f"未找到人物: {person}"}
+
+        @tool(args_schema=PersonRelationQuery)
+        def query_person_relations(person: str, relation: str) -> dict:
+            """查询人物关系：挑战者、伙伴、敌人、亲戚、拥有的宝可梦。"""
+            rel_map = {
+                "challengers": ("[:challenge]", "Person", "challengers"),
+                "partners": ("[:partner]", "Person", "partners"),
+                "enemies": ("[:hostility]", "Person", "enemies"),
+                "relatives": ("[:relative]", "Person", "relatives"),
+                "pokemons": ("[:has_pokemon]", "Pokémon", "pokemons"),
+            }
+            if relation not in rel_map:
+                return {"error": f"不支持的关系类型: {relation}，可选: {list(rel_map.keys())}"}
+
+            edge, target_label, key = rel_map[relation]
+            sql = f"MATCH (per:Person)-{edge}->(t:{target_label}) WHERE per.name = '{person}' RETURN COLLECT(t.name) AS {key};"
+            return execute_query(sql, key, f"未找到 {person} 的{relation}")
+
+        @tool(args_schema=LocationQuery)
+        def query_location(name: str, query_type: str) -> dict:
+            """查询城镇/地区信息：所属地区、地区城镇、地区人物、城镇人物、城镇宝可梦。"""
+            queries = {
+                "town_region": (
+                    f"MATCH (t:Town)-[:located_in]->(r:Region) WHERE t.name = '{name}' RETURN r.name AS region;",
+                    "region",
+                ),
+                "region_towns": (
+                    f"MATCH (r:Region)<-[:located_in]-(t:Town) WHERE r.name = '{name}' RETURN COLLECT(t.name) AS towns;",
+                    "towns",
+                ),
+                "region_people": (
+                    f"MATCH (per:Person)-[:come_from]->(r:Region) WHERE r.name = '{name}' RETURN COLLECT(per.name) AS people;",
+                    "people",
+                ),
+                "town_people": (
+                    f"MATCH (t:Town)-[:has_celebrity]->(per:Person) WHERE t.name = '{name}' RETURN COLLECT(per.name) AS people;",
+                    "people",
+                ),
+                "town_pokemons": (
+                    f"MATCH (t:Town)-[:location_pokemon]->(p:Pokémon) WHERE t.name = '{name}' RETURN COLLECT(p.name) AS pokemons;",
+                    "pokemons",
+                ),
+            }
+            if query_type not in queries:
+                return {"error": f"不支持的查询类型: {query_type}，可选: {list(queries.keys())}"}
+
+            sql, key = queries[query_type]
+            return execute_query(sql, key, f"未找到: {name}")
+
+        @tool(args_schema=CrossEntityQuery)
+        def query_cross_entity(entity: str, query_type: str) -> dict:
+            """查询跨实体关系：宝可梦的拥有者、宝可梦出现的城镇、人物拥有的宝可梦。"""
+            queries = {
+                "pokemon_owners": (
+                    f"MATCH (per:Person)-[:has_pokemon]->(p:Pokémon) WHERE p.name = '{entity}' RETURN COLLECT(per.name) AS owners;",
+                    "owners",
+                ),
+                "pokemon_towns": (
+                    f"MATCH (t:Town)-[:location_pokemon]->(p:Pokémon) WHERE p.name = '{entity}' RETURN COLLECT(t.name) AS towns;",
+                    "towns",
+                ),
+                "person_pokemons": (
+                    f"MATCH (per:Person)-[:has_pokemon]->(p:Pokémon) WHERE per.name = '{entity}' RETURN COLLECT(p.name) AS pokemons;",
+                    "pokemons",
+                ),
+            }
+            if query_type not in queries:
+                return {"error": f"不支持的查询类型: {query_type}，可选: {list(queries.keys())}"}
+
+            sql, key = queries[query_type]
+            return execute_query(sql, key, f"未找到: {entity}")
+
+        @tool(args_schema=CountQuery)
+        def count_entities(entity: str, count_type: str) -> dict:
+            """统计查询：地区城镇数、城镇宝可梦数、人物宝可梦数、宝可梦属性数。"""
+            queries = {
+                "region_towns": f"MATCH (r:Region)<-[:located_in]-(t:Town) WHERE r.name = '{entity}' RETURN COUNT(t) AS count;",
+                "town_pokemons": f"MATCH (t:Town)-[:location_pokemon]->(p:Pokémon) WHERE t.name = '{entity}' RETURN COUNT(p) AS count;",
+                "person_pokemons": f"MATCH (per:Person)-[:has_pokemon]->(p:Pokémon) WHERE per.name = '{entity}' RETURN COUNT(p) AS count;",
+                "pokemon_types": f"MATCH (p:Pokémon)-[:has_type]->(i:identity) WHERE p.name = '{entity}' RETURN COUNT(i) AS count;",
+            }
+            if count_type not in queries:
+                return {"error": f"不支持的统计类型: {count_type}，可选: {list(queries.keys())}"}
+
+            return execute_query(queries[count_type], "count", f"未找到: {entity}")
 
         @tool(args_schema=SubgraphQuery)
         def get_entity_subgraph(entity: str, hops: int = 2):
@@ -312,261 +517,21 @@ class KGQueryAgent:
                 return {"message": f"未找到实体 {entity} 的子图"}
             return data
 
-        # 宝可梦相关查询
-        @tool(args_schema=PokemonQuery)
-        def get_pokemon_chinese_name(pokemon: str):
-            """查询宝可梦的中文名"""
-            sql = f"MATCH (p:Pokémon) WHERE p.name = '{pokemon}' RETURN p.name AS chinese_name;"
-            return execute_query(sql, "chinese_name", f"未找到宝可梦: {pokemon}")
-
-        @tool(args_schema=PokemonQuery)
-        def get_pokemon_english_name(pokemon: str):
-            """查询宝可梦的英文名"""
-            sql = f"MATCH (p:Pokémon) WHERE p.name = '{pokemon}' RETURN p.english_name AS english_name;"
-            return execute_query(sql, "english_name", f"未找到宝可梦的英文名: {pokemon}")
-
-        @tool(args_schema=PokemonQuery)
-        def get_pokemon_ability(pokemon: str):
-            """查询宝可梦的特性"""
-            sql = f"MATCH (p:Pokémon) WHERE p.name = '{pokemon}' RETURN p.ability AS ability;"
-            return execute_query(sql, "ability", f"未找到宝可梦特性: {pokemon}")
-
-        @tool(args_schema=PokemonQuery)
-        def get_pokemon_hidden_ability(pokemon: str):
-            """查询宝可梦的隐藏特性"""
-            sql = f"MATCH (p:Pokémon) WHERE p.name = '{pokemon}' RETURN p.hidden_ability AS hidden_ability;"
-            return execute_query(sql, "hidden_ability", f"未找到宝可梦隐藏特性: {pokemon}")
-
-        @tool(args_schema=PokemonQuery)
-        def get_pokemon_height(pokemon: str):
-            """查询宝可梦的身高"""
-            sql = f"MATCH (p:Pokémon) WHERE p.name = '{pokemon}' RETURN p.height AS height;"
-            return execute_query(sql, "height", f"未找到宝可梦身高: {pokemon}")
-
-        @tool(args_schema=PokemonQuery)
-        def get_pokemon_weight(pokemon: str):
-            """查询宝可梦的体重"""
-            sql = f"MATCH (p:Pokémon) WHERE p.name = '{pokemon}' RETURN p.weight AS weight;"
-            return execute_query(sql, "weight", f"未找到宝可梦体重: {pokemon}")
-
-        @tool(args_schema=PokemonQuery)
-        def get_pokemon_evolution_level(pokemon: str):
-            """查询宝可梦的进化等级"""
-            sql = f"MATCH (p:Pokémon) WHERE p.name = '{pokemon}' RETURN p.evolution_level AS evolution_level;"
-            return execute_query(sql, "evolution_level", f"未找到宝可梦进化等级: {pokemon}")
-
-        @tool(args_schema=PokemonQuery)
-        def get_pokemon_attributes(pokemon: str):
-            """查询宝可梦的属性抗性"""
-            sql = f"MATCH (p:Pokémon) WHERE p.name = '{pokemon}' RETURN p.attr_ability AS attr_ability;"
-            return execute_query(sql, "attr_ability", f"未找到宝可梦属性抗性: {pokemon}")
-
-        @tool(args_schema=PokemonQuery)
-        def get_pokemon_evolution(pokemon: str):
-            """查询宝可梦的进化形态"""
-            sql = f"MATCH (p1:Pokémon)-[:evolves_into]->(p2:Pokémon) WHERE p1.name = '{pokemon}' RETURN p2.name AS evolution_name;"
-            return execute_query(sql, "evolution_name", f"未找到宝可梦进化形态: {pokemon}")
-
-        @tool(args_schema=PokemonQuery)
-        def get_pokemon_types(pokemon: str):
-            """查询宝可梦的属性"""
-            sql = f"MATCH (p:Pokémon)-[:has_type]->(i:identity) WHERE p.name = '{pokemon}' RETURN COLLECT(i.name) AS types;"
-            return execute_query(sql, "types", f"未找到宝可梦属性: {pokemon}")
-
-        # 人物相关查询
-        @tool(args_schema=PersonQuery)
-        def get_person_gender(person: str):
-            """查询人物性别"""
-            sql = f"MATCH (per:Person) WHERE per.name = '{person}' RETURN per.gender AS gender;"
-            return execute_query(sql, "gender", f"未找到人物性别: {person}")
-
-        @tool(args_schema=PersonQuery)
-        def get_person_english_name(person: str):
-            """查询人物英文名"""
-            sql = f"MATCH (per:Person) WHERE per.name = '{person}' RETURN per.english_name AS english_name;"
-            return execute_query(sql, "english_name", f"未找到人物英文名: {person}")
-
-        @tool(args_schema=PersonQuery)
-        def get_person_japanese_name(person: str):
-            """查询人物日本名"""
-            sql = f"MATCH (per:Person) WHERE per.name = '{person}' RETURN per.japanese_name AS japanese_name;"
-            return execute_query(sql, "japanese_name", f"未找到人物日本名: {person}")
-
-        @tool(args_schema=PersonQuery)
-        def get_person_challengers(person: str):
-            """查询人物的挑战者"""
-            sql = f"MATCH (per1:Person)-[:challenge]->(per2:Person) WHERE per1.name = '{person}' RETURN COLLECT(per2.name) AS challengers;"
-            return execute_query(sql, "challengers", f"未找到人物挑战者: {person}")
-
-        @tool(args_schema=PersonQuery)
-        def get_person_partners(person: str):
-            """查询人物的伙伴"""
-            sql = f"MATCH (per1:Person)-[:partner]->(per2:Person) WHERE per1.name = '{person}' RETURN COLLECT(per2.name) AS partners;"
-            return execute_query(sql, "partners", f"未找到人物伙伴: {person}")
-
-        @tool(args_schema=PersonQuery)
-        def get_person_enemies(person: str):
-            """查询人物的敌对者"""
-            sql = f"MATCH (per1:Person)-[:hostility]->(per2:Person) WHERE per1.name = '{person}' RETURN COLLECT(per2.name) AS enemies;"
-            return execute_query(sql, "enemies", f"未找到人物敌对者: {person}")
-
-        @tool(args_schema=PersonQuery)
-        def get_person_relatives(person: str):
-            """查询人物的亲戚"""
-            sql = f"MATCH (per1:Person)-[:relative]->(per2:Person) WHERE per1.name = '{person}' RETURN COLLECT(per2.name) AS relatives;"
-            return execute_query(sql, "relatives", f"未找到人物亲戚: {person}")
-
-        # 地区、城镇相关查询
-        @tool(args_schema=TownQuery)
-        def get_town_region(town: str):
-            """查询城镇所在的地区"""
-            sql = f"MATCH (t:Town)-[:located_in]->(r:Region) WHERE t.name = '{town}' RETURN r.name AS region;"
-            return execute_query(sql, "region", f"未找到城镇所在地区: {town}")
-
-        @tool(args_schema=RegionQuery)
-        def get_region_towns(region: str):
-            """查询地区的城镇"""
-            sql = f"MATCH (r:Region)<-[:located_in]-(t:Town) WHERE r.name = '{region}' RETURN COLLECT(t.name) AS towns;"
-            return execute_query(sql, "towns", f"未找到地区城镇: {region}")
-
-        @tool(args_schema=PersonQuery)
-        def get_person_hometown(person: str):
-            """查询人物来自哪个地区"""
-            sql = f"MATCH (per:Person)-[:come_from]->(r:Region) WHERE per.name = '{person}' RETURN r.name AS region;"
-            return execute_query(sql, "region", f"未找到人物家乡: {person}")
-
-        @tool(args_schema=RegionQuery)
-        def get_region_people(region: str):
-            """查询地区有哪些人物"""
-            sql = f"MATCH (per:Person)-[:come_from]->(r:Region) WHERE r.name = '{region}' RETURN COLLECT(per.name) AS people;"
-            return execute_query(sql, "people", f"未找到地区人物: {region}")
-
-        # 人物与宝可梦关系查询
-        @tool(args_schema=PersonQuery)
-        def get_person_pokemons(person: str):
-            """查询人物拥有哪些宝可梦"""
-            sql = f"MATCH (per:Person)-[:has_pokemon]->(p:Pokémon) WHERE per.name = '{person}' RETURN COLLECT(p.name) AS pokemons;"
-            return execute_query(sql, "pokemons", f"未找到人物拥有的宝可梦: {person}")
-
-        @tool(args_schema=PokemonQuery)
-        def get_pokemon_owners(pokemon: str):
-            """查询拥有某个宝可梦的人物"""
-            sql = f"MATCH (per:Person)-[:has_pokemon]->(p:Pokémon) WHERE p.name = '{pokemon}' RETURN COLLECT(per.name) AS owners;"
-            return execute_query(sql, "owners", f"未找到宝可梦的拥有者: {pokemon}")
-
-        # 城镇与宝可梦关系查询
-        @tool(args_schema=TownQuery)
-        def get_town_pokemons(town: str):
-            """查询城镇有哪些宝可梦"""
-            sql = f"MATCH (t:Town)-[:location_pokemon]->(p:Pokémon) WHERE t.name = '{town}' RETURN COLLECT(p.name) AS pokemons;"
-            return execute_query(sql, "pokemons", f"未找到城镇的宝可梦: {town}")
-
-        @tool(args_schema=PokemonQuery)
-        def get_pokemon_towns(pokemon: str):
-            """查询哪些城镇有某个宝可梦"""
-            sql = f"MATCH (t:Town)-[:location_pokemon]->(p:Pokémon) WHERE p.name = '{pokemon}' RETURN COLLECT(t.name) AS towns;"
-            return execute_query(sql, "towns", f"未找到宝可梦出现的城镇: {pokemon}")
-
-        # 城镇与人物关系查询
-        @tool(args_schema=TownQuery)
-        def get_town_people(town: str):
-            """查询城镇有哪些人物"""
-            sql = f"MATCH (t:Town)-[:has_celebrity]->(per:Person) WHERE t.name = '{town}' RETURN COLLECT(per.name) AS people;"
-            return execute_query(sql, "people", f"未找到城镇人物: {town}")
-
-        @tool(args_schema=PersonQuery)
-        def get_person_town(person: str):
-            """查询人物来自哪个城镇"""
-            sql = f"MATCH (per:Person)-[:come_from]->(t:Town) WHERE per.name = '{person}' RETURN t.name AS town;"
-            return execute_query(sql, "town", f"未找到人物所在城镇: {person}")
-
-        # 统计查询
-        @tool(args_schema=RegionQuery)
-        def count_region_towns(region: str):
-            """查询某个地区有多少城镇"""
-            sql = f"MATCH (r:Region)<-[:located_in]-(t:Town) WHERE r.name = '{region}' RETURN COUNT(t) AS count;"
-            return execute_query(sql, "count", f"未找到地区城镇数量: {region}")
-
-        @tool(args_schema=TownQuery)
-        def count_town_pokemons(town: str):
-            """查询某个城镇有多少宝可梦"""
-            sql = f"MATCH (t:Town)-[:location_pokemon]->(p:Pokémon) WHERE t.name = '{town}' RETURN COUNT(p) AS count;"
-            return execute_query(sql, "count", f"未找到城镇宝可梦数量: {town}")
-
-        @tool(args_schema=PersonQuery)
-        def count_person_pokemons(person: str):
-            """查询人物拥有多少宝可梦"""
-            sql = (
-                f"MATCH (per:Person)-[:has_pokemon]->(p:Pokémon) WHERE per.name = '{person}' RETURN COUNT(p) AS count;"
-            )
-            return execute_query(sql, "count", f"未找到人物宝可梦数量: {person}")
-
-        @tool(args_schema=PokemonQuery)
-        def count_pokemon_types(pokemon: str):
-            """查询宝可梦有多少种属性"""
-            sql = f"MATCH (p:Pokémon)-[:has_type]->(i:identity) WHERE p.name = '{pokemon}' RETURN COUNT(i) AS count;"
-            return execute_query(sql, "count", f"未找到宝可梦属性数量: {pokemon}")
-
-        # 属性相关查询
-        @tool(args_schema=IdentityQuery)
-        def get_pokemons_by_type(identity: str):
-            """查询某个属性的宝可梦有哪些"""
-            sql = f"MATCH (p:Pokémon)-[:has_type]->(i:identity) WHERE i.name = '{identity}' RETURN COLLECT(p.name) AS pokemons;"
-            return execute_query(sql, "pokemons", f"未找到该属性的宝可梦: {identity}")
-
-        # 实体匹配
         @tool(args_schema=Entity)
         def get_entity(question: str):
-            """你必须调用这个工具，且只调用一次，对于用户的输入进行实体匹配，且后续查询的参数需在返回的实体中选择"""
+            """对用户输入进行实体匹配，后续查询参数需在返回实体中选择"""
             return self.ner.ner(question)
 
-        def execute_query(sql: str, result_key: str, not_found_msg: str):
-            """执行Neo4j查询并返回格式化结果"""
-            try:
-                result = self.graph.run(sql).data()
-                if result:
-                    # 处理单条结果和列表结果
-                    if isinstance(result[0].get(result_key), list):
-                        return {result_key: result[0][result_key]}
-                    return {result_key: result[0][result_key]}
-                return {"message": not_found_msg}
-            except Exception as e:
-                return {"error": f"查询失败: {str(e)}", "sql": sql}
-
-        return [get_entity_subgraph] + [
-            get_pokemon_chinese_name,
-            get_pokemon_english_name,
-            get_pokemon_ability,
-            get_pokemon_hidden_ability,
-            get_pokemon_height,
-            get_pokemon_weight,
-            get_pokemon_evolution_level,
-            get_pokemon_attributes,
-            get_pokemon_evolution,
-            get_pokemon_types,
-            get_person_gender,
-            get_person_english_name,
-            get_person_japanese_name,
-            get_person_challengers,
-            get_person_partners,
-            get_person_enemies,
-            get_person_relatives,
-            get_town_region,
-            get_region_towns,
-            get_person_hometown,
-            get_region_people,
-            get_person_pokemons,
-            get_pokemon_owners,
-            get_town_pokemons,
-            get_pokemon_towns,
-            get_town_people,
-            get_person_town,
-            count_region_towns,
-            count_town_pokemons,
-            count_person_pokemons,
-            count_pokemon_types,
-            get_pokemons_by_type,
-            get_entity,
+        # 返回 8 个语义分组工具 (原 32 个)
+        return [
+            query_pokemon,  # 替代 10 个独立工具
+            query_person,  # 替代 3 个独立工具
+            query_person_relations,  # 替代 4 个独立工具
+            query_location,  # 替代 5 个独立工具
+            query_cross_entity,  # 替代 3 个独立工具
+            count_entities,  # 替代 4 个独立工具
+            get_entity_subgraph,  # 保持不变
+            get_entity,  # 保持不变
         ]
 
     def _execute_query(self, sql: str, result_key: str, not_found_msg: str) -> dict:

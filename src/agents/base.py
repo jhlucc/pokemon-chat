@@ -6,6 +6,8 @@ from langchain_core.language_models import BaseChatModel
 from langchain_core.tools import BaseTool
 from langgraph.checkpoint.base import BaseCheckpointSaver
 from langgraph.checkpoint.memory import MemorySaver
+from langgraph.graph import END, START, StateGraph
+from langgraph.graph.message import MessagesState
 from langgraph.graph.state import CompiledStateGraph
 
 from src.core.llm_factory import build_chat_llm
@@ -233,3 +235,74 @@ class ToolAgent(BaseAgent[TState]):
                 self._llm_with_tools = self.llm.bind_tools(self._tools)
                 return True
         return False
+
+    # ============ 默认 tool-loop 图构建 ============
+
+    def _build_graph(self) -> CompiledStateGraph:
+        """默认的 tool-loop 图结构，子类可覆盖。
+
+        图结构:
+            START → agent → (has_tool_calls?) → run_tool → agent
+                         ↘ (no tool calls) → END
+        """
+        workflow = StateGraph(MessagesState)
+        workflow.add_node("agent", self._call_model)
+        workflow.add_node("run_tool", self._run_tool)
+
+        workflow.add_edge(START, "agent")
+        workflow.add_conditional_edges(
+            "agent",
+            self._should_continue,
+            {"run_tool": "run_tool", "end": END},
+        )
+        workflow.add_edge("run_tool", "agent")
+
+        return workflow.compile(checkpointer=self._checkpointer)
+
+    def _call_model(self, state: dict) -> dict:
+        """调用 LLM，子类可覆盖以定制行为"""
+        messages = state["messages"]
+        response = self._llm_with_tools.invoke(messages)
+        return {"messages": [response]}
+
+    def _should_continue(self, state: dict) -> str:
+        """判断是否继续执行工具，子类可覆盖"""
+        last_msg = state["messages"][-1]
+        if not getattr(last_msg, "tool_calls", None):
+            return "end"
+        return "run_tool"
+
+    def _run_tool(self, state: dict) -> dict:
+        """执行工具调用，子类可覆盖"""
+        new_messages = []
+        tool_calls = state["messages"][-1].tool_calls
+        tool_map = {t.name: t for t in self._tools}
+
+        for call in tool_calls:
+            tool = tool_map.get(call["name"])
+            if tool:
+                try:
+                    result = tool.invoke(call["args"])
+                    new_messages.append({
+                        "role": "tool",
+                        "name": call["name"],
+                        "content": str(result),
+                        "tool_call_id": call["id"],
+                    })
+                except Exception as e:
+                    new_messages.append({
+                        "role": "tool",
+                        "name": call["name"],
+                        "content": f"工具执行错误: {e}",
+                        "tool_call_id": call["id"],
+                    })
+
+        return {"messages": new_messages}
+
+    def get_info(self) -> dict[str, Any]:
+        """返回 Agent 元信息，子类可覆盖"""
+        return {
+            "name": self.__class__.__name__,
+            "description": self.__class__.__doc__ or "",
+            "tools": [t.name for t in self._tools] if self._tools else [],
+        }
