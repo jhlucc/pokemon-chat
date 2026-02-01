@@ -59,12 +59,14 @@ class VectorStore:
         embedding_model: Any | None = None,  # Can be instance or name
         reranker_model: Any | None = None,  # Can be instance or name
         connection_alias: str = "default",
+        enable_sparse: bool = False,  # Disable sparse vectors by default (compatibility)
     ):
         self.collection_name = collection_name
         self.dim = dim
         self.host = host
         self.port = port
         self.connection_alias = connection_alias
+        self.enable_sparse = enable_sparse
 
         # If the caller kept the default host/port, prefer the project's unified setting
         # (supports Docker service names like "milvus").
@@ -85,17 +87,16 @@ class VectorStore:
         # Connect to Milvus
         self._connect()
 
-        # Schemas
+        # Schemas - sparse vector field is optional
         self.fields = [
             FieldSchema(name="pk", dtype=DataType.INT64, is_primary=True, auto_id=True),
             FieldSchema(name="text", dtype=DataType.VARCHAR, max_length=65535),
             FieldSchema(name="embedding", dtype=DataType.FLOAT_VECTOR, dim=dim),
-            FieldSchema(name="sparse_vector", dtype=DataType.SPARSE_FLOAT_VECTOR),
             FieldSchema(name="metadata", dtype=DataType.JSON),
             FieldSchema(name="text_length", dtype=DataType.INT64),
-            # Optional: Add file_id explicitly if needed for efficient filtering,
-            # but metadata["file_id"] usually suffices for JSON filter.
         ]
+        if self.enable_sparse:
+            self.fields.append(FieldSchema(name="sparse_vector", dtype=DataType.SPARSE_FLOAT_VECTOR))
 
         self.schema = CollectionSchema(
             fields=self.fields, description="Knowledge Base Documents", enable_dynamic_field=True
@@ -167,13 +168,20 @@ class VectorStore:
         index_params = {"index_type": "IVF_FLAT", "metric_type": "COSINE", "params": {"nlist": 128}}
         _log.info(f"Creating index for {self.collection_name}...")
         self.collection.create_index(field_name="embedding", index_params=index_params)
-        # Sparse Index
-        sparse_index_params = {
-            "index_type": "SPARSE_INVERTED_INDEX",
-            "metric_type": "IP",
-            "params": {"drop_ratio_build": 0.2},
-        }
-        self.collection.create_index(field_name="sparse_vector", index_params=sparse_index_params)
+
+        # Sparse Index (only if enabled)
+        if self.enable_sparse:
+            try:
+                sparse_index_params = {
+                    "index_type": "SPARSE_INVERTED_INDEX",
+                    "metric_type": "IP",
+                    "params": {"drop_ratio_build": 0.2},
+                }
+                self.collection.create_index(field_name="sparse_vector", index_params=sparse_index_params)
+                _log.info("Sparse vector index created successfully")
+            except Exception as e:
+                _log.warning(f"Sparse vector index creation failed: {e}")
+
         self.collection.load()
 
     def insert(self, documents: list[Document], batch_size: int = 64):
@@ -194,7 +202,7 @@ class VectorStore:
             # Prepare data columns
             texts_col = []
             embeds_col = []
-            sparse_col = []
+            sparse_col = [] if self.enable_sparse else None
             metas_col = []
             lengths_col = []
 
@@ -218,9 +226,10 @@ class VectorStore:
                         emb = emb.tolist()
                     embeds_col.append(emb)
 
-                # Sparse Handling (Optional in docs)
-                sparse = doc.metadata.get("sparse_vector", {})
-                sparse_col.append(sparse)
+                # Sparse Handling (only if enabled)
+                if self.enable_sparse:
+                    sparse = doc.metadata.get("sparse_vector", {})
+                    sparse_col.append(sparse)
 
                 texts_col.append(doc.page_content)
                 lengths_col.append(len(doc.page_content))
@@ -229,6 +238,8 @@ class VectorStore:
                 clean_meta = doc.metadata.copy()
                 if "embedding" in clean_meta:
                     del clean_meta["embedding"]
+                if "sparse_vector" in clean_meta:
+                    del clean_meta["sparse_vector"]
                 metas_col.append(clean_meta)
 
             # Batch compute embeddings if needed
@@ -243,8 +254,11 @@ class VectorStore:
                 if len(emb) != self.dim:
                     raise ValueError(f"Embedding dimension mismatch: got {len(emb)}, expected {self.dim}")
 
-            # Insert
-            entities = [texts_col, embeds_col, sparse_col, metas_col, lengths_col]
+            # Insert - build entities list based on schema
+            if self.enable_sparse:
+                entities = [texts_col, embeds_col, sparse_col, metas_col, lengths_col]
+            else:
+                entities = [texts_col, embeds_col, metas_col, lengths_col]
             self.collection.insert(entities)
             _log.info(f"Inserted batch {i}-{min(i + batch_size, total)}")
 
@@ -288,7 +302,14 @@ class VectorStore:
                 if score < score_threshold:
                     continue
 
-                doc = Document(page_content=hit.entity.get("text"), metadata=hit.entity.get("metadata", {}))
+                # Access entity fields - compatible with different pymilvus versions
+                entity = hit.entity
+                text = entity.get("text") if hasattr(entity, "get") else entity["text"]
+                metadata = entity.get("metadata") if hasattr(entity, "get") else entity.get("metadata", {})
+                if metadata is None:
+                    metadata = {}
+
+                doc = Document(page_content=text, metadata=metadata)
                 doc.metadata["score"] = score
                 results.append(doc)
 
@@ -309,11 +330,12 @@ class VectorStore:
     ) -> list[Document]:
         """
         Perform Hybrid Search (Dense + Sparse) with Weighted Reranking (RRFRanker or WeightedRanker).
-        Milvus support Hybrid Search via `hybrid_search` but pure python client usually requires
-        doing 2 searches and fusing.
-        Actually Milvus 2.4 has `hybrid_search` API.
-        Alternatively, we can use `AnnSearchRequest` with `RRFRanker`.
+        Requires enable_sparse=True in constructor.
         """
+        if not self.enable_sparse:
+            _log.warning("Hybrid search called but sparse vectors not enabled. Falling back to dense search.")
+            return self.search(query, top_k, rerank)
+
         if not self.embedder:
             raise ValueError("No embedder.")
 
@@ -360,7 +382,12 @@ class VectorStore:
         results = []
         for hits in res:
             for hit in hits:
-                doc = Document(page_content=hit.entity.get("text"), metadata=hit.entity.get("metadata", {}))
+                entity = hit.entity
+                text = entity.get("text") if hasattr(entity, "get") else entity["text"]
+                metadata = entity.get("metadata") if hasattr(entity, "get") else entity.get("metadata", {})
+                if metadata is None:
+                    metadata = {}
+                doc = Document(page_content=text, metadata=metadata)
                 doc.metadata["score"] = hit.score
                 results.append(doc)
 
