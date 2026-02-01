@@ -151,9 +151,9 @@
                       />
                       <p class="param-description">相邻文本片段间的重叠字符数</p>
                     </a-form-item>
-                    <a-form-item label="使用文件节点解析器" name="use_parser">
+                    <a-form-item label="使用 DeepDoc 解析器" name="use_parser">
                       <a-switch v-model:checked="chunkParams.use_parser" />
-                      <p class="param-description">启用特定文件格式的智能分析</p>
+                      <p class="param-description">更好的布局分析（PDF/PPT/DOCX）</p>
                     </a-form-item>
                   </a-form>
                 </div>
@@ -617,7 +617,8 @@ const chunkFiles = () => {
         body: {
           file: file.file_path,
           chunk_size: chunkParams.value.chunk_size,
-          chunk_overlap: chunkParams.value.chunk_overlap
+          chunk_overlap: chunkParams.value.chunk_overlap,
+          use_deepdoc: chunkParams.value.use_parser
         },
         timeoutMs: 60000
       })

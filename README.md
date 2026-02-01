@@ -103,11 +103,8 @@
 
 ---
 
-## 🛠️ 部署指南 (Deployment)
 
-> **前置要求**：已安装 Docker / Docker Compose
-
-### 🐳 Docker Compose 一键启动（推荐）
+## 🐳 Docker Compose 一键启动（推荐）
 
 无需手动配置复杂环境，直接使用 Docker Compose 启动所有服务：
 
@@ -144,20 +141,14 @@ docker compose up -d --build
 
 访问：
 - **Web UI**: http://localhost:3100/
-- **API 文档**: http://localhost:3100/api/docs（或直连 http://localhost:5050/docs）
+- **API 文档**: http://localhost:5050/api/docs
 
 ### 📦 数据初始化（首次运行）
 
-当你使用 `--profile infra` 启动时，会自动导入 Neo4j 图谱数据（由 `neo4j-bootstrap` 完成），数据来源：
+当你使用 `--profile infra` 启动时，会自动导入 Neo4j 图谱数据，数据来源：
 
 - `resources/data/kg_data/entities.json`
 - `resources/data/kg_data/relations.json`
-
-
-```bash
-cd docker
-docker compose run --rm neo4j-bootstrap python scripts/import_graph.py --wait-seconds 120 --force --reset
-```
 
 > 可选：MySQL 地图数据导入（地图功能需要时再执行）。
 > 由于环境差异较大，这一步不默认自动执行，避免影响“一键启动”。
@@ -167,17 +158,18 @@ cd docker
 docker compose exec api python scripts/import_pokemon_map.py
 ```
 
-如果你想彻底清空数据（Neo4j/Milvus/MySQL 等）重新来一遍（需要你曾用 `--profile infra` 启动过）：
+如果你想彻底清空数据（Neo4j/Milvus/MySQL 等）重新来一遍（需要你曾用 `--profile infra` 启动）：
 
 ```bash
+
 cd docker
 docker compose down
 # 删除数据目录（Linux/macOS/WSL）
 rm -rf volumes/neo4j/data volumes/neo4j/logs volumes/milvus volumes/mysql/data
 docker compose --profile infra up -d --build
 # Neo4j 图谱数据会由 neo4j-bootstrap 自动重新导入
-```
 
+```
 Windows PowerShell：
 
 ```powershell
@@ -185,26 +177,8 @@ cd docker
 docker compose down
 Remove-Item -Recurse -Force .\volumes\neo4j\data, .\volumes\neo4j\logs, .\volumes\milvus, .\volumes\mysql\data
 docker compose --profile infra up -d --build
-# Neo4j 图谱数据会由 neo4j-bootstrap 自动重新导入
+
 ```
-
-### ✅ 启动验证
-
-- Web UI: http://localhost:3100/
-- API Ready: http://localhost:5050/readyz
-- Neo4j Browser: http://localhost:7474/（仅当使用 `--profile infra` 启动）
-
-也可以用命令检查：
-
-```bash
-cd docker
-docker compose ps
-docker compose exec -T neo4j cypher-shell 'MATCH (n) RETURN count(n) AS nodes;'  # 仅当使用 --profile infra 启动
-```
-
-### 🤝 开发/贡献
-
-本仓库以 Docker 方式运行与复现为主；开发规范、测试与贡献流程见 `CONTRIBUTING.md`。
 
 ---
 

@@ -38,9 +38,10 @@ def chunk_file(
     chunk_overlap: int = 100,
     do_ocr: bool = False,
     ocr_det_threshold: float = 0.3,
+    use_deepdoc: bool = False,
 ) -> list[Document]:
-    # 先将文件解析成纯文本
-    text = parse_file(file_path, do_ocr=do_ocr, ocr_det_threshold=ocr_det_threshold)
+    # 先将文件解析成纯文本 (use new_parse_file which supports use_deepdoc)
+    text = new_parse_file(file_path, do_ocr=do_ocr, ocr_det_threshold=ocr_det_threshold, use_deepdoc=use_deepdoc)
     # 创建一个文本切分器，这里示例用 CharacterTextSplitter + tiktoken encoder
     splitter = _get_splitter(chunk_size, chunk_overlap)
     sub_texts = splitter.split_text(text)

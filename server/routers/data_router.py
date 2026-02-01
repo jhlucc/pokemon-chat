@@ -83,6 +83,7 @@ class FileChunkPayload(BaseModel):
     chunk_size: int = 1000
     chunk_overlap: int = 100
     do_ocr: bool = False
+    use_deepdoc: bool = False  # Force DeepDocParser for better layout analysis
 
 
 @data.post("/file-to-chunk")
@@ -97,6 +98,7 @@ async def file_to_chunk(payload: FileChunkPayload):
             chunk_size=payload.chunk_size,
             chunk_overlap=payload.chunk_overlap,
             do_ocr=payload.do_ocr,
+            use_deepdoc=payload.use_deepdoc,
         )
         return {"chunks": [{"text": d.page_content, "meta": d.metadata} for d in docs]}
     except Exception as e:

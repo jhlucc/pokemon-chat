@@ -60,17 +60,33 @@ def parse_file(
     file_path: str,
     do_ocr: bool = False,
     ocr_det_threshold: float = 0.3,
+    use_deepdoc: bool = False,
 ) -> str:
     """
     Unified file parser entry point.
     Routes to DeepDoc, MarkItDown, or OCR based on file type and config.
+
+    Args:
+        file_path: Path to the file
+        do_ocr: Force OCR for PDF files
+        ocr_det_threshold: OCR detection threshold
+        use_deepdoc: Force DeepDocParser for all supported formats (better layout analysis)
     """
     if not os.path.isfile(file_path):
         raise FileNotFoundError(f"parse_file: file not found => {file_path}")
 
     ext = Path(file_path).suffix.lower()
 
-    # 1. ORC specific overriding
+    # 0. Force DeepDocParser if requested (for better layout analysis)
+    if use_deepdoc and ext in [".pdf", ".docx", ".ppt", ".pptx", ".xls", ".xlsx", ".csv"]:
+        _log.info(f"parse_file - Using DeepDocParser (forced) for {file_path}")
+        try:
+            return DeepDocParser.parse(file_path)
+        except Exception as e:
+            _log.warning(f"DeepDocParser failed for {file_path}: {e}. Falling back to default.")
+            # Fall through to default routing
+
+    # 1. OCR specific overriding
     if ext == ".pdf" and do_ocr:
         _log.info(f"parse_file - Using OCR pipeline for {file_path}")
         # Keep OCR optional: the OCR stack (rapidocr/onnxruntime) is heavy and may be
