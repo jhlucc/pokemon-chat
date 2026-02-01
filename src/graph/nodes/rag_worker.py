@@ -4,6 +4,7 @@ from typing import Any
 
 from langchain_core.prompts import ChatPromptTemplate
 
+from src.agents.utils.message_filter import make_error_response, validate_worker_input
 from src.core.feature_flags import feature_enabled
 from src.core.llm_factory import build_chat_llm
 from src.core.settings import settings
@@ -195,9 +196,10 @@ class RagWorker:
         """
         Worker node entry point.
         """
-        messages = state["messages"]
-        last_message = messages[-1]
-        query = last_message.content
+        # Validate input
+        query, error = validate_worker_input(state)
+        if error:
+            return make_error_response(error)
 
         # -1. Self-RAG (optional): Decide if retrieval is needed.
         # Keep this OFF by default to make the worker deterministic/offline-safe in tests.

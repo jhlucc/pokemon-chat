@@ -2,8 +2,10 @@ import sys
 from typing import Any
 
 from langchain_community.chains.graph_qa.cypher import GraphCypherQAChain
+from langchain_core.messages import AIMessage
 from langchain_core.prompts.prompt import PromptTemplate
 
+from src.agents.utils.message_filter import make_error_response, validate_worker_input
 from src.core.llm_factory import build_chat_llm
 from src.core.settings import settings
 from src.graph.state import AgentState
@@ -62,59 +64,52 @@ class GraphWorker:
             self.chain = None
 
     def __call__(self, state: AgentState) -> dict[str, Any]:
-        messages = state.get("messages", [])
-        if not messages:
-            response_text = "No messages to process."
-        else:
-            last_message = messages[-1]
-            query = getattr(last_message, "content", "") or ""
+        # Validate input using shared utility
+        query, error = validate_worker_input(state)
+        if error:
+            return make_error_response(error)
 
-            if not self.chain:
-                response_text = "Graph database is not connected or enabled."
-            elif not query.strip():
-                response_text = "Empty query received."
-            else:
+        if not self.chain:
+            return make_error_response("Graph database is not connected or enabled.")
+
+        try:
+            # Invoke the chain
+            response = self.chain.invoke({"query": query})
+            response_text = response.get("result", "I couldn't find an answer in the graph.")
+
+            # Extract graph data with proper validation
+            intermediate = response.get("intermediate_steps", [])
+            cypher_query = ""
+            graph_data = []
+
+            if intermediate and len(intermediate) >= 1:
+                # First element could be dict with "query" or a string
+                first = intermediate[0]
+                if isinstance(first, dict):
+                    cypher_query = first.get("query", "")
+                elif isinstance(first, str):
+                    cypher_query = first
+
+            if intermediate and len(intermediate) >= 2:
+                graph_data = intermediate[1]
+
+            if cypher_query or graph_data:
+                import json
+
                 try:
-                    # Invoke the chain
-                    response = self.chain.invoke({"query": query})
-                    response_text = response.get("result", "I couldn't find an answer in the graph.")
+                    if graph_data:
+                        graph_json = json.dumps(graph_data, default=str, ensure_ascii=False)
+                        response_text += f"\n\n```json-graph\n{graph_json}\n```"
 
-                    # Extract graph data with proper validation
-                    intermediate = response.get("intermediate_steps", [])
-                    cypher_query = ""
-                    graph_data = []
+                    if cypher_query:
+                        response_text += f"\n\n> **Cypher**: `{cypher_query}`"
 
-                    if intermediate and len(intermediate) >= 1:
-                        # First element could be dict with "query" or a string
-                        first = intermediate[0]
-                        if isinstance(first, dict):
-                            cypher_query = first.get("query", "")
-                        elif isinstance(first, str):
-                            cypher_query = first
+                except Exception as json_err:
+                    logger.warning(f"Failed to serialize graph data: {json_err}")
 
-                    if intermediate and len(intermediate) >= 2:
-                        graph_data = intermediate[1]
-
-                    if cypher_query or graph_data:
-                        import json
-
-                        try:
-                            if graph_data:
-                                graph_json = json.dumps(graph_data, default=str, ensure_ascii=False)
-                                response_text += f"\n\n```json-graph\n{graph_json}\n```"
-
-                            if cypher_query:
-                                response_text += f"\n\n> **Cypher**: `{cypher_query}`"
-
-                        except Exception as json_err:
-                            logger.warning(f"Failed to serialize graph data: {json_err}")
-
-                except Exception as e:
-                    logger.error(f"GraphWorker query failed: {e}")
-                    response_text = f"Error querying knowledge graph: {str(e)}"
-
-        # Wrap response in AIMessage
-        from langchain_core.messages import AIMessage
+        except Exception as e:
+            logger.error(f"GraphWorker query failed: {e}")
+            response_text = f"Error querying knowledge graph: {str(e)}"
 
         return {"messages": [AIMessage(content=response_text)]}
 

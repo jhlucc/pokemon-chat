@@ -9,6 +9,7 @@ from typing import Any
 
 from langchain_core.messages import AIMessage
 
+from src.agents.utils.message_filter import make_error_response, validate_worker_input
 from src.core.feature_flags import feature_enabled
 from src.graph.state import AgentState
 from src.utils.logger import get_logger
@@ -47,10 +48,10 @@ class MCPWorker:
         """
         Worker node entry point.
         """
-
-        messages = state["messages"]
-        last_message = messages[-1]
-        query = last_message.content
+        # Validate input
+        query, error = validate_worker_input(state)
+        if error:
+            return make_error_response(error)
 
         logger.info(f"MCPWorker processing: {query[:50]}...")
 

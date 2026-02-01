@@ -4,6 +4,7 @@ from typing import Any
 from langchain_core.prompts import ChatPromptTemplate
 from tavily import TavilyClient
 
+from src.agents.utils.message_filter import make_error_response, validate_worker_input
 from src.core.llm_factory import build_chat_llm
 from src.core.settings import settings
 from src.graph.state import AgentState
@@ -33,9 +34,10 @@ class WebWorker:
             return f"Web search failed: {str(e)}"
 
     def __call__(self, state: AgentState) -> dict[str, Any]:
-        messages = state["messages"]
-        last_message = messages[-1]
-        query = last_message.content
+        # Validate input
+        query, error = validate_worker_input(state)
+        if error:
+            return make_error_response(error)
 
         context = self.search(query)
 

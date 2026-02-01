@@ -8,7 +8,7 @@
 
 from __future__ import annotations
 
-from langchain_core.messages import BaseMessage, SystemMessage
+from langchain_core.messages import AIMessage, BaseMessage, SystemMessage
 
 # 需要过滤的路由节点名称
 ROUTING_NODE_NAMES = frozenset([
@@ -16,6 +16,51 @@ ROUTING_NODE_NAMES = frozenset([
     "guardrail",
     "supervisor",
 ])
+
+
+def validate_worker_input(state: dict) -> tuple[str, str | None]:
+    """Validate worker input state and extract the query.
+
+    Args:
+        state: The AgentState dict containing messages
+
+    Returns:
+        Tuple of (query_text, error_message).
+        If error_message is not None, the worker should return an error response.
+    """
+    messages = state.get("messages")
+
+    if not messages:
+        return "", "No messages to process."
+
+    if not isinstance(messages, list):
+        return "", "Invalid messages format."
+
+    last_message = messages[-1]
+    if last_message is None:
+        return "", "Last message is None."
+
+    content = getattr(last_message, "content", None)
+    if content is None:
+        content = ""
+
+    query = str(content).strip()
+    if not query:
+        return "", "Empty query received."
+
+    return query, None
+
+
+def make_error_response(error_msg: str) -> dict:
+    """Create a standard error response for workers.
+
+    Args:
+        error_msg: The error message to include
+
+    Returns:
+        Dict with messages containing an AIMessage with the error
+    """
+    return {"messages": [AIMessage(content=error_msg)]}
 
 
 def filter_messages_for_worker(

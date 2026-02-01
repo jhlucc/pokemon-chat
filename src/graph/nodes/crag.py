@@ -10,10 +10,9 @@ Evaluates retrieval quality and determines if:
 from typing import Literal
 
 from langchain_core.prompts import ChatPromptTemplate
-from langchain_openai import ChatOpenAI
 from pydantic import BaseModel, Field
 
-from src.core.settings import settings
+from src.core.llm_factory import build_chat_llm
 from src.utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -69,9 +68,8 @@ class CRAGEvaluator:
     """
 
     def __init__(self):
-        self.llm = ChatOpenAI(
-            model=settings.llm.model_name, api_key=settings.llm.api_key, base_url=settings.llm.api_base, temperature=0
-        )
+        # Use unified LLM factory for provider-agnostic LLM
+        self.llm = build_chat_llm(temperature=0)
         self.grading_chain = GRADING_PROMPT | self.llm.with_structured_output(RetrievalGrade)
 
     def grade(self, query: str, documents: list[str]) -> RetrievalGrade:
