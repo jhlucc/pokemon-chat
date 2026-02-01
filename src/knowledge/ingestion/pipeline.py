@@ -12,22 +12,22 @@ _log = get_logger(__name__)
 # Pokemon-specific separators for semantic-aware chunking
 # Priority: double newlines (paragraphs) > headers > sentences > words
 _POKEMON_SEPARATORS = [
-    "\n\n",      # Paragraph breaks
-    "\n## ",     # Markdown H2 headers
-    "\n### ",    # Markdown H3 headers
-    "\n",        # Line breaks
-    "。",        # Chinese period
-    "！",        # Chinese exclamation
-    "？",        # Chinese question mark
-    ". ",        # English period
-    "! ",        # English exclamation
-    "? ",        # English question mark
-    "；",        # Chinese semicolon
-    "; ",        # English semicolon
-    "，",        # Chinese comma
-    ", ",        # English comma
-    " ",         # Spaces
-    "",          # Character-level fallback
+    "\n\n",  # Paragraph breaks
+    "\n## ",  # Markdown H2 headers
+    "\n### ",  # Markdown H3 headers
+    "\n",  # Line breaks
+    "。",  # Chinese period
+    "！",  # Chinese exclamation
+    "？",  # Chinese question mark
+    ". ",  # English period
+    "! ",  # English exclamation
+    "? ",  # English question mark
+    "；",  # Chinese semicolon
+    "; ",  # English semicolon
+    "，",  # Chinese comma
+    ", ",  # English comma
+    " ",  # Spaces
+    "",  # Character-level fallback
 ]
 
 

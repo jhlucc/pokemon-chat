@@ -13,4 +13,3 @@ def test_type_coverage_reports_unknown_types():
 
     text = type_coverage.invoke({"team_types": ["水", "电", "???"]})
     assert "未知属性" in text
-

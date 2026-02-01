@@ -5,6 +5,7 @@ from langchain_community.chains.graph_qa.cypher import GraphCypherQAChain
 from langchain_core.messages import AIMessage
 from langchain_core.prompts.prompt import PromptTemplate
 
+from src.agents.pokedex_shortcut import maybe_answer_pokedex
 from src.agents.utils.message_filter import make_error_response, validate_worker_input
 from src.core.llm_factory import build_chat_llm
 from src.core.settings import settings
@@ -48,20 +49,29 @@ CYPHER_GENERATION_PROMPT = PromptTemplate(input_variables=["schema", "question"]
 class GraphWorker:
     def __init__(self):
         self.graph_store = GraphStore()
+        # Lazy init: keep worker usable even when Neo4j/LLM aren't configured.
+        self.llm = None
+        self.chain = None
 
-        self.llm = build_chat_llm(temperature=0.0)
+    def _ensure_chain(self) -> None:
+        """Create the graph QA chain only when the graph is available."""
+        if self.chain is not None:
+            return
+        if not self.graph_store.graph:
+            return
 
-        if self.graph_store.graph:
-            self.chain = GraphCypherQAChain.from_llm(
-                self.llm,
-                graph=self.graph_store.graph,
-                verbose=True,
-                cypher_prompt=CYPHER_GENERATION_PROMPT,
-                allow_dangerous_requests=bool(getattr(settings.features, "allow_dangerous_graph_requests", False)),
-                return_intermediate_steps=True,
-            )
-        else:
-            self.chain = None
+        if self.llm is None:
+            self.llm = build_chat_llm(temperature=0.0)
+
+        self.chain = GraphCypherQAChain.from_llm(
+            self.llm,
+            graph=self.graph_store.graph,
+            # Avoid leaking intermediate chain steps into user-facing streams.
+            verbose=False,
+            cypher_prompt=CYPHER_GENERATION_PROMPT,
+            allow_dangerous_requests=bool(getattr(settings.features, "allow_dangerous_graph_requests", False)),
+            return_intermediate_steps=False,
+        )
 
     def __call__(self, state: AgentState) -> dict[str, Any]:
         # Validate input using shared utility
@@ -69,47 +79,56 @@ class GraphWorker:
         if error:
             return make_error_response(error)
 
+        # Prefer deterministic local Pokédex facts when the question is clearly a
+        # Pokédex-style query (e.g. evolution/type/abilities). This avoids:
+        # - Graph schema/encoding mismatches
+        # - Missing edges for final-stage evolutions (e.g. 喷火龙)
+        local = maybe_answer_pokedex(query)
+        if local:
+            return {"messages": [AIMessage(content=local.content)]}
+
+        # If the graph isn't available, fall back to the local dataset for Pokédex facts
+        # (prevents hard failures when Neo4j isn't running).
+        if not self.graph_store.graph:
+            # We already tried maybe_answer_pokedex above; if it didn't match,
+            # this is likely a true graph-only query.
+            return make_error_response(
+                "知识图谱未连接或未启用，暂时无法查询图谱关系。你可以改问宝可梦图鉴类问题（属性/特性/进化等）。"
+            )
+
+        # Ensure chain (lazy).
+        try:
+            self._ensure_chain()
+        except Exception as e:
+            logger.warning(f"GraphWorker chain init failed: {e}")
+            local = maybe_answer_pokedex(query)
+            if local:
+                return {"messages": [AIMessage(content=local.content)]}
+            return make_error_response(f"知识图谱组件初始化失败: {e}")
+
         if not self.chain:
-            return make_error_response("Graph database is not connected or enabled.")
+            return make_error_response("知识图谱未连接或未启用，暂时无法查询图谱关系。")
 
         try:
             # Invoke the chain
             response = self.chain.invoke({"query": query})
             response_text = response.get("result", "I couldn't find an answer in the graph.")
 
-            # Extract graph data with proper validation
-            intermediate = response.get("intermediate_steps", [])
-            cypher_query = ""
-            graph_data = []
-
-            if intermediate and len(intermediate) >= 1:
-                # First element could be dict with "query" or a string
-                first = intermediate[0]
-                if isinstance(first, dict):
-                    cypher_query = first.get("query", "")
-                elif isinstance(first, str):
-                    cypher_query = first
-
-            if intermediate and len(intermediate) >= 2:
-                graph_data = intermediate[1]
-
-            if cypher_query or graph_data:
-                import json
-
-                try:
-                    if graph_data:
-                        graph_json = json.dumps(graph_data, default=str, ensure_ascii=False)
-                        response_text += f"\n\n```json-graph\n{graph_json}\n```"
-
-                    if cypher_query:
-                        response_text += f"\n\n> **Cypher**: `{cypher_query}`"
-
-                except Exception as json_err:
-                    logger.warning(f"Failed to serialize graph data: {json_err}")
+            # If the graph couldn't answer (common for final-stage evolution, missing edges, etc.),
+            # fall back to the bundled Pokédex dataset.
+            low = (response_text or "").strip().lower()
+            if not (response_text or "").strip() or "couldn't find" in low or "could not find" in low:
+                local = maybe_answer_pokedex(query)
+                if local:
+                    response_text = local.content
 
         except Exception as e:
             logger.error(f"GraphWorker query failed: {e}")
-            response_text = f"Error querying knowledge graph: {str(e)}"
+            local = maybe_answer_pokedex(query)
+            if local:
+                response_text = local.content
+            else:
+                response_text = f"查询知识图谱失败: {str(e)}"
 
         return {"messages": [AIMessage(content=response_text)]}
 

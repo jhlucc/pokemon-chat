@@ -13,6 +13,7 @@ from langchain_core.prompts import ChatPromptTemplate
 from pydantic import BaseModel, Field
 
 from src.core.llm_factory import build_chat_llm
+from src.core.settings import settings  # noqa: F401
 from src.utils.logger import get_logger
 
 logger = get_logger(__name__)

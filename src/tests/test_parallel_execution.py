@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from unittest.mock import patch
 
-from langchain_core.messages import AIMessage, HumanMessage
+from langchain_core.messages import HumanMessage
 
 from src.graph.nodes.rule_router import rule_route_parallel
 from src.graph.nodes.supervisor import supervisor_node

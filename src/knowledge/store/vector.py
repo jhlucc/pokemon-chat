@@ -319,6 +319,46 @@ class VectorStore:
 
         return results[:top_k]
 
+    def _rerank(self, query: str, docs: list[Document], top_k: int) -> list[Document]:
+        """
+        Rerank retrieved docs using the configured reranker.
+
+        Notes:
+        - This is best-effort: if reranking fails, we fall back to the original order.
+        - We keep the original vector score under `score` and store the rerank score
+          under `rerank_score`.
+        """
+        if not docs:
+            return []
+        if not self.reranker:
+            return docs[:top_k]
+
+        try:
+            scores = self.reranker.run(query, [d.page_content for d in docs], normalize=True)
+        except Exception as e:  # noqa: BLE001
+            _log.warning(f"Rerank failed; returning original order: {e}")
+            return docs[:top_k]
+
+        # Attach rerank scores (best-effort).
+        for doc, score in zip(docs, scores, strict=False):
+            try:
+                doc.metadata["rerank_score"] = float(score)
+            except Exception:
+                doc.metadata["rerank_score"] = score
+
+        # Optional filtering by threshold (avoid returning low-confidence docs).
+        threshold = float(getattr(settings.kb_config, "default_rerank_threshold", 0.0) or 0.0)
+        filtered = (
+            [d for d in docs if float(d.metadata.get("rerank_score") or 0.0) >= threshold]
+            if threshold > 0
+            else list(docs)
+        )
+        if not filtered:
+            filtered = list(docs)
+
+        filtered.sort(key=lambda d: float(d.metadata.get("rerank_score") or 0.0), reverse=True)
+        return filtered[:top_k]
+
     def hybrid_search(
         self,
         query: str,
@@ -330,11 +370,22 @@ class VectorStore:
     ) -> list[Document]:
         """
         Perform Hybrid Search (Dense + Sparse) with Weighted Reranking (RRFRanker or WeightedRanker).
-        Requires enable_sparse=True in constructor.
+        Requires enable_sparse=True in constructor for real Milvus sparse-field support.
+
+        Note: if a sparse embedding is provided but the store was initialized without
+        sparse support, we still *attempt* hybrid_search (it may fail and fall back).
         """
         if not self.enable_sparse:
-            _log.warning("Hybrid search called but sparse vectors not enabled. Falling back to dense search.")
-            return self.search(query, top_k, rerank)
+            if not sparse_embedding:
+                _log.warning(
+                    "Hybrid search called but sparse vectors not enabled and no sparse embedding provided. "
+                    "Falling back to dense search."
+                )
+                return self.search(query, top_k, rerank)
+            _log.warning(
+                "Hybrid search called but sparse vectors not enabled. "
+                "Attempting hybrid_search anyway because a sparse embedding was provided (may fail)."
+            )
 
         if not self.embedder:
             raise ValueError("No embedder.")

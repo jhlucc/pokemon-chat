@@ -5,6 +5,7 @@ from typing import Any
 from langchain_core.messages import AIMessage
 from langchain_core.prompts import ChatPromptTemplate
 
+from src.agents.pokedex_shortcut import maybe_answer_pokedex
 from src.agents.utils.message_filter import make_error_response, validate_worker_input
 from src.core.llm_factory import build_chat_llm
 from src.graph.state import AgentState
@@ -113,7 +114,8 @@ def _maybe_answer_type_matchup(query: str) -> str | None:
 
 class StatsWorker:
     def __init__(self):
-        self.llm = build_chat_llm(temperature=0.0)
+        # Lazy init: many stats queries are deterministic (type chart / local dataset).
+        self.llm = None
 
     def analyze(self, query: str) -> str:
         # TODO: Implement structured data analysis (e.g. Pandas/SQL)
@@ -129,7 +131,14 @@ class StatsWorker:
         if deterministic:
             return {"messages": [AIMessage(content=deterministic)]}
 
+        local = maybe_answer_pokedex(query)
+        if local:
+            return {"messages": [AIMessage(content=local.content)]}
+
         context = self.analyze(query)
+
+        if self.llm is None:
+            self.llm = build_chat_llm(temperature=0.0)
 
         prompt = ChatPromptTemplate.from_messages(
             [

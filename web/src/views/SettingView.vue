@@ -226,7 +226,7 @@ import { message } from 'ant-design-vue'
 import { 
   RedoOutlined, SyncOutlined, RightOutlined, LoadingOutlined,
   BookFilled, DeploymentUnitOutlined, CompassFilled, ApiFilled, 
-  SortAscendingOutlined, AudioFilled, TagFilled 
+  SortAscendingOutlined, AudioFilled, TagFilled, RobotOutlined 
 } from '@ant-design/icons-vue'
 import HeaderComponent from '@/components/HeaderComponent.vue'
 import { useConfigStore } from '@/stores/config'
@@ -282,6 +282,7 @@ const modulesList = [
   { key: 'enable_reranker', label: '重排序', icon: SortAscendingOutlined },
   { key: 'enable_asr', label: '语音识别', icon: AudioFilled },
   { key: 'enable_ner_bert', label: '实体识别', icon: TagFilled },
+  { key: 'enable_agent_finalizer', label: '回答润色', icon: RobotOutlined },
 ]
 
 const densityOptions = [

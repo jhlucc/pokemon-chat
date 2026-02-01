@@ -1,6 +1,4 @@
 """消息过滤工具 - 清理传递给 Worker 的上下文。
-
-根据 LangChain 最佳实践，移除 handoff/routing 消息可以：
 - 减少 Worker 上下文窗口的噪音
 - 避免 LLM 被路由逻辑干扰
 - 节省 token 消耗
@@ -11,11 +9,13 @@ from __future__ import annotations
 from langchain_core.messages import AIMessage, BaseMessage, SystemMessage
 
 # 需要过滤的路由节点名称
-ROUTING_NODE_NAMES = frozenset([
-    "intent_router",
-    "guardrail",
-    "supervisor",
-])
+ROUTING_NODE_NAMES = frozenset(
+    [
+        "intent_router",
+        "guardrail",
+        "supervisor",
+    ]
+)
 
 
 def validate_worker_input(state: dict) -> tuple[str, str | None]:

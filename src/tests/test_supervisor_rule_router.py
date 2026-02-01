@@ -32,4 +32,3 @@ def test_supervisor_rules_route_stats_queries():
     with patch("src.graph.nodes.supervisor.build_chat_llm", return_value=_NoLLM()):
         out = supervisor_node(state)
     assert out["next"] == "stats_worker"
-

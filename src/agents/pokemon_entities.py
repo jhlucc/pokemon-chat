@@ -55,4 +55,3 @@ def extract_pokemon_entities(text: str, *, max_entities: int = 5) -> list[str]:
         if len(out) >= max_entities:
             break
     return out
-

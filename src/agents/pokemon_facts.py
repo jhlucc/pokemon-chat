@@ -5,7 +5,6 @@ from typing import Any
 
 from src.agents.pokemon_data import PokemonData, PokemonDetail, get_pokemon_data
 
-
 _EVOLUTION_OVERRIDE_NEXT: dict[str, str] = {
     # The raw dataset has known gaps/inconsistencies for some baby Pokemon.
     # Keep this list small and targeted; prefer dataset truth otherwise.
@@ -110,6 +109,9 @@ def format_basic_facts(record: PokemonDetail) -> str:
     name = (record.get("chinese_name") or "").strip() or "未知宝可梦"
     pid = record.get("id")
 
+    en_name = (record.get("english_name") or "").strip()
+    jp_name = (record.get("japanese_name") or "").strip()
+
     types = _as_list(record.get("type"))
     types_str = "/".join(types) if types else "未知"
 
@@ -127,6 +129,10 @@ def format_basic_facts(record: PokemonDetail) -> str:
         title,
         f"属性: {types_str}",
     ]
+    if en_name:
+        lines.append(f"英文名: {en_name}")
+    if jp_name:
+        lines.append(f"日文名: {jp_name}")
     if height is not None:
         lines.append(f"身高: {height:g} m")
     if weight is not None:
@@ -148,7 +154,25 @@ def format_evolution(record: PokemonDetail, *, data: PokemonData | None = None) 
     if not chain:
         return f"进化链: 未找到 {name} 的进化信息"
 
-    return "进化链: " + " → ".join(chain)
+    if len(chain) <= 1:
+        return f"{name}没有进化信息（可能无法进化或数据缺失）"
+
+    idx = chain.index(name) if name in chain else len(chain) - 1
+    prev = chain[idx - 1] if idx > 0 else None
+    nxt = chain[idx + 1] if idx < len(chain) - 1 else None
+
+    lines: list[str] = []
+    if nxt:
+        lines.append(f"{name}进化为：{nxt}")
+    else:
+        if prev:
+            lines.append(f"{name}不会再进化（最终阶段），它由{prev}进化而来。")
+        else:
+            lines.append(f"{name}不会再进化（最终阶段）。")
+
+    lines.append("进化链: " + " → ".join(chain))
+    lines.append(f"当前阶段: 第 {idx + 1}/{len(chain)} 阶段")
+    return "\n".join(lines)
 
 
 def format_type_matchups(record: PokemonDetail) -> str:

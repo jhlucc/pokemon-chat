@@ -41,4 +41,3 @@ def should_web_search(text: str) -> bool:
     if _YEAR_RE.search(low):
         return True
     return False
-

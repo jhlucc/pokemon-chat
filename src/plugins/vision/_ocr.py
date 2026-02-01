@@ -60,34 +60,35 @@ def _is_garbled_text(text: str, threshold: float = 0.5) -> bool:
     :return: True 表示是乱码
     """
     import re
+
     if not text or len(text.strip()) == 0:
         return True
 
     # 检查是否包含 CID 标记 (cid:xxx)
-    cid_pattern = r'\(cid:\d+\)'
+    cid_pattern = r"\(cid:\d+\)"
     if re.search(cid_pattern, text):
         logging.info("检测到 CID 编码标记，判定为乱码")
         return True
 
-    non_space_text = re.sub(r'\s', '', text)
+    non_space_text = re.sub(r"\s", "", text)
     if len(non_space_text) == 0:
         return True
 
     # 统计中文字符
-    chinese_chars = re.findall(r'[\u4e00-\u9fff\u3400-\u4dbf]', text)
+    chinese_chars = re.findall(r"[\u4e00-\u9fff\u3400-\u4dbf]", text)
 
     # 统计基本 ASCII 可打印字符（英文、数字、常见标点）
     ascii_printable = re.findall(r'[a-zA-Z0-9,.!?;:\'"()\[\]{}<>/\\@#$%^&*+=_|~`\-]', text)
 
     # 统计中文标点
-    chinese_punct = re.findall(r'[，。！？、；：""''（）【】《》—…·]', text)
+    chinese_punct = re.findall(r'[，。！？、；：""' "（）【】《》—…·]", text)
 
     # 计算有效字符总数
     valid_count = len(chinese_chars) + len(ascii_printable) + len(chinese_punct)
     valid_ratio = valid_count / len(non_space_text)
 
     # 检测乱码特征：大量 Latin Extended / 特殊 Unicode 字符
-    weird_chars = re.findall(r'[\u0080-\u00ff\u0100-\u017f\u0180-\u024f]', text)
+    weird_chars = re.findall(r"[\u0080-\u00ff\u0100-\u017f\u0180-\u024f]", text)
     weird_ratio = len(weird_chars) / len(non_space_text) if len(non_space_text) > 0 else 0
 
     # 如果有效字符比例低于阈值，判定为乱码
@@ -163,9 +164,11 @@ class OCRHandler2:
         # 如果文件下载到了子目录，移动到正确位置
         if not os.path.exists(det_path) and os.path.exists(det_local_path):
             import shutil
+
             shutil.move(det_local_path, det_path)
         if not os.path.exists(rec_path) and os.path.exists(rec_local_path):
             import shutil
+
             shutil.move(rec_local_path, rec_path)
 
     def _lazy_load_ocr_engine(self):

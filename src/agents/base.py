@@ -283,19 +283,23 @@ class ToolAgent(BaseAgent[TState]):
             if tool:
                 try:
                     result = tool.invoke(call["args"])
-                    new_messages.append({
-                        "role": "tool",
-                        "name": call["name"],
-                        "content": str(result),
-                        "tool_call_id": call["id"],
-                    })
+                    new_messages.append(
+                        {
+                            "role": "tool",
+                            "name": call["name"],
+                            "content": str(result),
+                            "tool_call_id": call["id"],
+                        }
+                    )
                 except Exception as e:
-                    new_messages.append({
-                        "role": "tool",
-                        "name": call["name"],
-                        "content": f"工具执行错误: {e}",
-                        "tool_call_id": call["id"],
-                    })
+                    new_messages.append(
+                        {
+                            "role": "tool",
+                            "name": call["name"],
+                            "content": f"工具执行错误: {e}",
+                            "tool_call_id": call["id"],
+                        }
+                    )
 
         return {"messages": new_messages}
 

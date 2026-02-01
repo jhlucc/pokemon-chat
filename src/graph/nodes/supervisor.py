@@ -5,6 +5,7 @@ from langchain_core.messages import BaseMessage, HumanMessage
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.tools import tool
 
+from src.agents.intent import Intent, classify_intent
 from src.core.llm_factory import build_chat_llm
 from src.graph.nodes.rule_router import rule_route, rule_route_parallel
 from src.graph.state import AgentState
@@ -54,7 +55,9 @@ def _build_handoff_tools(allowed: list[str], support_parallel: bool = True) -> l
     def _make_handoff_tool(worker_name: str, capability: str):
         """Create a handoff tool with proper closure binding."""
 
-        @tool(name=f"route_to_{worker_name}", description=f"Hand off to {worker_name}: {capability}")
+        # NOTE: `tool()` takes the tool name as the first positional argument
+        # (langchain-core in this repo does NOT accept `name=` kwarg).
+        @tool(f"route_to_{worker_name}", description=f"Hand off to {worker_name}: {capability}")
         def _handoff(reason: str = "") -> str:  # noqa: ARG001
             """Route to this worker. Provide a brief reason for the routing decision."""
             return f"routed to {worker_name}"
@@ -66,7 +69,7 @@ def _build_handoff_tools(allowed: list[str], support_parallel: bool = True) -> l
         tools.append(_make_handoff_tool(worker, cap))
 
     # FINISH tool signals the conversation is complete
-    @tool(name="finish", description="End the conversation. Use when the task is complete or already answered.")
+    @tool("finish", description="End the conversation. Use when the task is complete or already answered.")
     def _finish(reason: str = "") -> str:  # noqa: ARG001
         """Finish the conversation."""
         return "finished"
@@ -77,7 +80,7 @@ def _build_handoff_tools(allowed: list[str], support_parallel: bool = True) -> l
     if support_parallel and len(allowed) > 1:
 
         @tool(
-            name="route_parallel",
+            "route_parallel",
             description=(
                 "Route to MULTIPLE workers in parallel. Use when the query needs data from "
                 "multiple sources (e.g., stats AND evolution info). Provide comma-separated worker names."
@@ -153,6 +156,20 @@ class SupervisorNode:
         if parallel_count > 0 and parallel_done >= parallel_count:
             # All parallel workers done, finish
             return {"next": "FINISH", "forward_directly": True}
+
+        # --- Deterministic Pokedex facts routing (no tool-calling required) ---
+        # Avoid relying on provider tool-calling support for simple fact queries
+        # (e.g. evolution/type/abilities). These are answered deterministically by
+        # stats_worker/graph_worker via the local dataset, then finalized for UX.
+        decision = classify_intent(last_human or "")
+        if decision.intent == Intent.POKEDEX_FACTS and decision.confidence >= 0.8:
+            if "stats_worker" in allowed:
+                return {"next": "stats_worker", "forward_directly": True}
+            if "graph_worker" in allowed:
+                return {"next": "graph_worker", "forward_directly": True}
+            if "rag_worker" in allowed:
+                return {"next": "rag_worker", "forward_directly": True}
+            return {"next": "FINISH"}
 
         # --- Rule-based parallel routing (fast path) ---
         parallel_workers = rule_route_parallel(last_human or "", allowed)

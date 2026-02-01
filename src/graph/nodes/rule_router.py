@@ -3,11 +3,25 @@ from __future__ import annotations
 import re
 from collections.abc import Sequence
 
-
 _YEAR_RE = re.compile(r"20\d{2}")
 
 # Keywords grouped by worker - use tuples for immutability
-_WEB_KEYWORDS = ("最新", "最近", "现在", "当前", "今日", "今天", "活动", "公告", "新闻", "更新", "版本", "补丁", "环境", "meta")
+_WEB_KEYWORDS = (
+    "最新",
+    "最近",
+    "现在",
+    "当前",
+    "今日",
+    "今天",
+    "活动",
+    "公告",
+    "新闻",
+    "更新",
+    "版本",
+    "补丁",
+    "环境",
+    "meta",
+)
 _STATS_KEYWORDS = ("属性", "克制", "弱点", "抗性", "相性", "倍率", "对战", "种族值", "伤害", "速度线")
 _GRAPH_KEYWORDS = ("关系", "进化", "谁", "伙伴", "属于", "位于", "地区", "城镇")
 _MCP_KEYWORDS = ("在哪", "哪里", "位置", "坐标", "地图", "现实", "真实")

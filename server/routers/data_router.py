@@ -460,12 +460,13 @@ async def get_parser_info():
             {"ext": ".json", "parser": "MarkItDown", "ocr_support": False},
         ],
         "ocr_available": False,
-        "markitdown_version": None
+        "markitdown_version": None,
     }
 
     # Check OCR availability
     try:
-        from src.plugins.vision._ocr import OCRHandler2  # noqa: F811
+        from src.plugins.vision._ocr import OCRHandler2  # noqa: F401,F811
+
         parsers["ocr_available"] = True
     except ImportError:
         pass
@@ -473,6 +474,7 @@ async def get_parser_info():
     # Check MarkItDown version
     try:
         import markitdown
+
         parsers["markitdown_version"] = getattr(markitdown, "__version__", "unknown")
     except ImportError:
         pass

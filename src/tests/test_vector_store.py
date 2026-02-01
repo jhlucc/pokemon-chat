@@ -76,6 +76,27 @@ class TestVectorStore(unittest.TestCase):
 
         mock_connections.connect.assert_called_with(alias="default", host="milvus", port="19530")
 
+    def test_rerank_sorts_by_rerank_score(self):
+        store = VectorStore.__new__(VectorStore)  # bypass __init__ (no Milvus)
+
+        class _DummyReranker:
+            def run(self, _query, _docs, normalize=True):  # noqa: ANN001
+                assert normalize is True
+                # Higher is better: doc[1] should become first.
+                return [0.2, 0.9, 0.1]
+
+        store.reranker = _DummyReranker()
+
+        docs = [
+            Document(page_content="a", metadata={"score": 0.3}),
+            Document(page_content="b", metadata={"score": 0.2}),
+            Document(page_content="c", metadata={"score": 0.1}),
+        ]
+
+        out = store._rerank("q", docs, top_k=2)
+        self.assertEqual([d.page_content for d in out], ["b", "a"])
+        self.assertIn("rerank_score", out[0].metadata)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -278,6 +278,29 @@ const state = reactive({
   layout: 'force'
 })
 
+// Normalize backend graph payload:
+// - G6 expects string ids
+// - Use backend-provided edge ids when available (prevents collisions)
+const normalizeGraphResult = (raw) => {
+  const nodes = Array.isArray(raw?.nodes)
+    ? raw.nodes.map((n) => ({
+        ...n,
+        id: n?.id != null ? String(n.id) : ''
+      }))
+    : []
+
+  const edges = Array.isArray(raw?.edges)
+    ? raw.edges.map((e) => ({
+        ...e,
+        id: e?.id != null ? String(e.id) : undefined,
+        source_id: e?.source_id != null ? String(e.source_id) : '',
+        target_id: e?.target_id != null ? String(e.target_id) : ''
+      }))
+    : []
+
+  return { nodes: nodes.filter((n) => n.id), edges: edges.filter((e) => e.source_id && e.target_id) }
+}
+
 const ensureG6 = async () => {
   if (GraphCtor) return GraphCtor
   state.vizLoading = true
@@ -335,8 +358,9 @@ const loadSampleNodes = async () => {
       method: 'GET',
       query: { kgdb_name: 'neo4j', num: sampleNodeCount.value }
     })
-    graphData.nodes = data?.result?.nodes || []
-    graphData.edges = data?.result?.edges || []
+    const normalized = normalizeGraphResult(data?.result)
+    graphData.nodes = normalized.nodes
+    graphData.edges = normalized.edges
     state.selectedNodeId = null
     state.detailOpen = false
     setTimeout(() => void renderGraph(), 0)
@@ -357,8 +381,9 @@ const onSearch = async () => {
       method: 'GET',
       query: { entity_name: state.searchInput }
     })
-    graphData.nodes = data?.result?.nodes || []
-    graphData.edges = data?.result?.edges || []
+    const normalized = normalizeGraphResult(data?.result)
+    graphData.nodes = normalized.nodes
+    graphData.edges = normalized.edges
     if (graphData.nodes.length === 0) message.info('未找到相关实体')
     state.selectedNodeId = null
     state.detailOpen = false
@@ -377,10 +402,15 @@ const quickSearch = (tag) => {
 
 const getG6Data = () => {
   const degree = {}
-  graphData.nodes.forEach((n) => (degree[n.id] = 0))
+  graphData.nodes.forEach((n) => {
+    const id = String(n.id)
+    degree[id] = 0
+  })
   graphData.edges.forEach((e) => {
-    degree[e.source_id] = (degree[e.source_id] || 0) + 1
-    degree[e.target_id] = (degree[e.target_id] || 0) + 1
+    const src = String(e.source_id)
+    const tgt = String(e.target_id)
+    degree[src] = (degree[src] || 0) + 1
+    degree[tgt] = (degree[tgt] || 0) + 1
   })
 
   // 计算最大度数用于归一化
@@ -388,19 +418,19 @@ const getG6Data = () => {
 
   return {
     nodes: graphData.nodes.map((n, index) => ({
-      id: n.id,
+      id: String(n.id),
       data: {
         label: n.name,
-        degree: degree[n.id] || 0,
+        degree: degree[String(n.id)] || 0,
         maxDegree,
         colorIndex: index % candyPalette.length,
         original: n
       }
     })),
-    edges: graphData.edges.map((e) => ({
-      id: `${e.source_id}-${e.type}-${e.target_id}`,
-      source: e.source_id,
-      target: e.target_id,
+    edges: graphData.edges.map((e, idx) => ({
+      id: e.id || `${e.source_id}-${e.type}-${e.target_id}-${idx}`,
+      source: String(e.source_id),
+      target: String(e.target_id),
       data: { label: e.type }
     }))
   }
@@ -586,21 +616,20 @@ const ensureGraph = async () => {
     })
 
     graphInstance.on('node:click', (evt) => {
-      const id = evt?.target?.id || evt?.data?.id || null
-      if (!id) return
-      state.selectedNodeId = id
+      // Prefer element data id; target.id may be shape id and can trigger G6 warnings.
+      const id = evt?.data?.id ?? null
+      if (id == null) return
+      state.selectedNodeId = String(id)
       state.detailOpen = true
-      // 重新渲染以应用聚光灯效果
-      graphInstance.setData(getG6Data())
-      graphInstance.render()
+      // 仅重绘（不重新布局）以应用聚光灯效果
+      ;(graphInstance.draw ? graphInstance.draw() : graphInstance.render())
     })
 
     graphInstance.on('canvas:click', () => {
       state.selectedNodeId = null
       state.detailOpen = false
-      // 清除聚光灯效果
-      graphInstance.setData(getG6Data())
-      graphInstance.render()
+      // 清除聚光灯效果（仅重绘，不重新布局）
+      ;(graphInstance.draw ? graphInstance.draw() : graphInstance.render())
     })
 
     layoutKey = key
@@ -637,15 +666,15 @@ const fitView = () => {
 }
 
 const focusNode = (id) => {
-  state.selectedNodeId = id
+  state.selectedNodeId = id != null ? String(id) : null
   state.detailOpen = true
-  setTimeout(() => void renderGraph(), 0)
+  setTimeout(() => void (graphInstance?.draw ? graphInstance.draw() : renderGraph()), 0)
 }
 
 const closeDetail = () => {
   state.selectedNodeId = null
   state.detailOpen = false
-  setTimeout(() => void renderGraph(), 0)
+  setTimeout(() => void (graphInstance?.draw ? graphInstance.draw() : renderGraph()), 0)
 }
 
 onMounted(() => {
@@ -662,7 +691,8 @@ onMounted(() => {
         if (!graphInstance || !container.value) return
         try {
           graphInstance.resize?.(container.value.offsetWidth, container.value.offsetHeight)
-          graphInstance.render?.()
+          // Avoid re-layout on every resize; draw is enough for style refresh.
+          ;(graphInstance.draw ? graphInstance.draw() : graphInstance.render?.())
         } catch {}
       })
       resizeObserver.observe(el)

@@ -268,6 +268,12 @@ class FeatureSettings(BaseSettings):
         default=False,
         validation_alias=AliasChoices("enable_asr", "ENABLE_ASR"),
     )
+    # Agent finalizer: rewrite worker outputs into a more natural, user-friendly answer.
+    # Enabled by default in interactive usage; tests bypass it to stay offline-safe.
+    enable_agent_finalizer: bool = Field(
+        default=True,
+        validation_alias=AliasChoices("enable_agent_finalizer", "ENABLE_AGENT_FINALIZER"),
+    )
 
 
 class AsrSettings(BaseSettings):

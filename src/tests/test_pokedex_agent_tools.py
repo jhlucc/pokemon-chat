@@ -16,4 +16,3 @@ def test_get_evolution_chain_works_for_non_hardcoded_pokemon():
     text = get_evolution_chain.invoke({"pokemon_name": "波波"})
     assert "波波" in text
     assert "比比鸟" in text
-

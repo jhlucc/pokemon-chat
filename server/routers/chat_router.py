@@ -104,24 +104,15 @@ async def chat_post(
     meta = dict(meta or {})
     history = list(history or [])
 
-    # 1. 选择模型 ----------------------------------------------------------------
-    # Model selection:
-    # - Prefer request meta (frontend-selected)
-    # - Fallback to persisted UI overrides
-    # - Finally fallback to env defaults
+    # 1. Resolve model preference (lazy).
+    # We only instantiate/select the model if we actually need an LLM call.
+    # This keeps simple Pokédex queries offline-safe (no API key required).
     from server.runtime_config import load_ui_overrides
     from src.knowledge.core.history_chat import HistoryManager
-    from src.models import select_model
 
     overrides = load_ui_overrides()
     model_provider = meta.get("model_provider") or overrides.get("model_provider") or "siliconflow"
     model_name = meta.get("model_name") or overrides.get("model_name") or settings.llm.model_name
-
-    model = select_model(model_provider=model_provider, model_name=model_name)
-    if model is None:
-        raise HTTPException(status_code=500, detail="没有可用的模型，请检查模型配置")
-
-    meta["server_model_name"] = model.model_name
     meta["model_provider"] = model_provider
     meta["model_name"] = model_name
 
@@ -164,6 +155,76 @@ async def chat_post(
         # Only safe for single-turn, non-retrieval queries (avoids cross-history poisoning).
         safe_cache = (not history) and (not need_retrieve(meta))
 
+        # 0. Local deterministic Pokédex shortcut ------------------------------
+        # Prevent obvious hallucinations (e.g. “喷火龙进化成什么”) by answering
+        # simple fact queries directly from the bundled dataset.
+        try:
+            from src.agents.intent import Intent, classify_intent
+
+            decision = classify_intent(modified_query)
+            # Only shortcut explicit "facts" queries to avoid hijacking open-ended chats.
+            if decision.intent == Intent.POKEDEX_FACTS and (decision.confidence >= 0.8 or decision.needs_clarification):
+                if decision.needs_clarification and decision.clarification_question:
+                    content = decision.clarification_question
+                else:
+                    from src.agents.pokemon_data import get_pokemon_data
+                    from src.agents.pokemon_facts import format_basic_facts, format_evolution
+
+                    entities = decision.entities
+                    if not entities:
+                        content = "你想查询哪只宝可梦？请告诉我宝可梦名字。"
+                    else:
+                        name = entities[0]
+                        data = get_pokemon_data()
+                        rec = data.get_by_cn_name(name)
+                        if not rec:
+                            content = f"我没找到宝可梦：{name}。你可以换个名字试试吗？"
+                        else:
+                            content = format_basic_facts(rec) + "\n\n" + format_evolution(rec, data=data)
+                            # Helpful hint for common confusion: "what does X evolve into?"
+                            # If the evolution chain ends at the queried Pokemon, it has no further evolution.
+                            if "进化" in modified_query and content.strip().endswith(name):
+                                content += "（最终阶段）"
+
+                logger.debug(f"Final response (local facts): {content}")
+
+                # Mirror the /chat streaming protocol: send content, then a final chunk.
+                history_manager.add_user(modified_query)
+                updated_history = history_manager.update_ai(content)
+                history_serializable = convert_messages_to_dicts(updated_history)
+
+                # Cache the deterministic response (best-effort).
+                cache = get_semantic_cache()
+                if content and safe_cache:
+                    cache.set(query, content, meta=cache_meta)
+
+                # Log assistant response into agentic memory (best-effort).
+                memory.add_conversation_turn(user_id, "assistant", content)
+
+                refs = {
+                    "query": query,
+                    "history": convert_messages_to_dicts(history_manager.history.messages),
+                    "meta": meta,
+                    "model_name": "local_dataset",
+                    "entities": decision.entities,
+                    "knowledge_base": {
+                        "results": [],
+                        "all_results": [],
+                        "rw_query": query,
+                        "message": "Answer来自本地数据集（无 LLM 调用）",
+                    },
+                    "graph_base": {"results": {"nodes": [], "edges": []}},
+                    "web_search": {"results": [], "message": "Web search is disabled"},
+                    "mysql_mcp": {"answer": "", "coords": []},
+                }
+
+                yield make_chunk(meta, content=content, status="loading")
+                yield make_chunk(meta, status="finished", history=history_serializable, refs=refs)
+                return
+
+        except Exception as e:
+            logger.warning(f"Local pokedex shortcut failed (fallback to LLM): {e}")
+
         # 1. Semantic Cache ----------------------------------------------------
         cache = get_semantic_cache()
         if safe_cache:
@@ -190,6 +251,16 @@ async def chat_post(
                 yield make_chunk(meta, message=f"Retriever error: {e}", status="error")
                 return
             yield make_chunk(meta, status="generating")
+
+        # 3. Select model (only when needed) -----------------------------------
+        from src.models import select_model
+
+        model = select_model(model_provider=model_provider, model_name=model_name)
+        if model is None:
+            yield make_chunk(meta, message="没有可用的模型（请检查模型提供方/模型名/密钥配置）", status="error")
+            return
+        # Expose the actual resolved model name to the frontend/logs.
+        meta["server_model_name"] = getattr(model, "model_name", "") or model_name
 
         # 构造 Prompt ----
         messages = history_manager.get_history_with_msg(modified_query, max_rounds=meta.get("history_round"))

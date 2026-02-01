@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Iterable
 from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any
 
 from src.core.settings import settings
 
@@ -30,7 +31,7 @@ class PokemonData:
         return "".join(ch.lower() for ch in name.strip() if ch.isalnum())
 
     @classmethod
-    def load(cls, path: Path) -> "PokemonData":
+    def load(cls, path: Path) -> PokemonData:
         raw = json.loads(path.read_text(encoding="utf-8"))
         if not isinstance(raw, dict):
             raise TypeError("pokemon_detail.json must be a dict keyed by Chinese name")

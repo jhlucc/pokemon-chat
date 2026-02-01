@@ -2,8 +2,10 @@ import sys
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any
 
+from langchain_core.messages import AIMessage
 from langchain_core.prompts import ChatPromptTemplate
 
+from src.agents.pokedex_shortcut import maybe_answer_pokedex
 from src.agents.utils.message_filter import make_error_response, validate_worker_input
 from src.core.feature_flags import feature_enabled
 from src.core.llm_factory import build_chat_llm
@@ -32,12 +34,27 @@ class RagWorker:
     def __init__(self):
         # Initialize LLM
         self.llm = build_chat_llm(temperature=0.3)
-        # Initialize Vector Store (Lazy load possible, but init here for now)
-        self.vector_store = VectorStore(
-            collection_name=settings.database.milvus_collection_name or "pokemon_knowledge",
-            embedding_model=settings.embedding.model_name,  # managed by VectorStore internal resolver
-            reranker_model=settings.reranker.model_name if feature_enabled("enable_reranker") else None,
-        )
+        # Initialize Vector Store lazily so the worker doesn't hard-fail when Milvus isn't running.
+        self._vector_store: VectorStore | None = None
+        self._vector_store_error: str | None = None
+        self._vector_store_cfg = {
+            "collection_name": settings.database.milvus_collection_name or "pokemon_knowledge",
+            "embedding_model": settings.embedding.model_name,  # managed by VectorStore internal resolver
+            "reranker_model": settings.reranker.model_name if feature_enabled("enable_reranker") else None,
+        }
+
+    def _get_vector_store(self) -> VectorStore | None:
+        if self._vector_store is not None:
+            return self._vector_store
+        if self._vector_store_error is not None:
+            return None
+        try:
+            self._vector_store = VectorStore(**self._vector_store_cfg)
+            return self._vector_store
+        except Exception as e:  # noqa: BLE001
+            self._vector_store_error = str(e)
+            logger.warning(f"VectorStore unavailable (Milvus down?): {e}")
+            return None
 
     def _retrieve_from_kb(self, query: str, db_id: str) -> str:
         if not feature_enabled("enable_knowledge_base"):
@@ -68,9 +85,15 @@ class RagWorker:
 
     def retrieve(self, query: str, top_k: int = 5) -> str:
         try:
+            store = self._get_vector_store()
+            if store is None:
+                msg = "Vector store is not available."
+                if self._vector_store_error:
+                    msg += f" ({self._vector_store_error})"
+                return msg
             # Use configured distance threshold for quality filtering
             threshold = getattr(settings.kb_config, "default_distance_threshold", 0.0)
-            results = self.vector_store.search(
+            results = store.search(
                 query,
                 top_k=top_k,
                 rerank=feature_enabled("enable_reranker"),
@@ -90,7 +113,7 @@ class RagWorker:
 
                 if file_id is not None and idx is not None:
                     # Fetch window
-                    window = self.vector_store.get_adjacent_chunks(file_id, idx, radius=1)
+                    window = store.get_adjacent_chunks(file_id, idx, radius=1)
                     for w_doc in window:
                         w_meta = w_doc.metadata
                         tag = (w_meta.get("file_id"), w_meta.get("chunk_index"))
@@ -114,10 +137,19 @@ class RagWorker:
         """
         Retrieve with CRAG (Corrective RAG) - evaluates and corrects retrieval quality.
         """
+        store = self._get_vector_store()
+        if store is None:
+            msg = "Vector store is not available."
+            if self._vector_store_error:
+                msg += f" ({self._vector_store_error})"
+            return msg
         # 1. Initial retrieval
         threshold = getattr(settings.kb_config, "default_distance_threshold", 0.0)
-        results = self.vector_store.search(
-            query, top_k=top_k, rerank=feature_enabled("enable_reranker"), score_threshold=threshold,
+        results = store.search(
+            query,
+            top_k=top_k,
+            rerank=feature_enabled("enable_reranker"),
+            score_threshold=threshold,
         )
 
         if not results:
@@ -225,6 +257,13 @@ class RagWorker:
         if isinstance(db_id, str) and db_id.strip():
             context = self._retrieve_from_kb(query, db_id.strip())
         else:
+            # If Milvus/vector store is unavailable, still answer simple Pokédex fact queries
+            # from the bundled dataset (prevents "agent 没用" feeling when infra isn't up).
+            if self._get_vector_store() is None:
+                local = maybe_answer_pokedex(query)
+                if local:
+                    return {"messages": [AIMessage(content=local.content)]}
+
             # 0. Query Decomposition for complex questions
             decomposer = get_query_decomposer()
             is_complex = decomposer.is_complex(query)

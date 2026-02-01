@@ -69,7 +69,9 @@ def search_pokedex(query: str) -> str:
             pid_int = int(pid) if isinstance(pid, int) else None
             types = rec.get("type") or []
             types_str = "/".join(types) if isinstance(types, list) else str(types)
-            line = f"#{pid_int:03d} {resolved} ({types_str})" if isinstance(pid_int, int) else f"{resolved} ({types_str})"
+            line = (
+                f"#{pid_int:03d} {resolved} ({types_str})" if isinstance(pid_int, int) else f"{resolved} ({types_str})"
+            )
             results.append((pid_int or 0, line))
 
     # 2) Numeric id match

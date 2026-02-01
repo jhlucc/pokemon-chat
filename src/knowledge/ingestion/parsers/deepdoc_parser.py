@@ -15,7 +15,7 @@ def _clean_spaced_text(text: str) -> str:
     if not text:
         return text
 
-    lines = text.split('\n')
+    lines = text.split("\n")
     cleaned_lines = []
     for line in lines:
         words = line.split()
@@ -26,16 +26,16 @@ def _clean_spaced_text(text: str) -> str:
         single_char_count = sum(1 for w in words if len(w) == 1 and w.isalpha())
         if len(words) > 5 and single_char_count / len(words) > 0.3:
             # 先保护多空格（词边界）为占位符
-            cleaned = re.sub(r' {2,}', '\x00', line)
+            cleaned = re.sub(r" {2,}", "\x00", line)
             # 移除单个空格（字符间距）
-            cleaned = re.sub(r'(?<=[a-zA-Z]) (?=[a-zA-Z])', '', cleaned)
+            cleaned = re.sub(r"(?<=[a-zA-Z]) (?=[a-zA-Z])", "", cleaned)
             # 恢复词边界空格
-            cleaned = cleaned.replace('\x00', ' ')
+            cleaned = cleaned.replace("\x00", " ")
             cleaned_lines.append(cleaned)
         else:
             cleaned_lines.append(line)
 
-    return '\n'.join(cleaned_lines)
+    return "\n".join(cleaned_lines)
 
 
 class DeepDocParser:

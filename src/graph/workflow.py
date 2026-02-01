@@ -3,6 +3,7 @@ from typing import Literal
 from langgraph.graph import END, StateGraph
 from langgraph.types import Send
 
+from src.graph.nodes.finalizer import finalizer_node
 from src.graph.nodes.graph_worker import graph_worker_node
 from src.graph.nodes.mcp_worker import get_mcp_worker
 from src.graph.nodes.rag_worker import rag_worker_node
@@ -21,7 +22,7 @@ async def mcp_worker_node(state: AgentState):
     return await worker(state)
 
 
-def _post_worker_route(state: AgentState) -> Literal["supervisor", "end"]:
+def _post_worker_route(state: AgentState) -> Literal["supervisor", "finalizer", "end"]:
     """Route after a worker finishes.
 
     If the supervisor set ``forward_directly`` during rule-based routing,
@@ -37,7 +38,7 @@ def _post_worker_route(state: AgentState) -> Literal["supervisor", "end"]:
 
     # Single worker mode
     if state.get("forward_directly"):
-        return "end"
+        return "finalizer"
     return "supervisor"
 
 
@@ -61,7 +62,7 @@ def _supervisor_route(state: AgentState) -> list[Send] | str:
 
     # Single worker or FINISH
     if next_target == "FINISH":
-        return END
+        return "finalizer"
 
     return next_target
 
@@ -73,10 +74,11 @@ workflow.add_node("web_worker", web_worker_node)
 workflow.add_node("graph_worker", graph_worker_node)
 workflow.add_node("stats_worker", stats_worker_node)
 workflow.add_node("mcp_worker", mcp_worker_node)
+workflow.add_node("finalizer", finalizer_node)
 
 # Add Edges: Workers route through _post_worker_route
 # If forward_directly or parallel mode is set, go to END; otherwise return to supervisor.
-_worker_route_map = {"supervisor": "supervisor", "end": END}
+_worker_route_map = {"supervisor": "supervisor", "finalizer": "finalizer", "end": END}
 
 for worker_name in ["rag_worker", "web_worker", "graph_worker", "stats_worker", "mcp_worker"]:
     workflow.add_conditional_edges(worker_name, _post_worker_route, _worker_route_map)
@@ -91,9 +93,13 @@ workflow.add_conditional_edges(
         "graph_worker": "graph_worker",
         "stats_worker": "stats_worker",
         "mcp_worker": "mcp_worker",
+        "finalizer": "finalizer",
         END: END,
     },
 )
+
+# Finalizer is always terminal.
+workflow.add_edge("finalizer", END)
 
 # Entry Point
 workflow.set_entry_point("supervisor")

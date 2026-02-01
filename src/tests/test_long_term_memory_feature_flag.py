@@ -33,4 +33,3 @@ def test_long_term_memory_middleware_not_imported_when_feature_off():
         PokemonKGChatAgent()
 
     assert "src.agents.middleware.long_term_memory" not in sys.modules
-

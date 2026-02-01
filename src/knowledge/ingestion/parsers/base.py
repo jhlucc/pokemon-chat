@@ -16,25 +16,26 @@ def _is_garbled_text(text: str, threshold: float = 0.5) -> bool:
     同时检测是否有大量非常见 Unicode 字符（乱码特征）。
     """
     import re
+
     if not text or len(text.strip()) == 0:
         return True
 
     # 检查是否包含 CID 标记 (cid:xxx)
-    if re.search(r'\(cid:\d+\)', text):
+    if re.search(r"\(cid:\d+\)", text):
         return True
 
-    non_space_text = re.sub(r'\s', '', text)
+    non_space_text = re.sub(r"\s", "", text)
     if len(non_space_text) == 0:
         return True
 
     # 统计中文字符
-    chinese_chars = re.findall(r'[\u4e00-\u9fff\u3400-\u4dbf]', text)
+    chinese_chars = re.findall(r"[\u4e00-\u9fff\u3400-\u4dbf]", text)
 
     # 统计基本 ASCII 可打印字符（英文、数字、常见标点）
     ascii_printable = re.findall(r'[a-zA-Z0-9,.!?;:\'"()\[\]{}<>/\\@#$%^&*+=_|~`\-]', text)
 
     # 统计中文标点
-    chinese_punct = re.findall(r'[，。！？、；：""''（）【】《》—…·]', text)
+    chinese_punct = re.findall(r'[，。！？、；：""' "（）【】《》—…·]", text)
 
     # 计算有效字符总数
     valid_count = len(chinese_chars) + len(ascii_printable) + len(chinese_punct)
@@ -42,7 +43,7 @@ def _is_garbled_text(text: str, threshold: float = 0.5) -> bool:
 
     # 检测乱码特征：大量 Latin Extended / 特殊 Unicode 字符
     # 这些字符在正常中文或英文文本中很少出现
-    weird_chars = re.findall(r'[\u0080-\u00ff\u0100-\u017f\u0180-\u024f]', text)
+    weird_chars = re.findall(r"[\u0080-\u00ff\u0100-\u017f\u0180-\u024f]", text)
     weird_ratio = len(weird_chars) / len(non_space_text) if len(non_space_text) > 0 else 0
 
     # 如果有效字符比例低于阈值，或者有大量异常字符，判定为乱码
@@ -119,6 +120,7 @@ def parse_file(
                 _log.warning(f"PyPDFLoader 提取的文本疑似乱码，尝试 OCR: {file_path}")
                 try:
                     from src.plugins.vision._ocr import OCRHandler2
+
                     ocr_handler = OCRHandler2(det_threshold=ocr_det_threshold)
                     return ocr_handler.pdf_ocr_pipeline(file_path)
                 except Exception as ocr_e:

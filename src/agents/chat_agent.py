@@ -46,11 +46,6 @@ from src.utils.logger import get_logger
 logger = get_logger(__name__)
 
 
-# ---------------------------------------------------------------------------
-# Structured output schemas (LangChain 1.x)
-# ---------------------------------------------------------------------------
-
-
 class GuardrailDecision(BaseModel):
     status: str  # "pass" | "block"
     reason: str | None = None
@@ -136,9 +131,9 @@ class PokemonKGChatAgent(BaseAgent):
                 from src.agents.middleware.long_term_memory import LongTermMemoryMiddleware
 
                 self.middleware.add(LongTermMemoryMiddleware())
-                logger.info("✅ Semantic Long-Term Memory middleware added")
+                logger.info(" Semantic Long-Term Memory middleware added")
             except Exception as e:
-                logger.error(f"❌ Failed to add LongTermMemoryMiddleware: {e}")
+                logger.error(f" Failed to add LongTermMemoryMiddleware: {e}")
 
     def _init_components(self, **kwargs):
         """初始化所有组件"""

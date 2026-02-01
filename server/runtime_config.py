@@ -7,7 +7,11 @@ from pathlib import Path
 from threading import Lock
 from typing import Any
 
+from src.core.feature_flags import clear_feature_cache
+from src.core.llm_factory import clear_ui_overrides_cache
 from src.core.settings import settings
+from src.graph.runtime import reset_graph_workers
+from src.runtime import reset_all
 
 _lock = Lock()
 
@@ -23,6 +27,7 @@ _ALLOWED_PATCH_KEYS = {
     "enable_reranker",
     "enable_asr",
     "enable_ner_bert",
+    "enable_agent_finalizer",
 }
 
 
@@ -75,31 +80,11 @@ def patch_ui_overrides(patch: dict[str, Any]) -> dict[str, Any]:
         cur.update(safe_patch)
         _atomic_write_json(_config_file(), cur)
         # Invalidate runtime caches so changes apply immediately.
-        try:
-            from src.core.feature_flags import clear_feature_cache
-
-            clear_feature_cache()
-        except Exception:
-            pass
-        try:
-            from src.core.llm_factory import clear_ui_overrides_cache
-
-            clear_ui_overrides_cache()
-        except Exception:
-            pass
+        clear_feature_cache()
+        clear_ui_overrides_cache()
         # Best-effort: clear any cached runtime singletons so UI changes apply immediately.
-        try:
-            from src.runtime import reset_all
-
-            reset_all()
-        except Exception:
-            pass
-        try:
-            from src.graph.runtime import reset_graph_workers
-
-            reset_graph_workers()
-        except Exception:
-            pass
+        reset_all()
+        reset_graph_workers()
         return cur
 
 
@@ -146,6 +131,7 @@ def build_ui_config() -> dict[str, Any]:
         "enable_reranker": _get_bool("enable_reranker", settings.features.enable_reranker),
         "enable_asr": _get_bool("enable_asr", settings.features.enable_asr),
         "enable_ner_bert": _get_bool("enable_ner_bert", settings.features.enable_ner_bert),
+        "enable_agent_finalizer": _get_bool("enable_agent_finalizer", settings.features.enable_agent_finalizer),
         # Display-only model info
         "embed_model": settings.embedding.model_name,
         "reranker": settings.reranker.model_name,

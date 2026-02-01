@@ -11,4 +11,3 @@ def test_extract_entities_en_case_insensitive():
     from src.agents.pokemon_entities import extract_pokemon_entities
 
     assert extract_pokemon_entities("Pikachu ability?") == ["皮卡丘"]
-

@@ -98,13 +98,22 @@ class SupervisorAgent(BaseAgent):
 
         config = {"configurable": {"thread_id": meta.get("thread_id", "default")}}
 
+        emitted_token = False
+        last_message: Any | None = None
+
         async for event in self.graph.astream_events(input_state, config, version="v1"):
             kind = event["event"]
+            node_name = (event.get("metadata") or {}).get("langgraph_node")
 
             if kind == "on_chat_model_stream":
-                content = event["data"]["chunk"].content
-                if content:
-                    yield content
+                # Only stream the final answer (finalizer node). This avoids mixing
+                # router/worker tokens into the user-visible output.
+                if node_name == "finalizer":
+                    content = event["data"]["chunk"].content
+                    if content:
+                        emitted_token = True
+                        yield content
+
             elif kind == "on_tool_start":
                 tool_name = event["name"]
                 tool_input = event["data"].get("input")
@@ -117,6 +126,19 @@ class SupervisorAgent(BaseAgent):
             elif kind == "on_tool_end":
                 tool_name = event["name"]
                 yield {"status": "tool_end", "status_text": f"工具 {tool_name} 执行完成", "tool": tool_name}
+
+            # Capture non-streaming node outputs (e.g. deterministic workers).
+            output = (event.get("data") or {}).get("output")
+            if isinstance(output, dict) and output.get("messages"):
+                last_message = output["messages"][-1]
+            elif hasattr(output, "content"):
+                last_message = output
+
+        # If nothing streamed, still return the final assistant message content.
+        if not emitted_token and last_message is not None:
+            content = getattr(last_message, "content", None)
+            if content:
+                yield content
 
     def get_info(self) -> dict:
         return {

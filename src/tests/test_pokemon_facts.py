@@ -26,4 +26,3 @@ def test_format_evolution_chain_contains_pre_and_next():
     assert "皮丘" in text
     assert "皮卡丘" in text
     assert "雷丘" in text
-

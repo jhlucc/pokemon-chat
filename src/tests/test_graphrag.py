@@ -49,7 +49,11 @@ class TestGraphRAG(unittest.TestCase):
         worker.llm.invoke.return_value.content = "Final Answer"
 
         # Query must be >50 chars to trigger conditional HyDE
-        state = {"messages": [HumanMessage(content="Tell me everything about Pikachu evolution chain and type matchups in detail")]}
+        state = {
+            "messages": [
+                HumanMessage(content="Tell me everything about Pikachu evolution chain and type matchups in detail")
+            ]
+        }
 
         worker(state)
 
@@ -58,7 +62,10 @@ class TestGraphRAG(unittest.TestCase):
         # Verify Search called with HyDE result (Hypothetical Answer)
         # score_threshold comes from settings.kb_config.default_distance_threshold
         mock_store.search.assert_called_with(
-            "Hypothetical Answer", top_k=5, rerank=True, score_threshold=0.5,
+            "Hypothetical Answer",
+            top_k=5,
+            rerank=True,
+            score_threshold=0.5,
         )  # rerank defaults to settings (True), top_k=5 for single non-long query
 
 

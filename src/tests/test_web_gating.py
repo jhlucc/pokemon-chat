@@ -11,4 +11,3 @@ def test_should_not_web_search_static_pokedex_query():
     from src.agents.web_gating import should_web_search
 
     assert should_web_search("皮卡丘属性") is False
-

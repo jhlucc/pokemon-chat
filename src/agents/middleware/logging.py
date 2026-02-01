@@ -38,7 +38,7 @@ class LoggingMiddleware(BaseMiddleware):
         key = f"agent_{context.thread_id}"
         self._start_times[key] = time.time()
 
-        logger.log(self.level, f"🚀 Agent 开始执行 | thread={context.thread_id} | agent={context.agent_name}")
+        logger.log(self.level, f"Agent 开始执行 | thread={context.thread_id} | agent={context.agent_name}")
 
         if self.log_messages and "messages" in state:
             msg_count = len(state.get("messages", []))
@@ -50,7 +50,7 @@ class LoggingMiddleware(BaseMiddleware):
         key = f"agent_{context.thread_id}"
         elapsed = time.time() - self._start_times.pop(key, time.time())
 
-        logger.log(self.level, f"✅ Agent 执行完成 | thread={context.thread_id} | 耗时={elapsed:.2f}s")
+        logger.log(self.level, f" Agent 执行完成 | thread={context.thread_id} | 耗时={elapsed:.2f}s")
 
         return state
 
@@ -58,7 +58,7 @@ class LoggingMiddleware(BaseMiddleware):
         key = f"model_{context.thread_id}"
         self._start_times[key] = time.time()
 
-        logger.log(self.level, f"🤖 Model 调用开始 | thread={context.thread_id} | messages={len(messages)}")
+        logger.log(self.level, f" Model 调用开始 | thread={context.thread_id} | messages={len(messages)}")
 
         return messages
 
@@ -66,10 +66,10 @@ class LoggingMiddleware(BaseMiddleware):
         key = f"model_{context.thread_id}"
         elapsed = time.time() - self._start_times.pop(key, time.time())
 
-        logger.log(self.level, f"💬 Model 调用完成 | thread={context.thread_id} | 耗时={elapsed:.2f}s")
+        logger.log(self.level, f" Model 调用完成 | thread={context.thread_id} | 耗时={elapsed:.2f}s")
 
         return response
 
     def on_error(self, error: Exception, context: MiddlewareContext):
-        logger.error(f"❌ 执行错误 | thread={context.thread_id} | error={type(error).__name__}: {error}")
+        logger.error(f" 执行错误 | thread={context.thread_id} | error={type(error).__name__}: {error}")
         return None  # 继续抛出错误
