@@ -34,6 +34,9 @@ resources/save/config/base.yaml
 resources/save/config/provider_secrets.json
 resources/save/config/ui_config.json
 
+# User uploaded data (knowledge base files)
+resources/save/data/
+
 # SQLite and DB files
 *.sqlite3
 *.sqlite
