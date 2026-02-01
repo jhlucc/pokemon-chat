@@ -57,8 +57,8 @@
             <span class="result-rank">#{{ idx + 1 }}</span>
             <span class="result-file">{{ item.file?.filename || 'Unknown' }}</span>
             <span class="result-score">
-              相似度: {{ (1 - item.distance).toFixed(3) }}
-              <template v-if="item.rerank_score"> · 重排序: {{ item.rerank_score.toFixed(3) }}</template>
+              距离: {{ item.distance?.toFixed(3) }} (越小越相似)
+              <template v-if="item.rerank_score"> · 重排分: {{ item.rerank_score.toFixed(3) }}</template>
             </span>
           </div>
           <p class="result-text">{{ item.entity?.text }}</p>
